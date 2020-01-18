@@ -8,113 +8,12 @@
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
 
+#include "finite_element_routine.hpp"
+
 #include "heat_equation_solver.hpp"
 
 namespace heat_equation_with_nonloc
 {
-
-// Функция возвращает массив сдвигов. Разность двух соседних элементов массива равна количеству узлов квадратуры.
-template<class Type, class Index>
-static std::vector<Index> quadrature_shifts_init(const mesh_2d<Type, Index> &mesh)
-{
-    std::vector<Index> shifts(mesh.elements_count()+1);
-    shifts[0] = 0;
-    for(size_t el = 0; el < mesh.elements_count(); ++el)
-        shifts[el+1] = shifts[el] + mesh.element_2d(mesh.element_type(el))->qnodes_count();
-    return shifts;
-}
-
-template<class Type, class Index>
-static void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *e,
-                                     const size_t el, matrix<Type> &coords)
-{
-    coords.resize(e->qnodes_count(), 2);
-    memset(coords.data(), 0, coords.size() * sizeof(Type));
-    for(size_t q = 0; q < e->qnodes_count(); ++q)
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            for(size_t component = 0; component < 2; ++component)
-                coords(q, component) += mesh.coord(mesh.node(el, i), component) * e->qN(i, q);
-}
-
-template<class Type, class Index>
-static matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts)
-{
-    assert(mesh.elements_count()+1 == shifts.size());
-
-    matrix<Type> coords(shifts.back(), 2, 0.0);
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-    for(size_t el = 0; el < mesh.elements_count(); ++el)
-    {
-        e = mesh.element_2d(mesh.element_type(el));
-        for(size_t q = 0; q < e->qnodes_count(); ++q)
-            for(size_t i = 0; i < e->nodes_count(); ++i)
-                for(size_t component = 0; component < 2; ++component)
-                    coords(shifts[el]+q, component) += mesh.coord(mesh.node(el, i), component) * e->qN(i, q);
-    }
-    return coords;
-}
-
-template<class Type, class Index>
-static void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *be,
-                                          const size_t b, const size_t el, matrix<Type> &coords)
-{
-    coords.resize(be->qnodes_count(), 2);
-    memset(coords.data(), 0, coords.size() * sizeof(Type));
-    for(size_t q = 0; q < be->qnodes_count(); ++q)
-        for(size_t i = 0; i < be->nodes_count(); ++i)
-            for(size_t comp = 0; comp < 2; ++comp)
-                coords(q, comp) += mesh.coord(mesh.boundary(b)(el, i), comp) * be->qN(i, q);
-}
-
-template<class Type, class Index>
-static void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *e,
-                                   const size_t el, matrix<Type> &jacobi_matrices)
-{
-    jacobi_matrices.resize(e->qnodes_count(), 4);
-    memset(jacobi_matrices.data(), 0, jacobi_matrices.size() * sizeof(Type));
-    for(size_t q = 0; q < e->qnodes_count(); ++q)
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-        {
-            jacobi_matrices(q, 0) += mesh.coord(mesh.node(el, i), 0) * e->qNxi (i, q);
-            jacobi_matrices(q, 1) += mesh.coord(mesh.node(el, i), 0) * e->qNeta(i, q);
-            jacobi_matrices(q, 2) += mesh.coord(mesh.node(el, i), 1) * e->qNxi (i, q);
-            jacobi_matrices(q, 3) += mesh.coord(mesh.node(el, i), 1) * e->qNeta(i, q);
-        }
-}
-
-template<class Type, class Index>
-static matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts)
-{
-    assert(mesh.elements_count()+1 == shifts.size());
-
-    matrix<Type> jacobi_matrices(shifts.back(), 4, 0.0);
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-    for(size_t el = 0; el < mesh.elements_count(); ++el)
-    {
-        e = mesh.element_2d(mesh.element_type(el));
-        for(size_t q = 0; q < e->qnodes_count(); ++q)
-            for(size_t i = 0; i < e->nodes_count(); ++i)
-            {
-                jacobi_matrices(shifts[el]+q, 0) += mesh.coord(mesh.node(el, i), 0) * e->qNxi (i, q);
-                jacobi_matrices(shifts[el]+q, 1) += mesh.coord(mesh.node(el, i), 0) * e->qNeta(i, q);
-                jacobi_matrices(shifts[el]+q, 2) += mesh.coord(mesh.node(el, i), 1) * e->qNxi (i, q);
-                jacobi_matrices(shifts[el]+q, 3) += mesh.coord(mesh.node(el, i), 1) * e->qNeta(i, q);
-            }
-    }
-    return jacobi_matrices;
-}
-
-template<class Type, class Index>
-static void approx_jacobi_matrices_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *be,
-                                         const size_t b, const size_t el, matrix<Type> &jacobi_matrices)
-{
-    jacobi_matrices.resize(be->qnodes_count(), 2);
-    memset(jacobi_matrices.data(), 0, jacobi_matrices.size() * sizeof(Type));
-    for(size_t q = 0; q < be->qnodes_count(); ++q)
-        for(size_t i = 0; i < be->nodes_count(); ++i)
-            for(size_t comp = 0; comp < 2; ++comp)
-                jacobi_matrices(q, comp) += mesh.coord(mesh.boundary(b)(el, i), comp) * be->qNxi(i, q);
-}
 
 template<class Type>
 static Type integrate_basic(const finite_element::element_2d_integrate_base<Type> *e,
@@ -295,7 +194,7 @@ static void mesh_run(const mesh_2d<double> &mesh, const bool nonlocal,
 #pragma omp parallel default(none) shared(mesh) firstprivate(ruleL, ruleNL)
 {
     const finite_element::element_2d_integrate_base<double> *eL  = nullptr,
-                                                    *eNL = nullptr;
+                                                            *eNL = nullptr;
 #pragma omp for
     for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
     {
@@ -311,6 +210,7 @@ static void mesh_run(const mesh_2d<double> &mesh, const bool nonlocal,
 #pragma omp for
         for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
         {
+            eL = mesh.element_2d(mesh.element_type(elL));
             for(auto elNL : mesh.neighbor(elL)) {
                 eNL = mesh.element_2d(mesh.element_type(elNL));
                 for(size_t iL = 0; iL < eL->nodes_count(); ++iL)
@@ -372,7 +272,7 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
     std::vector<Eigen::Triplet<double>> triplets(shifts_nonloc.back()),
                                         triplets_bound(shifts_bound_nonloc.back());
     for(auto [it, i] = std::make_tuple(temperature_nodes.cbegin(), static_cast<size_t>(0)); it != temperature_nodes.cend(); ++it, ++i)
-        triplets[i] = Eigen::Triplet<double>(*it, *it, 1.0);
+        triplets[i] = Eigen::Triplet<double>(*it, *it, 1.);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
@@ -416,19 +316,19 @@ static void triplets_run_loc(const mesh_2d<double> &mesh, std::vector<Eigen::Tri
 #pragma omp parallel default(none) shared(mesh, triplets, integrate_rule)
 {
     const finite_element::element_2d_integrate_base<double> *e = nullptr;
-    size_t el = 0, elPrev = size_t(-1);
+    size_t el = 0, el_prev = size_t(-1);
     matrix<double> jacobi_matrices;
 
 #pragma omp for
     for(size_t i = start; i < finish; ++i)
     {
         el = *reinterpret_cast<const size_t*>(&triplets[i].value());
-        if(el != elPrev && mesh.element_type(el) != mesh.element_type(elPrev))
+        if(el != el_prev && mesh.element_type(el) != mesh.element_type(el_prev))
         {
             e = mesh.element_2d(mesh.element_type(el));
             approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         }
-        elPrev = el;
+        el_prev = el;
         triplets[i] = Eigen::Triplet<double>(mesh.node(el, triplets[i].row()),
                                              mesh.node(el, triplets[i].col()),
                                              integrate_rule(e, triplets[i].row(), triplets[i].col(), jacobi_matrices));

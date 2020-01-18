@@ -5,10 +5,10 @@
 #include <functional>
 #include "mesh_2d.hpp"
 
-enum class boundary_type {TEMPERATURE, FLOW};
-
 namespace heat_equation_with_nonloc
 {
+
+enum class boundary_type {TEMPERATURE, FLOW};
 
 void stationary(const std::string &path, const mesh_2d<double> &mesh,
                 const std::vector<std::tuple<boundary_type, std::function<double(double, double)>>> &boundary,

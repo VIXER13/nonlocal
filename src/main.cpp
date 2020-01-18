@@ -1,6 +1,7 @@
 #include <iostream>
 #include "nonlocal_influence_functions.hpp"
-#include "heat_equation_solver.hpp"
+//#include "heat_equation_solver.hpp"
+#include "static_analysis.hpp"
 #include "Eigen/Core"
 #include "omp.h"
 
@@ -19,7 +20,7 @@ int main()
     influence_function::polinomial<double, 1, 1> bell11(r);
     influence_function::normal_distribution<double> norm(r);
 
-    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 100, 100, 1.0, 1.0);
+    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 2, 2, 1.0, 1.0);
     mesh.find_neighbors(1.05*r);
 
     size_t neighbors_count = 0;
@@ -27,6 +28,21 @@ int main()
         neighbors_count += mesh.neighbor(i).size();
     std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
 
+    create_matrix(mesh,
+                  { { boundary_type::FIXED, [](double, double) { return 0; },
+                      boundary_type::FIXED, [](double, double) { return 0; } },
+
+                    { boundary_type::FIXED, [](double, double) { return 0; },
+                      boundary_type::FIXED, [](double, double) { return 0; } },
+
+                    { boundary_type::FIXED, [](double, double) { return 0; },
+                      boundary_type::FIXED, [](double, double) { return 0; } },
+
+                    { boundary_type::FIXED, [](double, double) { return 0; },
+                      boundary_type::FIXED, [](double, double) { return 0; } }
+                  });
+
+    /*
     heat_equation_with_nonloc::stationary(std::string("results//Test.csv"), mesh,
                                         { { boundary_type::TEMPERATURE, [](double, double) { return  0.; } }, 
                                           { boundary_type::FLOW,        [](double, double) { return  0.; } }, 
@@ -43,6 +59,7 @@ int main()
                                             [](double, double) { return 0.; },
                                             [](double, double) { return 0.; },
                                             .5, bell11, 1);
+    */
 
     return 0;
 }
