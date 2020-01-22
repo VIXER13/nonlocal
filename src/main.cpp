@@ -10,7 +10,7 @@
 
 int main()
 {
-    const int threads = 4;
+    const int threads = 1;
     omp_set_num_threads(threads);
     Eigen::initParallel();
     Eigen::setNbThreads(0);
@@ -28,19 +28,21 @@ int main()
         neighbors_count += mesh.neighbor(i).size();
     std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
 
-    create_matrix(mesh,
-                  { { boundary_type::FIXED, [](double, double) { return 0; },
-                      boundary_type::FIXED, [](double, double) { return 0; } },
+     stationary(std::string("results//"), mesh,
+                { { boundary_type::FORCE, [](double, double) { return 0; },
+                    boundary_type::FORCE, [](double, double) { return 0; } },
 
-                    { boundary_type::FIXED, [](double, double) { return 0; },
-                      boundary_type::FIXED, [](double, double) { return 0; } },
+                  { boundary_type::FIXED, [](double, double) { return 1.; },
+                    boundary_type::FIXED, [](double, double) { return 0; } },
 
-                    { boundary_type::FIXED, [](double, double) { return 0; },
-                      boundary_type::FIXED, [](double, double) { return 0; } },
+                  { boundary_type::FORCE, [](double, double) { return 0; },
+                    boundary_type::FORCE, [](double, double) { return 0; } },
 
-                    { boundary_type::FIXED, [](double, double) { return 0; },
-                      boundary_type::FIXED, [](double, double) { return 0; } }
-                  });
+                  { boundary_type::FIXED, [](double, double) { return 0; },
+                    boundary_type::FIXED, [](double, double) { return 0; } }
+                });
+
+
 
     /*
     heat_equation_with_nonloc::stationary(std::string("results//Test.csv"), mesh,
