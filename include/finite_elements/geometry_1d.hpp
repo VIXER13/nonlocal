@@ -3,7 +3,7 @@
 
 #include <array>
 
-namespace finite_element{
+namespace finite_element {
 
 // Одномерную геометрию можно описать началом и концом отрезка.
 enum class side_1d {LEFT, RIGHT};

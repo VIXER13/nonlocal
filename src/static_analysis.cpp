@@ -54,11 +54,14 @@ static std::tuple<std::vector<Eigen::Triplet<double, node_info>>, size_t, std::v
                       {
                           node_info glob_i = {mesh.node(el, node_i.number), node_i.comp},
                                     glob_j = {mesh.node(el, node_j.number), node_j.comp};
-                          if(fixed_nodes.find(glob_i) == fixed_nodes.cend() &&
-                             fixed_nodes.find(glob_j) == fixed_nodes.cend())
-                              ++shifts_loc[el+1];
-                          else if(glob_i != glob_j)
-                              ++shifts_bound_loc[el+1];
+                          if(glob_i >= glob_j)
+                          {
+                            if(fixed_nodes.find(glob_i) == fixed_nodes.cend() &&
+                                fixed_nodes.find(glob_j) == fixed_nodes.cend())
+                                ++shifts_loc[el+1];
+                            else if(glob_i != glob_j)
+                                ++shifts_bound_loc[el+1];
+                          }
                       };
     mesh_run_loc(mesh, [&counter_loc](size_t i, size_t j, size_t el)
                        {
@@ -93,13 +96,16 @@ static std::tuple<std::vector<Eigen::Triplet<double, node_info>>, size_t, std::v
                      {
                          node_info glob_i = {mesh.node(el, node_i.number), node_i.comp},
                                    glob_j = {mesh.node(el, node_j.number), node_j.comp};
-                         if(fixed_nodes.find(glob_i) == fixed_nodes.cend() &&
-                            fixed_nodes.find(glob_j) == fixed_nodes.cend())
-                             triplets[shifts_loc[el]++] = Eigen::Triplet<double, node_info>(node_i, node_j, *reinterpret_cast<double*>(&el));
-                         else if(glob_i != glob_j)
-                             triplets_bound[shifts_bound_loc[el]++] = fixed_nodes.find(glob_j) == fixed_nodes.cend() ?
-                                                                      Eigen::Triplet<double, node_info>(node_j, node_i, *reinterpret_cast<double*>(&el)) :
-                                                                      Eigen::Triplet<double, node_info>(node_i, node_j, *reinterpret_cast<double*>(&el));
+                        if(glob_i >= glob_j)
+                        {
+                            if(fixed_nodes.find(glob_i) == fixed_nodes.cend() &&
+                                fixed_nodes.find(glob_j) == fixed_nodes.cend())
+                                triplets[shifts_loc[el]++] = Eigen::Triplet<double, node_info>(node_i, node_j, *reinterpret_cast<double*>(&el));
+                            else if(glob_i != glob_j)
+                                triplets_bound[shifts_bound_loc[el]++] = fixed_nodes.find(glob_j) == fixed_nodes.cend() ?
+                                                                        Eigen::Triplet<double, node_info>(node_j, node_i, *reinterpret_cast<double*>(&el)) :
+                                                                        Eigen::Triplet<double, node_info>(node_i, node_j, *reinterpret_cast<double*>(&el));
+                        }
                      };
 
 #pragma GCC diagnostic pop

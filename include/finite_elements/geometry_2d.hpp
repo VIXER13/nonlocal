@@ -4,7 +4,7 @@
 #include <array>
 #include <functional>
 
-namespace finite_element{
+namespace finite_element {
 
 // Двумерную геометрию можно описать четырьями функциями, каждая из которых описывает границу интегрирования по каждой из сторон.
 enum class side_2d {LEFT, RIGHT, DOWN, UP};

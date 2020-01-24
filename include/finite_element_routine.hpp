@@ -6,12 +6,29 @@
 template<class Type, class Index>
 void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t)> &rule) {
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-#pragma omp parallel for default(none) shared(mesh) firstprivate(rule, e)
+#pragma omp parallel for default(none) shared(mesh) private(e) firstprivate(rule)
     for(size_t el = 0; el < mesh.elements_count(); ++el) {
         e = mesh.element_2d(mesh.element_type(el));
         for(size_t i = 0; i < e->nodes_count(); ++i)
             for(size_t j = 0; j < e->nodes_count(); ++j)
                 rule(i, j, el);
+    }
+}
+
+template<class Type, class Index>
+void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t, size_t)> &rule) {
+    const finite_element::element_2d_integrate_base<double> *eL  = nullptr,
+                                                            *eNL = nullptr;
+#pragma omp parallel for default(none) shared(mesh) private(eL, eNL) firstprivate(rule)
+    for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
+    {
+        eL = mesh.element_2d(mesh.element_type(elL));
+        for(auto elNL : mesh.neighbor(elL)) {
+            eNL = mesh.element_2d(mesh.element_type(elNL));
+            for(size_t iL = 0; iL < eL->nodes_count(); ++iL)
+                for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL)
+                    rule(iL, jNL, elL, elNL);
+        }
     }
 }
 

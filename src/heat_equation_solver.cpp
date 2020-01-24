@@ -139,13 +139,13 @@ static std::vector<std::vector<uint32_t>> temperature_nodes_vectors(const mesh_2
     for(size_t b = 0; b < bounds_cond.size(); ++b)
         if(std::get<boundary_type>(bounds_cond[b]) == boundary_type::TEMPERATURE)
             for(auto [node, k] = std::make_tuple(mesh.boundary(b).cbegin(), static_cast<size_t>(0)); node != mesh.boundary(b).cend(); ++node)
-                {
-                    for(k = 0; k < temperature_nodes.size(); ++k)
-                        if(std::find(temperature_nodes[k].cbegin(), temperature_nodes[k].cend(), *node) != temperature_nodes[k].cend())
-                            break;
-                    if(k == temperature_nodes.size())
-                        temperature_nodes[b].push_back(*node);
-                }
+            {
+                for(k = 0; k < temperature_nodes.size(); ++k)
+                    if(std::find(temperature_nodes[k].cbegin(), temperature_nodes[k].cend(), *node) != temperature_nodes[k].cend())
+                        break;
+                if(k == temperature_nodes.size())
+                   temperature_nodes[b].push_back(*node);
+            }
     return temperature_nodes;
 }
 
@@ -184,45 +184,6 @@ static void boundary_condition(const mesh_2d<double> &mesh, const std::vector<st
             f[node] = std::get<1>(bounds_cond[b])(mesh.coord(node, 0), mesh.coord(node, 1));
 }
 
-// Обход по сетке. Необходим для анализа количества коэффициентов, а так же заполнения массивов необходимой информацией.
-// Считаем, что итоговая матрица симметричная, поэтому заполняется лишь нижняя половина.
-// ruleL и ruleNL - правила подсчёта и заполнения для классической и нелокальной матрицы.
-static void mesh_run(const mesh_2d<double> &mesh, const bool nonlocal,
-                     const std::function<void(size_t, size_t, size_t)> &ruleL,
-                     const std::function<void(size_t, size_t, size_t, size_t)> &ruleNL)
-{
-#pragma omp parallel default(none) shared(mesh) firstprivate(ruleL, ruleNL)
-{
-    const finite_element::element_2d_integrate_base<double> *eL  = nullptr,
-                                                            *eNL = nullptr;
-#pragma omp for
-    for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
-    {
-        eL = mesh.element_2d(mesh.element_type(elL));
-        for(size_t iL = 0; iL < eL->nodes_count(); ++iL)
-            for(size_t jL = 0; jL < eL->nodes_count(); ++jL)
-                if(mesh.node(elL, iL) >= mesh.node(elL, jL))
-                    ruleL(iL, jL, elL);
-    }
-
-    if(nonlocal)
-    {
-#pragma omp for
-        for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
-        {
-            eL = mesh.element_2d(mesh.element_type(elL));
-            for(auto elNL : mesh.neighbor(elL)) {
-                eNL = mesh.element_2d(mesh.element_type(elNL));
-                for(size_t iL = 0; iL < eL->nodes_count(); ++iL)
-                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL)
-                        if(mesh.node(elL, iL) >= mesh.node(elNL, jNL))
-                            ruleNL(iL, jNL, elL, elNL);
-            }
-        }
-    }
-}
-}
-
 // Анализ сетки и подготовка вектора из Eigen::Triplet для дальнейшего расчёта.
 // Вначале подсчитывается количество коэффициентов будущей матрицы,
 // затем происходит заполнение Eigen::Triplet соответствующей информацией, которая необходима для расчёта.
@@ -235,24 +196,32 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
 {
     std::vector<uint32_t> shifts_loc   (mesh.elements_count()+1, 0), shifts_bound_loc   (mesh.elements_count()+1, 0),
                           shifts_nonloc(mesh.elements_count()+1, 0), shifts_bound_nonloc(mesh.elements_count()+1, 0);
-    mesh_run(mesh, nonlocal,
-            [&mesh, &temperature_nodes, &shifts_loc, &shifts_bound_loc](size_t i, size_t j, size_t el)
-            { 
+    mesh_run_loc(mesh,
+        [&mesh, &temperature_nodes, &shifts_loc, &shifts_bound_loc](size_t i, size_t j, size_t el)
+        { 
+            if(mesh.node(el, i) >= mesh.node(el, j))
+            {
                 if(temperature_nodes.find(mesh.node(el, i)) == temperature_nodes.cend() &&
                    temperature_nodes.find(mesh.node(el, j)) == temperature_nodes.cend())
                     ++shifts_loc[el+1];
                 else if(mesh.node(el, i) != mesh.node(el, j))
                     ++shifts_bound_loc[el+1];
-            },
+            }
+        });
+
+    if(nonlocal)
+        mesh_run_nonloc(mesh, 
             [&mesh, &temperature_nodes, &shifts_nonloc, &shifts_bound_nonloc](size_t iL, size_t jNL, size_t elL, size_t elNL)
             { 
-                if(temperature_nodes.find(mesh.node(elL , iL )) == temperature_nodes.cend() &&
-                   temperature_nodes.find(mesh.node(elNL, jNL)) == temperature_nodes.cend())
-                    ++shifts_nonloc[elL+1];
-                else if(mesh.node(elL, iL) != mesh.node(elNL, jNL))
-                    ++shifts_bound_nonloc[elL+1];
-            }
-           );
+                if(mesh.node(elL, iL) >= mesh.node(elNL, jNL))
+                {
+                    if(temperature_nodes.find(mesh.node(elL , iL )) == temperature_nodes.cend() &&
+                       temperature_nodes.find(mesh.node(elNL, jNL)) == temperature_nodes.cend())
+                        ++shifts_nonloc[elL+1];
+                    else if(mesh.node(elL, iL) != mesh.node(elNL, jNL))
+                        ++shifts_bound_nonloc[elL+1];
+                }
+            });
 
     shifts_loc[0] = temperature_nodes.size();
     for(size_t i = 1; i < shifts_loc.size(); ++i)
@@ -278,8 +247,10 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 
     std::array<uint32_t, 2> loc_and_nonloc = {};
-    mesh_run(mesh, nonlocal,
-            [&mesh, &temperature_nodes, &triplets, &triplets_bound, &shifts_loc, &shifts_bound_loc](size_t i, size_t j, size_t el)
+    mesh_run_loc(mesh,
+        [&mesh, &temperature_nodes, &triplets, &triplets_bound, &shifts_loc, &shifts_bound_loc](size_t i, size_t j, size_t el)
+        {
+            if(mesh.node(el, i) >= mesh.node(el, j))
             {
                 if(temperature_nodes.find(mesh.node(el, i)) == temperature_nodes.cend() &&
                    temperature_nodes.find(mesh.node(el, j)) == temperature_nodes.cend())
@@ -288,18 +259,24 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
                     triplets_bound[shifts_bound_loc[el]++] = temperature_nodes.find(mesh.node(el, j)) == temperature_nodes.cend() ?
                                                              Eigen::Triplet<double>(j, i, *reinterpret_cast<double*>(&el)) :
                                                              Eigen::Triplet<double>(i, j, *reinterpret_cast<double*>(&el));
-            },
+            }
+        });
+
+    if(nonlocal)
+        mesh_run_nonloc(mesh, 
             [&mesh, &temperature_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc, loc_and_nonloc]
             (size_t iL, size_t jNL, size_t elL, size_t elNL) mutable
             {
-                loc_and_nonloc = {static_cast<uint32_t>(elL), static_cast<uint32_t>(elNL)};
-                if(temperature_nodes.find(mesh.node(elL , iL )) == temperature_nodes.cend() &&
-                   temperature_nodes.find(mesh.node(elNL, jNL)) == temperature_nodes.cend())
-                    triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double>(iL, jNL, *reinterpret_cast<double*>(&loc_and_nonloc));
-                else if(mesh.node(elL, iL) != mesh.node(elNL, jNL))
-                    triplets_bound[shifts_bound_nonloc[elL]++] = Eigen::Triplet<double>(iL, jNL, *reinterpret_cast<double*>(&loc_and_nonloc));
-            }
-           );
+                if(mesh.node(elL, iL) >= mesh.node(elNL, jNL))
+                {
+                    loc_and_nonloc = {static_cast<uint32_t>(elL), static_cast<uint32_t>(elNL)};
+                    if(temperature_nodes.find(mesh.node(elL , iL )) == temperature_nodes.cend() &&
+                       temperature_nodes.find(mesh.node(elNL, jNL)) == temperature_nodes.cend())
+                        triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double>(iL, jNL, *reinterpret_cast<double*>(&loc_and_nonloc));
+                    else if(mesh.node(elL, iL) != mesh.node(elNL, jNL))
+                        triplets_bound[shifts_bound_nonloc[elL]++] = Eigen::Triplet<double>(iL, jNL, *reinterpret_cast<double*>(&loc_and_nonloc));
+                }
+            });
 
 #pragma GCC diagnostic pop
 

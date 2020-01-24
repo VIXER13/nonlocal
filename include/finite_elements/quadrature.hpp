@@ -7,7 +7,7 @@
 #include <cmath>
 #include "geometry_1d.hpp"
 
-namespace finite_element{
+namespace finite_element {
 
 template<class Type>
 class quadrature_base {

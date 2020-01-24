@@ -5,7 +5,7 @@
 
 #include "element_base.hpp"
 
-namespace finite_element{
+namespace finite_element {
 
 // Данная реализация подразумевает, что данные о функциях формы, их производных и геометрия элемента наследуются от класса Element_Type. 
 // Таким образом пользователь сможет добавлять свои реализации конечных элементов не прибегая к дублированию интерфейса.
@@ -228,8 +228,17 @@ class qubic_serendip : public geometry_2d<Type, rectangle_element_geometry> {
 public:
     // В серендиповой аппроксимации высших порядков возникает проблема с негативизмом стандартного базиса в угловых узлах.
     // Для этого вводится специальный параметр p, который позволяет её избежать.
-    // В сущности p является значением интеграла по области элемента от угловой функции. Значение интегралов от промежуточных функций есть (1-p)/2.
+    // В сущности p является значением интеграла по области элемента от угловой функции. Значение интегралов от промежуточных функций есть (1-4p)/2.
     static inline Type p = -0.5; // Значение по умолчанию даёт нам классический вариант кубических серендиповых элементов.
+
+    // Производные высших порядков экспериментальны и не подвергались оптимизации тестированию.
+    Type Nxi2   (const size_t i, const Type xi, const Type eta) const { return basicNxi2   [i](xi, eta); }
+    Type Nxieta (const size_t i, const Type xi, const Type eta) const { return basicNxieta [i](xi, eta); }
+    Type Neta2  (const size_t i, const Type xi, const Type eta) const { return basicNeta2  [i](xi, eta); }
+    Type Nxi3   (const size_t i, const Type xi, const Type eta) const { return basicNxi3   [i](xi, eta); }
+    Type Nxi2eta(const size_t i, const Type xi, const Type eta) const { return basicNxi2eta[i](xi, eta); }
+    Type Nxieta2(const size_t i, const Type xi, const Type eta) const { return basicNxieta2[i](xi, eta); }
+    Type Neta3  (const size_t i, const Type xi, const Type eta) const { return basicNeta3  [i](xi, eta); }
 
 protected:
     qubic_serendip() {}
@@ -241,9 +250,9 @@ protected:
     //                                                      |           |
     //                                                      0---1---2---3
     // Базисные функции в локальной системе координат имеют вид:
-    // N_i = 0.03125 (1 + xi_i xi)(1 + eta_i eta)[9(xi^2 + eta^2) + (72p+9)(xi_i xi eta_i eta - xi_i xi - eta_i eta) + 72p-1], xi_i = +-1, eta_i = +-1, i = 0,3,6,9,
-    // N_i = 0.140625 (1 -  xi^2)(1 + eta_i eta)[18  xi_i  xi + (8p+1) eta_i eta - 1 + 8p], xi_i = +-1/3, eta_i = +-1  , i = 1,2,7,8,
-    // N_i = 0.140625 (1 - eta^2)(1 +  xi_i  xi)[18 eta_i eta + (8p+1)  xi_i  xi - 1 + 8p], xi_i = +-1  , eta_i = +-1/3, i = 4,5,10,11.
+    // N_i = 1/32 (1 + xi_i xi)(1 + eta_i eta)[9(xi^2 + eta^2) + (18p+9)(xi_i xi eta_i eta - xi_i xi - eta_i eta) + 18p-1], xi_i = +-1, eta_i = +-1, i = 0,3,6,9,
+    // N_i = 9/64 (1 -  xi^2)(1 + eta_i eta)[18  xi_i  xi + (2p+1) eta_i eta - 1 + 2p], xi_i = +-1/3, eta_i = +-1  , i = 1,2,7,8,
+    // N_i = 9/64 (1 - eta^2)(1 +  xi_i  xi)[18 eta_i eta + (2p+1)  xi_i  xi - 1 + 2p], xi_i = +-1  , eta_i = +-1/3, i = 4,5,10,11.
     static inline const std::array<std::function<Type(const Type, const Type)>, 12>
         basicN    = { [](const Type xi, const Type eta) { return  (1.0-xi)    * (1.0-eta)     * (0.28125*(xi*xi+eta*eta + (2.00000*p+1.000000)*(xi*eta+xi+eta)) + 0.56250*p - 0.031250); },
                       [](const Type xi, const Type eta) { return -(1.0-xi*xi) * (1.0-eta)     * (0.84375*xi             + (0.28125*p+0.140625)*eta              + 0.28125*p - 0.140625); },
@@ -297,7 +306,7 @@ protected:
                       [](const Type xi, const Type eta) { return -9./32. * (1.+2.*p) * (-1.+eta*eta); },
                       [](const Type xi, const Type eta) { return -9./32. * (1.+2.*p) * (-1.+eta*eta); } },
 
-        basicNxieta={ [](const Type xi, const Type eta) { return 1./32. * (-18.*eta + 36.*(1.+2.*p)*xi*eta - (18.*xi - (-10.+27.*eta*eta) + 27*xi*xi)); },
+        basicNxieta={ [](const Type xi, const Type eta) { return 1./32. * (-18.*eta + 36.*(1.+2.*p)*xi*eta - (18.*xi - (-10.+27.*eta*eta) - 27*xi*xi)); },
                       [](const Type xi, const Type eta) { return 9./32. * (2.*xi*(1.-eta*(1.+2.*p)) + 3. - 9.*xi*xi); },
                       [](const Type xi, const Type eta) { return 9./32. * (2.*xi*(1.-eta*(1.+2.*p)) - 3. + 9.*xi*xi); },
                       [](const Type xi, const Type eta) { return 1./32. * ( 18.*eta + 36.*(1.+2.*p)*xi*eta - (18.*xi + (-10.+27.*eta*eta) + 27*xi*xi)); },
@@ -306,7 +315,7 @@ protected:
                       [](const Type xi, const Type eta) { return 1./32. * ( 18.*eta + 36.*(1.+2.*p)*xi*eta + (18.*xi + (-10.+27.*eta*eta) + 27*xi*xi)); },
                       [](const Type xi, const Type eta) { return -9./32. * (2.*xi*(1.+eta*(1.+2.*p)) - 3. + 9.*xi*xi); },
                       [](const Type xi, const Type eta) { return -9./32. * (2.*xi*(1.+eta*(1.+2.*p)) + 3. - 9.*xi*xi); },
-                      [](const Type xi, const Type eta) { return 1./32. * (-18.*eta + 36.*(1.+2.*p)*xi*eta + (18.*xi - (-10.+27.*eta*eta) + 27*xi*xi)); },
+                      [](const Type xi, const Type eta) { return 1./32. * (-18.*eta + 36.*(1.+2.*p)*xi*eta + (18.*xi - (-10.+27.*eta*eta) - 27*xi*xi)); },
                       [](const Type xi, const Type eta) { return  9./32. * (-3. + 9.*eta*eta + 2.*eta*(1. - xi*(1+2.*p))); },
                       [](const Type xi, const Type eta) { return  9./32. * ( 3. - 9.*eta*eta + 2.*eta*(1. - xi*(1+2.*p))); } },
 
@@ -336,7 +345,7 @@ protected:
                       [](const Type xi, const Type eta) { return 0.; },
                       [](const Type xi, const Type eta) { return 0.; } },
 
-      asicNxi2eta = { [](const Type xi, const Type eta) { return -9./16. * (1. - 3.*xi - 2.*(1.+2.*p)*eta); },
+     basicNxi2eta = { [](const Type xi, const Type eta) { return -9./16. * (1. - 3.*xi - 2.*(1.+2.*p)*eta); },
                       [](const Type xi, const Type eta) { return 9./16. * (1.-eta*(1.+2.*p) - 9.*xi); },
                       [](const Type xi, const Type eta) { return 9./16. * (1.-eta*(1.+2.*p) + 9.*xi); },
                       [](const Type xi, const Type eta) { return -9./16. * (1. + 3.*xi - 2.*(1.+2.*p)*eta); },
@@ -373,7 +382,7 @@ protected:
                       [](const Type xi, const Type eta) { return 0.; },
                       [](const Type xi, const Type eta) { return  27./16. * (1.-xi); },
                       [](const Type xi, const Type eta) { return -81./16. * (1.-xi); },
-                      [](const Type xi, const Type eta) { return  81./16. * (1.-xi);; } },
+                      [](const Type xi, const Type eta) { return  81./16. * (1.-xi);; } };
 };
 
 #pragma GCC diagnostic pop

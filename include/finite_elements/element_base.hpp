@@ -7,7 +7,7 @@
 #include "geometry_2d.hpp"
 #include "quadrature.hpp"
 
-namespace finite_element{
+namespace finite_element {
 
 // Любой конечный элемент, вне зависимости от его размерности, имеет некоторое количество узлов.
 class element_base {
