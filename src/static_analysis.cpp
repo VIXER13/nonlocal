@@ -43,6 +43,74 @@ struct node_info {
 #pragma GCC diagnostic pop
 };
 
+static void save_as_vtk(const std::string &path, const mesh_2d<double> &mesh, const Eigen::VectorXd &u)
+{
+    std::ofstream fout(path);
+    fout.precision(20);
+
+    fout << "# vtk DataFile Version 4.2" << std::endl
+         << "Displacement"               << std::endl
+         << "ASCII"                      << std::endl
+         << "DATASET UNSTRUCTURED_GRID"  << std::endl;
+
+    fout << "POINTS " << mesh.nodes_count() << " double" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
+
+    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * 5 << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 4 << " " << mesh.node_number(i, 0) << " "
+                         << mesh.node_number(i, 1) << " "
+                         << mesh.node_number(i, 2) << " "
+                         << mesh.node_number(i, 3) << std::endl;
+
+    fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 9 << std::endl;
+
+    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
+
+    fout << "SCALARS U_X double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < static_cast<size_t>(u.size() / 2); ++i)
+        fout << u[2*i] << std::endl;
+
+    fout << "SCALARS U_Y double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < static_cast<size_t>(u.size() / 2); ++i)
+        fout << u[2*i+1] << std::endl;
+}
+
+template<class Type>
+static Type integrate(const finite_element::element_2d_integrate_base<Type> *e,
+                      const node_info i, const node_info j, const matrix<Type> &jacobi_matrices)
+{
+    static constexpr Type nu = 0.3, E = 2.1e5;
+    static constexpr Type A = E / (1-nu*nu), B = nu * A, C = 0.5 * E / (1. + nu);
+
+    Type coeff_1 = i.comp == j.comp ? A : B, coeff_2 = C;
+    Type integral = 0.0;
+    for(size_t q = 0; q < e->qnodes_count(); ++q)
+        integral += (coeff_1 * (e->qNxi(i, q)*jacobi_matrices(q, 3) + e->qNeta(i, q)*jacobi_matrices(q, 2)) *
+                               (e->qNxi(j, q)*jacobi_matrices(q, 3) + e->qNeta(j, q)*jacobi_matrices(q, 2)) +
+                     coeff_2 * (e->qNxi(i, q)*jacobi_matrices(q, 1) + e->qNeta(i, q)*jacobi_matrices(q, 0)) *
+                               (e->qNxi(j, q)*jacobi_matrices(q, 1) + e->qNeta(j, q)*jacobi_matrices(q, 0))) /
+                    (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2)) * e->weight(q);
+    return integral;
+}
+
+template<class Type>
+static Type integrate_force_bound(const finite_element::element_1d_integrate_base<Type> *be, const size_t i,
+                                  const matrix<Type> &coords, const matrix<Type> &jacobi_matrices, 
+                                  const std::function<Type(Type, Type)> &fun)
+{
+    Type integral = 0.0;
+    for(size_t q = 0; q < be->qnodes_count(); ++q)
+        integral += fun(coords(q, 0), coords(q, 1)) * be->weight(q) * be->qN(i, q) *
+                    sqrt(jacobi_matrices(q, 0)*jacobi_matrices(q, 0) + jacobi_matrices(q, 1)*jacobi_matrices(q, 1));
+    return integral;
+}
+
 static std::tuple<std::vector<Eigen::Triplet<double, node_info>>, size_t, std::vector<Eigen::Triplet<double, node_info>>, size_t>
     mesh_analysis(const mesh_2d<double> &mesh, const std::set<node_info> &fixed_nodes)
 {
@@ -52,8 +120,8 @@ static std::tuple<std::vector<Eigen::Triplet<double, node_info>>, size_t, std::v
         counter_loc = [&mesh, &fixed_nodes, &shifts_loc, &shifts_bound_loc]
                       (node_info node_i, node_info node_j, size_t el)
                       {
-                          node_info glob_i = {mesh.node(el, node_i.number), node_i.comp},
-                                    glob_j = {mesh.node(el, node_j.number), node_j.comp};
+                          node_info glob_i = {mesh.node_number(el, node_i.number), node_i.comp},
+                                    glob_j = {mesh.node_number(el, node_j.number), node_j.comp};
                           if(glob_i >= glob_j)
                           {
                             if(fixed_nodes.find(glob_i) == fixed_nodes.cend() &&
@@ -94,12 +162,12 @@ static std::tuple<std::vector<Eigen::Triplet<double, node_info>>, size_t, std::v
         setter_loc = [&mesh, &fixed_nodes, &shifts_loc, &shifts_bound_loc, &triplets, &triplets_bound]
                      (node_info node_i, node_info node_j, size_t el)
                      {
-                         node_info glob_i = {mesh.node(el, node_i.number), node_i.comp},
-                                   glob_j = {mesh.node(el, node_j.number), node_j.comp};
+                         node_info glob_i = {mesh.node_number(el, node_i.number), node_i.comp},
+                                   glob_j = {mesh.node_number(el, node_j.number), node_j.comp};
                         if(glob_i >= glob_j)
                         {
                             if(fixed_nodes.find(glob_i) == fixed_nodes.cend() &&
-                                fixed_nodes.find(glob_j) == fixed_nodes.cend())
+                               fixed_nodes.find(glob_j) == fixed_nodes.cend())
                                 triplets[shifts_loc[el]++] = Eigen::Triplet<double, node_info>(node_i, node_j, *reinterpret_cast<double*>(&el));
                             else if(glob_i != glob_j)
                                 triplets_bound[shifts_bound_loc[el]++] = fixed_nodes.find(glob_j) == fixed_nodes.cend() ?
@@ -122,33 +190,15 @@ static std::tuple<std::vector<Eigen::Triplet<double, node_info>>, size_t, std::v
     return {std::move(triplets), shifts_loc.back(), std::move(triplets_bound), shifts_bound_loc.back()};
 }
 
-template<class Type>
-static Type integrate(const finite_element::element_2d_integrate_base<Type> *e,
-                      const node_info i, const node_info j, const matrix<Type> &jacobi_matrices)
-{
-    static constexpr Type nu = 0.3, E = 2.1e5;
-    static constexpr Type A = E / (1-nu*nu), B = nu * A, C = 0.5 * E / (1. + nu);
-
-    Type coeff_1 = i.comp == j.comp ? A : B, coeff_2 = C;
-    Type integral = 0.0;
-    for(size_t q = 0; q < e->qnodes_count(); ++q)
-        integral += (coeff_1 * (e->qNxi(i, q)*jacobi_matrices(q, 3) + e->qNeta(i, q)*jacobi_matrices(q, 2)) *
-                               (e->qNxi(j, q)*jacobi_matrices(q, 3) + e->qNeta(j, q)*jacobi_matrices(q, 2)) +
-                     coeff_2 * (e->qNxi(i, q)*jacobi_matrices(q, 1) + e->qNeta(i, q)*jacobi_matrices(q, 0)) *
-                               (e->qNxi(j, q)*jacobi_matrices(q, 1) + e->qNeta(j, q)*jacobi_matrices(q, 0))) /
-                    (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2)) * e->weight(q);
-    return integral;
-}
-
 static void triplets_run_loc(const mesh_2d<double> &mesh, std::vector<Eigen::Triplet<double, node_info>> &triplets,
                              const size_t start, const size_t finish)
 {
-//#pragma omp parallel default(none) shared(mesh, triplets)
+#pragma omp parallel default(none) shared(mesh, triplets)
 {
     const finite_element::element_2d_integrate_base<double> *e = nullptr;
     size_t el = 0, el_prev = size_t(-1);
     matrix<double> jacobi_matrices;
-//#pragma omp for
+#pragma omp for
     for(size_t i = start; i < finish; ++i)
     {
         el = *reinterpret_cast<const size_t*>(&triplets[i].value());
@@ -158,16 +208,16 @@ static void triplets_run_loc(const mesh_2d<double> &mesh, std::vector<Eigen::Tri
             approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         }
         el_prev = el;
-        triplets[i] = Eigen::Triplet<double, node_info>({2*mesh.node(el, triplets[i].row())+triplets[i].row().comp, triplets[i].row().comp},
-                                                        {2*mesh.node(el, triplets[i].col())+triplets[i].col().comp, triplets[i].col().comp},
+        triplets[i] = Eigen::Triplet<double, node_info>({2*mesh.node_number(el, triplets[i].row())+triplets[i].row().comp, triplets[i].row().comp},
+                                                        {2*mesh.node_number(el, triplets[i].col())+triplets[i].col().comp, triplets[i].col().comp},
                                                         integrate(e, triplets[i].row(), triplets[i].col(), jacobi_matrices));
     }
 }
 }
 
 static std::set<node_info> fixed_nodes_set(const mesh_2d<double> &mesh,
-                                          const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                                       boundary_type, std::function<double(double, double)>>> &bounds_cond)
+                                           const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
+                                                                        boundary_type, std::function<double(double, double)>>> &bounds_cond)
 {
     std::set<node_info> fixed_nodes;
     for(size_t b = 0; b < bounds_cond.size(); ++b)
@@ -199,8 +249,8 @@ static void create_matrix(const mesh_2d<double> &mesh,
     triplets_bound.clear();
     K.setFromTriplets(triplets.cbegin(), triplets.cend());
 
-    std::cout << Eigen::MatrixXd(K) << std::endl << std::endl
-              << Eigen::MatrixXd(K_bound) << std::endl;
+    //std::cout << Eigen::MatrixXd(K) << std::endl << std::endl
+    //          << Eigen::MatrixXd(K_bound) << std::endl;
 }
 
 static void translation(const mesh_2d<double> &mesh, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f,
@@ -216,20 +266,30 @@ static void boundary_condition(const mesh_2d<double> &mesh, const std::vector<st
                                                             boundary_type, std::function<double(double, double)>>> &bounds_cond,
                                const double tau, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f)
 {
-    /*
     const finite_element::element_1d_integrate_base<double> *be = nullptr;
     matrix<double> coords, jacobi_matrices;
     for(size_t b = 0; b < bounds_cond.size(); ++b)
-        if(std::get<boundary_type>(bounds_cond[b]) == boundary_type::FLOW)
+    {
+        if(std::get<0>(bounds_cond[b]) == boundary_type::FORCE)
             for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
             {
                 be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
                 approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
                 approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
                 for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-                    f[mesh.boundary(b)(el, i)] += tau*integrate_flow_bound(be, i, coords, jacobi_matrices, std::get<1>(bounds_cond[b]));
+                    f[mesh.boundary(b)(el, i)] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, std::get<1>(bounds_cond[b]));
             }
-    */
+
+        if(std::get<2>(bounds_cond[b]) == boundary_type::FORCE)
+            for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
+            {
+                be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
+                approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
+                approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
+                for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
+                    f[mesh.boundary(b)(el, i)] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, std::get<3>(bounds_cond[b]));
+            }
+    }
 
     for(size_t b = 0; b < temperature_nodes.size(); ++b)
     {
@@ -273,6 +333,26 @@ static std::vector<std::vector<uint32_t>> fixed_nodes_vectors(const mesh_2d<doub
     return fixed_nodes;
 }
 
+void strains_calculate(const mesh_2d<double> &mesh, const Eigen::VectorXd &u,
+                       Eigen::VectorXd &eps11, Eigen::VectorXd &eps12, Eigen::VectorXd &eps22)
+{
+    std::vector<uint8_t> count(mesh.nodes_count());
+    const finite_element::element_2d_integrate_base<double> *e = nullptr;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            ++count[mesh.node_number(el, i)];
+    }
+
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+    {
+        eps11[i] /= count[i];
+        eps12[i] /= count[i];
+        eps22[i] /= count[i];
+    }
+}
+
 void stationary(const std::string &path, const mesh_2d<double> &mesh,
                 const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
                                              boundary_type, std::function<double(double, double)>>> &bounds_cond)
@@ -285,21 +365,27 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh,
 
     boundary_condition(mesh, fixed_nodes_vectors(mesh, bounds_cond), bounds_cond, 1., K_bound, f);
 
-    std::cout << f.transpose() << std::endl << std::endl;
+    //std::cout << f.transpose() << std::endl << std::endl;
 
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
     solver.compute(K);
-    Eigen::VectorXd x = solver.solve(f);
+    Eigen::VectorXd u = solver.solve(f);
 
-    std::cout << x.transpose() << std::endl;
+    Eigen::VectorXd eps11 = Eigen::VectorXd::Zero(mesh.nodes_count()),
+                    eps12 = Eigen::VectorXd::Zero(mesh.nodes_count()),
+                    eps22 = Eigen::VectorXd::Zero(mesh.nodes_count());
 
-    std::ofstream fout_x(path + std::string("text_x.csv")),
-                  fout_y(path + std::string("text_y.csv"));
+    save_as_vtk(path, mesh, u);
+
+    //std::cout << x.transpose() << std::endl;
+
+    std::ofstream fout_x(std::string("results//text_x.csv")),
+                  fout_y(std::string("results//text_y.csv"));
     fout_x.precision(20);
     fout_y.precision(20);
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
     {
-        fout_x << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << x(2*i) << std::endl;
-        fout_y << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << x(2*i+1) << std::endl;
+        fout_x << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
+        fout_y << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
     }
 }

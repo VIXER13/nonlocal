@@ -60,7 +60,7 @@ public:
     size_t elements_count() const;
     size_t boundary_groups_count() const;
 
-    Index node (const size_t el, const size_t i) const;                        // Глобальный номер узла под номером i элемента под номером el
+    Index node_number(const size_t el, const size_t i) const;                  // Глобальный номер узла под номером i элемента под номером el
     Type  coord(const size_t node, const size_t component) const;              // Значение компоненты узла под номером node
 
     const rows_different_sizes<Index>& boundary(const size_t b) const;          // Возвращает массив с номерами узлов на границе b
@@ -443,7 +443,7 @@ template<class Type, class Index>
 size_t mesh_2d<Type, Index>::boundary_groups_count() const { return bounds.size(); }
 
 template<class Type, class Index>
-Index mesh_2d<Type, Index>::node(const size_t el, const size_t i) const { return elements(el, i); }
+Index mesh_2d<Type, Index>::node_number(const size_t el, const size_t i) const { return elements(el, i); }
 template<class Type, class Index>
 Type mesh_2d<Type, Index>::coord(const size_t node, const size_t component) const { return nodes(node, component); }
 

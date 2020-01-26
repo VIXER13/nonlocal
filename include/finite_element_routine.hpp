@@ -17,11 +17,9 @@ void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(siz
 
 template<class Type, class Index>
 void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t, size_t)> &rule) {
-    const finite_element::element_2d_integrate_base<double> *eL  = nullptr,
-                                                            *eNL = nullptr;
+    const finite_element::element_2d_integrate_base<double> *eL = nullptr, *eNL = nullptr;
 #pragma omp parallel for default(none) shared(mesh) private(eL, eNL) firstprivate(rule)
-    for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
-    {
+    for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
         eL = mesh.element_2d(mesh.element_type(elL));
         for(auto elNL : mesh.neighbor(elL)) {
             eNL = mesh.element_2d(mesh.element_type(elNL));
@@ -49,7 +47,7 @@ void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_ele
     for(size_t q = 0; q < e->qnodes_count(); ++q)
         for(size_t i = 0; i < e->nodes_count(); ++i)
             for(size_t component = 0; component < 2; ++component)
-                coords(q, component) += mesh.coord(mesh.node(el, i), component) * e->qN(i, q);
+                coords(q, component) += mesh.coord(mesh.node_number(el, i), component) * e->qN(i, q);
 }
 
 template<class Type, class Index>
@@ -62,7 +60,7 @@ matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, cons
         for(size_t q = 0; q < e->qnodes_count(); ++q)
             for(size_t i = 0; i < e->nodes_count(); ++i)
                 for(size_t component = 0; component < 2; ++component)
-                    coords(shifts[el]+q, component) += mesh.coord(mesh.node(el, i), component) * e->qN(i, q);
+                    coords(shifts[el]+q, component) += mesh.coord(mesh.node_number(el, i), component) * e->qN(i, q);
     }
     return coords;
 }
@@ -86,10 +84,10 @@ void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_eleme
     for(size_t q = 0; q < e->qnodes_count(); ++q)
         for(size_t i = 0; i < e->nodes_count(); ++i)
         {
-            jacobi_matrices(q, 0) += mesh.coord(mesh.node(el, i), 0) * e->qNxi (i, q);
-            jacobi_matrices(q, 1) += mesh.coord(mesh.node(el, i), 0) * e->qNeta(i, q);
-            jacobi_matrices(q, 2) += mesh.coord(mesh.node(el, i), 1) * e->qNxi (i, q);
-            jacobi_matrices(q, 3) += mesh.coord(mesh.node(el, i), 1) * e->qNeta(i, q);
+            jacobi_matrices(q, 0) += mesh.coord(mesh.node_number(el, i), 0) * e->qNxi (i, q);
+            jacobi_matrices(q, 1) += mesh.coord(mesh.node_number(el, i), 0) * e->qNeta(i, q);
+            jacobi_matrices(q, 2) += mesh.coord(mesh.node_number(el, i), 1) * e->qNxi (i, q);
+            jacobi_matrices(q, 3) += mesh.coord(mesh.node_number(el, i), 1) * e->qNeta(i, q);
         }
 }
 
@@ -102,10 +100,10 @@ matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const 
         e = mesh.element_2d(mesh.element_type(el));
         for(size_t q = 0; q < e->qnodes_count(); ++q)
             for(size_t i = 0; i < e->nodes_count(); ++i) {
-                jacobi_matrices(shifts[el]+q, 0) += mesh.coord(mesh.node(el, i), 0) * e->qNxi (i, q);
-                jacobi_matrices(shifts[el]+q, 1) += mesh.coord(mesh.node(el, i), 0) * e->qNeta(i, q);
-                jacobi_matrices(shifts[el]+q, 2) += mesh.coord(mesh.node(el, i), 1) * e->qNxi (i, q);
-                jacobi_matrices(shifts[el]+q, 3) += mesh.coord(mesh.node(el, i), 1) * e->qNeta(i, q);
+                jacobi_matrices(shifts[el]+q, 0) += mesh.coord(mesh.node_number(el, i), 0) * e->qNxi (i, q);
+                jacobi_matrices(shifts[el]+q, 1) += mesh.coord(mesh.node_number(el, i), 0) * e->qNeta(i, q);
+                jacobi_matrices(shifts[el]+q, 2) += mesh.coord(mesh.node_number(el, i), 1) * e->qNxi (i, q);
+                jacobi_matrices(shifts[el]+q, 3) += mesh.coord(mesh.node_number(el, i), 1) * e->qNeta(i, q);
             }
     }
     return jacobi_matrices;

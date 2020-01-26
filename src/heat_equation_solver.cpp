@@ -15,6 +15,40 @@
 namespace heat_equation_with_nonloc
 {
 
+static void save_as_vtk(const std::string &path, const mesh_2d<double> &mesh, const Eigen::VectorXd &sol)
+{
+    std::ofstream fout(path);
+    fout.precision(20);
+
+    fout << "# vtk DataFile Version 4.2" << std::endl
+         << "Temperature"                << std::endl
+         << "ASCII"                      << std::endl
+         << "DATASET UNSTRUCTURED_GRID"  << std::endl;
+
+    fout << "POINTS " << mesh.nodes_count() << " double" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
+
+    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * 5 << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 4 << " " << mesh.node_number(i, 0) << " "
+                         << mesh.node_number(i, 1) << " "
+                         << mesh.node_number(i, 2) << " "
+                         << mesh.node_number(i, 3) << std::endl;
+
+    fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 9 << std::endl;
+
+    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
+
+    fout << "SCALARS TEMPERATURE double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+
+    for(size_t i = 0; i < static_cast<size_t>(sol.size()); ++i)
+        fout << sol[i] << std::endl;
+}
+
 template<class Type>
 static Type integrate_basic(const finite_element::element_2d_integrate_base<Type> *e,
                             const size_t i, const matrix<Type> &jacobi_matrices)
@@ -111,7 +145,7 @@ double integrate_solution(const mesh_2d<double> &mesh, const Eigen::VectorXd &x)
         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         for(size_t i = 0; i < e->nodes_count(); ++i)
             for(size_t q = 0; q < e->qnodes_count(); ++q)
-                integral += e->weight(q) * e->qN(i, q) * x[mesh.node(el, i)] *
+                integral += e->weight(q) * e->qN(i, q) * x[mesh.node_number(el, i)] *
                             (jacobi_matrices(q, 0) * jacobi_matrices(q, 3) - jacobi_matrices(q, 1) * jacobi_matrices(q, 2));
     }
     return integral;
@@ -199,12 +233,12 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
     mesh_run_loc(mesh,
         [&mesh, &temperature_nodes, &shifts_loc, &shifts_bound_loc](size_t i, size_t j, size_t el)
         { 
-            if(mesh.node(el, i) >= mesh.node(el, j))
+            if(mesh.node_number(el, i) >= mesh.node_number(el, j))
             {
-                if(temperature_nodes.find(mesh.node(el, i)) == temperature_nodes.cend() &&
-                   temperature_nodes.find(mesh.node(el, j)) == temperature_nodes.cend())
+                if(temperature_nodes.find(mesh.node_number(el, i)) == temperature_nodes.cend() &&
+                   temperature_nodes.find(mesh.node_number(el, j)) == temperature_nodes.cend())
                     ++shifts_loc[el+1];
-                else if(mesh.node(el, i) != mesh.node(el, j))
+                else if(mesh.node_number(el, i) != mesh.node_number(el, j))
                     ++shifts_bound_loc[el+1];
             }
         });
@@ -213,12 +247,12 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
         mesh_run_nonloc(mesh, 
             [&mesh, &temperature_nodes, &shifts_nonloc, &shifts_bound_nonloc](size_t iL, size_t jNL, size_t elL, size_t elNL)
             { 
-                if(mesh.node(elL, iL) >= mesh.node(elNL, jNL))
+                if(mesh.node_number(elL, iL) >= mesh.node_number(elNL, jNL))
                 {
-                    if(temperature_nodes.find(mesh.node(elL , iL )) == temperature_nodes.cend() &&
-                       temperature_nodes.find(mesh.node(elNL, jNL)) == temperature_nodes.cend())
+                    if(temperature_nodes.find(mesh.node_number(elL , iL )) == temperature_nodes.cend() &&
+                       temperature_nodes.find(mesh.node_number(elNL, jNL)) == temperature_nodes.cend())
                         ++shifts_nonloc[elL+1];
-                    else if(mesh.node(elL, iL) != mesh.node(elNL, jNL))
+                    else if(mesh.node_number(elL, iL) != mesh.node_number(elNL, jNL))
                         ++shifts_bound_nonloc[elL+1];
                 }
             });
@@ -250,13 +284,13 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
     mesh_run_loc(mesh,
         [&mesh, &temperature_nodes, &triplets, &triplets_bound, &shifts_loc, &shifts_bound_loc](size_t i, size_t j, size_t el)
         {
-            if(mesh.node(el, i) >= mesh.node(el, j))
+            if(mesh.node_number(el, i) >= mesh.node_number(el, j))
             {
-                if(temperature_nodes.find(mesh.node(el, i)) == temperature_nodes.cend() &&
-                   temperature_nodes.find(mesh.node(el, j)) == temperature_nodes.cend())
+                if(temperature_nodes.find(mesh.node_number(el, i)) == temperature_nodes.cend() &&
+                   temperature_nodes.find(mesh.node_number(el, j)) == temperature_nodes.cend())
                     triplets[shifts_loc[el]++] = Eigen::Triplet<double>(i, j, *reinterpret_cast<double*>(&el));
-                else if(mesh.node(el, i) != mesh.node(el, j))
-                    triplets_bound[shifts_bound_loc[el]++] = temperature_nodes.find(mesh.node(el, j)) == temperature_nodes.cend() ?
+                else if(mesh.node_number(el, i) != mesh.node_number(el, j))
+                    triplets_bound[shifts_bound_loc[el]++] = temperature_nodes.find(mesh.node_number(el, j)) == temperature_nodes.cend() ?
                                                              Eigen::Triplet<double>(j, i, *reinterpret_cast<double*>(&el)) :
                                                              Eigen::Triplet<double>(i, j, *reinterpret_cast<double*>(&el));
             }
@@ -267,13 +301,13 @@ static std::tuple<std::vector<Eigen::Triplet<double>>, size_t, std::vector<Eigen
             [&mesh, &temperature_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc, loc_and_nonloc]
             (size_t iL, size_t jNL, size_t elL, size_t elNL) mutable
             {
-                if(mesh.node(elL, iL) >= mesh.node(elNL, jNL))
+                if(mesh.node_number(elL, iL) >= mesh.node_number(elNL, jNL))
                 {
                     loc_and_nonloc = {static_cast<uint32_t>(elL), static_cast<uint32_t>(elNL)};
-                    if(temperature_nodes.find(mesh.node(elL , iL )) == temperature_nodes.cend() &&
-                       temperature_nodes.find(mesh.node(elNL, jNL)) == temperature_nodes.cend())
+                    if(temperature_nodes.find(mesh.node_number(elL , iL )) == temperature_nodes.cend() &&
+                       temperature_nodes.find(mesh.node_number(elNL, jNL)) == temperature_nodes.cend())
                         triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double>(iL, jNL, *reinterpret_cast<double*>(&loc_and_nonloc));
-                    else if(mesh.node(elL, iL) != mesh.node(elNL, jNL))
+                    else if(mesh.node_number(elL, iL) != mesh.node_number(elNL, jNL))
                         triplets_bound[shifts_bound_nonloc[elL]++] = Eigen::Triplet<double>(iL, jNL, *reinterpret_cast<double*>(&loc_and_nonloc));
                 }
             });
@@ -306,8 +340,8 @@ static void triplets_run_loc(const mesh_2d<double> &mesh, std::vector<Eigen::Tri
             approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         }
         el_prev = el;
-        triplets[i] = Eigen::Triplet<double>(mesh.node(el, triplets[i].row()),
-                                             mesh.node(el, triplets[i].col()),
+        triplets[i] = Eigen::Triplet<double>(mesh.node_number(el, triplets[i].row()),
+                                             mesh.node_number(el, triplets[i].col()),
                                              integrate_rule(e, triplets[i].row(), triplets[i].col(), jacobi_matrices));
     }
 }
@@ -337,8 +371,8 @@ static void triplets_run_nonloc(const mesh_2d<double> &mesh, const std::set<uint
         loc_and_nonloc = *reinterpret_cast<const std::array<uint32_t, 2>*>(&triplets[i].value());
         eL  = mesh.element_2d(mesh.element_type(loc_and_nonloc[0]));
         eNL = mesh.element_2d(mesh.element_type(loc_and_nonloc[1]));
-        triplets[i] = Eigen::Triplet<double>(mesh.node(loc_and_nonloc[0], triplets[i].row()),
-                                             mesh.node(loc_and_nonloc[1], triplets[i].col()),
+        triplets[i] = Eigen::Triplet<double>(mesh.node_number(loc_and_nonloc[0], triplets[i].row()),
+                                             mesh.node_number(loc_and_nonloc[1], triplets[i].col()),
                                              p2 * integrate_mod_gradient_pair(eL, eNL, triplets[i].row(), triplets[i].col(),
                                                                               shifts[loc_and_nonloc[0]], shifts[loc_and_nonloc[1]],
                                                                               all_quad_coords, all_jacobi_matrices, influence_fun));
@@ -350,15 +384,15 @@ static void triplets_run_nonloc(const mesh_2d<double> &mesh, const std::set<uint
         loc_and_nonloc = *reinterpret_cast<const std::array<uint32_t, 2>*>(&triplets_bound[i].value());
         eL  = mesh.element_2d(mesh.element_type(loc_and_nonloc[0]));
         eNL = mesh.element_2d(mesh.element_type(loc_and_nonloc[1]));
-        if(temperature_nodes.find(mesh.node(loc_and_nonloc[1], triplets_bound[i].col())) == temperature_nodes.cend())
-            triplets_bound[i] = Eigen::Triplet<double>(mesh.node(loc_and_nonloc[1], triplets_bound[i].col()),
-                                                       mesh.node(loc_and_nonloc[0], triplets_bound[i].row()),
+        if(temperature_nodes.find(mesh.node_number(loc_and_nonloc[1], triplets_bound[i].col())) == temperature_nodes.cend())
+            triplets_bound[i] = Eigen::Triplet<double>(mesh.node_number(loc_and_nonloc[1], triplets_bound[i].col()),
+                                                       mesh.node_number(loc_and_nonloc[0], triplets_bound[i].row()),
                                                        p2 * integrate_mod_gradient_pair(eL, eNL, triplets_bound[i].row(), triplets_bound[i].col(),
                                                                                         shifts[loc_and_nonloc[0]], shifts[loc_and_nonloc[1]],
                                                                                         all_quad_coords, all_jacobi_matrices, influence_fun));
         else
-            triplets_bound[i] = Eigen::Triplet<double>(mesh.node(loc_and_nonloc[0], triplets_bound[i].row()),
-                                                       mesh.node(loc_and_nonloc[1], triplets_bound[i].col()),
+            triplets_bound[i] = Eigen::Triplet<double>(mesh.node_number(loc_and_nonloc[0], triplets_bound[i].row()),
+                                                       mesh.node_number(loc_and_nonloc[1], triplets_bound[i].col()),
                                                        p2 * integrate_mod_gradient_pair(eL, eNL, triplets_bound[i].row(), triplets_bound[i].col(),
                                                                                         shifts[loc_and_nonloc[0]], shifts[loc_and_nonloc[1]],
                                                                                         all_quad_coords, all_jacobi_matrices, influence_fun));
@@ -413,7 +447,7 @@ static void integrate_right_part(const mesh_2d<double> &mesh, Eigen::VectorXd &f
         approx_quad_nodes_coords(mesh, e, el, coords);
         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         for(size_t i = 0; i < e->nodes_count(); ++i)
-            f[mesh.node(el, i)] += integrate_function(e, i, coords, jacobi_matrices, right_part);
+            f[mesh.node_number(el, i)] += integrate_function(e, i, coords, jacobi_matrices, right_part);
     }
 }
 
@@ -438,7 +472,7 @@ static Eigen::SparseMatrix<double> nonlocal_condition(const mesh_2d<double> &mes
         e = mesh.element_2d(mesh.element_type(el));
         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         for(size_t i = 0; i < e->nodes_count(); ++i)
-            triplets[triplets_count++] = Eigen::Triplet<double>(mesh.nodes_count(), mesh.node(el, i), 
+            triplets[triplets_count++] = Eigen::Triplet<double>(mesh.nodes_count(), mesh.node_number(el, i), 
                                                                 integrate_basic(e, i, jacobi_matrices));
     }
 
@@ -492,7 +526,8 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh,
     Eigen::VectorXd x = solver.solve(f);
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
     
-    mesh.print_to_file(path, x.data());
+    save_as_vtk(path, mesh, x);
+    //mesh.print_to_file(path, x.data());
 }
 
 void nonstationary(const std::string &path,
