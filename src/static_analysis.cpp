@@ -91,10 +91,10 @@ static Type integrate(const finite_element::element_2d_integrate_base<Type> *e,
     Type coeff_1 = i.comp == j.comp ? A : B, coeff_2 = C;
     Type integral = 0.0;
     for(size_t q = 0; q < e->qnodes_count(); ++q)
-        integral += (coeff_1 * (e->qNxi(i, q)*jacobi_matrices(q, 3) + e->qNeta(i, q)*jacobi_matrices(q, 2)) *
-                               (e->qNxi(j, q)*jacobi_matrices(q, 3) + e->qNeta(j, q)*jacobi_matrices(q, 2)) +
-                     coeff_2 * (e->qNxi(i, q)*jacobi_matrices(q, 1) + e->qNeta(i, q)*jacobi_matrices(q, 0)) *
-                               (e->qNxi(j, q)*jacobi_matrices(q, 1) + e->qNeta(j, q)*jacobi_matrices(q, 0))) /
+        integral += (coeff_1 * ( e->qNxi(i, q)*jacobi_matrices(q, 3) - e->qNeta(i, q)*jacobi_matrices(q, 2)) *
+                               ( e->qNxi(j, q)*jacobi_matrices(q, 3) - e->qNeta(j, q)*jacobi_matrices(q, 2)) +
+                     coeff_2 * (-e->qNxi(i, q)*jacobi_matrices(q, 1) + e->qNeta(i, q)*jacobi_matrices(q, 0)) *
+                               (-e->qNxi(j, q)*jacobi_matrices(q, 1) + e->qNeta(j, q)*jacobi_matrices(q, 0))) /
                     (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2)) * e->weight(q);
     return integral;
 }
@@ -336,6 +336,8 @@ static std::vector<std::vector<uint32_t>> fixed_nodes_vectors(const mesh_2d<doub
 void strains_calculate(const mesh_2d<double> &mesh, const Eigen::VectorXd &u,
                        Eigen::VectorXd &eps11, Eigen::VectorXd &eps12, Eigen::VectorXd &eps22)
 {
+    
+
     std::vector<uint8_t> count(mesh.nodes_count());
     const finite_element::element_2d_integrate_base<double> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)

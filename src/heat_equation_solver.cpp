@@ -8,6 +8,7 @@
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
 
+#include "power.hpp"
 #include "finite_element_routine.hpp"
 
 #include "heat_equation_solver.hpp"
@@ -77,16 +78,17 @@ static Type integrate_gradient_pair(const finite_element::element_2d_integrate_b
 {
     Type integral = 0.0;
     for(size_t q = 0; q < e->qnodes_count(); ++q)
-        integral += ((e->qNxi(i, q)*jacobi_matrices(q, 3) + e->qNeta(i, q)*jacobi_matrices(q, 2)) *
-                     (e->qNxi(j, q)*jacobi_matrices(q, 3) + e->qNeta(j, q)*jacobi_matrices(q, 2)) +
-                     (e->qNxi(i, q)*jacobi_matrices(q, 1) + e->qNeta(i, q)*jacobi_matrices(q, 0)) *
-                     (e->qNxi(j, q)*jacobi_matrices(q, 1) + e->qNeta(j, q)*jacobi_matrices(q, 0))) /
+        integral += (( e->qNxi(i, q)*jacobi_matrices(q, 3) - e->qNeta(i, q)*jacobi_matrices(q, 2)) *
+                     ( e->qNxi(j, q)*jacobi_matrices(q, 3) - e->qNeta(j, q)*jacobi_matrices(q, 2)) +
+                     (-e->qNxi(i, q)*jacobi_matrices(q, 1) + e->qNeta(i, q)*jacobi_matrices(q, 0)) *
+                     (-e->qNxi(j, q)*jacobi_matrices(q, 1) + e->qNeta(j, q)*jacobi_matrices(q, 0))) /
                     (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2)) * e->weight(q);
     return integral;
 }
 
 template<class Type>
-static Type integrate_mod_gradient_pair(const finite_element::element_2d_integrate_base<Type> *eL, const finite_element::element_2d_integrate_base<Type> *eNL,
+static Type integrate_mod_gradient_pair(const finite_element::element_2d_integrate_base<Type> *eL,
+                                        const finite_element::element_2d_integrate_base<Type> *eNL,
                                         const size_t iL, const size_t jNL, size_t shiftL, size_t shiftNL,
                                         const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
                                         const std::function<Type(Type, Type, Type, Type)> &influence_fun)
@@ -363,7 +365,7 @@ static void triplets_run_nonloc(const mesh_2d<double> &mesh, const std::set<uint
     const double p2 = 1.0 - p1;
     std::array<uint32_t, 2> loc_and_nonloc = {};
     const finite_element::element_2d_integrate_base<double> *eL  = nullptr,
-                                                    *eNL = nullptr;
+                                                            *eNL = nullptr;
 
 #pragma omp for nowait
     for(size_t i = classicalTripletsCount; i < triplets.size(); ++i)
@@ -428,6 +430,137 @@ static void create_matrix(const mesh_2d<double> &mesh,
     if(p1 < MAX_LOCAL_WEIGHT)
         triplets_run_nonloc(mesh, temperature_nodes, triplets, classic_count,
                             triplets_bound, classic_bound_count, p1, influence_fun);
+    
+    std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
+
+    temperature_nodes.clear();
+    K_bound.setFromTriplets(triplets_bound.begin(), triplets_bound.end());
+    triplets_bound.clear();
+    K.setFromTriplets(triplets.begin(), triplets.end());
+}
+
+template<class Type, class Index>
+static Type integrate_taylor(const mesh_2d<double, Index> &mesh,
+                             const size_t elL, const size_t iL, const size_t jL,
+                             const std::vector<uint32_t> &shifts, const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
+                             const double p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun)
+{
+    Type integralL = 0.0;
+    const finite_element::element_2d_integrate<Type, finite_element::qubic_serendip> 
+        *eL = dynamic_cast<const finite_element::element_2d_integrate<Type, finite_element::qubic_serendip>*>(mesh.element_2d(mesh.element_type(elL)));
+    for(size_t q = 0, shiftL = shifts[elL]; q < eL->qnodes_count(); ++q, ++shiftL)
+        integralL += (( eL->qNxi(iL, q)*jacobi_matrices(shiftL, 3) - eL->qNeta(iL, q)*jacobi_matrices(shiftL, 2)) *
+                      ( eL->qNxi(jL, q)*jacobi_matrices(shiftL, 3) - eL->qNeta(jL, q)*jacobi_matrices(shiftL, 2)) +
+                      (-eL->qNxi(iL, q)*jacobi_matrices(shiftL, 1) + eL->qNeta(iL, q)*jacobi_matrices(shiftL, 0)) *
+                      (-eL->qNxi(jL, q)*jacobi_matrices(shiftL, 1) + eL->qNeta(jL, q)*jacobi_matrices(shiftL, 0))) /
+                     (jacobi_matrices(shiftL, 0)*jacobi_matrices(shiftL, 3) - jacobi_matrices(shiftL, 1)*jacobi_matrices(shiftL, 2)) * eL->weight(q);
+
+    std::vector<Type> dTdx  (eL->qnodes_count()), dTdy    (eL->qnodes_count()),
+                      d2Tdx2(eL->qnodes_count()), d2Tdxdy (eL->qnodes_count()), d2Tdy2  (eL->qnodes_count()),
+                      d3Tdx3(eL->qnodes_count()), d3Tdx2dy(eL->qnodes_count()), d3Tdxdy2(eL->qnodes_count()), d3Tdy3(eL->qnodes_count());
+    for(size_t qL = 0, shiftL = shifts[elL]; qL < eL->qnodes_count(); ++qL, ++shiftL)
+    {
+        dTdx    [qL] =  eL->qNxi(jL, qL)*jacobi_matrices(shiftL, 3) - eL->qNeta(jL, qL)*jacobi_matrices(shiftL, 2);
+        dTdy    [qL] = -eL->qNxi(jL, qL)*jacobi_matrices(shiftL, 1) + eL->qNeta(jL, qL)*jacobi_matrices(shiftL, 0);
+
+        d2Tdx2  [qL] =      eL->qNxi2  (jL, qL) * jacobi_matrices(shiftL, 3)*jacobi_matrices(shiftL, 3) -
+                       2. * eL->qNxieta(jL, qL) * jacobi_matrices(shiftL, 3)*jacobi_matrices(shiftL, 2) +
+                            eL->qNeta2 (jL, qL) * jacobi_matrices(shiftL, 2)*jacobi_matrices(shiftL, 2);
+
+        d2Tdxdy [qL] =     -eL->qNxi2  (jL, qL) * jacobi_matrices(shiftL, 3)*jacobi_matrices(shiftL, 1) +
+                            eL->qNxieta(jL, qL) *(jacobi_matrices(shiftL, 3)*jacobi_matrices(shiftL, 0) + jacobi_matrices(shiftL, 1)*jacobi_matrices(shiftL, 2)) +
+                           -eL->qNeta2 (jL, qL) * jacobi_matrices(shiftL, 2)*jacobi_matrices(shiftL, 0);
+
+        d2Tdy2  [qL] =      eL->qNxi2  (jL, qL) * jacobi_matrices(shiftL, 1)*jacobi_matrices(shiftL, 1) -
+                       2. * eL->qNxieta(jL, qL) * jacobi_matrices(shiftL, 1)*jacobi_matrices(shiftL, 0) +
+                            eL->qNeta2 (jL, qL) * jacobi_matrices(shiftL, 0)*jacobi_matrices(shiftL, 0);
+
+        d3Tdx3  [qL] =      eL->qNxi3   (jL, qL) * math_meta::power<3>(jacobi_matrices(shiftL, 3)) -
+                       3. * eL->qNxi2eta(jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 3))*jacobi_matrices(shiftL, 2) +
+                       3. * eL->qNxieta2(jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 2))*jacobi_matrices(shiftL, 3) -
+                            eL->qNeta   (jL, qL) * math_meta::power<3>(jacobi_matrices(shiftL, 2));
+
+        d3Tdx2dy[qL] =     -eL->qNxi3   (jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 3))*jacobi_matrices(shiftL, 2) +
+                            eL->qNxi2eta(jL, qL) * jacobi_matrices(shiftL, 3) * (2.*jacobi_matrices(shiftL, 2)*jacobi_matrices(shiftL, 1) + jacobi_matrices(shiftL, 3)*jacobi_matrices(shiftL, 0)) -
+                            eL->qNxieta2(jL, qL) * jacobi_matrices(shiftL, 2) * (2.*jacobi_matrices(shiftL, 3)*jacobi_matrices(shiftL, 0) + jacobi_matrices(shiftL, 2)*jacobi_matrices(shiftL, 1)) +
+                            eL->qNeta   (jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 1))*jacobi_matrices(shiftL, 0);
+
+        d3Tdxdy2[qL] =      eL->qNxi3   (jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 1))*jacobi_matrices(shiftL, 3) -
+                            eL->qNxi2eta(jL, qL) * jacobi_matrices(shiftL, 1) * (2.*jacobi_matrices(shiftL, 0)*jacobi_matrices(shiftL, 3) + jacobi_matrices(shiftL, 1)*jacobi_matrices(shiftL, 2)) +
+                            eL->qNxieta2(jL, qL) * jacobi_matrices(shiftL, 0) * (2.*jacobi_matrices(shiftL, 1)*jacobi_matrices(shiftL, 2) + jacobi_matrices(shiftL, 0)*jacobi_matrices(shiftL, 3)) -
+                            eL->qNeta   (jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 0))*jacobi_matrices(shiftL, 2);
+
+        d3Tdy3  [qL] =      eL->qNxi3   (jL, qL) * math_meta::power<3>(jacobi_matrices(shiftL, 0)) -
+                       3. * eL->qNxi2eta(jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 0))*jacobi_matrices(shiftL, 1) +
+                       3. * eL->qNxieta2(jL, qL) * math_meta::power<2>(jacobi_matrices(shiftL, 1))*jacobi_matrices(shiftL, 0) -
+                            eL->qNeta   (jL, qL) * math_meta::power<3>(jacobi_matrices(shiftL, 1));
+    }
+
+    Type integralNL = 0.0,
+         diff_x = 0., diff_y = 0., finit = 0.,
+         int_const = 0., int_linear_x = 0., int_linear_y = 0., int_quad_xx = 0., int_quad_xy = 0., int_quad_yy = 0.;
+    const finite_element::element_2d_integrate<Type, finite_element::qubic_serendip> *eNL = nullptr;
+    for(auto elNL : mesh.neighbor(elL))
+    {
+        eNL = reinterpret_cast<const finite_element::element_2d_integrate<Type, finite_element::qubic_serendip>*>(mesh.element_2d(mesh.element_type(elNL)));
+        for(size_t qL = 0, shiftL = shifts[elL]; qL < eL->qnodes_count(); ++qL, ++shiftL)
+        {
+            int_const = int_linear_x = int_linear_y = int_quad_xx = int_quad_xy = int_quad_yy = 0.;
+            for(size_t qNL = 0, shiftNL = shifts[elNL]; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
+            {
+                diff_x = coords(shiftL, 0) - coords(shiftNL, 0),
+                diff_y = coords(shiftL, 1) - coords(shiftNL, 1);
+                finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1)) / 
+                        (jacobi_matrices(shiftNL, 0)*jacobi_matrices(shiftNL, 3) - jacobi_matrices(shiftNL, 1)*jacobi_matrices(shiftNL, 2));
+                int_const    += finit;
+                int_linear_x += finit * diff_x;
+                int_linear_y += finit * diff_y;
+                int_quad_xx  += finit * diff_x * diff_x;
+                int_quad_xy  += finit * diff_x * diff_y;
+                int_quad_yy  += finit * diff_y * diff_y;
+            }
+            integralNL += eL->weight(qL) * 
+                          (( eL->qNxi(iL, qL)*jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL)*jacobi_matrices(shiftL, 2)) *
+                           (dTdx[qL]*int_const + d2Tdx2 [qL]*int_linear_x + d2Tdxdy[qL]*int_linear_y + 0.5*d3Tdx3  [qL]*int_quad_xx + d3Tdx2dy[qL]*int_quad_xy + 0.5*d3Tdxdy2[qL]*int_quad_yy) +
+                           (-eL->qNxi(iL, qL)*jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL)*jacobi_matrices(shiftL, 0)) *
+                           (dTdy[qL]*int_const + d2Tdxdy[qL]*int_linear_x + d2Tdy2 [qL]*int_linear_y + 0.5*d3Tdx2dy[qL]*int_quad_xx + d3Tdxdy2[qL]*int_quad_xy + 0.5*d3Tdy3  [qL]*int_quad_yy));
+        }
+    }
+
+    return p1 * integralL + (1.-p1) * integralNL;
+}
+
+static void triplets_run_taylor(const mesh_2d<double> &mesh, std::vector<Eigen::Triplet<double>> &triplets, const size_t start,
+                                const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+{
+    size_t el = 0;
+    std::vector<uint32_t> shifts = quadrature_shifts_init(mesh);
+    matrix<double> all_quad_coords = approx_all_quad_nodes_coords(mesh, shifts),
+                   all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts);
+    const finite_element::element_2d_integrate_base<double> *eL  = nullptr;
+    for(size_t i = start; i < triplets.size(); ++i)
+    {
+        el = *reinterpret_cast<const size_t*>(&triplets[i].value());
+        eL = mesh.element_2d(mesh.element_type(el));
+        triplets[i] = Eigen::Triplet<double>(mesh.node_number(el, triplets[i].row()),
+                                             mesh.node_number(el, triplets[i].col()),
+                                             integrate_taylor<double>(mesh, el, triplets[i].row(), triplets[i].col(), 
+                                                                      shifts, all_quad_coords, all_jacobi_matrices, p1, influence_fun));
+    }
+}
+
+static void create_matrix_taylor(const mesh_2d<double> &mesh,
+                                 const std::vector<std::tuple<boundary_type, std::function<double(double, double)>>> &bounds_cond,
+                                 Eigen::SparseMatrix<double> &K, Eigen::SparseMatrix<double> &K_bound,
+                                 const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+{
+    std::set<uint32_t> temperature_nodes = temperature_nodes_set(mesh, bounds_cond);
+    auto [triplets, classic_count, triplets_bound, classic_bound_count] = mesh_analysis(mesh, temperature_nodes, false);
+
+    double time = omp_get_wtime();
+
+    triplets_run_taylor(mesh, triplets, temperature_nodes.size(), p1, influence_fun);
+    triplets_run_taylor(mesh, triplets_bound, temperature_nodes.size(), p1, influence_fun);
     
     std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
 
@@ -510,6 +643,7 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh,
 
     time = omp_get_wtime();
     create_matrix(mesh, bounds_cond, K, K_bound, integrate_gradient_pair<double>, p1, influence_fun);
+    //create_matrix_taylor(mesh, bounds_cond, K, K_bound, p1, influence_fun);
     if(std::all_of(bounds_cond.cbegin(), bounds_cond.cend(), [](const std::tuple<boundary_type, std::function<double(double, double)>> &bound)
                                                              { return std::get<boundary_type>(bound) == boundary_type::FLOW; }))
         K += nonlocal_condition(mesh);
@@ -526,8 +660,8 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh,
     Eigen::VectorXd x = solver.solve(f);
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
     
-    save_as_vtk(path, mesh, x);
-    //mesh.print_to_file(path, x.data());
+    //save_as_vtk(path, mesh, x);
+    mesh.print_to_file(path, x.data());
 }
 
 void nonstationary(const std::string &path,
