@@ -4,10 +4,12 @@
 #include "mesh_2d.hpp"
 
 template<class Type, class Index>
-void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t)> &rule) {
+void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t)> &rule)
+{
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
 #pragma omp parallel for default(none) shared(mesh) private(e) firstprivate(rule)
-    for(size_t el = 0; el < mesh.elements_count(); ++el) {
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
         e = mesh.element_2d(mesh.element_type(el));
         for(size_t i = 0; i < e->nodes_count(); ++i)
             for(size_t j = 0; j < e->nodes_count(); ++j)
@@ -16,12 +18,15 @@ void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(siz
 }
 
 template<class Type, class Index>
-void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t, size_t)> &rule) {
+void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t, size_t)> &rule)
+{
     const finite_element::element_2d_integrate_base<double> *eL = nullptr, *eNL = nullptr;
 #pragma omp parallel for default(none) shared(mesh) private(eL, eNL) firstprivate(rule)
-    for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
+    for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
+    {
         eL = mesh.element_2d(mesh.element_type(elL));
-        for(auto elNL : mesh.neighbor(elL)) {
+        for(auto elNL : mesh.neighbor(elL))
+        {
             eNL = mesh.element_2d(mesh.element_type(elNL));
             for(size_t iL = 0; iL < eL->nodes_count(); ++iL)
                 for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL)
@@ -31,7 +36,8 @@ void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(
 }
 
 template<class Type, class Index>
-std::vector<Index> quadrature_shifts_init(const mesh_2d<Type, Index> &mesh) {
+std::vector<Index> quadrature_shifts_init(const mesh_2d<Type, Index> &mesh)
+{
     std::vector<Index> shifts(mesh.elements_count()+1);
     shifts[0] = 0;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
@@ -41,7 +47,8 @@ std::vector<Index> quadrature_shifts_init(const mesh_2d<Type, Index> &mesh) {
 
 template<class Type, class Index>
 void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *e,
-                              const size_t el, matrix<Type> &coords) {
+                              const size_t el, matrix<Type> &coords)
+{
     coords.resize(e->qnodes_count(), 2);
     memset(coords.data(), 0, coords.size() * sizeof(Type));
     for(size_t q = 0; q < e->qnodes_count(); ++q)
@@ -51,11 +58,14 @@ void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_ele
 }
 
 template<class Type, class Index>
-matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts) {
+matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts)
+{
     assert(mesh.elements_count()+1 == shifts.size());
     matrix<Type> coords(shifts.back(), 2, 0.0);
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-    for(size_t el = 0; el < mesh.elements_count(); ++el) {
+#pragma omp parallel for default(none) shared(mesh, shifts, coords) private(e)
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
         e = mesh.element_2d(mesh.element_type(el));
         for(size_t q = 0; q < e->qnodes_count(); ++q)
             for(size_t i = 0; i < e->nodes_count(); ++i)
@@ -67,7 +77,8 @@ matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, cons
 
 template<class Type, class Index>
 void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *be,
-                                   const size_t b, const size_t el, matrix<Type> &coords) {
+                                   const size_t b, const size_t el, matrix<Type> &coords)
+{
     coords.resize(be->qnodes_count(), 2);
     memset(coords.data(), 0, coords.size() * sizeof(Type));
     for(size_t q = 0; q < be->qnodes_count(); ++q)
@@ -78,7 +89,8 @@ void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index> &mesh, const finit
 
 template<class Type, class Index>
 void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *e,
-                            const size_t el, matrix<Type> &jacobi_matrices) {
+                            const size_t el, matrix<Type> &jacobi_matrices) 
+{
     jacobi_matrices.resize(e->qnodes_count(), 4);
     memset(jacobi_matrices.data(), 0, jacobi_matrices.size() * sizeof(Type));
     for(size_t q = 0; q < e->qnodes_count(); ++q)
@@ -92,14 +104,18 @@ void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_eleme
 }
 
 template<class Type, class Index>
-matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts) {
+matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts)
+{
     assert(mesh.elements_count()+1 == shifts.size());
     matrix<Type> jacobi_matrices(shifts.back(), 4, 0.0);
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-    for(size_t el = 0; el < mesh.elements_count(); ++el) {
+#pragma omp parallel for default(none) shared(mesh, shifts, jacobi_matrices) private(e)
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
         e = mesh.element_2d(mesh.element_type(el));
         for(size_t q = 0; q < e->qnodes_count(); ++q)
-            for(size_t i = 0; i < e->nodes_count(); ++i) {
+            for(size_t i = 0; i < e->nodes_count(); ++i)
+            {
                 jacobi_matrices(shifts[el]+q, 0) += mesh.coord(mesh.node_number(el, i), 0) * e->qNxi (i, q);
                 jacobi_matrices(shifts[el]+q, 1) += mesh.coord(mesh.node_number(el, i), 0) * e->qNeta(i, q);
                 jacobi_matrices(shifts[el]+q, 2) += mesh.coord(mesh.node_number(el, i), 1) * e->qNxi (i, q);
@@ -111,7 +127,8 @@ matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const 
 
 template<class Type, class Index>
 void approx_jacobi_matrices_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *be,
-                                  const size_t b, const size_t el, matrix<Type> &jacobi_matrices) {
+                                  const size_t b, const size_t el, matrix<Type> &jacobi_matrices)
+{
     jacobi_matrices.resize(be->qnodes_count(), 2);
     memset(jacobi_matrices.data(), 0, jacobi_matrices.size() * sizeof(Type));
     for(size_t q = 0; q < be->qnodes_count(); ++q)
