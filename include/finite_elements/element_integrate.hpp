@@ -40,6 +40,8 @@ public:
 
     Type qN  (const size_t i, const size_t q) const override { return NInQuad  [i*qnodes_count() + q]; }
     Type qNxi(const size_t i, const size_t q) const override { return NxiInQuad[i*qnodes_count() + q]; }
+
+    virtual ~element_1d_integrate() = default;
 };
 
 template<class Type, template<class> class Element_Type>
@@ -91,6 +93,8 @@ public:
     Type qN   (const size_t i, const size_t q) const override { return NInQuad   [i*qnodes_count() + q]; }
     Type qNxi (const size_t i, const size_t q) const override { return NxiInQuad [i*qnodes_count() + q]; }
     Type qNeta(const size_t i, const size_t q) const override { return NetaInQuad[i*qnodes_count() + q]; }
+
+    virtual ~element_2d_integrate() = default;
 };
 
 // Частичная специализация класса описанного выше, на случай кубических серендиповых элементов. Необходима для экспериментальных целей.
@@ -169,6 +173,8 @@ public:
     Type qNxi2eta(const size_t i, const size_t q) const { return Nxi2etaInQuad[i*qnodes_count() + q]; }
     Type qNxieta2(const size_t i, const size_t q) const { return Nxieta2InQuad[i*qnodes_count() + q]; }
     Type qNeta3  (const size_t i, const size_t q) const { return Neta3InQuad  [i*qnodes_count() + q]; }
+
+    virtual ~element_2d_integrate() = default;
 };
 
 }

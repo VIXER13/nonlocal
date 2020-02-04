@@ -20,6 +20,8 @@ public:
     Type Neta(const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basicNeta[i](xi, eta); }
 
     Type boundary(const side_2d bound, const Type x) const override { return Element_Type<Type>::boundary(bound, x); }
+
+    virtual ~element_2d() = default;
 };
 
 #pragma GCC diagnostic push
@@ -33,8 +35,13 @@ public:
 
 template<class Type>
 class triangle : public geometry_2d<Type, triangle_element_geometry> {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
+public:
+    virtual ~triangle() = default;
+
 protected:
-    triangle() {}
+    triangle() = default;
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           | \
@@ -57,8 +64,13 @@ protected:
 
 template<class Type>
 class quadratic_triangle : public geometry_2d<Type, triangle_element_geometry> {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
+public:
+    virtual ~quadratic_triangle() = default;
+
 protected:
-    quadratic_triangle() {}
+    quadratic_triangle() = default;
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           | \
@@ -95,8 +107,13 @@ protected:
 
 template<class Type>
 class qubic_triangle : public geometry_2d<Type, triangle_element_geometry> {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
+public:
+    virtual ~qubic_triangle() = default;
+
 protected:
-    qubic_triangle() {}
+    qubic_triangle() = default;
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           5 4
@@ -150,8 +167,13 @@ protected:
 
 template<class Type>
 class bilinear : public geometry_2d<Type, rectangle_element_geometry> {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
+public:
+    virtual ~bilinear() = default;
+
 protected:
-    bilinear() {}
+    bilinear() = default;
     // Нумерация узлов на билинейном элементе: 3---2
     //                                         |   |
     //                                         0---1
@@ -176,14 +198,18 @@ protected:
 
 template<class Type>
 class quadratic_serendip : public geometry_2d<Type, rectangle_element_geometry> {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
 public:
     // В серендиповой аппроксимации высших порядков возникает проблема с негативизмом стандартного базиса в угловых узлах.
     // Для этого вводится специальный параметр p, который позволяет её избежать.
     // В сущности p является значением интеграла по области элемента от угловой функции. Значение интегралов от промежуточных функций есть 1-p.
     static inline Type p = -1.0 / 3.0; // Значение по умолчанию даёт нам классический вариант квадратичных серендиповых элементов.
 
+    virtual ~quadratic_serendip() = default;
+
 protected:
-    quadratic_serendip() {}
+    quadratic_serendip() = default;
     // Нумерация узлов на квадратичном серендиповом элементе: 6---5---4
     //                                                        |       |
     //                                                        7       3
@@ -225,6 +251,8 @@ protected:
 
 template<class Type>
 class qubic_serendip : public geometry_2d<Type, rectangle_element_geometry> {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
 public:
     // В серендиповой аппроксимации высших порядков возникает проблема с негативизмом стандартного базиса в угловых узлах.
     // Для этого вводится специальный параметр p, который позволяет её избежать.
@@ -240,8 +268,10 @@ public:
     Type Nxieta2(const size_t i, const Type xi, const Type eta) const { return basicNxieta2[i](xi, eta); }
     Type Neta3  (const size_t i, const Type xi, const Type eta) const { return basicNeta3  [i](xi, eta); }
 
+    virtual ~qubic_serendip() = default;
+
 protected:
-    qubic_serendip() {}
+    qubic_serendip() = default;
     // Нумерация узлов на кубическом серендиповом элементе: 9---8---7---6
     //                                                      |           |
     //                                                      10          5

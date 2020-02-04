@@ -14,7 +14,7 @@ class element_base {
 public:
     virtual size_t nodes_count() const = 0;
 
-    virtual ~element_base() {}
+    virtual ~element_base() = default;
 };
 
 template<class Type>
@@ -29,7 +29,7 @@ public:
     virtual Type qN  (const size_t i, const size_t q) const = 0;
     virtual Type qNxi(const size_t i, const size_t q) const = 0;
 
-    virtual ~element_integrate_base() {}
+    virtual ~element_integrate_base() = default;
 };
 
 template<class Type>
@@ -42,7 +42,7 @@ public:
 
     virtual Type boundary(const side_1d bound) const = 0; // Геометрия элемента.
 
-    virtual ~element_1d_base() {}
+    virtual ~element_1d_base() = default;
 };
 
 template<class Type>
@@ -51,7 +51,7 @@ class element_1d_integrate_base : public element_integrate_base<Type>,
 public:
     virtual void set(const quadrature_base<Type> &quad) = 0;
 
-    virtual ~element_1d_integrate_base() {}
+    virtual ~element_1d_integrate_base() = default;
 };
 
 template<class Type>
@@ -65,7 +65,7 @@ public:
 
     virtual Type boundary(const side_2d bound, const Type x) const = 0; // Геометрия элемента.
 
-    virtual ~element_2d_base() {}
+    virtual ~element_2d_base() = default;
 };
 
 template<class Type>
@@ -76,7 +76,7 @@ public:
 
     virtual Type qNeta(const size_t i, const size_t q) const = 0;
 
-    virtual ~element_2d_integrate_base() {}
+    virtual ~element_2d_integrate_base() = default;
 };
 
 }

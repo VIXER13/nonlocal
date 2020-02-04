@@ -16,7 +16,7 @@ class geometry_2d_base {
 public:
     virtual Type boundary(const side_2d bound, const Type x) const = 0;
 
-    virtual ~geometry_2d_base() {}
+    virtual ~geometry_2d_base() = default;
 };
 
 // Данная реализация подразумевает, что данные о геометрии области наследуются из Shape_Type<Type>.
@@ -28,6 +28,8 @@ class geometry_2d : public geometry_2d_base<Type>,
 
 public:
     Type boundary(const side_2d bound, const Type x) const override { return Shape_Type<Type>::boundary[static_cast<size_t>(bound)](x); }
+
+    virtual ~geometry_2d() = default;
 };
 
 #pragma GCC diagnostic push
@@ -41,8 +43,13 @@ public:
 
 template<class Type>
 class triangle_element_geometry {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
+public:
+    virtual ~triangle_element_geometry() = default;
+
 protected:
-    triangle_element_geometry() {}
+    triangle_element_geometry() = default;
     static inline const std::array<std::function<Type(const Type)>, 4>
         boundary = { [](const Type eta) { return 0.0;    },
                      [](const Type eta) { return 1.0;    },
@@ -52,8 +59,13 @@ protected:
 
 template<class Type>
 class rectangle_element_geometry {
+    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+
+public:
+    virtual ~rectangle_element_geometry() = default;
+
 protected:
-    rectangle_element_geometry() {}
+    rectangle_element_geometry() = default;
     static inline const std::array<std::function<Type(const Type)>, 4>
         boundary = { [](const Type eta) { return -1.0; },
                      [](const Type eta) { return  1.0; },
