@@ -20,7 +20,8 @@ void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(siz
 template<class Type, class Index>
 void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t, size_t)> &rule)
 {
-    const finite_element::element_2d_integrate_base<double> *eL = nullptr, *eNL = nullptr;
+    const finite_element::element_2d_integrate_base<double> *eL  = nullptr, 
+                                                            *eNL = nullptr;
 #pragma omp parallel for default(none) shared(mesh) private(eL, eNL) firstprivate(rule)
     for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
     {
