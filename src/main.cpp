@@ -2,7 +2,7 @@
 #include "nonlocal_influence_functions.hpp"
 #include "mesh_2d.hpp"
 #include "heat_equation_solver.hpp"
-//#include "static_analysis.hpp"
+#include "static_analysis.hpp"
 #include "Eigen/Core"
 #include "omp.h"
 
@@ -22,14 +22,13 @@ int main()
     influence_function::normal_distribution<double> norm(r);
 
     mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 100, 100, 1.0, 1.0);
-    mesh.find_neighbors(1.05*r);
+    //mesh.find_neighbors(1.05*r);
 
     size_t neighbors_count = 0;
     for(size_t i = 0; i < mesh.elements_count(); ++i)
         neighbors_count += mesh.neighbor(i).size();
     std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
     
-    /*
     {
     using namespace statics_with_nonloc;
     stationary(std::string("results//test.vtk"), mesh, {.nu = 0.3, .E = 2.1e5},
@@ -46,9 +45,8 @@ int main()
                     boundary_type::FORCE, [](double, double) { return 0; } }
                 });
     }
-    */
 
-    
+    /*
     {
     using namespace heat_equation_with_nonloc;
     stationary(std::string("results//test.csv"), mesh,
@@ -59,7 +57,8 @@ int main()
                         [](double, double) { return 0.; },
                         0.5 , bell11, 0.);
     }
-    
+    */
+
     /*
     heat_equation_with_nonloc::nonstationary(std::string("results//nonstationary_test//"), mesh, 0.01, 100,
                                             { { boundary_type::TEMPERATURE, [](double, double) { return  0.; } }, 
