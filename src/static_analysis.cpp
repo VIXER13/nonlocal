@@ -41,9 +41,9 @@ struct node_info
 };
 
 template<class Type>
-static Type integrate(const finite_element::element_2d_integrate_base<Type> *const e,
-                      const node_info i, const node_info j, const matrix<Type> &jacobi_matrices, size_t shift,
-                      const std::array<Type, 3> &coeff)
+static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> *const e,
+                          const node_info i, const node_info j, const matrix<Type> &jacobi_matrices, size_t shift,
+                          const std::array<Type, 3> &coeff)
 {
     Type integral = 0.;
     if(i.comp == node_info::X)
@@ -86,6 +86,97 @@ static Type integrate(const finite_element::element_2d_integrate_base<Type> *con
                              coeff[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
                                         ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
                             (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
+        }
+    }   
+    return integral;
+}
+
+template<class Type>
+static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Type> *const eL,
+                             const finite_element::element_2d_integrate_base<Type> *const eNL,
+                             const node_info iL, const node_info jNL, size_t shiftL, size_t shiftNL,
+                             const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
+                             const std::function<Type(Type, Type, Type, Type)> &influence_fun,
+                             const std::array<Type, 3> &coeff)
+{
+    const size_t sub = shiftNL;
+    Type integral = 0.;
+    if(iL.comp == node_info::X)
+    {
+        if(jNL.comp == node_info::X) // XX
+        {
+            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
+            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
+            {
+                int_with_weight_x = 0.;
+                int_with_weight_y = 0.;
+                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
+                {
+                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
+                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
+                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
+                }
+                integral += eL->weight(qL) *
+                            (coeff[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
+                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
+            }
+        }
+        else // XY
+        {
+            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
+            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
+            {
+                int_with_weight_x = 0.;
+                int_with_weight_y = 0.;
+                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
+                {
+                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
+                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
+                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
+                }
+                integral += eL->weight(qL) *
+                            (coeff[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
+                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
+            }
+        }
+    }
+    else
+    {
+        if(jNL.comp == node_info::X) //YX
+        {
+            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
+            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
+            {
+                int_with_weight_x = 0.;
+                int_with_weight_y = 0.;
+                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
+                {
+                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
+                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
+                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
+                }
+                integral += eL->weight(qL) *
+                            (coeff[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
+                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
+            }
+        }
+        else // YY
+        {
+            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
+            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
+            {
+                int_with_weight_x = 0.;
+                int_with_weight_y = 0.;
+                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
+                {
+                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
+                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
+                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
+                }
+                integral += eL->weight(qL) *
+                            (coeff[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
+                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
+            }
         }
     }   
     return integral;
@@ -244,7 +335,7 @@ static std::array<std::vector<uint32_t>, 4>
         shifts_bound_nonloc.resize(mesh.elements_count()+1, 0);
 
         const std::function<void(node_info, node_info, size_t, size_t)>
-        counter_nonloc = [&mesh, &kinematic_nodes, &shifts_loc, &shifts_bound_loc]
+        counter_nonloc = [&mesh, &kinematic_nodes, &shifts_nonloc, &shifts_bound_nonloc]
                          (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
                          {
                              node_info glob_iL  = {mesh.node_number(elL,  node_iL.number),  node_iL.comp},
@@ -253,9 +344,9 @@ static std::array<std::vector<uint32_t>, 4>
                              {
                                  if(kinematic_nodes.find(glob_iL)  == kinematic_nodes.cend() &&
                                     kinematic_nodes.find(glob_jNL) == kinematic_nodes.cend())
-                                     ++shifts_loc[elL+1];
+                                     ++shifts_nonloc[elL+1];
                                  else if(glob_iL != glob_jNL)
-                                     ++shifts_bound_loc[elL+1];
+                                     ++shifts_bound_nonloc[elL+1];
                              }
                          };
 
@@ -293,6 +384,7 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
 
     std::vector<Eigen::Triplet<double, node_info>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
                                                    triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
+    std::cout << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
     for(auto [it, i] = std::make_tuple(kinematic_nodes.cbegin(), size_t(0)); it != kinematic_nodes.cend(); ++it, ++i)
     {
         uint32_t index = 2 * it->number + it->comp;
@@ -316,7 +408,7 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
                           col = 2 * glob_j.number + glob_j.comp;
                 if(row >= col)
                 {
-                    double integral = p1 * integrate(mesh.element_2d(mesh.element_type(el)), node_i, node_j, all_jacobi_matrices, shifts_quad[el], coeffs);
+                    double integral = p1 * integrate_loc(mesh.element_2d(mesh.element_type(el)), node_i, node_j, all_jacobi_matrices, shifts_quad[el], coeffs);
                     if(kinematic_nodes.find(glob_i) == kinematic_nodes.cend() &&
                        kinematic_nodes.find(glob_j) == kinematic_nodes.cend())
                         triplets[shifts_loc[el]++] = Eigen::Triplet<double, node_info>(row, col, integral);
@@ -342,7 +434,7 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
         const std::function<void(node_info, node_info, size_t, size_t)>
         filler_nonloc =
             [&mesh, &kinematic_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc,
-             &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1]
+             &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1, &coeffs]
             (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
             {
                 node_info glob_iL  = {mesh.node_number(elL,  node_iL.number),  node_iL.comp},
@@ -351,7 +443,10 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
                           col = 2 * glob_jNL.number + glob_jNL.comp;
                 if(row >= col)
                 {
-                    double integral = p2; // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    double integral = p2 * integrate_nonloc(mesh.element_2d(mesh.element_type(elL )),
+                                                            mesh.element_2d(mesh.element_type(elNL)), 
+                                                            node_iL, node_jNL, shifts_quad[elL], shifts_quad[elNL],
+                                                            all_quad_coords, all_jacobi_matrices, influence_fun, coeffs);
                     if(kinematic_nodes.find(glob_iL)  == kinematic_nodes.cend() &&
                        kinematic_nodes.find(glob_jNL) == kinematic_nodes.cend())
                         triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double, node_info>(row, col, integral);
@@ -383,7 +478,6 @@ static void create_matrix(const mesh_2d<double> &mesh, parameters<double> params
     double time = omp_get_wtime();
     auto [triplets, triplets_bound] = triplets_fill(mesh, params, bounds_cond, p1, influence_fun);
     std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
-    std::cout << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
 
     K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
     triplets_bound.clear();
@@ -393,13 +487,14 @@ static void create_matrix(const mesh_2d<double> &mesh, parameters<double> params
 
 void stationary(const std::string &path, const mesh_2d<double> &mesh, parameters<double> params,
                 const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                             boundary_type, std::function<double(double, double)>>> &bounds_cond)
+                                             boundary_type, std::function<double(double, double)>>> &bounds_cond,
+                const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     Eigen::VectorXd f = Eigen::VectorXd::Zero(2*mesh.nodes_count());;
     Eigen::SparseMatrix<double> K(2*mesh.nodes_count(), 2*mesh.nodes_count()),
                                 K_bound(2*mesh.nodes_count(), 2*mesh.nodes_count());
     
-    create_matrix(mesh, params, bounds_cond, K, K_bound, 1., [](double, double, double, double) { return 0.; });
+    create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
 
     boundary_condition(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, 1., K_bound, f);
 
@@ -413,8 +508,8 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh, parameters
 
     //save_as_vtk(path, mesh, u);
 
-    std::ofstream fout_x(std::string("results//text_x.csv")),
-                  fout_y(std::string("results//text_y.csv"));
+    std::ofstream fout_x(std::string("results//text_x_nonloc.csv")),
+                  fout_y(std::string("results//text_y_nonloc.csv"));
     fout_x.precision(20);
     fout_y.precision(20);
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
