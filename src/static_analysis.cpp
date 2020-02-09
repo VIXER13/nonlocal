@@ -1,6 +1,7 @@
 #include <set>
 #include <algorithm>
 #include "omp.h"
+#include "Eigen/Dense"
 #include "Eigen/Sparse"
 #include "finite_element_routine.hpp"
 #include "static_analysis.hpp"
@@ -39,6 +40,76 @@ struct node_info
 
 #pragma GCC diagnostic pop
 };
+
+static void save_as_vtk(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
+                        const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
+                        const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
+{
+    std::ofstream fout(path);
+    fout.precision(20);
+
+    fout << "# vtk DataFile Version 4.2" << std::endl
+         << "Temperature"                << std::endl
+         << "ASCII"                      << std::endl
+         << "DATASET UNSTRUCTURED_GRID"  << std::endl;
+
+    fout << "POINTS " << mesh.nodes_count() << " double" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
+
+    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * 5 << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 4 << " " << mesh.node_number(i, 0) << " "
+                         << mesh.node_number(i, 1) << " "
+                         << mesh.node_number(i, 2) << " "
+                         << mesh.node_number(i, 3) << std::endl;
+
+    fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 9 << std::endl;
+
+    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
+
+    fout << "SCALARS U_X double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < size_t(u.size() / 2); ++i)
+        fout << u[2*i] << std::endl;
+
+    fout << "SCALARS U_Y double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < size_t(u.size() / 2); ++i)
+        fout << u[2*i+1] << std::endl;
+
+    fout << "SCALARS EPS_XX double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < eps11.size(); ++i)
+        fout << eps11[i] << std::endl;
+
+    fout << "SCALARS EPS_YY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < eps22.size(); ++i)
+        fout << eps22[i] << std::endl;
+
+    fout << "SCALARS EPS_XY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < eps12.size(); ++i)
+        fout << eps12[i] << std::endl;
+
+    fout << "SCALARS SIGMA_XX double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < sigma11.size(); ++i)
+        fout << sigma11[i] << std::endl;
+
+    fout << "SCALARS SIGMA_YY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < sigma22.size(); ++i)
+        fout << sigma22[i] << std::endl;
+
+    fout << "SCALARS SIGMA_XY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < sigma12.size(); ++i)
+        fout << sigma12[i] << std::endl;
+}
 
 template<class Type>
 static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> *const e,
@@ -209,7 +280,7 @@ static std::set<node_info> kinematic_nodes_set(const mesh_2d<double> &mesh,
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
                 kinematic_nodes.insert(node_info(*node, node_info::Y));
     }
-    return kinematic_nodes;
+    return std::move(kinematic_nodes);
 }
 
 static std::vector<std::vector<uint32_t>> kinematic_nodes_vectors(const mesh_2d<double> &mesh,
@@ -228,7 +299,7 @@ static std::vector<std::vector<uint32_t>> kinematic_nodes_vectors(const mesh_2d<
                 if(k == kinematic_nodes.size())
                     kinematic_nodes[b].push_back(*node);
             }
-    return kinematic_nodes;
+    return std::move(kinematic_nodes);
 }
 
 static void translation(const mesh_2d<double> &mesh, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f,
@@ -371,17 +442,12 @@ static std::array<std::vector<uint32_t>, 4>
 }
 
 static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
-    triplets_fill(const mesh_2d<double> &mesh, parameters<double> params,
-                  const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                               boundary_type, std::function<double(double, double)>>> &bounds_cond,
+    triplets_fill(const mesh_2d<double> &mesh, const std::set<node_info> &kinematic_nodes, const parameters<double> &params,
                   const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     static constexpr double MAX_LOCAL_WEIGHT = 0.999;
     bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
-
-    const std::set<node_info> kinematic_nodes = kinematic_nodes_set(mesh, bounds_cond);
     auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, kinematic_nodes, nonlocal);
-
     std::vector<Eigen::Triplet<double, node_info>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
                                                    triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
     std::cout << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
@@ -469,14 +535,14 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
     return {std::move(triplets), std::move(triplets_bound)};
 }
 
-static void create_matrix(const mesh_2d<double> &mesh, parameters<double> params,
+static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> &params,
                           const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
                                                        boundary_type, std::function<double(double, double)>>> &bounds_cond,
                           Eigen::SparseMatrix<double> &K, Eigen::SparseMatrix<double> &K_bound,
                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     double time = omp_get_wtime();
-    auto [triplets, triplets_bound] = triplets_fill(mesh, params, bounds_cond, p1, influence_fun);
+    auto [triplets, triplets_bound] = triplets_fill(mesh, kinematic_nodes_set(mesh, bounds_cond), params, p1, influence_fun);
     std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
 
     K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
@@ -485,7 +551,211 @@ static void create_matrix(const mesh_2d<double> &mesh, parameters<double> params
     std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
 }
 
-void stationary(const std::string &path, const mesh_2d<double> &mesh, parameters<double> params,
+// Получение деформаций в узлах сетки, путём их переинтерполяции из квадратурных узлов
+// Данный кусок взят из другой программы. Я не до конца понимаю как это работает, на мой взгляд это работать не должно.
+// Пока что будем считать, что сетка однородная и состоит из билинейных элементов. В будущем, я надеюсь, это будет исправлено.
+std::array<std::vector<double>, 3> strains_calc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u)
+{
+    std::vector<double> eps11(mesh.nodes_count()),
+                        eps22(mesh.nodes_count()),
+                        eps12(mesh.nodes_count());
+
+    std::vector<uint8_t> repeating(mesh.nodes_count(), 0);
+    const finite_element::element_2d_integrate_base<double> *e = nullptr;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            ++repeating[mesh.node_number(el, i)];
+    }
+
+    Eigen::MatrixXd NQP(e->nodes_count(), e->nodes_count());
+    for(size_t q = 0; q < e->nodes_count(); ++q)
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            NQP(q, i) = e->qN(i, q);
+    Eigen::MatrixXd NQPI = NQP.inverse();
+
+    Eigen::VectorXd EpsiXX_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                EpsiYY_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                EpsiXY_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                EpsiXX_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                EpsiYY_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),	
+	                EpsiXY_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                Ue             = Eigen::VectorXd::Zero(2 * e->nodes_count()),
+	                Epsi           = Eigen::VectorXd::Zero(3);
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(3, 2 * e->nodes_count()),
+                    ElementNodesCoord(e->nodes_count(), 2),
+                    Ndx(2, e->nodes_count());
+    Eigen::Matrix2d Jmatr;
+    Eigen::RowVectorXi ElementNodesNumbers(e->nodes_count());
+    std::vector<Eigen::MatrixXd> NGradArr(e->nodes_count(), Eigen::MatrixXd::Zero(2, e->nodes_count()));
+
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        B = Eigen::MatrixXd::Zero(3, 2 * e->nodes_count());
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            ElementNodesNumbers[i] = mesh.node_number(el, i);
+
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+        {
+            ElementNodesCoord(i, 0) = mesh.coord(ElementNodesNumbers[i], 0);
+            ElementNodesCoord(i, 1) = mesh.coord(ElementNodesNumbers[i], 1);
+            Ue(i * 2)     = u(ElementNodesNumbers(i) * 2);
+			Ue(i * 2 + 1) = u(ElementNodesNumbers(i) * 2 + 1);
+        }
+
+        for(size_t q = 0; q < e->nodes_count(); ++q)
+        {
+            for(size_t j = 0; j < e->nodes_count(); ++j)
+            {
+                NGradArr[q](0, j) = e->qNxi(j, q);
+                NGradArr[q](1, j) = e->qNeta(j, q);
+            }
+
+            Jmatr = NGradArr[q] * ElementNodesCoord;
+			Ndx = Jmatr.inverse() * NGradArr[q];
+			for(size_t k = 0; k < e->nodes_count(); ++k)
+			{
+				B(0, k * 2)     = Ndx(0, k);
+				B(1, k * 2 + 1) = Ndx(1, k);
+				B(2, k * 2)     = Ndx(1, k);
+				B(2, k * 2 + 1) = Ndx(0, k);
+			}
+			Epsi =  B * Ue;
+			EpsiXX_QP(q) = Epsi(0);
+			EpsiYY_QP(q) = Epsi(1);
+			EpsiXY_QP(q) = Epsi(2);
+        }
+
+        EpsiXX_Element = NQPI * EpsiXX_QP;
+		EpsiYY_Element = NQPI * EpsiYY_QP;
+		EpsiXY_Element = 0.5 * NQPI * EpsiXY_QP;
+
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+		{
+			eps11[ElementNodesNumbers(i)] += EpsiXX_Element(i);
+			eps22[ElementNodesNumbers(i)] += EpsiYY_Element(i);
+			eps12[ElementNodesNumbers(i)] += EpsiXY_Element(i);
+		}	
+    }
+
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+    {
+        eps11[i] /= repeating[i];
+        eps22[i] /= repeating[i];
+        eps12[i] /= repeating[i];
+    }
+
+    return {std::move(eps11), std::move(eps22), std::move(eps12)};
+}
+
+// И этой функции я тоже не доверяю, потому что взял её из другой программы
+std::array<std::vector<double>, 3> stress_calc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u, const parameters<double> &params)
+{
+    std::vector<double> sigma11(mesh.nodes_count()),
+                        sigma22(mesh.nodes_count()),
+                        sigma12(mesh.nodes_count());
+
+    std::vector<uint8_t> repeating(mesh.nodes_count(), 0);
+    const finite_element::element_2d_integrate_base<double> *e = nullptr;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            ++repeating[mesh.node_number(el, i)];
+    }
+
+    Eigen::MatrixXd NQP(e->nodes_count(), e->nodes_count());
+    for(size_t q = 0; q < e->nodes_count(); ++q)
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            NQP(q, i) = e->qN(i, q);
+    Eigen::MatrixXd NQPI = NQP.inverse();
+
+    Eigen::MatrixXd D = Eigen::MatrixXd::Zero(3, 3);
+    D(0, 0) = D(1, 1) = params.E / (1. - params.nu*params.nu);
+    D(0, 1) = D(1, 0) = params.nu * params.E / (1. - params.nu*params.nu);
+    D(2, 2) = 0.5 * params.E / (1. + params.nu);
+
+    Eigen::VectorXd SigmaXX_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                SigmaYY_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                SigmaXY_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                SigmaXX_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                SigmaYY_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),	
+	                SigmaXY_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),
+	                Ue              = Eigen::VectorXd::Zero(2 * e->nodes_count()),
+	                Epsi            = Eigen::VectorXd::Zero(3),
+                    Sigma           = Eigen::VectorXd::Zero(3);
+    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(3, 2 * e->nodes_count()),
+                    ElementNodesCoord(e->nodes_count(), 2),
+                    Ndx(2, e->nodes_count());
+    Eigen::Matrix2d Jmatr;
+    Eigen::RowVectorXi ElementNodesNumbers(e->nodes_count());
+    std::vector<Eigen::MatrixXd> NGradArr(e->nodes_count(), Eigen::MatrixXd::Zero(2, e->nodes_count()));
+
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        B = Eigen::MatrixXd::Zero(3, 2 * e->nodes_count());
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            ElementNodesNumbers[i] = mesh.node_number(el, i);
+
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+        {
+            ElementNodesCoord(i, 0) = mesh.coord(ElementNodesNumbers[i], 0);
+            ElementNodesCoord(i, 1) = mesh.coord(ElementNodesNumbers[i], 1);
+            Ue(i * 2)     = u(ElementNodesNumbers(i) * 2);
+			Ue(i * 2 + 1) = u(ElementNodesNumbers(i) * 2 + 1);
+        }
+
+        for(size_t q = 0; q < e->nodes_count(); ++q)
+        {
+            for(size_t j = 0; j < e->nodes_count(); ++j)
+            {
+                NGradArr[q](0, j) = e->qNxi(j, q);
+                NGradArr[q](1, j) = e->qNeta(j, q);
+            }
+
+            Jmatr = NGradArr[q] * ElementNodesCoord;
+			Ndx = Jmatr.inverse() * NGradArr[q];
+			for(size_t k = 0; k < e->nodes_count(); ++k)
+			{
+				B(0, k * 2)     = Ndx(0, k);
+				B(1, k * 2 + 1) = Ndx(1, k);
+				B(2, k * 2)     = Ndx(1, k);
+                B(2, k * 2 + 1) = Ndx(0, k);
+			}
+
+            Epsi =  B * Ue;
+			Epsi(2) *= 0.5;
+			Sigma = D * Epsi;
+			
+			SigmaXX_QP(q) = Sigma(0);
+			SigmaYY_QP(q) = Sigma(1);
+			SigmaXY_QP(q) = Sigma(2);
+        }
+
+        SigmaXX_Element = NQPI * SigmaXX_QP;
+		SigmaYY_Element = NQPI * SigmaYY_QP;
+		SigmaXY_Element = NQPI * SigmaXY_QP;
+
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+		{
+			sigma11[ElementNodesNumbers(i)] += SigmaXX_Element(i);
+			sigma22[ElementNodesNumbers(i)] += SigmaYY_Element(i);
+			sigma12[ElementNodesNumbers(i)] += SigmaXY_Element(i);
+		}
+    }
+
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+    {
+        sigma11[i] /= repeating[i];
+        sigma22[i] /= repeating[i];
+        sigma12[i] /= repeating[i];
+    }
+
+    return {std::move(sigma11), std::move(sigma22), std::move(sigma12)};
+}
+
+void stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
                 const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
                                              boundary_type, std::function<double(double, double)>>> &bounds_cond,
                 const double p1, const std::function<double(double, double, double, double)> &influence_fun)
@@ -494,28 +764,60 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh, parameters
     Eigen::SparseMatrix<double> K(2*mesh.nodes_count(), 2*mesh.nodes_count()),
                                 K_bound(2*mesh.nodes_count(), 2*mesh.nodes_count());
     
+    double time = omp_get_wtime();
     create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
+    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
+    time = omp_get_wtime();
     boundary_condition(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, 1., K_bound, f);
+    std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
+    time = omp_get_wtime();
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
     solver.compute(K);
     Eigen::VectorXd u = solver.solve(f);
+    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
 
-    Eigen::VectorXd eps11 = Eigen::VectorXd::Zero(mesh.nodes_count()),
-                    eps12 = Eigen::VectorXd::Zero(mesh.nodes_count()),
-                    eps22 = Eigen::VectorXd::Zero(mesh.nodes_count());
+    auto [eps11, eps22, eps12] = strains_calc(mesh, u);
+    auto [sigma11, sigma22, sigma12] = stress_calc(mesh, u, params);
 
-    //save_as_vtk(path, mesh, u);
+    save_as_vtk(path, mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
 
-    std::ofstream fout_x(std::string("results//text_x_nonloc.csv")),
-                  fout_y(std::string("results//text_y_nonloc.csv"));
-    fout_x.precision(20);
-    fout_y.precision(20);
+    // RAW OUTPUT
+    std::ofstream fout_ux(std::string("results//u_x.csv")),
+                  fout_uy(std::string("results//u_y.csv"));
+    fout_ux.precision(20);
+    fout_uy.precision(20);
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
     {
-        fout_x << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
-        fout_y << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
+        fout_ux << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
+        fout_uy << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
+    }
+
+    std::ofstream fout_eps11(std::string("results//eps11.csv")),
+                  fout_eps22(std::string("results//eps22.csv")),
+                  fout_eps12(std::string("results//eps12.csv"));
+    fout_eps11.precision(20);
+    fout_eps22.precision(20);
+    fout_eps12.precision(20);
+    for(size_t i = 0; i < eps11.size(); ++i)
+    {
+        fout_eps11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps11[i] << std::endl;
+        fout_eps12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps12[i] << std::endl;
+        fout_eps22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps22[i] << std::endl;
+    }
+
+    std::ofstream fout_sigma11(std::string("results//sigma11.csv")),
+                  fout_sigma22(std::string("results//sigma22.csv")),
+                  fout_sigma12(std::string("results//sigma12.csv"));
+    fout_sigma11.precision(20);
+    fout_sigma22.precision(20);
+    fout_sigma12.precision(20);
+    for(size_t i = 0; i < sigma11.size(); ++i)
+    {
+        fout_sigma11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma11[i] << std::endl;
+        fout_sigma12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma12[i] << std::endl;
+        fout_sigma22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma22[i] << std::endl;
     }
 }
 

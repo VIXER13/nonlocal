@@ -8,7 +8,7 @@
 namespace heat_equation_with_nonloc
 {
 
-[[maybe_unused]] static void save_as_vtk(const std::string &path, const mesh_2d<double> &mesh, const Eigen::VectorXd &sol)
+static void save_as_vtk(const std::string &path, const mesh_2d<double> &mesh, const Eigen::VectorXd &sol)
 {
     std::ofstream fout(path);
     fout.precision(20);
@@ -155,7 +155,7 @@ static std::set<uint32_t> temperature_nodes_set(const mesh_2d<double> &mesh,
         if(std::get<boundary_type>(bounds_cond[b]) == boundary_type::TEMPERATURE)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
                 temperature_nodes.insert(*node);
-    return temperature_nodes;
+    return std::move(temperature_nodes);
 }
 
 // Создаёт массив векторов, в каждом из которых хранятся номера узлов в которых заданы граничные условия первого рода на соответствующей границе,
@@ -174,7 +174,7 @@ static std::vector<std::vector<uint32_t>> temperature_nodes_vectors(const mesh_2
                 if(k == temperature_nodes.size())
                    temperature_nodes[b].push_back(*node);
             }
-    return temperature_nodes;
+    return std::move(temperature_nodes);
 }
 
 static void temperature(const mesh_2d<double> &mesh, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f,
@@ -269,17 +269,14 @@ static std::array<std::vector<uint32_t>, 4>
 }
 
 static std::array<std::vector<Eigen::Triplet<double>>, 2>
-    triplets_fill(const mesh_2d<double> &mesh, const std::vector<std::tuple<boundary_type, std::function<double(double, double)>>> &bounds_cond,
+    triplets_fill(const mesh_2d<double> &mesh, const std::set<uint32_t> &temperature_nodes,
                   const double p1, const std::function<double(double, double, double, double)> &influence_fun,
                   const std::function<double(const finite_element::element_2d_integrate_base<double>*, 
                                              const size_t, const size_t, const matrix<double>&, size_t)> &integrate_rule)
 {
     static constexpr double MAX_LOCAL_WEIGHT = 0.999;
     bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
-
-    const std::set<uint32_t> temperature_nodes = temperature_nodes_set(mesh, bounds_cond);
     auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, temperature_nodes, nonlocal);
-
     std::vector<Eigen::Triplet<double>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
                                         triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
     for(auto [it, i] = std::make_tuple(temperature_nodes.cbegin(), size_t(0)); it != temperature_nodes.cend(); ++it, ++i)
@@ -344,7 +341,7 @@ static void create_matrix(const mesh_2d<double> &mesh,
                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     double time = omp_get_wtime();
-    auto [triplets, triplets_bound] = triplets_fill(mesh, bounds_cond, p1, influence_fun, integrate_rule);
+    auto [triplets, triplets_bound] = triplets_fill(mesh, temperature_nodes_set(mesh, bounds_cond), p1, influence_fun, integrate_rule);
     std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
     std::cout << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
 
@@ -443,7 +440,7 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh,
     Eigen::VectorXd x = solver.solve(f);
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
     
-    //save_as_vtk(path, mesh, x);
+    save_as_vtk(path, mesh, x);
     mesh.print_to_file(path, x.data());
 }
 

@@ -21,8 +21,8 @@ int main()
     influence_function::polinomial<double, 1, 1> bell11(r);
     influence_function::normal_distribution<double> norm(r);
 
-    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 50, 50, 1.0, 1.0);
-    mesh.find_neighbors(1.05*r);
+    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 100, 100, 1.0, 1.0);
+    //mesh.find_neighbors(1.05*r);
 
     size_t neighbors_count = 0;
     for(size_t i = 0; i < mesh.elements_count(); ++i)
@@ -49,6 +49,7 @@ int main()
 
     std::cout << std::endl << std::endl;
 
+    /*
     {
     using namespace heat_equation_with_nonloc;
     stationary(std::string("results//test.csv"), mesh,
@@ -59,6 +60,7 @@ int main()
                         [](double, double) { return 0.; },
                         1. , bell11, 0.);
     }
+    */
 
     /*
     heat_equation_with_nonloc::nonstationary(std::string("results//nonstationary_test//"), mesh, 0.01, 100,
