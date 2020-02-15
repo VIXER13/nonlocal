@@ -33,13 +33,11 @@ public:
 
 template<class Type>
 class linear : protected geometry_1d<Type, standart_segment_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~linear() = default;
 
 protected:
-    linear() = default;
+    explicit linear() noexcept = default;
     // Нумерация узлов на линейном элементе: 0--1
     static inline const std::array<std::function<Type(const Type)>, 2>
         basicN   = { [](const Type xi) { return 0.5*(1.0-xi); },
@@ -51,13 +49,11 @@ protected:
 
 template<class Type>
 class quadratic : protected geometry_1d<Type, standart_segment_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~quadratic() = default;
 
 protected:
-    quadratic() = default;
+    explicit quadratic() noexcept = default;
     // Нумерация узлов на квадратичном элементе: 0--1--2
     static inline const std::array<std::function<Type(const Type)>, 3>
         basicN   = { [](const Type xi) { return  -0.5*xi*(1.0-xi); },
@@ -71,13 +67,11 @@ protected:
 
 template<class Type>
 class qubic : protected geometry_1d<Type, standart_segment_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~qubic() = default;
     
 protected:
-    qubic() = default;
+    explicit qubic() noexcept = default;
     // Нумерация узлов на кубическом элементе: 0--1--2--3
     static inline const std::array<std::function<Type(const Type)>, 4>
         basicN   = { [](const Type xi) { return -0.5625*(xi-1.0)*(xi+1.0/3.0)*(xi-1.0/3.0); },

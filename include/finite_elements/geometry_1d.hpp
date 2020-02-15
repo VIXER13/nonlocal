@@ -10,7 +10,7 @@ enum class side_1d {LEFT, RIGHT};
 
 template<class Type>
 class geometry_1d_base {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
 
 public:
     virtual Type boundary(const side_1d bound) const = 0;
@@ -34,13 +34,11 @@ public:
 
 template<class Type>
 class standart_segment_geometry {
-    static_assert(std::is_floating_point<Type>::value, "The Type must be floating point.");
-
 public:
     virtual ~standart_segment_geometry() = default;
 
 protected:
-    standart_segment_geometry() = default;
+    explicit standart_segment_geometry() noexcept = default;
     static constexpr std::array<Type, 2> boundary = { -1.0, 1.0 };
 };
 

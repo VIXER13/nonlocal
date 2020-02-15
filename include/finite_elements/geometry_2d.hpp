@@ -11,7 +11,7 @@ enum class side_2d {LEFT, RIGHT, DOWN, UP};
 
 template<class Type>
 class geometry_2d_base {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
 
 public:
     virtual Type boundary(const side_2d bound, const Type x) const = 0;
@@ -43,13 +43,11 @@ public:
 
 template<class Type>
 class triangle_element_geometry {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~triangle_element_geometry() = default;
 
 protected:
-    triangle_element_geometry() = default;
+    explicit triangle_element_geometry() noexcept = default;
     static inline const std::array<std::function<Type(const Type)>, 4>
         boundary = { [](const Type eta) { return 0.0;    },
                      [](const Type eta) { return 1.0;    },
@@ -59,13 +57,11 @@ protected:
 
 template<class Type>
 class rectangle_element_geometry {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~rectangle_element_geometry() = default;
 
 protected:
-    rectangle_element_geometry() = default;
+    explicit rectangle_element_geometry() noexcept = default;
     static inline const std::array<std::function<Type(const Type)>, 4>
         boundary = { [](const Type eta) { return -1.0; },
                      [](const Type eta) { return  1.0; },

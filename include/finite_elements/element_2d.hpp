@@ -35,13 +35,11 @@ public:
 
 template<class Type>
 class triangle : public geometry_2d<Type, triangle_element_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~triangle() = default;
 
 protected:
-    triangle() = default;
+    explicit triangle() noexcept = default;
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           | \
@@ -64,13 +62,11 @@ protected:
 
 template<class Type>
 class quadratic_triangle : public geometry_2d<Type, triangle_element_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~quadratic_triangle() = default;
 
 protected:
-    quadratic_triangle() = default;
+    explicit quadratic_triangle() noexcept = default;
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           | \
@@ -107,13 +103,11 @@ protected:
 
 template<class Type>
 class qubic_triangle : public geometry_2d<Type, triangle_element_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~qubic_triangle() = default;
 
 protected:
-    qubic_triangle() = default;
+    explicit qubic_triangle() noexcept = default;
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           5 4
@@ -167,13 +161,11 @@ protected:
 
 template<class Type>
 class bilinear : public geometry_2d<Type, rectangle_element_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     virtual ~bilinear() = default;
 
 protected:
-    bilinear() = default;
+    explicit bilinear() noexcept = default;
     // Нумерация узлов на билинейном элементе: 3---2
     //                                         |   |
     //                                         0---1
@@ -198,8 +190,6 @@ protected:
 
 template<class Type>
 class quadratic_serendip : public geometry_2d<Type, rectangle_element_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     // В серендиповой аппроксимации высших порядков возникает проблема с негативизмом стандартного базиса в угловых узлах.
     // Для этого вводится специальный параметр p, который позволяет её избежать.
@@ -209,7 +199,7 @@ public:
     virtual ~quadratic_serendip() = default;
 
 protected:
-    quadratic_serendip() = default;
+    explicit quadratic_serendip() noexcept = default;
     // Нумерация узлов на квадратичном серендиповом элементе: 6---5---4
     //                                                        |       |
     //                                                        7       3
@@ -251,8 +241,6 @@ protected:
 
 template<class Type>
 class qubic_serendip : public geometry_2d<Type, rectangle_element_geometry> {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-
 public:
     // В серендиповой аппроксимации высших порядков возникает проблема с негативизмом стандартного базиса в угловых узлах.
     // Для этого вводится специальный параметр p, который позволяет её избежать.
@@ -271,7 +259,7 @@ public:
     virtual ~qubic_serendip() = default;
 
 protected:
-    qubic_serendip() = default;
+    explicit qubic_serendip() noexcept = default;
     // Нумерация узлов на кубическом серендиповом элементе: 9---8---7---6
     //                                                      |           |
     //                                                      10          5
