@@ -23,6 +23,7 @@ class element_integrate_base : public virtual element_base {
 
 protected:
     std::vector<Type> weights, NInQuad, NxiInQuad;
+    explicit element_integrate_base() noexcept = default;
 
 public:
     size_t qnodes_count() const noexcept { return weights.size(); }

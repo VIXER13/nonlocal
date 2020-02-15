@@ -29,6 +29,9 @@ public:
 template<class Type, template<class> class Quadrature_Type>
 class quadrature : public quadrature_base<Type>,
                    public Quadrature_Type<Type> {
+    static_assert(Quadrature_Type<Type>::nodes.size() == Quadrature_Type<Type>::weights.size(),
+                  "The number of nodes and weights does not match.");
+
 public:
     size_t nodes_count() const override { return Quadrature_Type<Type>::nodes.size(); }
         
