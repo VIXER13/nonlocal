@@ -47,7 +47,7 @@ std::vector<Index> quadrature_shifts_init(const mesh_2d<Type, Index> &mesh)
 }
 
 template<class Type, class Index>
-void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *e,
+void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *const e,
                               const size_t el, matrix<Type> &coords)
 {
     coords.resize(e->qnodes_count(), 2);
@@ -77,7 +77,7 @@ matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, cons
 }
 
 template<class Type, class Index>
-void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *be,
+void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *const be,
                                    const size_t b, const size_t el, matrix<Type> &coords)
 {
     coords.resize(be->qnodes_count(), 2);
@@ -89,7 +89,7 @@ void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index> &mesh, const finit
 }
 
 template<class Type, class Index>
-void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *e,
+void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_element::element_2d_integrate_base<Type> *const e,
                             const size_t el, matrix<Type> &jacobi_matrices) 
 {
     jacobi_matrices.resize(e->qnodes_count(), 4);
@@ -127,7 +127,7 @@ matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const 
 }
 
 template<class Type, class Index>
-void approx_jacobi_matrices_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *be,
+void approx_jacobi_matrices_bound(const mesh_2d<Type, Index> &mesh, const finite_element::element_1d_integrate_base<Type> *const be,
                                   const size_t b, const size_t el, matrix<Type> &jacobi_matrices)
 {
     jacobi_matrices.resize(be->qnodes_count(), 2);

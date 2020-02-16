@@ -473,7 +473,7 @@ void nonstationary(const std::string &path,
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
         T_prev[i] = init_dist(mesh.coord(i, 0), mesh.coord(i, 1));
 
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> solver;
     solver.compute(K);
 
     if(print_frequency != uint64_t(-1))

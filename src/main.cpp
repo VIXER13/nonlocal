@@ -11,6 +11,7 @@
 
 int main()
 {
+    std::cout.precision(5);
     const int threads = 4;
     omp_set_num_threads(threads);
     Eigen::initParallel();
@@ -21,7 +22,7 @@ int main()
     influence_function::polinomial<double, 1, 1> bell11(r);
     influence_function::normal_distribution<double> norm(r);
 
-    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 100, 100, 1.0, 1.0);
+    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 50, 10, 50.0, 10.0);
     //mesh.find_neighbors(1.05*r);
 
     size_t neighbors_count = 0;
@@ -32,23 +33,23 @@ int main()
     {
     using namespace statics_with_nonloc;
     stationary(std::string("results//test.vtk"), mesh, {.nu = 0.3, .E = 2.1e5},
-                { { boundary_type::TRANSLATION, [](double, double) { return 0; },
-                    boundary_type::TRANSLATION, [](double, double) { return -1.; } },
+                { { boundary_type::FORCE, [](double, double) { return 0; },
+                    boundary_type::TRANSLATION, [](double, double) { return 0.; } },
 
-                  { boundary_type::FORCE, [](double, double) { return 0.; },
+                  { boundary_type::FORCE, [](double, double) { return 10; },
                     boundary_type::FORCE, [](double, double) { return 0.; } },
 
-                  { boundary_type::TRANSLATION, [](double, double) { return 0; },
-                    boundary_type::TRANSLATION, [](double, double) { return 0; } },
+                  { boundary_type::FORCE, [](double, double) { return 0; },
+                    boundary_type::FORCE, [](double, double) { return 0; } },
 
-                  { boundary_type::FORCE, [](double, double) { return 0.; },
+                  { boundary_type::TRANSLATION, [](double, double) { return 0.; },
                     boundary_type::FORCE, [](double, double) { return 0; } }
                 },
-               0.5, bell11);
+               1., bell11);
     }
 
     std::cout << std::endl << std::endl;
-
+   
     /*
     {
     using namespace heat_equation_with_nonloc;

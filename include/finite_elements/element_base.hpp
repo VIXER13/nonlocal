@@ -41,6 +41,8 @@ class element_1d_base : public virtual element_base {
     static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
 
 public:
+    virtual Type node(const size_t i) const = 0;
+
     virtual Type N  (const size_t i, const Type xi) const = 0; // Обращение к i-ой функции формы в точке xi.
     virtual Type Nxi(const size_t i, const Type xi) const = 0; // Аналогично для производной.
 
@@ -63,6 +65,8 @@ class element_2d_base : public virtual element_base {
     static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
 
 public:
+    virtual const std::array<Type, 2>& node(const size_t i) const = 0;
+
     virtual Type N   (const size_t i, const Type xi, const Type eta) const = 0; // Обращение к i-ой функции формы в точке (xi, eta).
     virtual Type Nxi (const size_t i, const Type xi, const Type eta) const = 0; // Аналогично для производных.
     virtual Type Neta(const size_t i, const Type xi, const Type eta) const = 0;

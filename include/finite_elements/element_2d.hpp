@@ -13,11 +13,14 @@ template<class Type, template<class> class Element_Type>
 class element_2d : public virtual element_2d_base<Type>,
                    public Element_Type<Type> {
     static_assert(Element_Type<Type>::basicN.size() == Element_Type<Type>::basicNxi.size() &&
-                  Element_Type<Type>::basicN.size() == Element_Type<Type>::basicNeta.size(),
+                  Element_Type<Type>::basicN.size() == Element_Type<Type>::basicNeta.size() &&
+                  Element_Type<Type>::basicN.size() == Element_Type<Type>::nodes.size(),
                   "The number of functions and their derivatives does not match.");
 
 public:
     size_t nodes_count() const override { return Element_Type<Type>::basicN.size(); }
+
+    const std::array<Type, 2>& node(const size_t i) const override { return Element_Type<Type>::nodes[i]; }
 
     Type N   (const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basicN   [i](xi, eta); }
     Type Nxi (const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basicNxi [i](xi, eta); }
@@ -44,12 +47,17 @@ public:
 
 protected:
     explicit triangle() noexcept = default;
+
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           | \
                                                           2--0
-        Базисные функции в барицентрических координатах имеют вид: N_i = L_i, i = 0..2
     */
+    static inline constexpr std::array<std::array<Type, 2>, 3> nodes = { 1.0, 0.0,
+                                                                         0.0, 1.0,
+                                                                         0.0, 0.0 };
+
+    // Базисные функции в барицентрических координатах имеют вид: N_i = L_i, i = 0..2                                                                         
     static inline const std::array<std::function<Type(const Type, const Type)>, 3>
         basicN    = { [](const Type xi, const Type eta) { return         xi; },
                       [](const Type xi, const Type eta) { return        eta; },
@@ -71,17 +79,25 @@ public:
 
 protected:
     explicit quadratic_triangle() noexcept = default;
+
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           | \
                                                           4  3
                                                           |    \
                                                           2--5--0
-        Базисные функции в барицентрических координатах имеют вид: N_i = L_i (2 L_i - 1), i = 0..2,
-                                                                   N_3 = 4 L_0 L_1,
-                                                                   N_4 = 4 L_1 L_2,
-                                                                   N_5 = 4 L_2 L_0.
     */
+    static inline constexpr std::array<std::array<Type, 2>, 6> nodes = { 1.0, 0.0,
+                                                                         0.0, 1.0,
+                                                                         0.0, 0.0,
+                                                                         0.5, 0.5,
+                                                                         0.0, 0.5,
+                                                                         0.5, 0.0 };
+
+    // Базисные функции в барицентрических координатах имеют вид: N_i = L_i (2 L_i - 1), i = 0..2,
+    //                                                            N_3 = 4 L_0 L_1,
+    //                                                            N_4 = 4 L_1 L_2,
+    //                                                            N_5 = 4 L_2 L_0.
     static inline const std::array<std::function<Type(const Type, const Type)>, 6>
         basicN    = { [](const Type xi, const Type eta) { return          xi  * (2.0*xi       - 1.0); },
                       [](const Type xi, const Type eta) { return          eta * (2.0*eta      - 1.0); },
@@ -112,6 +128,7 @@ public:
 
 protected:
     explicit qubic_triangle() noexcept = default;
+
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
                                                           5 4
@@ -119,15 +136,26 @@ protected:
                                                           6 9 3
                                                           |    \
                                                           2-7-8-0
-        Базисные функции в барицентрических координатах имеют вид: N_i = 0.5 L_i (3 L_i - 1)(3 L_i - 2), i = 0..2,
-                                                                   N_3 = 4.5 L_0 L_1 (3 L_0 - 1),
-                                                                   N_4 = 4.5 L_0 L_1 (3 L_1 - 1),
-                                                                   N_5 = 4.5 L_1 L_2 (3 L_1 - 1),
-                                                                   N_6 = 4.5 L_1 L_2 (3 L_2 - 1),
-                                                                   N_7 = 4.5 L_2 L_0 (3 L_2 - 1),
-                                                                   N_8 = 4.5 L_2 L_0 (3 L_0 - 1),
-                                                                   N_9 =  27 L_0 L_1 L_2
     */
+    static inline constexpr std::array<std::array<Type, 2>, 10> nodes = {     1.0,     0.0,
+                                                                              0.0,     1.0,
+                                                                              0.0,     0.0,
+                                                                          2.0/3.0, 1.0/3.0,
+                                                                          1.0/3.0, 2.0/3.0,
+                                                                              0.0, 2.0/3.0,
+                                                                              0.0, 1.0/3.0,
+                                                                          1.0/3.0,     0.0,
+                                                                          2.0/3.0,     0.0,
+                                                                          1.0/3.0, 1.0/3.0 };
+
+    // Базисные функции в барицентрических координатах имеют вид: N_i = 0.5 L_i (3 L_i - 1)(3 L_i - 2), i = 0..2,
+    //                                                            N_3 = 4.5 L_0 L_1 (3 L_0 - 1),
+    //                                                            N_4 = 4.5 L_0 L_1 (3 L_1 - 1),
+    //                                                            N_5 = 4.5 L_1 L_2 (3 L_1 - 1),
+    //                                                            N_6 = 4.5 L_1 L_2 (3 L_2 - 1),
+    //                                                            N_7 = 4.5 L_2 L_0 (3 L_2 - 1),
+    //                                                            N_8 = 4.5 L_2 L_0 (3 L_0 - 1),
+    //                                                            N_9 =  27 L_0 L_1 L_2
     static inline const std::array<std::function<Type(const Type, const Type)>, 10>
         basicN    = { [](const Type xi, const Type eta) { return xi           * (1.5*xi      -0.5) * (3.0*xi      -2.0);  },
                       [](const Type xi, const Type eta) { return eta          * (1.5*eta     -0.5) * (3.0*eta     -2.0);  },
@@ -170,10 +198,15 @@ public:
 
 protected:
     explicit bilinear() noexcept = default;
+
     // Нумерация узлов на билинейном элементе: 3---2
     //                                         |   |
     //                                         0---1
-    //
+    static inline constexpr std::array<std::array<Type, 2>, 4> nodes = { -1.0, -1.0,
+                                                                          1.0, -1.0,
+                                                                          1.0,  1.0,
+                                                                         -1.0,  1.0 };
+
     // Базисные функции в локальной системе координат имеют вид: N_i = 0.25 (1 + xi_i x)(1 + eta_i eta), xi_i =+-1, eta_i = +-1, i = 0..3
     static inline const std::array<std::function<Type(const Type, const Type)>, 4>
         basicN    = { [](const Type xi, const Type eta) { return 0.25*(1.0-xi)*(1.0-eta); },
@@ -204,12 +237,21 @@ public:
 
 protected:
     explicit quadratic_serendip() noexcept = default;
+
     // Нумерация узлов на квадратичном серендиповом элементе: 6---5---4
     //                                                        |       |
     //                                                        7       3
     //                                                        |       |
     //                                                        0---1---2
-    //
+    static inline constexpr std::array<std::array<Type, 2>, 8> nodes = { -1.0, -1.0,
+                                                                          0.0, -1.0,
+                                                                          1.0, -1.0,
+                                                                          1.0,  0.0,
+                                                                          1.0,  1.0,
+                                                                          0.0,  1.0,
+                                                                         -1.0,  1.0,
+                                                                         -1.0,  0.0 };
+
     // Базисные функции в локальной системе координат имеют вид:
     // N_i = 0.0625 (1 + xi_i xi)(1 + eta_i eta)[(36p-1)(1 - xi_i xi - eta_i eta) + (36p+3)xi_i xi eta_i eta], xi_i = +-1, eta_i = +-1, i = 0,2,4,6,
     // N_i = 0.0625 (1 -  xi^2)(1 + eta_i eta)[(5-36p) + (36p+3)eta_i eta], eta_i = +-1, i = 1,5,
@@ -264,6 +306,7 @@ public:
 
 protected:
     explicit qubic_serendip() noexcept = default;
+
     // Нумерация узлов на кубическом серендиповом элементе: 9---8---7---6
     //                                                      |           |
     //                                                      10          5
@@ -271,6 +314,19 @@ protected:
     //                                                      11          4
     //                                                      |           |
     //                                                      0---1---2---3
+    static inline constexpr std::array<std::array<Type, 2>, 12> nodes = {     -1.0,     -1.0,
+                                                                          -1.0/3.0,     -1.0,
+                                                                           1.0/3.0,     -1.0,
+                                                                               1.0,     -1.0,
+                                                                               1.0, -1.0/3.0,
+                                                                               1.0,  1.0/3.0,
+                                                                               1.0,      1.0,
+                                                                           1.0/3.0,      1.0,
+                                                                          -1.0/3.0,      1.0,
+                                                                              -1.0,      1.0,
+                                                                              -1.0,  1.0/3.0,
+                                                                              -1.0, -1.0/3.0 };
+
     // Базисные функции в локальной системе координат имеют вид:
     // N_i = 1/32 (1 + xi_i xi)(1 + eta_i eta)[9(xi^2 + eta^2) + (18p+9)(xi_i xi eta_i eta - xi_i xi - eta_i eta) + 18p-1], xi_i = +-1, eta_i = +-1, i = 0,3,6,9,
     // N_i = 9/64 (1 -  xi^2)(1 + eta_i eta)[18  xi_i  xi + (2p+1) eta_i eta - 1 + 2p], xi_i = +-1/3, eta_i = +-1  , i = 1,2,7,8,

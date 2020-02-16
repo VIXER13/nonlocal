@@ -12,10 +12,13 @@ namespace finite_element {
 template<class Type, template<class> class Element_Type>
 class element_1d : public virtual element_1d_base<Type>,
                    public Element_Type<Type> {
-    static_assert(Element_Type<Type>::basicN.size() == Element_Type<Type>::basicNxi.size(),
+    static_assert(Element_Type<Type>::basicN.size() == Element_Type<Type>::basicNxi.size() &&
+                  Element_Type<Type>::basicN.size() == Element_Type<Type>::nodes.size(),
                   "The number of functions and their derivatives does not match.");
 public:
     size_t nodes_count() const override { return Element_Type<Type>::basicN.size(); }
+
+    Type node(const size_t i) const override { return Element_Type<Type>::nodes[i]; }
         
     Type N  (const size_t i, const Type xi) const override { return Element_Type<Type>::basicN  [i](xi); }
     Type Nxi(const size_t i, const Type xi) const override { return Element_Type<Type>::basicNxi[i](xi); }
@@ -40,7 +43,9 @@ public:
 
 protected:
     explicit linear() noexcept = default;
+
     // Нумерация узлов на линейном элементе: 0--1
+    static inline constexpr std::array<Type, 2> nodes = { -1.0, 1.0 };
     static inline const std::array<std::function<Type(const Type)>, 2>
         basicN   = { [](const Type xi) { return 0.5*(1.0-xi); },
                      [](const Type xi) { return 0.5*(1.0+xi); } },
@@ -56,7 +61,9 @@ public:
 
 protected:
     explicit quadratic() noexcept = default;
+
     // Нумерация узлов на квадратичном элементе: 0--1--2
+    static inline constexpr std::array<Type, 3> nodes = { -1.0, 0.0, 1.0 };
     static inline const std::array<std::function<Type(const Type)>, 3>
         basicN   = { [](const Type xi) { return  -0.5*xi*(1.0-xi); },
                      [](const Type xi) { return (1.0+xi)*(1.0-xi); },
@@ -74,7 +81,9 @@ public:
     
 protected:
     explicit qubic() noexcept = default;
+
     // Нумерация узлов на кубическом элементе: 0--1--2--3
+    static inline constexpr std::array<Type, 4> nodes = { -1.0, -1.0/3.0, 1.0/3.0, 1.0 };
     static inline const std::array<std::function<Type(const Type)>, 4>
         basicN   = { [](const Type xi) { return -0.5625*(xi-1.0)*(xi+1.0/3.0)*(xi-1.0/3.0); },
                      [](const Type xi) { return  1.6875*(xi+1.0)*(xi-1.0)    *(xi-1.0/3.0); },
