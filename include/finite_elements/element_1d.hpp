@@ -24,8 +24,6 @@ public:
     Type Nxi(const size_t i, const Type xi) const override { return Element_Type<Type>::basicNxi[i](xi); }
 
     Type boundary(const side_1d bound) const override { return Element_Type<Type>::boundary(bound); }
-
-    virtual ~element_1d() = default;
 };
 
 #pragma GCC diagnostic push
@@ -38,9 +36,6 @@ public:
 
 template<class Type>
 class linear : protected geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~linear() = default;
-
 protected:
     explicit linear() noexcept = default;
 
@@ -56,9 +51,6 @@ protected:
 
 template<class Type>
 class quadratic : protected geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~quadratic() = default;
-
 protected:
     explicit quadratic() noexcept = default;
 
@@ -76,9 +68,6 @@ protected:
 
 template<class Type>
 class qubic : protected geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~qubic() = default;
-    
 protected:
     explicit qubic() noexcept = default;
 

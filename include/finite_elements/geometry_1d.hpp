@@ -6,7 +6,7 @@
 namespace finite_element {
 
 // Одномерную геометрию можно описать началом и концом отрезка.
-enum class side_1d {LEFT, RIGHT};
+enum class side_1d : uint8_t {LEFT, RIGHT};
 
 template<class Type>
 class geometry_1d_base {
@@ -14,7 +14,7 @@ class geometry_1d_base {
 
 public:
     virtual Type boundary(const side_1d bound) const = 0;
-    virtual ~geometry_1d_base() = default;
+    virtual ~geometry_1d_base() noexcept = default;
 };
 
 // Данная реализация подразумевает, что данные о начале и конце отрезка наследуются из Shape_Type<Type>.
@@ -26,7 +26,6 @@ class geometry_1d : public geometry_1d_base<Type>,
 
 public:
     Type boundary(const side_1d bound) const override { return Shape_Type<Type>::boundary[static_cast<size_t>(bound)]; }
-    virtual ~geometry_1d() = default;
 };
 
 // Описание классов стратегий Shape_Type<Type>.
@@ -35,7 +34,7 @@ public:
 template<class Type>
 class standart_segment_geometry {
 public:
-    virtual ~standart_segment_geometry() = default;
+    virtual ~standart_segment_geometry() noexcept = default;
 
 protected:
     explicit standart_segment_geometry() noexcept = default;

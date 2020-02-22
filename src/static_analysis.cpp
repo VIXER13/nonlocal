@@ -729,7 +729,6 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh, const para
     //Eigen::PardisoLDLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
     solver.compute(K);
     const Eigen::VectorXd u = solver.solve(f);
-    //
     std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
   
     const auto [eps11, eps22, eps12] = strains_calc(mesh, u);

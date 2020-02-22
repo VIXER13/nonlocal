@@ -27,8 +27,6 @@ public:
     Type Neta(const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basicNeta[i](xi, eta); }
 
     Type boundary(const side_2d bound, const Type x) const override { return Element_Type<Type>::boundary(bound, x); }
-
-    virtual ~element_2d() = default;
 };
 
 #pragma GCC diagnostic push
@@ -42,9 +40,6 @@ public:
 
 template<class Type>
 class triangle : public geometry_2d<Type, triangle_element_geometry> {
-public:
-    virtual ~triangle() = default;
-
 protected:
     explicit triangle() noexcept = default;
 
@@ -74,9 +69,6 @@ protected:
 
 template<class Type>
 class quadratic_triangle : public geometry_2d<Type, triangle_element_geometry> {
-public:
-    virtual ~quadratic_triangle() = default;
-
 protected:
     explicit quadratic_triangle() noexcept = default;
 
@@ -123,9 +115,6 @@ protected:
 
 template<class Type>
 class qubic_triangle : public geometry_2d<Type, triangle_element_geometry> {
-public:
-    virtual ~qubic_triangle() = default;
-
 protected:
     explicit qubic_triangle() noexcept = default;
 
@@ -193,9 +182,6 @@ protected:
 
 template<class Type>
 class bilinear : public geometry_2d<Type, rectangle_element_geometry> {
-public:
-    virtual ~bilinear() = default;
-
 protected:
     explicit bilinear() noexcept = default;
 
@@ -232,8 +218,6 @@ public:
     // Для этого вводится специальный параметр p, который позволяет её избежать.
     // В сущности p является значением интеграла по области элемента от угловой функции. Значение интегралов от промежуточных функций есть 1-p.
     static inline Type p = -1.0 / 3.0; // Значение по умолчанию даёт нам классический вариант квадратичных серендиповых элементов.
-
-    virtual ~quadratic_serendip() = default;
 
 protected:
     explicit quadratic_serendip() noexcept = default;
@@ -293,7 +277,7 @@ public:
     // В сущности p является значением интеграла по области элемента от угловой функции. Значение интегралов от промежуточных функций есть (1-4p)/2.
     static inline Type p = -0.5; // Значение по умолчанию даёт нам классический вариант кубических серендиповых элементов.
 
-    // Производные высших порядков экспериментальны и не подвергались оптимизации тестированию.
+    // Производные высших порядков экспериментальны и не подвергались оптимизации и тестированию.
     Type Nxi2   (const size_t i, const Type xi, const Type eta) const { return basicNxi2   [i](xi, eta); }
     Type Nxieta (const size_t i, const Type xi, const Type eta) const { return basicNxieta [i](xi, eta); }
     Type Neta2  (const size_t i, const Type xi, const Type eta) const { return basicNeta2  [i](xi, eta); }
@@ -301,8 +285,6 @@ public:
     Type Nxi2eta(const size_t i, const Type xi, const Type eta) const { return basicNxi2eta[i](xi, eta); }
     Type Nxieta2(const size_t i, const Type xi, const Type eta) const { return basicNxieta2[i](xi, eta); }
     Type Neta3  (const size_t i, const Type xi, const Type eta) const { return basicNeta3  [i](xi, eta); }
-
-    virtual ~qubic_serendip() = default;
 
 protected:
     explicit qubic_serendip() noexcept = default;

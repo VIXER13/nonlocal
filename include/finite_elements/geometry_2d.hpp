@@ -7,7 +7,7 @@
 namespace finite_element {
 
 // Двумерную геометрию можно описать четырьями функциями, каждая из которых описывает границу интегрирования по каждой из сторон.
-enum class side_2d {LEFT, RIGHT, DOWN, UP};
+enum class side_2d : uint8_t {LEFT, RIGHT, DOWN, UP};
 
 template<class Type>
 class geometry_2d_base {
@@ -16,7 +16,7 @@ class geometry_2d_base {
 public:
     virtual Type boundary(const side_2d bound, const Type x) const = 0;
 
-    virtual ~geometry_2d_base() = default;
+    virtual ~geometry_2d_base() noexcept = default;
 };
 
 // Данная реализация подразумевает, что данные о геометрии области наследуются из Shape_Type<Type>.
@@ -28,8 +28,6 @@ class geometry_2d : public geometry_2d_base<Type>,
 
 public:
     Type boundary(const side_2d bound, const Type x) const override { return Shape_Type<Type>::boundary[static_cast<size_t>(bound)](x); }
-
-    virtual ~geometry_2d() = default;
 };
 
 #pragma GCC diagnostic push
@@ -44,7 +42,7 @@ public:
 template<class Type>
 class triangle_element_geometry {
 public:
-    virtual ~triangle_element_geometry() = default;
+    virtual ~triangle_element_geometry() noexcept = default;
 
 protected:
     explicit triangle_element_geometry() noexcept = default;
@@ -58,7 +56,7 @@ protected:
 template<class Type>
 class rectangle_element_geometry {
 public:
-    virtual ~rectangle_element_geometry() = default;
+    virtual ~rectangle_element_geometry() noexcept = default;
 
 protected:
     explicit rectangle_element_geometry() noexcept = default;

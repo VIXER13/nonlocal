@@ -21,7 +21,7 @@ public:
 
     virtual Type boundary(const side_1d bound) const = 0; // Геометрия квадратуры.
 
-    virtual ~quadrature_base() = default;
+    virtual ~quadrature_base() noexcept = default;
 };
 
 // Данная реализация подразумевает, что данные об узлах и весах квадратуры, а так же геометрия наследуются от класса Quadrature_Type.
@@ -39,8 +39,6 @@ public:
     Type weight(const size_t i) const override { return Quadrature_Type<Type>::weights[i]; }
 
     Type boundary(const side_1d bound) const override { return Quadrature_Type<Type>::boundary(bound); }
-
-    virtual ~quadrature() = default;
 };
 
 // Ниже представлены некоторые реализации классов Quadrature_Type.
@@ -51,9 +49,6 @@ public:
 
 template<class Type>
 class gauss1 : public geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~gauss1() = default;
-
 protected:
     explicit gauss1() noexcept = default;
     static constexpr std::array<Type, 1> nodes   = { 0.0 },
@@ -62,9 +57,6 @@ protected:
 
 template<class Type>
 class gauss2 : public geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~gauss2() = default;
-
 protected:
     explicit gauss2() noexcept = default;
     static constexpr std::array<Type, 2> nodes   = { -1.0/sqrt(3.0), 1.0/sqrt(3.0) }, 
@@ -73,9 +65,6 @@ protected:
 
 template<class Type>
 class gauss3 : public geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~gauss3() = default;
-
 protected:
     explicit gauss3() noexcept = default;
     static constexpr std::array<Type, 3> nodes   = { -sqrt(0.6),     0.0, sqrt(0.6) }, 
@@ -84,9 +73,6 @@ protected:
 
 template<class Type>
 class gauss4 : public geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~gauss4() = default;
-
 protected:
     explicit gauss4() noexcept = default;
     static constexpr std::array<Type, 4> nodes   = { -sqrt(3.0/7.0 + 2.0/7.0*sqrt(1.2)),
@@ -102,9 +88,6 @@ protected:
 
 template<class Type>
 class gauss5 : public geometry_1d<Type, standart_segment_geometry> {
-public:
-    virtual ~gauss5() = default;
-
 protected:
     explicit gauss5() noexcept = default;
     static constexpr std::array<Type, 5> nodes   = { -1.0/3.0 * sqrt(5.0 + 2.0*sqrt(10.0/7.0)),
