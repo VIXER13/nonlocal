@@ -1,6 +1,7 @@
 #ifndef FINITE_ELEMENT_ROUTINE_HPP
 #define FINITE_ELEMENT_ROUTINE_HPP
 
+#include <exception>
 #include "mesh_2d.hpp"
 
 template<class Type, class Index>
@@ -26,7 +27,7 @@ void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(
     for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
     {
         eL = mesh.element_2d(mesh.element_type(elL));
-        for(auto elNL : mesh.neighbor(elL))
+        for(const auto elNL : mesh.neighbor(elL))
         {
             eNL = mesh.element_2d(mesh.element_type(elNL));
             for(size_t iL = 0; iL < eL->nodes_count(); ++iL)
@@ -61,7 +62,8 @@ void approx_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const finite_ele
 template<class Type, class Index>
 matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts)
 {
-    assert(mesh.elements_count()+1 == shifts.size());
+    if(mesh.elements_count()+1 != shifts.size())
+        throw std::logic_error("mesh.elements_count()+1 != shifts.size()");
     matrix<Type> coords(shifts.back(), 2, 0.0);
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
 #pragma omp parallel for default(none) shared(mesh, shifts, coords) private(e)
@@ -107,7 +109,8 @@ void approx_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const finite_eleme
 template<class Type, class Index>
 matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts)
 {
-    assert(mesh.elements_count()+1 == shifts.size());
+    if(mesh.elements_count()+1 != shifts.size())
+        throw std::logic_error("mesh.elements_count()+1 != shifts.size()");
     matrix<Type> jacobi_matrices(shifts.back(), 4, 0.0);
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
 #pragma omp parallel for default(none) shared(mesh, shifts, jacobi_matrices) private(e)

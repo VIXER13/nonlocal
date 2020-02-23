@@ -22,7 +22,7 @@ int main()
     influence_function::polinomial<double, 1, 1> bell11(r);
     influence_function::normal_distribution<double> norm(r);
 
-    mesh_2d<double> mesh(mesh_2d<double>::QUBIC_SERENDIP, 20, 20, 1., 1.);
+    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 100, 100, 1., 1.);
     mesh.find_neighbors(1.05*r);
 
     size_t neighbors_count = 0;
@@ -51,8 +51,9 @@ int main()
     
 
     std::cout << std::endl << std::endl;
-   
     
+   
+    /*
     {
     using namespace heat_equation_with_nonloc;
     stationary(std::string("results//test.csv"), mesh,
@@ -61,9 +62,9 @@ int main()
                           { boundary_type::TEMPERATURE, [](double x, double y) { return  x*x+y*y; } }, 
                           { boundary_type::TEMPERATURE,        [](double x, double y) { return  x*x+y*y; } } },
                         [](double, double) { return -4.; },
-                        1. , bell11, 0.);
+                        .5 , bell11, 0.);
     }
-    
+    */
 
     /*
     heat_equation_with_nonloc::nonstationary(std::string("results//nonstationary_test//"), mesh, 0.01, 100,

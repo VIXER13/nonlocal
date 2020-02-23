@@ -7,7 +7,7 @@
 template<class Type, class Index = uint32_t, class Alloc_Data = std::allocator<Type>, class Alloc_Index = std::allocator<Index>>
 class rows_different_sizes
 {
-    static_assert(std::is_integral<Index>::value, "The Index must be integral type.");
+    static_assert(std::is_integral_v<Index>, "The Index must be integral type.");
 
     std::vector<Type, Alloc_Data> matr;
     std::vector<Index, Alloc_Index> shift{0};
@@ -67,7 +67,7 @@ std::ostream& operator<<(std::ostream &os, const rows_different_sizes<Type, Inde
     for(size_t i = 0; i < matr.rows(); ++i) {
         for(Index j = 0; j < matr.cols(i); ++j)
             os << matr(i, j) << " ";
-        if(i != matr.rows()-1) 
+        if(i < matr.rows())
             os << std::endl;
     }
     return os;

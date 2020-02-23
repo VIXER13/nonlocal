@@ -115,7 +115,7 @@ static void save_as_vtk(const std::string &path,            const mesh_2d<double
 template<class Type>
 static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> *const e,
                           const node_info i, const node_info j, const matrix<Type> &jacobi_matrices, size_t shift,
-                          const std::array<Type, 3> &coeff)
+                          const std::array<Type, 3> &D)
 {
     Type integral = 0.;
     if(i.comp == node_info::X)
@@ -123,19 +123,19 @@ static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> 
         if(j.comp == node_info::X) // XX
         {
             for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (coeff[0] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                        ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
-                             coeff[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                        (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
+                integral += (D[0] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
+                             D[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
                             (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
         }
         else // XY
         {
             for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (coeff[1] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                        ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
-                             coeff[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                        (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
+                integral += (D[1] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
+                             D[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
                             (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
         }
     }
@@ -144,19 +144,19 @@ static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> 
         if(j.comp == node_info::X) //YX
         {
             for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (coeff[1] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                        (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
-                             coeff[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                        ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
+                integral += (D[1] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
+                             D[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
                             (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
         }
         else // YY
         {
             for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (coeff[0] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                        (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
-                             coeff[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                        ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
+                integral += (D[0] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
+                             D[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
                             (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
         }
     }   
@@ -169,7 +169,7 @@ static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Typ
                              const node_info iL, const node_info jNL, size_t shiftL, size_t shiftNL,
                              const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
                              const std::function<Type(Type, Type, Type, Type)> &influence_fun,
-                             const std::array<Type, 3> &coeff)
+                             const std::array<Type, 3> &D)
 {
     const size_t sub = shiftNL;
     Type integral = 0.;
@@ -189,8 +189,8 @@ static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Typ
                     int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
                 }
                 integral += eL->weight(qL) *
-                            (coeff[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
-                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
+                            (D[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
+                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
             }
         }
         else // XY
@@ -207,8 +207,8 @@ static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Typ
                     int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
                 }
                 integral += eL->weight(qL) *
-                            (coeff[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
-                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
+                            (D[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
+                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
             }
         }
     }
@@ -228,8 +228,8 @@ static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Typ
                     int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
                 }
                 integral += eL->weight(qL) *
-                            (coeff[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
-                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
+                            (D[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
+                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
             }
         }
         else // YY
@@ -246,8 +246,8 @@ static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Typ
                     int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
                 }
                 integral += eL->weight(qL) *
-                            (coeff[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
-                             coeff[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
+                            (D[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
+                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
             }
         }
     }   
@@ -292,7 +292,7 @@ static std::vector<std::vector<uint32_t>> kinematic_nodes_vectors(const mesh_2d<
     for(size_t b = 0; b < bounds_cond.size(); ++b)
         if(std::get<0>(bounds_cond[b]) == boundary_type::TRANSLATION ||
            std::get<2>(bounds_cond[b]) == boundary_type::TRANSLATION)
-            for(auto [node, k] = std::make_tuple(mesh.boundary(b).cbegin(), static_cast<size_t>(0)); node != mesh.boundary(b).cend(); ++node)
+            for(auto [node, k] = std::make_tuple(mesh.boundary(b).cbegin(), size_t(0)); node != mesh.boundary(b).cend(); ++node)
             {
                 for(k = 0; k < kinematic_nodes.size(); ++k)
                     if(std::find(kinematic_nodes[k].cbegin(), kinematic_nodes[k].cend(), *node) != kinematic_nodes[k].cend())
@@ -460,12 +460,12 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
 
     const std::vector<uint32_t> shifts_quad = quadrature_shifts_init(mesh);
     const matrix<double> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
-    const std::array<double, 3> coeffs = {            params.E / (1. - params.nu*params.nu),
-                                          params.nu * params.E / (1. - params.nu*params.nu),
-                                                0.5 * params.E / (1. + params.nu)           };
+    const std::array<double, 3> D = {            params.E / (1. - params.nu*params.nu),
+                                     params.nu * params.E / (1. - params.nu*params.nu),
+                                     0.5 * params.E / (1. + params.nu)                 };
 
     const auto filler_loc =
-        [&mesh, &kinematic_nodes, &shifts_loc, &shifts_bound_loc, &triplets, &triplets_bound, &shifts_quad, &all_jacobi_matrices, p1, &coeffs]
+        [&mesh, &kinematic_nodes, &shifts_loc, &shifts_bound_loc, &triplets, &triplets_bound, &shifts_quad, &all_jacobi_matrices, p1, &D]
         (node_info node_i, node_info node_j, size_t el)
         {
             node_info glob_i = {mesh.node_number(el, node_i.number), node_i.comp},
@@ -474,7 +474,7 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
                       col = 2 * glob_j.number + glob_j.comp;
             if(row >= col)
             {
-                double integral = p1 * integrate_loc(mesh.element_2d(mesh.element_type(el)), node_i, node_j, all_jacobi_matrices, shifts_quad[el], coeffs);
+                double integral = p1 * integrate_loc(mesh.element_2d(mesh.element_type(el)), node_i, node_j, all_jacobi_matrices, shifts_quad[el], D);
                 if(kinematic_nodes.find(glob_i) == kinematic_nodes.cend() &&
                    kinematic_nodes.find(glob_j) == kinematic_nodes.cend())
                     triplets[shifts_loc[el]++] = Eigen::Triplet<double, node_info>(row, col, integral);
@@ -499,7 +499,7 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
 
         const auto filler_nonloc =
             [&mesh, &kinematic_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc,
-             &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1, &coeffs]
+             &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1, &D]
             (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
             {
                 node_info glob_iL  = {mesh.node_number(elL,  node_iL.number),  node_iL.comp},
@@ -511,7 +511,7 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
                     double integral = p2 * integrate_nonloc(mesh.element_2d(mesh.element_type(elL )),
                                                             mesh.element_2d(mesh.element_type(elNL)), 
                                                             node_iL, node_jNL, shifts_quad[elL], shifts_quad[elNL],
-                                                            all_quad_coords, all_jacobi_matrices, influence_fun, coeffs);
+                                                            all_quad_coords, all_jacobi_matrices, influence_fun, D);
                     if(kinematic_nodes.find(glob_iL)  == kinematic_nodes.cend() &&
                        kinematic_nodes.find(glob_jNL) == kinematic_nodes.cend())
                         triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double, node_info>(row, col, integral);
@@ -550,13 +550,22 @@ static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> 
     std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
 }
 
-std::array<std::vector<double>, 3> strains_calc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u)
+static std::array<std::vector<double>, 6>
+    strains_and_stress_calc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u, const parameters<double> &params)
 {
-    std::vector<double> eps11(mesh.nodes_count()),
-                        eps22(mesh.nodes_count()),
-                        eps12(mesh.nodes_count());
+    const std::array<double, 3> D = {            params.E / (1. - params.nu*params.nu),
+                                     params.nu * params.E / (1. - params.nu*params.nu),
+                                     0.5 * params.E / (1. + params.nu)                 };
+
+    std::vector<double> eps11  (mesh.nodes_count(), 0.0),
+                        eps22  (mesh.nodes_count(), 0.0),
+                        eps12  (mesh.nodes_count(), 0.0),
+                        sigma11(mesh.nodes_count(), 0.0),
+                        sigma22(mesh.nodes_count(), 0.0),
+                        sigma12(mesh.nodes_count(), 0.0);
 
     std::array<double, 4> jacobi;
+    std::array<double, 3> loc_eps;
     std::vector<uint8_t> repeating(mesh.nodes_count(), 0);
     const finite_element::element_2d_integrate_base<double> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
@@ -575,135 +584,38 @@ std::array<std::vector<double>, 3> strains_calc(const mesh_2d<double> &mesh, con
                 jacobi[3] += mesh.coord(mesh.node_number(el, j), 1) * e->Neta(j, node[0], node[1]);
             }
 
+            memset(loc_eps.data(), 0, loc_eps.size() * sizeof(double));
             for(size_t j = 0; j < e->nodes_count(); ++j)
             {
-                double jacobian = jacobi[0]*jacobi[3] - jacobi[1]*jacobi[2],
-                       dx1 =  jacobi[3] * e->Nxi(j, node[0], node[1]) - jacobi[2] * e->Neta(j, node[0], node[1]),
-                       dx2 = -jacobi[1] * e->Nxi(j, node[0], node[1]) + jacobi[0] * e->Neta(j, node[0], node[1]);
-                eps11[mesh.node_number(el, i)] +=  dx1 * u[2*mesh.node_number(el, j)  ]  / jacobian;
-                eps22[mesh.node_number(el, i)] +=  dx2 * u[2*mesh.node_number(el, j)+1]  / jacobian;
-                eps12[mesh.node_number(el, i)] += (dx2 * u[2*mesh.node_number(el, j)  ] +
-                                                   dx1 * u[2*mesh.node_number(el, j)+1]) / jacobian;
+                const double jacobian = jacobi[0]*jacobi[3] - jacobi[1]*jacobi[2],
+                             dx1 =  jacobi[3] * e->Nxi(j, node[0], node[1]) - jacobi[2] * e->Neta(j, node[0], node[1]),
+                             dx2 = -jacobi[1] * e->Nxi(j, node[0], node[1]) + jacobi[0] * e->Neta(j, node[0], node[1]);
+                loc_eps[0] +=  dx1 * u[2*mesh.node_number(el, j)  ]  / jacobian;
+                loc_eps[1] +=  dx2 * u[2*mesh.node_number(el, j)+1]  / jacobian;
+                loc_eps[2] += (dx2 * u[2*mesh.node_number(el, j)  ] +
+                               dx1 * u[2*mesh.node_number(el, j)+1]) / jacobian;
             }
+
+            eps11  [mesh.node_number(el, i)] += loc_eps[0];
+            eps22  [mesh.node_number(el, i)] += loc_eps[1];
+            eps12  [mesh.node_number(el, i)] += loc_eps[2];
+            sigma11[mesh.node_number(el, i)] += D[0] * loc_eps[0] + D[1] * loc_eps[1];
+            sigma22[mesh.node_number(el, i)] += D[1] * loc_eps[0] + D[0] * loc_eps[1];
+            sigma12[mesh.node_number(el, i)] += D[2] * loc_eps[2];
         }
     }
 
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
     {
-        eps11[i] /=   repeating[i];
-        eps22[i] /=   repeating[i];
-        eps12[i] /= 2*repeating[i];
+        eps11  [i] /=   repeating[i];
+        eps22  [i] /=   repeating[i];
+        eps12  [i] /= 2*repeating[i];
+        sigma11[i] /=   repeating[i];
+        sigma22[i] /=   repeating[i];
+        sigma12[i] /= 2*repeating[i];
     }
 
-    return {std::move(eps11), std::move(eps22), std::move(eps12)};
-}
-
-// Получение напряжений в узлах сетки, путём их переинтерполяции из квадратурных узлов
-// Данный кусок взят из другой программы. Я не до конца понимаю как это работает, на мой взгляд это работать не должно.
-// Пока что будем считать, что сетка однородная и состоит из билинейных элементов. В будущем, я надеюсь, это будет исправлено.
-std::array<std::vector<double>, 3> stress_calc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u, const parameters<double> &params)
-{
-    std::vector<double> sigma11(mesh.nodes_count()),
-                        sigma22(mesh.nodes_count()),
-                        sigma12(mesh.nodes_count());
-
-    std::vector<uint8_t> repeating(mesh.nodes_count(), 0);
-    const finite_element::element_2d_integrate_base<double> *e = nullptr;
-    for(size_t el = 0; el < mesh.elements_count(); ++el)
-    {
-        e = mesh.element_2d(mesh.element_type(el));
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            ++repeating[mesh.node_number(el, i)];
-    }
-
-    Eigen::MatrixXd NQP(e->nodes_count(), e->nodes_count());
-    for(size_t q = 0; q < e->nodes_count(); ++q)
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            NQP(q, i) = e->qN(i, q);
-    Eigen::MatrixXd NQPI = NQP.inverse();
-
-    Eigen::MatrixXd D = Eigen::MatrixXd::Zero(3, 3);
-    D(0, 0) = D(1, 1) = params.E / (1. - params.nu*params.nu);
-    D(0, 1) = D(1, 0) = params.nu * params.E / (1. - params.nu*params.nu);
-    D(2, 2) = 0.5 * params.E / (1. + params.nu);
-
-    Eigen::VectorXd SigmaXX_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
-	                SigmaYY_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
-	                SigmaXY_Element = Eigen::VectorXd::Zero(    e->nodes_count()),
-	                SigmaXX_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),
-	                SigmaYY_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),	
-	                SigmaXY_QP      = Eigen::VectorXd::Zero(    e->nodes_count()),
-	                Ue              = Eigen::VectorXd::Zero(2 * e->nodes_count()),
-	                Epsi            = Eigen::VectorXd::Zero(3),
-                    Sigma           = Eigen::VectorXd::Zero(3);
-    Eigen::MatrixXd B = Eigen::MatrixXd::Zero(3, 2 * e->nodes_count()),
-                    ElementNodesCoord(e->nodes_count(), 2),
-                    Ndx(2, e->nodes_count());
-    Eigen::Matrix2d Jmatr;
-    Eigen::RowVectorXi ElementNodesNumbers(e->nodes_count());
-    std::vector<Eigen::MatrixXd> NGradArr(e->nodes_count(), Eigen::MatrixXd::Zero(2, e->nodes_count()));
-
-    for(size_t el = 0; el < mesh.elements_count(); ++el)
-    {
-        B = Eigen::MatrixXd::Zero(3, 2 * e->nodes_count());
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            ElementNodesNumbers[i] = mesh.node_number(el, i);
-
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-        {
-            ElementNodesCoord(i, 0) = mesh.coord(ElementNodesNumbers[i], 0);
-            ElementNodesCoord(i, 1) = mesh.coord(ElementNodesNumbers[i], 1);
-            Ue(i * 2)     = u(ElementNodesNumbers(i) * 2);
-			Ue(i * 2 + 1) = u(ElementNodesNumbers(i) * 2 + 1);
-        }
-
-        for(size_t q = 0; q < e->nodes_count(); ++q)
-        {
-            for(size_t j = 0; j < e->nodes_count(); ++j)
-            {
-                NGradArr[q](0, j) = e->qNxi(j, q);
-                NGradArr[q](1, j) = e->qNeta(j, q);
-            }
-
-            Jmatr = NGradArr[q] * ElementNodesCoord;
-			Ndx = Jmatr.inverse() * NGradArr[q];
-			for(size_t k = 0; k < e->nodes_count(); ++k)
-			{
-				B(0, k * 2)     = Ndx(0, k);
-				B(1, k * 2 + 1) = Ndx(1, k);
-				B(2, k * 2)     = Ndx(1, k);
-                B(2, k * 2 + 1) = Ndx(0, k);
-			}
-
-            Epsi =  B * Ue;
-			Epsi(2) *= 0.5;
-			Sigma = D * Epsi;
-			
-			SigmaXX_QP(q) = Sigma(0);
-			SigmaYY_QP(q) = Sigma(1);
-			SigmaXY_QP(q) = Sigma(2);
-        }
-
-        SigmaXX_Element = NQPI * SigmaXX_QP;
-		SigmaYY_Element = NQPI * SigmaYY_QP;
-		SigmaXY_Element = NQPI * SigmaXY_QP;
-
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-		{
-			sigma11[ElementNodesNumbers(i)] += SigmaXX_Element(i);
-			sigma22[ElementNodesNumbers(i)] += SigmaYY_Element(i);
-			sigma12[ElementNodesNumbers(i)] += SigmaXY_Element(i);
-		}
-    }
-
-    for(size_t i = 0; i < mesh.nodes_count(); ++i)
-    {
-        sigma11[i] /= repeating[i];
-        sigma22[i] /= repeating[i];
-        sigma12[i] /= repeating[i];
-    }
-
-    return {std::move(sigma11), std::move(sigma22), std::move(sigma12)};
+    return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
 }
 
 void stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
@@ -731,9 +643,7 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh, const para
     const Eigen::VectorXd u = solver.solve(f);
     std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
   
-    const auto [eps11, eps22, eps12] = strains_calc(mesh, u);
-    const auto [sigma11, sigma22, sigma12] = stress_calc(mesh, u, params);
-
+    const auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress_calc(mesh, u, params);
     save_as_vtk(path, mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
 
     // RAW OUTPUT
