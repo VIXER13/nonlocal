@@ -30,9 +30,6 @@ public:
     Type boundary(const side_2d bound, const Type x) const override { return Shape_Type<Type>::boundary[static_cast<size_t>(bound)](x); }
 };
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-
 // Описание классов стратегий Shape_Type<Type>.
 // Каждый класс описывающий двумерную геометрию должен содержать в себе статический массив из четырёх функий, который называется boundary.
 // Каждая функция должна описывать соответствующий предел интегрирования. Естественно такое описание может быть неоднозначным.
@@ -47,10 +44,10 @@ public:
 protected:
     explicit triangle_element_geometry() noexcept = default;
     static inline const std::array<std::function<Type(const Type)>, 4>
-        boundary = { [](const Type eta) { return 0.0;    },
-                     [](const Type eta) { return 1.0;    },
-                     [](const Type  xi) { return 0.0;    },
-                     [](const Type  xi) { return 1.0-xi; } };
+        boundary = { [](const Type   ) { return 0.0;    },
+                     [](const Type   ) { return 1.0;    },
+                     [](const Type   ) { return 0.0;    },
+                     [](const Type xi) { return 1.0-xi; } };
 };
 
 template<class Type>
@@ -61,13 +58,11 @@ public:
 protected:
     explicit rectangle_element_geometry() noexcept = default;
     static inline const std::array<std::function<Type(const Type)>, 4>
-        boundary = { [](const Type eta) { return -1.0; },
-                     [](const Type eta) { return  1.0; },
-                     [](const Type  xi) { return -1.0; },
-                     [](const Type  xi) { return  1.0; } };
+        boundary = { [](const Type) { return -1.0; },
+                     [](const Type) { return  1.0; },
+                     [](const Type) { return -1.0; },
+                     [](const Type) { return  1.0; } };
 };
-
-#pragma GCC diagnostic pop
 
 }
 

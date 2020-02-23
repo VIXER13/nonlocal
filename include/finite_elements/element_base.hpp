@@ -4,8 +4,8 @@
 // В данном модуле описаны базовые интерфейсы классов конечных элементов.
 
 #include "matrix.hpp"
-#include "geometry_1d.hpp"
-#include "geometry_2d.hpp"
+#include "element_1d.hpp"
+#include "element_2d.hpp"
 #include "quadrature.hpp"
 
 namespace finite_element {
@@ -30,6 +30,25 @@ public:
     virtual Type boundary(const side_1d bound) const = 0; // Геометрия элемента.
 };
 
+// Данная реализация подразумевает, что данные о функциях формы, их производных и геометрия элемента наследуются от класса ElementType. 
+// Таким образом пользователь сможет добавлять свои реализации конечных элементов не прибегая к дублированию интерфейса.
+template<class Type, template<class> class Element_Type>
+class element_1d : public virtual element_1d_base<Type>,
+                   public Element_Type<Type> {
+    static_assert(Element_Type<Type>::basic_N.size() == Element_Type<Type>::basic_Nxi.size() &&
+                  Element_Type<Type>::basic_N.size() == Element_Type<Type>::nodes.size(),
+                  "The number of functions and their derivatives does not match.");
+public:
+    size_t nodes_count() const override { return Element_Type<Type>::basic_N.size(); }
+
+    Type node(const size_t i) const override { return Element_Type<Type>::nodes[i]; }
+        
+    Type N  (const size_t i, const Type xi) const override { return Element_Type<Type>::basic_N  [i](xi); }
+    Type Nxi(const size_t i, const Type xi) const override { return Element_Type<Type>::basic_Nxi[i](xi); }
+
+    Type boundary(const side_1d bound) const override { return Element_Type<Type>::boundary(bound); }
+};
+
 template<class Type>
 class element_2d_base : public element_base {
     static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
@@ -44,64 +63,26 @@ public:
     virtual Type boundary(const side_2d bound, const Type x) const = 0; // Геометрия элемента.
 };
 
-template<class Type>
-class element_integrate_base {
-    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
-
-protected:
-    std::vector<Type> weights;
-    matrix<Type> N_in_quad_nodes;
-    explicit element_integrate_base() noexcept = default;
-
-public:
-    size_t qnodes_count() const noexcept { return N_in_quad_nodes.cols(); }
-    size_t  nodes_count() const noexcept { return N_in_quad_nodes.rows(); }
-
-    Type weight(const size_t q) const noexcept { return weights[q]; }
-
-    Type qN(const size_t i, const size_t q) const noexcept { return N_in_quad_nodes(i, q); }
-
-    virtual ~element_integrate_base() noexcept = default;
-};
-
-template<class Type>
-class element_1d_integrate_base : public element_integrate_base<Type>,
-                                  private virtual element_1d_base<Type> {
-protected:
-    matrix<Type> Nxi_in_quad_nodes;
+// Данная реализация подразумевает, что данные о функциях формы, их производных и геометрия элемента наследуются от класса Element_Type. 
+// Таким образом пользователь сможет добавлять свои реализации конечных элементов не прибегая к дублированию интерфейса.
+template<class Type, template<class> class Element_Type>
+class element_2d : public virtual element_2d_base<Type>,
+                   public Element_Type<Type> {
+    static_assert(Element_Type<Type>::basic_N.size() == Element_Type<Type>::basic_Nxi.size() &&
+                  Element_Type<Type>::basic_N.size() == Element_Type<Type>::basic_Neta.size() &&
+                  Element_Type<Type>::basic_N.size() == Element_Type<Type>::nodes.size(),
+                  "The number of functions and their derivatives does not match.");
 
 public:
-    using element_integrate_base<Type>::nodes_count;
-    using element_integrate_base<Type>::qnodes_count;
-    using element_1d_base<Type>::boundary;
-    using element_1d_base<Type>::node;
-    using element_1d_base<Type>::N;
-    using element_1d_base<Type>::Nxi;
-    
-    virtual void set_quadrature(const quadrature_base<Type> &quadrature) = 0;
+    size_t nodes_count() const override { return Element_Type<Type>::basic_N.size(); }
 
-    Type qNxi(const size_t i, const size_t q) const noexcept { return Nxi_in_quad_nodes(i, q); }
-};
+    const std::array<Type, 2>& node(const size_t i) const override { return Element_Type<Type>::nodes[i]; }
 
-template<class Type>
-class element_2d_integrate_base : public element_integrate_base<Type>,
-                                  public virtual element_2d_base<Type> {
-protected:
-    matrix<Type> Nxi_in_quad_nodes, Neta_in_quad_nodes;
+    Type N   (const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basic_N   [i](xi, eta); }
+    Type Nxi (const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basic_Nxi [i](xi, eta); }
+    Type Neta(const size_t i, const Type xi, const Type eta) const override { return Element_Type<Type>::basic_Neta[i](xi, eta); }
 
-public:
-    using element_integrate_base<Type>::nodes_count;
-    using element_integrate_base<Type>::qnodes_count;
-    using element_2d_base<Type>::boundary;
-    using element_2d_base<Type>::node;
-    using element_2d_base<Type>::N;
-    using element_2d_base<Type>::Nxi;
-    using element_2d_base<Type>::Neta;
-    
-    virtual void set_quadrature(const quadrature_base<Type> &quadrature_xi, const quadrature_base<Type> &quadrature_eta) = 0;
-
-    Type qNxi (const size_t i, const size_t q) const noexcept { return Nxi_in_quad_nodes (i, q); }
-    Type qNeta(const size_t i, const size_t q) const noexcept { return Neta_in_quad_nodes(i, q); }
+    Type boundary(const side_2d bound, const Type x) const override { return Element_Type<Type>::boundary(bound, x); }
 };
 
 }
