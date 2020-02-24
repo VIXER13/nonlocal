@@ -22,8 +22,8 @@ int main()
     influence_function::polinomial<double, 1, 1> bell11(r);
     influence_function::normal_distribution<double> norm(r);
 
-    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 100, 100, 1., 1.);
-    mesh.find_neighbors(1.05*r);
+    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 500, 100, 5., 1.);
+    //mesh.find_neighbors_for_elements(1.05*r);
 
     size_t neighbors_count = 0;
     for(size_t i = 0; i < mesh.elements_count(); ++i)
@@ -33,20 +33,43 @@ int main()
     
     {
     using namespace statics_with_nonloc;
-    stationary(std::string("results//test.vtk"), mesh, {.nu = 0.3, .E = 2.1e5},
-                { { boundary_type::FORCE, [](double, double) { return 0; },
-                    boundary_type::TRANSLATION, [](double, double) { return 0.; } },
+    const parameters<double> param = {.nu = 0.3, .E = 2.1e5};
+    const double p1 = 1.;
 
-                  { boundary_type::FORCE, [](double, double) { return 100; },
-                    boundary_type::FORCE, [](double, double) { return 0.; } },
+    /*
+    Eigen::VectorXd u = stationary(std::string("results//test.vtk"), mesh, param,
+                                   { { boundary_type::FORCE, [](double, double) { return 0; },
+                                       boundary_type::TRANSLATION, [](double, double) { return 0.; } },
 
-                  { boundary_type::FORCE, [](double, double) { return 0; },
-                    boundary_type::FORCE, [](double, double) { return 0; } },
+                                     { boundary_type::FORCE, [](double, double) { return 100; },
+                                       boundary_type::FORCE, [](double, double) { return 0.; } },
 
-                  { boundary_type::TRANSLATION, [](double, double) { return 0.; },
-                    boundary_type::FORCE, [](double, double) { return 0; } }
-                },
-               1., bell11);
+                                     { boundary_type::FORCE, [](double, double) { return 0; },
+                                       boundary_type::FORCE, [](double, double) { return 0; } },
+
+                                     { boundary_type::TRANSLATION, [](double, double) { return 0.; },
+                                       boundary_type::FORCE, [](double, double) { return 0; } } },
+                                   p1, bell11);
+    */
+
+    Eigen::VectorXd u = stationary(std::string("results//test.vtk"), mesh, param,
+                                   { { boundary_type::FORCE, [](double, double) { return 0; },
+                                       boundary_type::FORCE, [](double, double) { return 0.; } },
+
+                                     { boundary_type::FORCE, [](double, double) { return 100; },
+                                       boundary_type::FORCE, [](double, double) { return 0.; } },
+
+                                     { boundary_type::FORCE, [](double, double) { return 0; },
+                                       boundary_type::FORCE, [](double, double) { return 0; } },
+
+                                     { boundary_type::TRANSLATION, [](double, double) { return 0.; },
+                                       boundary_type::TRANSLATION, [](double, double) { return 0; } } },
+                                   p1, bell11);
+
+    //mesh.find_neighbors_for_nodes(1.05*r);
+    auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress(mesh, u, {.nu = 0.3, .E = 2.1e5}, p1, bell11);
+    //raw_output("results//", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
+    save_as_vtk("results//loc.vtk", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
     }
     
 

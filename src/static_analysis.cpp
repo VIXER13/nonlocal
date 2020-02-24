@@ -1,7 +1,6 @@
 #include <set>
 #include <algorithm>
 #include "omp.h"
-#include "Eigen/Dense"
 #include "Eigen/Sparse"
 #include "Eigen/PardisoSupport"
 #include "finite_element_routine.hpp"
@@ -42,9 +41,9 @@ struct node_info
 #pragma GCC diagnostic pop
 };
 
-static void save_as_vtk(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
-                        const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
-                        const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
+void save_as_vtk(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
+                 const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
+                 const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
 {
     std::ofstream fout(path);
     fout.precision(20);
@@ -110,6 +109,51 @@ static void save_as_vtk(const std::string &path,            const mesh_2d<double
          << "LOOKUP_TABLE default" << std::endl;
     for(size_t i = 0; i < sigma12.size(); ++i)
         fout << sigma12[i] << std::endl;
+}
+
+void raw_output(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
+                const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
+                const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
+{
+    std::ofstream fout_ux(path + std::string("u_x.csv")),
+                  fout_uy(path + std::string("u_y.csv"));
+    fout_ux.precision(20);
+    fout_uy.precision(20);
+    for(size_t i = 0; i < size_t(u.size() / 2); ++i)
+    {
+        fout_ux << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
+        fout_uy << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
+    }
+
+    std::ofstream fout_eps11(path + std::string("eps11.csv")),
+                  fout_eps22(path + std::string("eps22.csv")),
+                  fout_eps12(path + std::string("eps12.csv"));
+    fout_eps11.precision(20);
+    fout_eps22.precision(20);
+    fout_eps12.precision(20);
+    for(size_t i = 0; i < eps11.size(); ++i)
+        fout_eps11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps11[i] << std::endl;
+
+    for(size_t i = 0; i < eps22.size(); ++i)
+        fout_eps22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps22[i] << std::endl;
+
+    for(size_t i = 0; i < eps12.size(); ++i)
+        fout_eps12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps12[i] << std::endl;
+
+    std::ofstream fout_sigma11(path + std::string("sigma11.csv")),
+                  fout_sigma22(path + std::string("sigma22.csv")),
+                  fout_sigma12(path + std::string("sigma12.csv"));
+    fout_sigma11.precision(20);
+    fout_sigma22.precision(20);
+    fout_sigma12.precision(20);
+    for(size_t i = 0; i < sigma11.size(); ++i)
+        fout_sigma11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma11[i] << std::endl;
+
+    for(size_t i = 0; i < sigma22.size(); ++i)
+        fout_sigma22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma22[i] << std::endl;
+
+    for(size_t i = 0; i < sigma12.size(); ++i)
+        fout_sigma12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma12[i] << std::endl;
 }
 
 template<class Type>
@@ -551,12 +595,8 @@ static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> 
 }
 
 static std::array<std::vector<double>, 6>
-    strains_and_stress_calc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u, const parameters<double> &params)
+    strains_and_stress_loc(const mesh_2d<double> &mesh, const Eigen::VectorXd &u, const std::array<double, 3> &D)
 {
-    const std::array<double, 3> D = {            params.E / (1. - params.nu*params.nu),
-                                     params.nu * params.E / (1. - params.nu*params.nu),
-                                     0.5 * params.E / (1. + params.nu)                 };
-
     std::vector<double> eps11  (mesh.nodes_count(), 0.0),
                         eps22  (mesh.nodes_count(), 0.0),
                         eps12  (mesh.nodes_count(), 0.0),
@@ -618,10 +658,82 @@ static std::array<std::vector<double>, 6>
     return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
 }
 
-void stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
-                const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                             boundary_type, std::function<double(double, double)>>> &bounds_cond,
-                const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+template<class Type, class Index>
+static std::array<std::vector<Type>, 3>
+    approx_all_eps_in_all_quad(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts,
+                               const std::vector<Type> &eps11, const std::vector<Type> &eps22, const std::vector<Type> &eps12)
+{
+    std::vector<Type> all_eps11(shifts.back(), 0.), all_eps22(shifts.back(), 0.), all_eps12(shifts.back(), 0.);
+    const finite_element::element_2d_integrate_base<double> *e = nullptr;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        for(size_t q = 0, shift = shifts[el]; q < e->qnodes_count(); ++q, ++shift)
+            for(size_t i = 0; i < e->nodes_count(); ++i)
+            {
+                all_eps11[shift] += eps11[mesh.node_number(el, i)] * e->qN(i, q);
+                all_eps22[shift] += eps22[mesh.node_number(el, i)] * e->qN(i, q);
+                all_eps12[shift] += eps12[mesh.node_number(el, i)] * e->qN(i, q);
+            }
+    }
+    return {std::move(all_eps11), std::move(all_eps22), std::move(all_eps12)};
+}
+
+static void stress_nonloc(const mesh_2d<double> &mesh, const std::array<double, 3> &D,
+                          const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
+                                std::vector<double> &sigma11,       std::vector<double> &sigma22,       std::vector<double> &sigma12,
+                          const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+{
+    const double p2 = 1. - p1;
+    const finite_element::element_2d_integrate_base<double> *eNL = nullptr;
+    const std::vector<uint32_t> shifts_quad = quadrature_shifts_init(mesh);
+    const matrix<double> all_quad_coords = approx_all_quad_nodes_coords(mesh, shifts_quad);
+    const matrix<double> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
+    auto [all_eps11, all_eps22, all_eps12] = approx_all_eps_in_all_quad(mesh, shifts_quad, eps11, eps22, eps12);
+    for(size_t node = 0; node < mesh.nodes_count(); ++node)
+        for(const auto elNL : mesh.neighbor(node))
+        {
+            eNL = mesh.element_2d(mesh.element_type(elNL));
+            for(size_t q = 0, shift = shifts_quad[elNL]; q < eNL->qnodes_count(); ++q, ++shift)
+            {
+                const double finit = influence_fun(mesh.coord(node, 0), all_quad_coords(shift, 0), mesh.coord(node, 1), all_quad_coords(shift, 1)) *
+                                     (all_jacobi_matrices(shift, 0)*all_jacobi_matrices(shift, 3) - all_jacobi_matrices(shift, 1)*all_jacobi_matrices(shift, 2));
+                sigma11[node] += p2 * finit * (D[0] * all_eps11[shift] + D[1] * all_eps22[shift]);
+                sigma22[node] += p2 * finit * (D[1] * all_eps11[shift] + D[0] * all_eps22[shift]);
+                sigma12[node] += p2 * finit *  D[2] * all_eps12[shift];
+            }
+        }
+}
+
+std::array<std::vector<double>, 6>
+    strains_and_stress(const mesh_2d<double> &mesh, const Eigen::VectorXd &u, const parameters<double> &params,
+                       const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+{
+    static constexpr double MAX_LOCAL_WEIGHT = 0.999;
+    bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
+    const std::array<double, 3> D = {            params.E / (1. - params.nu*params.nu),
+                                     params.nu * params.E / (1. - params.nu*params.nu),
+                                     0.5 * params.E / (1. + params.nu)                 };
+    auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress_loc(mesh, u, D);
+
+    if(nonlocal)
+    {
+        for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        {
+            sigma11[i] *= p1;
+            sigma22[i] *= p1;
+            sigma12[i] *= p1;
+        }
+        stress_nonloc(mesh, D, eps11, eps22, eps12, sigma11, sigma22, sigma12, p1, influence_fun);
+    }
+
+    return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
+}
+
+Eigen::VectorXd stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
+                           const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
+                                                        boundary_type, std::function<double(double, double)>>> &bounds_cond,
+                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     Eigen::VectorXd f = Eigen::VectorXd::Zero(2*mesh.nodes_count());;
     Eigen::SparseMatrix<double> K(2*mesh.nodes_count(), 2*mesh.nodes_count()),
@@ -637,51 +749,13 @@ void stationary(const std::string &path, const mesh_2d<double> &mesh, const para
 
     time = omp_get_wtime();
     //Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
-    Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-    //Eigen::PardisoLDLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
+    //Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+    Eigen::PardisoLDLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
     solver.compute(K);
     const Eigen::VectorXd u = solver.solve(f);
     std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
-  
-    const auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress_calc(mesh, u, params);
-    save_as_vtk(path, mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
 
-    // RAW OUTPUT
-    std::ofstream fout_ux(std::string("results//u_x.csv")),
-                  fout_uy(std::string("results//u_y.csv"));
-    fout_ux.precision(20);
-    fout_uy.precision(20);
-    for(size_t i = 0; i < mesh.nodes_count(); ++i)
-    {
-        fout_ux << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
-        fout_uy << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
-    }
-
-    std::ofstream fout_eps11(std::string("results//eps11.csv")),
-                  fout_eps22(std::string("results//eps22.csv")),
-                  fout_eps12(std::string("results//eps12.csv"));
-    fout_eps11.precision(20);
-    fout_eps22.precision(20);
-    fout_eps12.precision(20);
-    for(size_t i = 0; i < eps11.size(); ++i)
-    {
-        fout_eps11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps11[i] << std::endl;
-        fout_eps12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps12[i] << std::endl;
-        fout_eps22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps22[i] << std::endl;
-    }
-
-    std::ofstream fout_sigma11(std::string("results//sigma11.csv")),
-                  fout_sigma22(std::string("results//sigma22.csv")),
-                  fout_sigma12(std::string("results//sigma12.csv"));
-    fout_sigma11.precision(20);
-    fout_sigma22.precision(20);
-    fout_sigma12.precision(20);
-    for(size_t i = 0; i < sigma11.size(); ++i)
-    {
-        fout_sigma11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma11[i] << std::endl;
-        fout_sigma12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma12[i] << std::endl;
-        fout_sigma22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma22[i] << std::endl;
-    }
+    return u;
 }
 
 }
