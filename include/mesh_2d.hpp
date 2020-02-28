@@ -14,8 +14,8 @@
 template<class Type, class Index = uint32_t>
 class mesh_2d
 {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-    static_assert(std::is_integral<Index>::value, "Index must be integral.");
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
+    static_assert(std::is_integral_v<Index>, "The Index must be integral.");
 
     rows_different_sizes<Index> elements;               // Массив с глобальными номерами узлов для каждого элемента. elements(n, i) - обращение к i-му узлу, n-го элемента
     matrix<Type> nodes;                                 // Глобальные координаты узлов сетки. nodes(n, i) - обращение к i-ой компоненте n-го узла
@@ -121,7 +121,7 @@ void mesh_2d<Type, Index>::make_bilinear(const Index Ex, const Index Ey, const T
         bounds[3].push_back(std::array<Index, 2>({ elements(i, 0), elements(i, 3) }));
 
     elements_2d_type.resize(Ex*Ey);
-    for(Index i = 0; i < elements_2d_type.size(); ++i)
+    for(size_t i = 0; i < elements_2d_type.size(); ++i)
         elements_2d_type[i] = 3;
 
     elements_1d_type.resize(4);
@@ -129,8 +129,8 @@ void mesh_2d<Type, Index>::make_bilinear(const Index Ex, const Index Ey, const T
     elements_1d_type[1].resize(Ey);
     elements_1d_type[2].resize(Ex);
     elements_1d_type[3].resize(Ey);
-    for(Index i = 0; i < elements_1d_type.size(); ++i)
-        for(Index j = 0; j < elements_1d_type[i].size(); ++j)
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 0;
 }
 
@@ -186,7 +186,7 @@ void mesh_2d<Type, Index>::make_quadratic_serendip(const Index Ex, const Index E
         bounds[3].push_back(std::array<Index, 3>({ elements(i, 0), elements(i, 7), elements(i, 6) }));
 
     elements_2d_type.resize(Ex*Ey);
-    for(Index i = 0; i < elements_2d_type.size(); ++i)
+    for(size_t i = 0; i < elements_2d_type.size(); ++i)
         elements_2d_type[i] = 4;
 
     elements_1d_type.resize(4);
@@ -194,8 +194,8 @@ void mesh_2d<Type, Index>::make_quadratic_serendip(const Index Ex, const Index E
     elements_1d_type[1].resize(Ey);
     elements_1d_type[2].resize(Ex);
     elements_1d_type[3].resize(Ey);
-    for(Index i = 0; i < elements_1d_type.size(); ++i)
-        for(Index j = 0; j < elements_1d_type[i].size(); ++j)
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 1;
 }
 
@@ -263,7 +263,7 @@ void mesh_2d<Type, Index>::make_qubic_serendip(const Index Ex, const Index Ey, c
         bounds[3].push_back(std::array<Index, 4>({ elements(i, 0), elements(i, 11), elements(i, 10), elements(i, 9) }));
 
     elements_2d_type.resize(Ex*Ey);
-    for(Index i = 0; i < elements_2d_type.size(); ++i)
+    for(size_t i = 0; i < elements_2d_type.size(); ++i)
         elements_2d_type[i] = 5;
 
     elements_1d_type.resize(4);
@@ -271,8 +271,8 @@ void mesh_2d<Type, Index>::make_qubic_serendip(const Index Ex, const Index Ey, c
     elements_1d_type[1].resize(Ey);
     elements_1d_type[2].resize(Ex);
     elements_1d_type[3].resize(Ey);
-    for(Index i = 0; i < elements_1d_type.size(); ++i)
-        for(Index j = 0; j < elements_1d_type[i].size(); ++j)
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 2;
 }
 

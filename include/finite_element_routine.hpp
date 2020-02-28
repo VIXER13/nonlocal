@@ -1,14 +1,16 @@
 #ifndef FINITE_ELEMENT_ROUTINE_HPP
 #define FINITE_ELEMENT_ROUTINE_HPP
 
+#include <string.h>
 #include <exception>
 #include "mesh_2d.hpp"
 
-template<class Type, class Index>
-void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t)> &rule)
+// Rule - функтор с сигнатурой void(size_t, size_t, size_t)
+template<class Type, class Index, class Rule>
+void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const Rule &rule)
 {
     const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-#pragma omp parallel for default(none) shared(mesh) private(e) firstprivate(rule)
+#pragma omp parallel for default(none) shared(mesh, rule) private(e)
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
         e = mesh.element_2d(mesh.element_type(el));
@@ -18,12 +20,13 @@ void mesh_run_loc(const mesh_2d<Type, Index> &mesh, const std::function<void(siz
     }
 }
 
-template<class Type, class Index>
-void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const std::function<void(size_t, size_t, size_t, size_t)> &rule)
+// Rule - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
+template<class Type, class Index, class Rule>
+void mesh_run_nonloc(const mesh_2d<Type, Index> &mesh, const Rule &rule)
 {
-    const finite_element::element_2d_integrate_base<double> *eL  = nullptr, 
-                                                            *eNL = nullptr;
-#pragma omp parallel for default(none) shared(mesh) private(eL, eNL) firstprivate(rule)
+    const finite_element::element_2d_integrate_base<Type> *eL  = nullptr, 
+                                                          *eNL = nullptr;
+#pragma omp parallel for default(none) shared(mesh, rule) private(eL, eNL)
     for(size_t elL = 0; elL < mesh.elements_count(); ++elL)
     {
         eL = mesh.element_2d(mesh.element_type(elL));

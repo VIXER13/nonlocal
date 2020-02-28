@@ -5,7 +5,6 @@ HDRS = include \
 	   Eigen
 
 SRC = src/main.cpp \
-	  src/heat_equation_solver.cpp \
 	  src/static_analysis.cpp
 	  
 
