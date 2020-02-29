@@ -1,4 +1,3 @@
-#include <set>
 #include <algorithm>
 #include "omp.h"
 #include "Eigen/Sparse"
@@ -15,30 +14,12 @@ struct node_info
     uint32_t              number : 31;
     enum component {X, Y} comp   :  1;
 
-    node_info(uint64_t number, component comp = X) :
+    node_info(uint64_t number, component comp) :
         number(static_cast<uint32_t>(number)), comp(comp) {}
-    
-    operator Eigen::SparseMatrix<double>::StorageIndex() const {
-        return static_cast<Eigen::SparseMatrix<double>::StorageIndex>(number);
+
+    operator size_t() const {
+        return static_cast<size_t>(number);
     }
-
-    template<class Type>
-    friend bool operator<(const node_info left, const Type right) {
-        return left.number < right;
-    }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-
-    friend bool operator<(const node_info left, const node_info right) {
-        return *reinterpret_cast<const uint32_t*>(&left) < *reinterpret_cast<const uint32_t*>(&right);
-    }
-
-    friend bool operator!=(const node_info left, const node_info right) {
-        return *reinterpret_cast<const uint32_t*>(&left) != *reinterpret_cast<const uint32_t*>(&right);
-    }
-
-#pragma GCC diagnostic pop
 };
 
 void save_as_vtk(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
@@ -310,22 +291,21 @@ static Type integrate_force_bound(const finite_element::element_1d_integrate_bas
     return integral;
 }
 
-static std::set<node_info> kinematic_nodes_set(const mesh_2d<double> &mesh,
-                                               const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                                            boundary_type, std::function<double(double, double)>>> &bounds_cond)
+static std::vector<bool> inner_nodes_vector(const mesh_2d<double> &mesh,
+                                            const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
+                                                                         boundary_type, std::function<double(double, double)>>> &bounds_cond)
 {
-    std::set<node_info> kinematic_nodes;
+    std::vector<bool> inner_nodes(2*mesh.nodes_count(), true);
     for(size_t b = 0; b < bounds_cond.size(); ++b)
     {
         if(std::get<0>(bounds_cond[b]) == boundary_type::TRANSLATION)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
-                kinematic_nodes.insert(node_info(*node, node_info::X));
-
+                inner_nodes[2*(*node)] = false;
         if(std::get<2>(bounds_cond[b]) == boundary_type::TRANSLATION)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
-                kinematic_nodes.insert(node_info(*node, node_info::Y));
+                inner_nodes[2*(*node)+1] = false;
     }
-    return std::move(kinematic_nodes);
+    return std::move(inner_nodes);
 }
 
 static std::vector<std::vector<uint32_t>> kinematic_nodes_vectors(const mesh_2d<double> &mesh,
@@ -409,23 +389,22 @@ static void boundary_condition(const mesh_2d<double> &mesh, const std::vector<st
 }
 
 static std::array<std::vector<uint32_t>, 4>
-    mesh_analysis(const mesh_2d<double> &mesh, const std::set<node_info> &kinematic_nodes, const bool nonlocal)
+    mesh_analysis(const mesh_2d<double> &mesh, const std::vector<bool> &inner_nodes, const bool nonlocal)
 {
     std::vector<uint32_t> shifts_loc(mesh.elements_count()+1, 0), shifts_bound_loc(mesh.elements_count()+1, 0),
                           shifts_nonloc, shifts_bound_nonloc;
 
     const auto counter_loc = 
-        [&mesh, &kinematic_nodes, &shifts_loc, &shifts_bound_loc]
+        [&mesh, &inner_nodes, &shifts_loc, &shifts_bound_loc]
         (node_info node_i, node_info node_j, size_t el)
         {
-            node_info glob_i = {mesh.node_number(el, node_i.number), node_i.comp},
-                      glob_j = {mesh.node_number(el, node_j.number), node_j.comp};
-            if(2 * glob_i.number + glob_i.comp >= 2 * glob_j.number + glob_j.comp)
+            size_t row = 2 * mesh.node_number(el, node_i.number) + node_i.comp,
+                   col = 2 * mesh.node_number(el, node_j.number) + node_j.comp;
+            if(row >= col)
             {
-                if(kinematic_nodes.find(glob_i) == kinematic_nodes.cend() &&
-                   kinematic_nodes.find(glob_j) == kinematic_nodes.cend())
+                if(inner_nodes[row] && inner_nodes[col])
                     ++shifts_loc[el+1];
-                else if(glob_i != glob_j)
+                else if(row != col)
                     ++shifts_bound_loc[el+1];
             }
         };
@@ -438,7 +417,7 @@ static std::array<std::vector<uint32_t>, 4>
                            counter_loc({i, node_info::Y}, {j, node_info::Y}, el);
                        });
 
-    shifts_loc[0] = kinematic_nodes.size();
+    shifts_loc[0] = std::count(inner_nodes.cbegin(), inner_nodes.cend(), false);
     for(size_t i = 1; i < shifts_loc.size(); ++i)
     {
         shifts_loc[i] += shifts_loc[i-1];
@@ -451,17 +430,16 @@ static std::array<std::vector<uint32_t>, 4>
         shifts_bound_nonloc.resize(mesh.elements_count()+1, 0);
 
         const auto counter_nonloc =
-            [&mesh, &kinematic_nodes, &shifts_nonloc, &shifts_bound_nonloc]
+            [&mesh, &inner_nodes, &shifts_nonloc, &shifts_bound_nonloc]
             (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
             {
-                node_info glob_iL  = {mesh.node_number(elL,  node_iL.number),  node_iL.comp},
-                          glob_jNL = {mesh.node_number(elNL, node_jNL.number), node_jNL.comp};
-                if(2 * glob_iL.number + glob_iL.comp >= 2 * glob_jNL.number + glob_jNL.comp)
+                size_t row = 2 * mesh.node_number(elL , node_iL .number) + node_iL .comp,
+                       col = 2 * mesh.node_number(elNL, node_jNL.number) + node_jNL.comp;
+                if(row >= col)
                 {
-                    if(kinematic_nodes.find(glob_iL)  == kinematic_nodes.cend() &&
-                       kinematic_nodes.find(glob_jNL) == kinematic_nodes.cend())
+                    if(inner_nodes[row] && inner_nodes[col])
                         ++shifts_nonloc[elL+1];
-                    else if(glob_iL != glob_jNL)
+                    else if(row != col)
                         ++shifts_bound_nonloc[elL+1];
                 }
             };
@@ -486,21 +464,19 @@ static std::array<std::vector<uint32_t>, 4>
     return {std::move(shifts_loc), std::move(shifts_bound_loc), std::move(shifts_nonloc), std::move(shifts_bound_nonloc)};
 }
 
-static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
-    triplets_fill(const mesh_2d<double> &mesh, const std::set<node_info> &kinematic_nodes, const parameters<double> &params,
+static std::array<std::vector<Eigen::Triplet<double>>, 2>
+    triplets_fill(const mesh_2d<double> &mesh, const std::vector<bool> &inner_nodes, const parameters<double> &params,
                   const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     static constexpr double MAX_LOCAL_WEIGHT = 0.999;
     bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
-    auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, kinematic_nodes, nonlocal);
-    std::vector<Eigen::Triplet<double, node_info>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
-                                                   triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
+    auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, inner_nodes, nonlocal);
+    std::vector<Eigen::Triplet<double>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
+                                        triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
     std::cout << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
-    for(auto [it, i] = std::make_tuple(kinematic_nodes.cbegin(), size_t(0)); it != kinematic_nodes.cend(); ++it, ++i)
-    {
-        uint32_t index = 2 * it->number + it->comp;
-        triplets[i] = Eigen::Triplet<double, node_info>({index, it->comp}, {index, it->comp}, 1.);
-    }
+    for(size_t i = 0, j = 0; i < inner_nodes.size(); ++i)
+        if(!inner_nodes[i])
+            triplets[j++] = Eigen::Triplet<double>(i, i, 1.);
 
     const std::vector<uint32_t> shifts_quad = quadrature_shifts_init(mesh);
     const matrix<double> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
@@ -509,23 +485,20 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
                                      0.5 * params.E / (1. + params.nu)                 };
 
     const auto filler_loc =
-        [&mesh, &kinematic_nodes, &shifts_loc, &shifts_bound_loc, &triplets, &triplets_bound, &shifts_quad, &all_jacobi_matrices, p1, &D]
+        [&mesh, &inner_nodes, &shifts_loc, &shifts_bound_loc, &triplets, &triplets_bound, &shifts_quad, &all_jacobi_matrices, p1, &D]
         (node_info node_i, node_info node_j, size_t el)
         {
-            node_info glob_i = {mesh.node_number(el, node_i.number), node_i.comp},
-                      glob_j = {mesh.node_number(el, node_j.number), node_j.comp},
-                      row = 2 * glob_i.number + glob_i.comp,
-                      col = 2 * glob_j.number + glob_j.comp;
+            size_t row = 2 * mesh.node_number(el, node_i.number) + node_i.comp,
+                   col = 2 * mesh.node_number(el, node_j.number) + node_j.comp;
             if(row >= col)
             {
                 double integral = p1 * integrate_loc(mesh.element_2d(mesh.element_type(el)), node_i, node_j, all_jacobi_matrices, shifts_quad[el], D);
-                if(kinematic_nodes.find(glob_i) == kinematic_nodes.cend() &&
-                   kinematic_nodes.find(glob_j) == kinematic_nodes.cend())
-                    triplets[shifts_loc[el]++] = Eigen::Triplet<double, node_info>(row, col, integral);
-                else if(glob_i != glob_j)
-                    triplets_bound[shifts_bound_loc[el]++] = kinematic_nodes.find(glob_j) == kinematic_nodes.cend() ?
-                                                             Eigen::Triplet<double, node_info>(col, row, integral) :
-                                                             Eigen::Triplet<double, node_info>(row, col, integral);
+                if(inner_nodes[row] && inner_nodes[col])
+                    triplets[shifts_loc[el]++] = Eigen::Triplet<double>(row, col, integral);
+                else if(row != col)
+                    triplets_bound[shifts_bound_loc[el]++] = inner_nodes[col] ?
+                                                             Eigen::Triplet<double>(col, row, integral) :
+                                                             Eigen::Triplet<double>(row, col, integral);
             }
         };
 
@@ -542,27 +515,24 @@ static std::array<std::vector<Eigen::Triplet<double, node_info>>, 2>
         const matrix<double> all_quad_coords = approx_all_quad_nodes_coords(mesh, shifts_quad);
 
         const auto filler_nonloc =
-            [&mesh, &kinematic_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc,
+            [&mesh, &inner_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc,
              &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1, &D]
             (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
             {
-                node_info glob_iL  = {mesh.node_number(elL,  node_iL.number),  node_iL.comp},
-                          glob_jNL = {mesh.node_number(elNL, node_jNL.number), node_jNL.comp},
-                          row = 2 * glob_iL.number  + glob_iL.comp,
-                          col = 2 * glob_jNL.number + glob_jNL.comp;
+                size_t row = 2 * mesh.node_number(elL,  node_iL .number) + node_iL .comp,
+                       col = 2 * mesh.node_number(elNL, node_jNL.number) + node_jNL.comp;
                 if(row >= col)
                 {
                     double integral = p2 * integrate_nonloc(mesh.element_2d(mesh.element_type(elL )),
                                                             mesh.element_2d(mesh.element_type(elNL)), 
                                                             node_iL, node_jNL, shifts_quad[elL], shifts_quad[elNL],
                                                             all_quad_coords, all_jacobi_matrices, influence_fun, D);
-                    if(kinematic_nodes.find(glob_iL)  == kinematic_nodes.cend() &&
-                       kinematic_nodes.find(glob_jNL) == kinematic_nodes.cend())
-                        triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double, node_info>(row, col, integral);
-                    else if(glob_iL != glob_jNL)
-                        triplets_bound[shifts_bound_nonloc[elL]++] = kinematic_nodes.find(glob_jNL) == kinematic_nodes.cend() ?
-                                                                     Eigen::Triplet<double, node_info>(col, row,  integral) :
-                                                                     Eigen::Triplet<double, node_info>(row, col, integral);
+                    if(inner_nodes[row] && inner_nodes[col])
+                        triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double>(row, col, integral);
+                    else if(row != col)
+                        triplets_bound[shifts_bound_nonloc[elL]++] = inner_nodes[col] ?
+                                                                     Eigen::Triplet<double>(col, row, integral) :
+                                                                     Eigen::Triplet<double>(row, col, integral);
                 }
             };
 
@@ -585,7 +555,7 @@ static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> 
                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
     double time = omp_get_wtime();
-    auto [triplets, triplets_bound] = triplets_fill(mesh, kinematic_nodes_set(mesh, bounds_cond), params, p1, influence_fun);
+    auto [triplets, triplets_bound] = triplets_fill(mesh, inner_nodes_vector(mesh, bounds_cond), params, p1, influence_fun);
     std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
 
     K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
