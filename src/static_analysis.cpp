@@ -8,7 +8,7 @@
 namespace statics_with_nonloc
 {
 
-// Небольшая структура, которая объединяет в себе номер узла и индекс переменной, который на ней задан.
+// Cтруктура, которая объединяет в себе номер узла и индекс переменной, который на ней задан.
 struct node_info
 {
     uint32_t              number : 31;
@@ -188,6 +188,7 @@ static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> 
     return integral;
 }
 
+
 template<class Type>
 static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Type> *const eL,
                              const finite_element::element_2d_integrate_base<Type> *const eNL,
@@ -292,16 +293,15 @@ static Type integrate_force_bound(const finite_element::element_1d_integrate_bas
 }
 
 static std::vector<bool> inner_nodes_vector(const mesh_2d<double> &mesh,
-                                            const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                                         boundary_type, std::function<double(double, double)>>> &bounds_cond)
+                                            const std::vector<boundary_condition<double>> &bounds_cond)
 {
     std::vector<bool> inner_nodes(2*mesh.nodes_count(), true);
     for(size_t b = 0; b < bounds_cond.size(); ++b)
     {
-        if(std::get<0>(bounds_cond[b]) == boundary_type::TRANSLATION)
+        if(bounds_cond[b].type_x == boundary_type::TRANSLATION)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
                 inner_nodes[2*(*node)] = false;
-        if(std::get<2>(bounds_cond[b]) == boundary_type::TRANSLATION)
+        if(bounds_cond[b].type_y == boundary_type::TRANSLATION)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
                 inner_nodes[2*(*node)+1] = false;
     }
@@ -309,13 +309,11 @@ static std::vector<bool> inner_nodes_vector(const mesh_2d<double> &mesh,
 }
 
 static std::vector<std::vector<uint32_t>> kinematic_nodes_vectors(const mesh_2d<double> &mesh,
-                                              const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                                           boundary_type, std::function<double(double, double)>>> &bounds_cond)
+                                              const std::vector<boundary_condition<double>> &bounds_cond)
 {
     std::vector<std::vector<uint32_t>> kinematic_nodes(bounds_cond.size());
     for(size_t b = 0; b < bounds_cond.size(); ++b)
-        if(std::get<0>(bounds_cond[b]) == boundary_type::TRANSLATION ||
-           std::get<2>(bounds_cond[b]) == boundary_type::TRANSLATION)
+        if(bounds_cond[b].type_x == boundary_type::TRANSLATION || bounds_cond[b].type_y == boundary_type::TRANSLATION)
             for(auto [node, k] = std::make_tuple(mesh.boundary(b).cbegin(), size_t(0)); node != mesh.boundary(b).cend(); ++node)
             {
                 for(k = 0; k < kinematic_nodes.size(); ++k)
@@ -325,67 +323,6 @@ static std::vector<std::vector<uint32_t>> kinematic_nodes_vectors(const mesh_2d<
                     kinematic_nodes[b].push_back(*node);
             }
     return std::move(kinematic_nodes);
-}
-
-static void translation(const mesh_2d<double> &mesh, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f,
-                        const std::function<double(double, double)> &boundaryFun, const size_t node)
-{
-    double temp = boundaryFun(mesh.coord(node >> 1, 0), mesh.coord(node >> 1, 1));
-    for(typename Eigen::SparseMatrix<double>::InnerIterator it(K_bound, node); it; ++it)
-        f[it.row()] -= temp * it.value();
-}
-
-static void boundary_condition(const mesh_2d<double> &mesh, const std::vector<std::vector<uint32_t>> &temperature_nodes,
-                               const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                            boundary_type, std::function<double(double, double)>>> &bounds_cond,
-                               const double tau, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f)
-{
-    const finite_element::element_1d_integrate_base<double> *be = nullptr;
-    matrix<double> coords, jacobi_matrices;
-    for(size_t b = 0; b < bounds_cond.size(); ++b)
-    {
-        if(std::get<0>(bounds_cond[b]) == boundary_type::FORCE)
-            for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
-            {
-                be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
-                approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
-                approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
-                for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-                    f[2*mesh.boundary(b)(el, i)] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, std::get<1>(bounds_cond[b]));
-            }
-
-        if(std::get<2>(bounds_cond[b]) == boundary_type::FORCE)
-            for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
-            {
-                be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
-                approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
-                approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
-                for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-                    f[2*mesh.boundary(b)(el, i)+1] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, std::get<3>(bounds_cond[b]));
-            }
-    }
-
-    for(size_t b = 0; b < temperature_nodes.size(); ++b)
-    {
-        if(std::get<0>(bounds_cond[b]) == boundary_type::TRANSLATION)
-            for(auto node : temperature_nodes[b])
-                translation(mesh, K_bound, f, std::get<1>(bounds_cond[b]), 2*node);
-
-        if(std::get<2>(bounds_cond[b]) == boundary_type::TRANSLATION)
-            for(auto node : temperature_nodes[b])
-                translation(mesh, K_bound, f, std::get<3>(bounds_cond[b]), 2*node+1);
-    }
-
-    for(size_t b = 0; b < temperature_nodes.size(); ++b)
-    {
-        if(std::get<0>(bounds_cond[b]) == boundary_type::TRANSLATION)
-            for(auto node : temperature_nodes[b])
-                f[2*node]   = std::get<1>(bounds_cond[b])(mesh.coord(node, 0), mesh.coord(node, 1));
-
-        if(std::get<2>(bounds_cond[b]) == boundary_type::TRANSLATION)
-            for(auto node : temperature_nodes[b])
-                f[2*node+1] = std::get<3>(bounds_cond[b])(mesh.coord(node, 0), mesh.coord(node, 1));
-    }
 }
 
 static std::array<std::vector<uint32_t>, 4>
@@ -504,10 +441,10 @@ static std::array<std::vector<Eigen::Triplet<double>>, 2>
 
     mesh_run_loc(mesh, [&filler_loc](size_t i, size_t j, size_t el)
                        {
-                           filler_loc({i, node_info::X}, {j, node_info::X}, el);
-                           filler_loc({i, node_info::X}, {j, node_info::Y}, el);
-                           filler_loc({i, node_info::Y}, {j, node_info::X}, el);
-                           filler_loc({i, node_info::Y}, {j, node_info::Y}, el);
+                            filler_loc({i, node_info::X}, {j, node_info::X}, el);
+                            filler_loc({i, node_info::X}, {j, node_info::Y}, el);
+                            filler_loc({i, node_info::Y}, {j, node_info::X}, el);
+                            filler_loc({i, node_info::Y}, {j, node_info::Y}, el);
                        });
 
     if(nonlocal)
@@ -549,8 +486,7 @@ static std::array<std::vector<Eigen::Triplet<double>>, 2>
 }
 
 static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> &params,
-                          const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                       boundary_type, std::function<double(double, double)>>> &bounds_cond,
+                          const std::vector<boundary_condition<double>> &bounds_cond,
                           Eigen::SparseMatrix<double> &K, Eigen::SparseMatrix<double> &K_bound,
                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
@@ -562,6 +498,93 @@ static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> 
     triplets_bound.clear();
     K.setFromTriplets(triplets.cbegin(), triplets.cend());
     std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
+}
+
+static void boundary_condition_calc(const mesh_2d<double> &mesh, const std::vector<std::vector<uint32_t>> &temperature_nodes,
+                                    const std::vector<boundary_condition<double>> &bounds_cond,
+                                    const double tau, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f)
+{
+    const finite_element::element_1d_integrate_base<double> *be = nullptr;
+    matrix<double> coords, jacobi_matrices;
+    for(size_t b = 0; b < bounds_cond.size(); ++b)
+    {
+        if(bounds_cond[b].type_x == boundary_type::FORCE)
+            for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
+            {
+                be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
+                approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
+                approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
+                for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
+                    f[2*mesh.boundary(b)(el, i)] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, bounds_cond[b].func_x);
+            }
+
+        if(bounds_cond[b].type_y == boundary_type::FORCE)
+            for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
+            {
+                be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
+                approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
+                approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
+                for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
+                    f[2*mesh.boundary(b)(el, i)+1] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, bounds_cond[b].func_y);
+            }
+    }
+
+    for(size_t b = 0; b < temperature_nodes.size(); ++b)
+    {
+        if(bounds_cond[b].type_x == boundary_type::TRANSLATION)
+            for(auto node : temperature_nodes[b])
+            {
+                const double temp = bounds_cond[b].func_x(mesh.coord(node, 0), mesh.coord(node, 1));
+                for(typename Eigen::SparseMatrix<double>::InnerIterator it(K_bound, 2*node); it; ++it)
+                    f[it.row()] -= temp * it.value();
+            }
+
+        if(bounds_cond[b].type_y == boundary_type::TRANSLATION)
+            for(auto node : temperature_nodes[b])
+            {
+                const double temp = bounds_cond[b].func_y(mesh.coord(node, 0), mesh.coord(node, 1));
+                for(typename Eigen::SparseMatrix<double>::InnerIterator it(K_bound, 2*node+1); it; ++it)
+                    f[it.row()] -= temp * it.value();
+            }
+    }
+
+    for(size_t b = 0; b < temperature_nodes.size(); ++b)
+    {
+        if(bounds_cond[b].type_x == boundary_type::TRANSLATION)
+            for(auto node : temperature_nodes[b])
+                f[2*node]   = bounds_cond[b].func_x(mesh.coord(node, 0), mesh.coord(node, 1));
+
+        if(bounds_cond[b].type_y == boundary_type::TRANSLATION)
+            for(auto node : temperature_nodes[b])
+                f[2*node+1] = bounds_cond[b].func_y(mesh.coord(node, 0), mesh.coord(node, 1));
+    }
+}
+
+Eigen::VectorXd stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
+                           const std::vector<boundary_condition<double>> &bounds_cond,
+                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+{
+    Eigen::VectorXd f = Eigen::VectorXd::Zero(2*mesh.nodes_count());;
+    Eigen::SparseMatrix<double> K(2*mesh.nodes_count(), 2*mesh.nodes_count()),
+                                K_bound(2*mesh.nodes_count(), 2*mesh.nodes_count());
+    
+    double time = omp_get_wtime();
+    create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
+    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    boundary_condition_calc(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, 1., K_bound, f);
+    std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
+    //Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
+    Eigen::PardisoLDLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
+    solver.compute(K);
+    const Eigen::VectorXd u = solver.solve(f);
+    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
+
+    return u;
 }
 
 static std::array<std::vector<double>, 6>
@@ -698,34 +721,6 @@ std::array<std::vector<double>, 6>
     }
 
     return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
-}
-
-Eigen::VectorXd stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
-                           const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                        boundary_type, std::function<double(double, double)>>> &bounds_cond,
-                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
-{
-    Eigen::VectorXd f = Eigen::VectorXd::Zero(2*mesh.nodes_count());;
-    Eigen::SparseMatrix<double> K(2*mesh.nodes_count(), 2*mesh.nodes_count()),
-                                K_bound(2*mesh.nodes_count(), 2*mesh.nodes_count());
-    
-    double time = omp_get_wtime();
-    create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
-    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
-
-    time = omp_get_wtime();
-    boundary_condition(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, 1., K_bound, f);
-    std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
-
-    time = omp_get_wtime();
-    //Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
-    //Eigen::SimplicialLDLT<Eigen::SparseMatrix<double>> solver;
-    Eigen::PardisoLDLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
-    solver.compute(K);
-    const Eigen::VectorXd u = solver.solve(f);
-    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
-
-    return u;
 }
 
 }

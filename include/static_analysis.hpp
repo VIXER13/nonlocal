@@ -13,11 +13,20 @@ struct parameters
          E;  // Модуль Юнга
 };
 
-enum class boundary_type {TRANSLATION, FORCE};
+enum class boundary_type : uint8_t {TRANSLATION, FORCE};
+
+template<class Type>
+struct boundary_condition
+{
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
+    std::function<Type(Type, Type)> func_x = [](Type, Type) { return 0.; },
+                                    func_y = [](Type, Type) { return 0.; };
+    boundary_type type_x = boundary_type::FORCE,
+                  type_y = boundary_type::FORCE;
+};
 
 Eigen::VectorXd stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
-                           const std::vector<std::tuple<boundary_type, std::function<double(double, double)>,
-                                                        boundary_type, std::function<double(double, double)>>> &bounds_cond,
+                           const std::vector<boundary_condition<double>> &bounds_cond,
                            const double p1, const std::function<double(double, double, double, double)> &influence_fun);
 
 std::array<std::vector<double>, 6>

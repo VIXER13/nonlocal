@@ -35,41 +35,57 @@ int main()
     using namespace statics_with_nonloc;
     const parameters<double> param = {.nu = 0.3, .E = 2.1e5};
     const double p1 = 1.;
-
     
     Eigen::VectorXd u = stationary(std::string("results//test.vtk"), mesh, param,
-                                   { { boundary_type::FORCE, [](double, double) { return 0; },
-                                       boundary_type::TRANSLATION, [](double, double) { return 0.; } },
+                                   { { [](double, double) { return 0; },
+                                       [](double, double) { return 0.; },
+                                       boundary_type::FORCE,
+                                       boundary_type::TRANSLATION },
 
-                                     { boundary_type::FORCE, [](double, double) { return 100; },
-                                       boundary_type::FORCE, [](double, double) { return 0.; } },
+                                     { [](double, double) { return 100; },
+                                       [](double, double) { return 0.; },
+                                       boundary_type::FORCE,
+                                       boundary_type::FORCE },
 
-                                     { boundary_type::FORCE, [](double, double) { return 0; },
-                                       boundary_type::FORCE, [](double, double) { return 0; } },
+                                     { [](double, double) { return 0; },
+                                       [](double, double) { return 0; },
+                                       boundary_type::FORCE,
+                                       boundary_type::FORCE },
 
-                                     { boundary_type::TRANSLATION, [](double, double) { return 0.; },
-                                       boundary_type::FORCE, [](double, double) { return 0; } } },
+                                     { [](double, double) { return 0.; },
+                                       [](double, double) { return 0; },
+                                       boundary_type::TRANSLATION,
+                                       boundary_type::FORCE } },
                                    p1, bell11);
     
-/*
+    /*
     Eigen::VectorXd u = stationary(std::string("results//test.vtk"), mesh, param,
-                                   { { boundary_type::FORCE, [](double, double) { return 0; },
-                                       boundary_type::FORCE, [](double, double) { return 0.; } },
+                                   { { [](double, double) { return 0.; },
+                                       [](double, double) { return 0.; },
+                                       boundary_type::FORCE,
+                                       boundary_type::FORCE },
 
-                                     { boundary_type::FORCE, [](double, double) { return 100; },
-                                       boundary_type::FORCE, [](double, double) { return 0.; } },
+                                     { [](double, double) { return 0.01; },
+                                       [](double, double) { return 0.; },
+                                       boundary_type::TRANSLATION,
+                                       boundary_type::FORCE },
 
-                                     { boundary_type::FORCE, [](double, double) { return 0; },
-                                       boundary_type::FORCE, [](double, double) { return 0; } },
-
-                                     { boundary_type::TRANSLATION, [](double, double) { return 0.; },
-                                       boundary_type::TRANSLATION, [](double, double) { return 0; } } },
+                                     { [](double, double) { return 0; },
+                                       [](double, double) { return 0; },
+                                       boundary_type::FORCE,
+                                       boundary_type::FORCE },
+                                    
+                                     { [](double, double) { return 0.; },
+                                       [](double, double) { return 0.; },
+                                       boundary_type::TRANSLATION,
+                                       boundary_type::TRANSLATION, } },
                                    p1, bell11);
-*/
+                                   */
+
     //mesh.find_neighbors_for_nodes(1.05*r);
     auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress(mesh, u, param, p1, bell11);
     raw_output("results//", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
-    //save_as_vtk("results//loc.vtk", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
+    save_as_vtk("results//loc.vtk", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
     }
     
 

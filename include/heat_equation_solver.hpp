@@ -7,7 +7,6 @@
 #include "finite_element_routine.hpp"
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
-//#include "heat_equation_solver.hpp"
 
 namespace heat_equation_with_nonloc
 {
