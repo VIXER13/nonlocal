@@ -7,6 +7,7 @@
 #include "finite_element_routine.hpp"
 #include "Eigen/Dense"
 #include "Eigen/Sparse"
+#include "Eigen/PardisoSupport"
 
 namespace heat_equation_with_nonloc
 {
@@ -95,18 +96,6 @@ static Type integrate_function(const finite_element::element_2d_integrate_base<T
     return integral;
 }
 
-template<class Type>
-static Type integrate_flow_bound(const finite_element::element_1d_integrate_base<Type> *const be, const size_t i,
-                                 const matrix<Type> &coords, const matrix<Type> &jacobi_matrices, 
-                                 const std::function<Type(Type, Type)> &fun)
-{
-    Type integral = 0.;
-    for(size_t q = 0; q < be->qnodes_count(); ++q)
-        integral += fun(coords(q, 0), coords(q, 1)) * be->weight(q) * be->qN(i, q) *
-                    sqrt(jacobi_matrices(q, 0)*jacobi_matrices(q, 0) + jacobi_matrices(q, 1)*jacobi_matrices(q, 1));
-    return integral;
-}
-
 template<class Type, class Index>
 Type integrate_solution(const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1> &x)
 {
@@ -143,8 +132,7 @@ static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
 }
 
 template<class Type, class Index>
-static std::vector<bool> inner_nodes_vector(const mesh_2d<Type, Index> &mesh,
-                              const std::vector<boundary_condition<Type>> &bounds_cond)
+static std::vector<bool> inner_nodes_vector(const mesh_2d<Type, Index> &mesh, const std::vector<boundary_condition<Type>> &bounds_cond)
 {
     std::vector<bool> inner_nodes(mesh.nodes_count(), true);
     for(size_t b = 0; b < bounds_cond.size(); ++b)
@@ -296,7 +284,7 @@ static std::array<std::vector<Eigen::Triplet<Type, Index>>, 2>
 // а вторая та часть матрицы, которая уйдёт в правую часть при учёте гран условий первого рода.
 // Integrate_Rule - функтор с сигнатурой Type(const finite_element::element_2d_integrate_base<Type>*, 
 //                                            const size_t, const size_t, const matrix<Type>&, size_t)
-template<class Type, int MatrixMajor, class Index, class Integrate_Rule>
+template<int MatrixMajor, class Type, class Index, class Integrate_Rule>
 static void create_matrix(const mesh_2d<Type, Index> &mesh,
                           const std::vector<boundary_condition<Type>> &bounds_cond,
                           const Integrate_Rule &integrate_rule, const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun,
@@ -329,7 +317,7 @@ static void boundary_condition_calc(const mesh_2d<Type, Index> &mesh, const std:
                 approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
                 approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
                 for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-                    f[mesh.boundary(b)(el, i)] += tau*integrate_flow_bound(be, i, coords, jacobi_matrices, bounds_cond[b].func);
+                    f[mesh.boundary(b)(el, i)] += tau*integrate_boundary_gradient(be, i, coords, jacobi_matrices, bounds_cond[b].func);
             }
 
     for(size_t b = 0; b < temperature_nodes.size(); ++b)
@@ -346,22 +334,18 @@ static void boundary_condition_calc(const mesh_2d<Type, Index> &mesh, const std:
 }
 
 // Нелокальное условие для задачи Неймана.
-template<class Type, int MatrixMajor, class Index>
+template<int MatrixMajor, class Type, class Index>
 static Eigen::SparseMatrix<Type, MatrixMajor, Index> nonlocal_condition(const mesh_2d<Type, Index> &mesh)
 {
     size_t triplets_count = 0;
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
-    {
-        e = mesh.element_2d(mesh.element_type(el));
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            ++triplets_count;
-    }
+        triplets_count += mesh.element_2d(mesh.element_type(el))->nodes_count();
 
     matrix<Type> jacobi_matrices;
     std::vector<Eigen::Triplet<Type, Index>> triplets(triplets_count);
 
     triplets_count = 0;
+    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
         e = mesh.element_2d(mesh.element_type(el));
@@ -372,7 +356,7 @@ static Eigen::SparseMatrix<Type, MatrixMajor, Index> nonlocal_condition(const me
     }
 
     Eigen::SparseMatrix<Type, MatrixMajor, Index> K_last_row(mesh.nodes_count()+1, mesh.nodes_count()+1);
-    K_last_row.setFromTriplets(triplets.begin(), triplets.end());
+    K_last_row.setFromTriplets(triplets.cbegin(), triplets.cend());
     return K_last_row;
 }
 
@@ -402,7 +386,7 @@ void stationary(const std::string &path, const mesh_2d<Type, Index> &mesh,
     time = omp_get_wtime();
     create_matrix(mesh, bounds_cond, integrate_gradient_pair<Type>, p1, influence_fun, K, K_bound);
     if(neumann_task)
-        K += nonlocal_condition<Type, Eigen::ColMajor, Index>(mesh);
+        K += nonlocal_condition<Eigen::ColMajor>(mesh);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
     std::cout << "Nonzero elements count = " << K.nonZeros() + K_bound.nonZeros() << std::endl;
 
@@ -411,45 +395,57 @@ void stationary(const std::string &path, const mesh_2d<Type, Index> &mesh,
     std::cout << "Boundary filling: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
-    solver.compute(K);
-    Eigen::Matrix<Type, Eigen::Dynamic, 1> x = solver.solve(f);
+    Eigen::Matrix<Type, Eigen::Dynamic, 1> T;
+    if(neumann_task)
+    {
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
+        solver.compute(K);
+        T = solver.solve(f);
+    }
+    else
+    {
+        Eigen::PardisoLDLT<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
+        solver.compute(K);
+        T = solver.solve(f);
+    }
+    
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
     
     //save_as_vtk(path, mesh, x);
-    mesh.print_to_file(path, x.data());
+    mesh.print_to_file(path, T.data());
 }
 
+template<class Type, class Index>
 void nonstationary(const std::string &path,
-                   const mesh_2d<double, int> &mesh, const double tau, const size_t time_steps,
-                   const std::vector<boundary_condition<double>> &bounds_cond,
-                   const std::function<double(double, double)> &init_dist,
-                   const std::function<double(double, double)> &right_part,
-                   const double p1, const std::function<double(double, double, double, double)> &influence_fun,
+                   const mesh_2d<Type, Index> &mesh, const Type tau, const size_t time_steps,
+                   const std::vector<boundary_condition<Type>> &bounds_cond,
+                   const std::function<Type(Type, Type)> &init_dist,
+                   const std::function<Type(Type, Type)> &right_part,
+                   const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun,
                    const uint64_t print_frequency)
 {
-    Eigen::SparseMatrix<double> K      (mesh.nodes_count(), mesh.nodes_count()),
-                                K_bound(mesh.nodes_count(), mesh.nodes_count()),
-                                C      (mesh.nodes_count(), mesh.nodes_count()),
-                                C_bound(mesh.nodes_count(), mesh.nodes_count());
-    create_matrix(mesh, bounds_cond, integrate_gradient_pair<double>, p1, influence_fun, K, K_bound);
-    create_matrix(mesh, bounds_cond, integrate_basic_pair<double>,    1., influence_fun, C, C_bound);
+    Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K      (mesh.nodes_count(), mesh.nodes_count()),
+                                                      K_bound(mesh.nodes_count(), mesh.nodes_count()),
+                                                      C      (mesh.nodes_count(), mesh.nodes_count()),
+                                                      C_bound(mesh.nodes_count(), mesh.nodes_count());
+    create_matrix(mesh, bounds_cond, integrate_gradient_pair<Type>, p1, influence_fun, K, K_bound);
+    create_matrix(mesh, bounds_cond, integrate_basic_pair<Type>,    1., influence_fun, C, C_bound);
     C_bound.setZero();
     K *= tau;
     K_bound *= tau;
     K += C;
 
-    std::vector<std::vector<int>> temperature_nodes = temperature_nodes_vectors(mesh, bounds_cond);
+    std::vector<std::vector<Index>> temperature_nodes = temperature_nodes_vectors(mesh, bounds_cond);
     for(size_t b = 0; b < temperature_nodes.size(); ++b)
         for(auto node : temperature_nodes[b])
             K.coeffRef(node, node) = 1.;
 
-    Eigen::VectorXd f = Eigen::VectorXd::Zero(mesh.nodes_count()),
-                    T_prev(mesh.nodes_count()), T(mesh.nodes_count());
+    Eigen::Matrix<Type, Eigen::Dynamic, 1> f = Eigen::Matrix<Type, Eigen::Dynamic, 1>::Zero(mesh.nodes_count()),
+                                           T_prev(mesh.nodes_count()), T(mesh.nodes_count());
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
         T_prev[i] = init_dist(mesh.coord(i, 0), mesh.coord(i, 1));
 
-    Eigen::SimplicialLLT<Eigen::SparseMatrix<double>> solver;
+    Eigen::PardisoLDLT<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
     solver.compute(K);
 
     if(print_frequency != uint64_t(-1))
@@ -459,7 +455,7 @@ void nonstationary(const std::string &path,
     }
     for(size_t i = 1; i < time_steps; ++i)
     {
-        f = C.selfadjointView<Eigen::Lower>() * T_prev;
+        f = C.template selfadjointView<Eigen::Lower>() * T_prev;
         integrate_right_part(mesh, right_part, f);
         boundary_condition_calc(mesh, temperature_nodes, bounds_cond, tau, K_bound, f);
         T = solver.solve(f);
@@ -474,7 +470,7 @@ void nonstationary(const std::string &path,
 
 template<class Type, class Index>
 static void save_as_vtk(const std::string &path, const mesh_2d<Type, Index> &mesh,
-                        const Eigen::Matrix<Type, Eigen::Dynamic, 1> &sol)
+                        const Eigen::Matrix<Type, Eigen::Dynamic, 1> &T)
 {
     std::ofstream fout(path);
     fout.precision(20);
@@ -504,8 +500,8 @@ static void save_as_vtk(const std::string &path, const mesh_2d<Type, Index> &mes
     fout << "SCALARS TEMPERATURE double " << 1 << std::endl
          << "LOOKUP_TABLE default" << std::endl;
 
-    for(size_t i = 0; i < size_t(sol.size()); ++i)
-        fout << sol[i] << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << T[i] << std::endl;
 }
 
 }

@@ -8,292 +8,87 @@
 namespace statics_with_nonloc
 {
 
-// Cтруктура, которая объединяет в себе номер узла и индекс переменной, который на ней задан.
-struct node_info
-{
-    uint32_t              number : 31;
-    enum component {X, Y} comp   :  1;
-
-    node_info(uint64_t number, component comp) :
-        number(static_cast<uint32_t>(number)), comp(comp) {}
-
-    operator size_t() const {
-        return static_cast<size_t>(number);
-    }
-};
-
-void save_as_vtk(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
-                 const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
-                 const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
-{
-    std::ofstream fout(path);
-    fout.precision(20);
-
-    fout << "# vtk DataFile Version 4.2" << std::endl
-         << "Temperature"                << std::endl
-         << "ASCII"                      << std::endl
-         << "DATASET UNSTRUCTURED_GRID"  << std::endl;
-
-    fout << "POINTS " << mesh.nodes_count() << " double" << std::endl;
-    for(size_t i = 0; i < mesh.nodes_count(); ++i)
-        fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
-
-    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * 5 << std::endl;
-    for(size_t i = 0; i < mesh.elements_count(); ++i)
-        fout << 4 << " " << mesh.node_number(i, 0) << " "
-                         << mesh.node_number(i, 1) << " "
-                         << mesh.node_number(i, 2) << " "
-                         << mesh.node_number(i, 3) << std::endl;
-
-    fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
-    for(size_t i = 0; i < mesh.elements_count(); ++i)
-        fout << 9 << std::endl;
-
-    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
-
-    fout << "SCALARS U_X double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < size_t(u.size() / 2); ++i)
-        fout << u[2*i] << std::endl;
-
-    fout << "SCALARS U_Y double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < size_t(u.size() / 2); ++i)
-        fout << u[2*i+1] << std::endl;
-
-    fout << "SCALARS EPS_XX double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < eps11.size(); ++i)
-        fout << eps11[i] << std::endl;
-
-    fout << "SCALARS EPS_YY double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < eps22.size(); ++i)
-        fout << eps22[i] << std::endl;
-
-    fout << "SCALARS EPS_XY double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < eps12.size(); ++i)
-        fout << eps12[i] << std::endl;
-
-    fout << "SCALARS SIGMA_XX double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < sigma11.size(); ++i)
-        fout << sigma11[i] << std::endl;
-
-    fout << "SCALARS SIGMA_YY double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < sigma22.size(); ++i)
-        fout << sigma22[i] << std::endl;
-
-    fout << "SCALARS SIGMA_XY double " << 1 << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
-    for(size_t i = 0; i < sigma12.size(); ++i)
-        fout << sigma12[i] << std::endl;
-}
-
-void raw_output(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
-                const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
-                const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
-{
-    std::ofstream fout_ux(path + std::string("u_x.csv")),
-                  fout_uy(path + std::string("u_y.csv"));
-    fout_ux.precision(20);
-    fout_uy.precision(20);
-    for(size_t i = 0; i < size_t(u.size() / 2); ++i)
-    {
-        fout_ux << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
-        fout_uy << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
-    }
-
-    std::ofstream fout_eps11(path + std::string("eps11.csv")),
-                  fout_eps22(path + std::string("eps22.csv")),
-                  fout_eps12(path + std::string("eps12.csv"));
-    fout_eps11.precision(20);
-    fout_eps22.precision(20);
-    fout_eps12.precision(20);
-    for(size_t i = 0; i < eps11.size(); ++i)
-        fout_eps11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps11[i] << std::endl;
-
-    for(size_t i = 0; i < eps22.size(); ++i)
-        fout_eps22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps22[i] << std::endl;
-
-    for(size_t i = 0; i < eps12.size(); ++i)
-        fout_eps12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps12[i] << std::endl;
-
-    std::ofstream fout_sigma11(path + std::string("sigma11.csv")),
-                  fout_sigma22(path + std::string("sigma22.csv")),
-                  fout_sigma12(path + std::string("sigma12.csv"));
-    fout_sigma11.precision(20);
-    fout_sigma22.precision(20);
-    fout_sigma12.precision(20);
-    for(size_t i = 0; i < sigma11.size(); ++i)
-        fout_sigma11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma11[i] << std::endl;
-
-    for(size_t i = 0; i < sigma22.size(); ++i)
-        fout_sigma22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma22[i] << std::endl;
-
-    for(size_t i = 0; i < sigma12.size(); ++i)
-        fout_sigma12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma12[i] << std::endl;
-}
-
-template<class Type>
+template<class Type, component Projection, component Form>
 static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> *const e,
-                          const node_info i, const node_info j, const matrix<Type> &jacobi_matrices, size_t shift,
+                          const size_t i, const size_t j, const matrix<Type> &jacobi_matrices, size_t shift,
                           const std::array<Type, 3> &D)
 {
     Type integral = 0.;
-    if(i.comp == node_info::X)
+    for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
     {
-        if(j.comp == node_info::X) // XX
-        {
-            for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (D[0] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
-                             D[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
-                            (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
-        }
-        else // XY
-        {
-            for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (D[1] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
-                             D[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
-                            (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
-        }
+        if constexpr (Projection == component::X && Form == component::X)
+            integral += (D[0] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
+                         D[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
+                        (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
+
+        if constexpr (Projection == component::X && Form == component::Y)
+            integral += (D[1] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
+                         D[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
+                        (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
+
+        if constexpr (Projection == component::Y && Form == component::X)
+            integral += (D[1] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2)) +
+                         D[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0))) /
+                        (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
+
+        if constexpr (Projection == component::Y && Form == component::Y)
+            integral += (D[0] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
+                                (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
+                         D[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
+                                ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
+                        (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
     }
-    else
-    {
-        if(j.comp == node_info::X) //YX
-        {
-            for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (D[1] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
-                             D[2] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
-                            (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
-        }
-        else // YY
-        {
-            for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
-                integral += (D[0] * (-e->qNxi(i, q)*jacobi_matrices(shift, 1) + e->qNeta(i, q)*jacobi_matrices(shift, 0)) *
-                                    (-e->qNxi(j, q)*jacobi_matrices(shift, 1) + e->qNeta(j, q)*jacobi_matrices(shift, 0)) +
-                             D[2] * ( e->qNxi(i, q)*jacobi_matrices(shift, 3) - e->qNeta(i, q)*jacobi_matrices(shift, 2)) *
-                                    ( e->qNxi(j, q)*jacobi_matrices(shift, 3) - e->qNeta(j, q)*jacobi_matrices(shift, 2))) /
-                            (jacobi_matrices(shift, 0)*jacobi_matrices(shift, 3) - jacobi_matrices(shift, 1)*jacobi_matrices(shift, 2)) * e->weight(q);
-        }
-    }   
     return integral;
 }
 
-
-template<class Type>
+template<class Type, component Projection, component Form>
 static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Type> *const eL,
                              const finite_element::element_2d_integrate_base<Type> *const eNL,
-                             const node_info iL, const node_info jNL, size_t shiftL, size_t shiftNL,
+                             const size_t iL, const size_t jNL, size_t shiftL, size_t shiftNL,
                              const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
                              const std::function<Type(Type, Type, Type, Type)> &influence_fun,
                              const std::array<Type, 3> &D)
 {
     const size_t sub = shiftNL;
-    Type integral = 0.;
-    if(iL.comp == node_info::X)
+    Type integral = 0., int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
+    for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
     {
-        if(jNL.comp == node_info::X) // XX
+        int_with_weight_x = int_with_weight_y = 0.;
+        for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
         {
-            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
-            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
+            finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
+            if constexpr (Form == component::X)
             {
-                int_with_weight_x = 0.;
-                int_with_weight_y = 0.;
-                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
-                {
-                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
-                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
-                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
-                }
-                integral += eL->weight(qL) *
-                            (D[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
-                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
+                int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
+                int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
+            }
+            else
+            {
+                int_with_weight_x += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
+                int_with_weight_y += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
             }
         }
-        else // XY
-        {
-            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
-            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
-            {
-                int_with_weight_x = 0.;
-                int_with_weight_y = 0.;
-                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
-                {
-                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
-                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
-                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
-                }
-                integral += eL->weight(qL) *
-                            (D[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
-                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));                
-            }
-        }
+
+        if constexpr (Projection == component::X)
+            integral += eL->weight(qL) *
+                        (D[size_t(Form)] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)) +
+                         D[2]            * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)));
+        else
+            integral += eL->weight(qL) *
+                        (D[1-size_t(Form)] * int_with_weight_x * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
+                         D[2]              * int_with_weight_y * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));
     }
-    else
-    {
-        if(jNL.comp == node_info::X) //YX
-        {
-            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
-            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
-            {
-                int_with_weight_x = 0.;
-                int_with_weight_y = 0.;
-                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
-                {
-                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
-                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
-                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
-                }
-                integral += eL->weight(qL) *
-                            (D[1] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
-                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
-            }
-        }
-        else // YY
-        {
-            Type int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
-            for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
-            {
-                int_with_weight_x = 0.;
-                int_with_weight_y = 0.;
-                for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
-                {
-                    finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
-                    int_with_weight_x += finit * ( eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 1) - eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 0));
-                    int_with_weight_y += finit * (-eNL->qNxi(jNL, qNL) * jacobi_matrices(shiftNL, 3) + eNL->qNeta(jNL, qNL) * jacobi_matrices(shiftNL, 2));
-                }
-                integral += eL->weight(qL) *
-                            (D[0] * int_with_weight_x * ( eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 1) - eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 0)) +
-                             D[2] * int_with_weight_y * (-eL->qNxi(iL, qL) * jacobi_matrices(shiftL, 3) + eL->qNeta(iL, qL) * jacobi_matrices(shiftL, 2)));                
-            }
-        }
-    }   
     return integral;
 }
 
-template<class Type>
-static Type integrate_force_bound(const finite_element::element_1d_integrate_base<Type> *be, const size_t i,
-                                  const matrix<Type> &coords, const matrix<Type> &jacobi_matrices, 
-                                  const std::function<Type(Type, Type)> &fun)
-{
-    Type integral = 0.;
-    for(size_t q = 0; q < be->qnodes_count(); ++q)
-        integral += fun(coords(q, 0), coords(q, 1)) * be->weight(q) * be->qN(i, q) *
-                    sqrt(jacobi_matrices(q, 0)*jacobi_matrices(q, 0) + jacobi_matrices(q, 1)*jacobi_matrices(q, 1));
-    return integral;
-}
-
-static std::vector<bool> inner_nodes_vector(const mesh_2d<double> &mesh,
-                                            const std::vector<boundary_condition<double>> &bounds_cond)
+template<class Type, class Index>
+static std::vector<bool> inner_nodes_vector(const mesh_2d<Type, Index> &mesh, const std::vector<boundary_condition<Type>> &bounds_cond)
 {
     std::vector<bool> inner_nodes(2*mesh.nodes_count(), true);
     for(size_t b = 0; b < bounds_cond.size(); ++b)
@@ -301,6 +96,7 @@ static std::vector<bool> inner_nodes_vector(const mesh_2d<double> &mesh,
         if(bounds_cond[b].type_x == boundary_type::TRANSLATION)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
                 inner_nodes[2*(*node)] = false;
+                
         if(bounds_cond[b].type_y == boundary_type::TRANSLATION)
             for(auto node = mesh.boundary(b).cbegin(); node != mesh.boundary(b).cend(); ++node)
                 inner_nodes[2*(*node)+1] = false;
@@ -333,10 +129,10 @@ static std::array<std::vector<uint32_t>, 4>
 
     const auto counter_loc = 
         [&mesh, &inner_nodes, &shifts_loc, &shifts_bound_loc]
-        (node_info node_i, node_info node_j, size_t el)
+        (size_t i, size_t j, size_t el, component projection, component form)
         {
-            size_t row = 2 * mesh.node_number(el, node_i.number) + node_i.comp,
-                   col = 2 * mesh.node_number(el, node_j.number) + node_j.comp;
+            size_t row = 2 * mesh.node_number(el, i) + size_t(projection),
+                   col = 2 * mesh.node_number(el, j) + size_t(form);
             if(row >= col)
             {
                 if(inner_nodes[row] && inner_nodes[col])
@@ -348,10 +144,10 @@ static std::array<std::vector<uint32_t>, 4>
 
     mesh_run_loc(mesh, [&counter_loc](size_t i, size_t j, size_t el)
                        {
-                           counter_loc({i, node_info::X}, {j, node_info::X}, el);
-                           counter_loc({i, node_info::X}, {j, node_info::Y}, el);
-                           counter_loc({i, node_info::Y}, {j, node_info::X}, el);
-                           counter_loc({i, node_info::Y}, {j, node_info::Y}, el);
+                           counter_loc(i, j, el, component::X, component::X);
+                           counter_loc(i, j, el, component::X, component::Y);
+                           counter_loc(i, j, el, component::Y, component::X);
+                           counter_loc(i, j, el, component::Y, component::Y);
                        });
 
     shifts_loc[0] = std::count(inner_nodes.cbegin(), inner_nodes.cend(), false);
@@ -368,10 +164,10 @@ static std::array<std::vector<uint32_t>, 4>
 
         const auto counter_nonloc =
             [&mesh, &inner_nodes, &shifts_nonloc, &shifts_bound_nonloc]
-            (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
+            (size_t iL, size_t jNL, size_t elL, size_t elNL, component projection, component form)
             {
-                size_t row = 2 * mesh.node_number(elL , node_iL .number) + node_iL .comp,
-                       col = 2 * mesh.node_number(elNL, node_jNL.number) + node_jNL.comp;
+                size_t row = 2 * mesh.node_number(elL , iL ) + size_t(projection),
+                       col = 2 * mesh.node_number(elNL, jNL) + size_t(form);
                 if(row >= col)
                 {
                     if(inner_nodes[row] && inner_nodes[col])
@@ -383,10 +179,10 @@ static std::array<std::vector<uint32_t>, 4>
 
         mesh_run_nonloc(mesh, [&counter_nonloc](size_t iL, size_t jNL, size_t elL, size_t elNL)
                               {
-                                  counter_nonloc({iL, node_info::X}, {jNL, node_info::X}, elL, elNL);
-                                  counter_nonloc({iL, node_info::X}, {jNL, node_info::Y}, elL, elNL);
-                                  counter_nonloc({iL, node_info::Y}, {jNL, node_info::X}, elL, elNL);
-                                  counter_nonloc({iL, node_info::Y}, {jNL, node_info::Y}, elL, elNL);
+                                  counter_nonloc(iL, jNL, elL, elNL, component::X, component::X);
+                                  counter_nonloc(iL, jNL, elL, elNL, component::X, component::Y);
+                                  counter_nonloc(iL, jNL, elL, elNL, component::Y, component::X);
+                                  counter_nonloc(iL, jNL, elL, elNL, component::Y, component::Y);
                               });
 
         shifts_nonloc[0] = shifts_loc.back();
@@ -423,28 +219,27 @@ static std::array<std::vector<Eigen::Triplet<double>>, 2>
 
     const auto filler_loc =
         [&mesh, &inner_nodes, &shifts_loc, &shifts_bound_loc, &triplets, &triplets_bound, &shifts_quad, &all_jacobi_matrices, p1, &D]
-        (node_info node_i, node_info node_j, size_t el)
+        (size_t i, size_t j, size_t el, component projection, component form, const auto& integrate_rule)
         {
-            size_t row = 2 * mesh.node_number(el, node_i.number) + node_i.comp,
-                   col = 2 * mesh.node_number(el, node_j.number) + node_j.comp;
+            size_t row = 2 * mesh.node_number(el, i) + size_t(projection),
+                   col = 2 * mesh.node_number(el, j) + size_t(form);
             if(row >= col)
             {
-                double integral = p1 * integrate_loc(mesh.element_2d(mesh.element_type(el)), node_i, node_j, all_jacobi_matrices, shifts_quad[el], D);
+                double integral = p1 * integrate_rule(mesh.element_2d(mesh.element_type(el)), i, j, all_jacobi_matrices, shifts_quad[el], D);
                 if(inner_nodes[row] && inner_nodes[col])
                     triplets[shifts_loc[el]++] = Eigen::Triplet<double>(row, col, integral);
                 else if(row != col)
-                    triplets_bound[shifts_bound_loc[el]++] = inner_nodes[col] ?
-                                                             Eigen::Triplet<double>(col, row, integral) :
-                                                             Eigen::Triplet<double>(row, col, integral);
+                    triplets_bound[shifts_bound_loc[el]++] = inner_nodes[col] ? Eigen::Triplet<double>(col, row, integral) :
+                                                                                Eigen::Triplet<double>(row, col, integral);
             }
         };
 
     mesh_run_loc(mesh, [&filler_loc](size_t i, size_t j, size_t el)
                        {
-                            filler_loc({i, node_info::X}, {j, node_info::X}, el);
-                            filler_loc({i, node_info::X}, {j, node_info::Y}, el);
-                            filler_loc({i, node_info::Y}, {j, node_info::X}, el);
-                            filler_loc({i, node_info::Y}, {j, node_info::Y}, el);
+                            filler_loc(i, j, el, component::X, component::X, integrate_loc<double, component::X, component::X>);
+                            filler_loc(i, j, el, component::X, component::Y, integrate_loc<double, component::X, component::Y>);
+                            filler_loc(i, j, el, component::Y, component::X, integrate_loc<double, component::Y, component::X>);
+                            filler_loc(i, j, el, component::Y, component::Y, integrate_loc<double, component::Y, component::Y>);
                        });
 
     if(nonlocal)
@@ -454,31 +249,30 @@ static std::array<std::vector<Eigen::Triplet<double>>, 2>
         const auto filler_nonloc =
             [&mesh, &inner_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc,
              &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1, &D]
-            (node_info node_iL, node_info node_jNL, size_t elL, size_t elNL)
+            (size_t iL, size_t jNL, size_t elL, size_t elNL, component projection, component form, const auto& integrate_rule)
             {
-                size_t row = 2 * mesh.node_number(elL,  node_iL .number) + node_iL .comp,
-                       col = 2 * mesh.node_number(elNL, node_jNL.number) + node_jNL.comp;
+                size_t row = 2 * mesh.node_number(elL,  iL ) + size_t(projection),
+                       col = 2 * mesh.node_number(elNL, jNL) + size_t(form);
                 if(row >= col)
                 {
-                    double integral = p2 * integrate_nonloc(mesh.element_2d(mesh.element_type(elL )),
-                                                            mesh.element_2d(mesh.element_type(elNL)), 
-                                                            node_iL, node_jNL, shifts_quad[elL], shifts_quad[elNL],
-                                                            all_quad_coords, all_jacobi_matrices, influence_fun, D);
+                    double integral = p2 * integrate_rule(mesh.element_2d(mesh.element_type(elL )),
+                                                          mesh.element_2d(mesh.element_type(elNL)), 
+                                                          iL, jNL, shifts_quad[elL], shifts_quad[elNL],
+                                                          all_quad_coords, all_jacobi_matrices, influence_fun, D);
                     if(inner_nodes[row] && inner_nodes[col])
                         triplets[shifts_nonloc[elL]++] = Eigen::Triplet<double>(row, col, integral);
                     else if(row != col)
-                        triplets_bound[shifts_bound_nonloc[elL]++] = inner_nodes[col] ?
-                                                                     Eigen::Triplet<double>(col, row, integral) :
-                                                                     Eigen::Triplet<double>(row, col, integral);
+                        triplets_bound[shifts_bound_nonloc[elL]++] = inner_nodes[col] ? Eigen::Triplet<double>(col, row, integral) :
+                                                                                        Eigen::Triplet<double>(row, col, integral);
                 }
             };
 
         mesh_run_nonloc(mesh, [&filler_nonloc](size_t iL, size_t jNL, size_t elL, size_t elNL)
                               {
-                                  filler_nonloc({iL, node_info::X}, {jNL, node_info::X}, elL, elNL);
-                                  filler_nonloc({iL, node_info::X}, {jNL, node_info::Y}, elL, elNL);
-                                  filler_nonloc({iL, node_info::Y}, {jNL, node_info::X}, elL, elNL);
-                                  filler_nonloc({iL, node_info::Y}, {jNL, node_info::Y}, elL, elNL);
+                                  filler_nonloc(iL, jNL, elL, elNL, component::X, component::X, integrate_nonloc<double, component::X, component::X>);
+                                  filler_nonloc(iL, jNL, elL, elNL, component::X, component::Y, integrate_nonloc<double, component::X, component::Y>);
+                                  filler_nonloc(iL, jNL, elL, elNL, component::Y, component::X, integrate_nonloc<double, component::Y, component::X>);
+                                  filler_nonloc(iL, jNL, elL, elNL, component::Y, component::Y, integrate_nonloc<double, component::Y, component::Y>);
                               });
     }
 
@@ -502,30 +296,30 @@ static void create_matrix(const mesh_2d<double> &mesh, const parameters<double> 
 
 static void boundary_condition_calc(const mesh_2d<double> &mesh, const std::vector<std::vector<uint32_t>> &temperature_nodes,
                                     const std::vector<boundary_condition<double>> &bounds_cond,
-                                    const double tau, const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f)
+                                    const Eigen::SparseMatrix<double> &K_bound, Eigen::VectorXd &f)
 {
     const finite_element::element_1d_integrate_base<double> *be = nullptr;
     matrix<double> coords, jacobi_matrices;
     for(size_t b = 0; b < bounds_cond.size(); ++b)
     {
-        if(bounds_cond[b].type_x == boundary_type::FORCE)
+        if(bounds_cond[b].type_x == boundary_type::PRESSURE)
             for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
             {
                 be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
                 approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
                 approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
                 for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-                    f[2*mesh.boundary(b)(el, i)] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, bounds_cond[b].func_x);
+                    f[2*mesh.boundary(b)(el, i)] += integrate_boundary_gradient(be, i, coords, jacobi_matrices, bounds_cond[b].func_x);
             }
 
-        if(bounds_cond[b].type_y == boundary_type::FORCE)
+        if(bounds_cond[b].type_y == boundary_type::PRESSURE)
             for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
             {
                 be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
                 approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
                 approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
                 for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-                    f[2*mesh.boundary(b)(el, i)+1] += tau*integrate_force_bound(be, i, coords, jacobi_matrices, bounds_cond[b].func_y);
+                    f[2*mesh.boundary(b)(el, i)+1] += integrate_boundary_gradient(be, i, coords, jacobi_matrices, bounds_cond[b].func_y);
             }
     }
 
@@ -560,20 +354,140 @@ static void boundary_condition_calc(const mesh_2d<double> &mesh, const std::vect
     }
 }
 
-Eigen::VectorXd stationary(const std::string &path, const mesh_2d<double> &mesh, const parameters<double> &params,
+template<class Type>
+static Type integrate_function(const finite_element::element_2d_integrate_base<Type> *const e, const size_t i,
+                               const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
+                               const std::function<Type(Type, Type)> &fun)
+{
+    Type integral = 0.;
+    for(size_t q = 0; q < e->qnodes_count(); ++q)
+        integral += e->weight(q) * e->qN(i, q) * fun(coords(q, 0), coords(q, 1)) *
+                    (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2));
+    return integral;
+}
+
+template<class Type, class Index>
+static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
+                                 const std::function<Type(Type, Type)> &right_part,
+                                 Eigen::Matrix<Type, Eigen::Dynamic, 1> &f)
+{
+    matrix<Type> coords, jacobi_matrices;
+    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        approx_quad_nodes_coords(mesh, e, el, coords);
+        approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+        {
+            Type integral = integrate_function(e, i, coords, jacobi_matrices, right_part);
+            f[2*mesh.node_number(el, i)]   += integral;
+            f[2*mesh.node_number(el, i)+1] += integral;
+        }
+    }
+}
+
+/*
+Eigen::VectorXd stationary(const mesh_2d<double> &mesh, const parameters<double> &params,
                            const std::vector<boundary_condition<double>> &bounds_cond,
+                           const std::function<double(double, double)> &right_part,
                            const double p1, const std::function<double(double, double, double, double)> &influence_fun)
 {
-    Eigen::VectorXd f = Eigen::VectorXd::Zero(2*mesh.nodes_count());;
-    Eigen::SparseMatrix<double> K(2*mesh.nodes_count(), 2*mesh.nodes_count()),
-                                K_bound(2*mesh.nodes_count(), 2*mesh.nodes_count());
+    Eigen::VectorXd f = Eigen::VectorXd::Zero(2*mesh.nodes_count());
+    Eigen::SparseMatrix<double> K      (2*mesh.nodes_count(),
+                                        2*mesh.nodes_count()),
+                                K_bound(2*mesh.nodes_count(),
+                                        2*mesh.nodes_count());
     
     double time = omp_get_wtime();
     create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
+    integrate_right_part(mesh, right_part, f);
+
     time = omp_get_wtime();
     boundary_condition_calc(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, 1., K_bound, f);
+    std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    Eigen::PardisoLDLT<Eigen::SparseMatrix<double>, Eigen::Lower> solver;
+    solver.compute(K);
+    Eigen::VectorXd u = solver.solve(f);
+    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
+
+    return u;
+}
+*/
+
+template<class Type>
+static Type integrate_basic(const finite_element::element_2d_integrate_base<Type> *const e,
+                            const size_t i, const matrix<Type> &jacobi_matrices)
+{
+    Type integral = 0.;
+    for(size_t q = 0; q < e->nodes_count(); ++q)
+        integral += e->weight(q) * e->qN(i, q) *
+                    (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2));
+    return integral;
+}
+
+static Eigen::SparseMatrix<double> nonlocal_condition(const mesh_2d<double> &mesh)
+{
+    size_t triplets_count = 0;
+    const finite_element::element_2d_integrate_base<double> *e = nullptr;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        triplets_count += e->nodes_count();
+    }
+
+    matrix<double> jacobi_matrices;
+    std::vector<Eigen::Triplet<double>> triplets(2*triplets_count);
+
+    triplets_count = 0;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        e = mesh.element_2d(mesh.element_type(el));
+        approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+        {
+            triplets[triplets_count++] = Eigen::Triplet<double>(2*mesh.nodes_count(), 2*mesh.node_number(el, i), 
+                                                                integrate_basic(e, i, jacobi_matrices));
+            triplets[triplets_count++] = Eigen::Triplet<double>(2*mesh.nodes_count()+1, 2*mesh.node_number(el, i)+1, 
+                                                                integrate_basic(e, i, jacobi_matrices));
+        }
+    }
+
+    Eigen::SparseMatrix<double> K_last_row(2*mesh.nodes_count()+2, 2*mesh.nodes_count()+2);
+    K_last_row.setFromTriplets(triplets.cbegin(), triplets.cend());
+    return K_last_row;
+}
+
+Eigen::VectorXd stationary(const mesh_2d<double> &mesh, const parameters<double> &params,
+                           const std::vector<boundary_condition<double>> &bounds_cond,
+                           const std::function<double(double, double)> &right_part,
+                           const double p1, const std::function<double(double, double, double, double)> &influence_fun)
+{
+    bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
+                                    [](const boundary_condition<double> &bound)
+                                    {
+                                        return bound.type_x == boundary_type::PRESSURE &&
+                                               bound.type_y == boundary_type::PRESSURE;
+                                    });
+
+    Eigen::VectorXd f = Eigen::VectorXd::Zero(neumann_task ? 2*mesh.nodes_count()+2 : 2*mesh.nodes_count());;
+    Eigen::SparseMatrix<double> K      (neumann_task ? 2*mesh.nodes_count()+2 : 2*mesh.nodes_count(),
+                                        neumann_task ? 2*mesh.nodes_count()+2 : 2*mesh.nodes_count()),
+                                K_bound(neumann_task ? 2*mesh.nodes_count()+2 : 2*mesh.nodes_count(),
+                                        neumann_task ? 2*mesh.nodes_count()+2 : 2*mesh.nodes_count());
+    
+    double time = omp_get_wtime();
+    create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
+    if(neumann_task)
+        K += nonlocal_condition(mesh);
+    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    boundary_condition_calc(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, K_bound, f);
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
@@ -596,6 +510,8 @@ static std::array<std::vector<double>, 6>
                         sigma11(mesh.nodes_count(), 0.0),
                         sigma22(mesh.nodes_count(), 0.0),
                         sigma12(mesh.nodes_count(), 0.0);
+
+    eps11.shrink_to_fit();
 
     std::array<double, 4> jacobi;
     std::array<double, 3> loc_eps;
@@ -721,6 +637,121 @@ std::array<std::vector<double>, 6>
     }
 
     return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
+}
+
+void save_as_vtk(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
+                 const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
+                 const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
+{
+    std::ofstream fout(path);
+    fout.precision(20);
+
+    fout << "# vtk DataFile Version 4.2" << std::endl
+         << "Temperature"                << std::endl
+         << "ASCII"                      << std::endl
+         << "DATASET UNSTRUCTURED_GRID"  << std::endl;
+
+    fout << "POINTS " << mesh.nodes_count() << " double" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
+
+    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * 5 << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 4 << " " << mesh.node_number(i, 0) << " "
+                         << mesh.node_number(i, 1) << " "
+                         << mesh.node_number(i, 2) << " "
+                         << mesh.node_number(i, 3) << std::endl;
+
+    fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
+    for(size_t i = 0; i < mesh.elements_count(); ++i)
+        fout << 9 << std::endl;
+
+    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
+
+    fout << "SCALARS U_X double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << u[2*i] << std::endl;
+
+    fout << "SCALARS U_Y double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << u[2*i+1] << std::endl;
+
+    fout << "SCALARS EPS_XX double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < eps11.size(); ++i)
+        fout << eps11[i] << std::endl;
+
+    fout << "SCALARS EPS_YY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < eps22.size(); ++i)
+        fout << eps22[i] << std::endl;
+
+    fout << "SCALARS EPS_XY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < eps12.size(); ++i)
+        fout << eps12[i] << std::endl;
+
+    fout << "SCALARS SIGMA_XX double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < sigma11.size(); ++i)
+        fout << sigma11[i] << std::endl;
+
+    fout << "SCALARS SIGMA_YY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < sigma22.size(); ++i)
+        fout << sigma22[i] << std::endl;
+
+    fout << "SCALARS SIGMA_XY double " << 1 << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < sigma12.size(); ++i)
+        fout << sigma12[i] << std::endl;
+}
+
+void raw_output(const std::string &path,            const mesh_2d<double> &mesh,        const Eigen::VectorXd &u,
+                const std::vector<double> &eps11,   const std::vector<double> &eps22,   const std::vector<double> &eps12,
+                const std::vector<double> &sigma11, const std::vector<double> &sigma22, const std::vector<double> &sigma12)
+{
+    std::ofstream fout_ux(path + std::string("u_x.csv")),
+                  fout_uy(path + std::string("u_y.csv"));
+    fout_ux.precision(20);
+    fout_uy.precision(20);
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+    {
+        fout_ux << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
+        fout_uy << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
+    }
+
+    std::ofstream fout_eps11(path + std::string("eps11.csv")),
+                  fout_eps22(path + std::string("eps22.csv")),
+                  fout_eps12(path + std::string("eps12.csv"));
+    fout_eps11.precision(20);
+    fout_eps22.precision(20);
+    fout_eps12.precision(20);
+    for(size_t i = 0; i < eps11.size(); ++i)
+        fout_eps11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps11[i] << std::endl;
+
+    for(size_t i = 0; i < eps22.size(); ++i)
+        fout_eps22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps22[i] << std::endl;
+
+    for(size_t i = 0; i < eps12.size(); ++i)
+        fout_eps12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps12[i] << std::endl;
+
+    std::ofstream fout_sigma11(path + std::string("sigma11.csv")),
+                  fout_sigma22(path + std::string("sigma22.csv")),
+                  fout_sigma12(path + std::string("sigma12.csv"));
+    fout_sigma11.precision(20);
+    fout_sigma22.precision(20);
+    fout_sigma12.precision(20);
+    for(size_t i = 0; i < sigma11.size(); ++i)
+        fout_sigma11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma11[i] << std::endl;
+
+    for(size_t i = 0; i < sigma22.size(); ++i)
+        fout_sigma22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma22[i] << std::endl;
+
+    for(size_t i = 0; i < sigma12.size(); ++i)
+        fout_sigma12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma12[i] << std::endl;
 }
 
 }

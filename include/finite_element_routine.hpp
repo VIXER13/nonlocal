@@ -144,4 +144,17 @@ void approx_jacobi_matrices_bound(const mesh_2d<Type, Index> &mesh, const finite
                 jacobi_matrices(q, comp) += mesh.coord(mesh.boundary(b)(el, i), comp) * be->qNxi(i, q);
 }
 
+// Boundary_Gradient - функтор с сигнатурой Type(Type, Type)
+template<class Type, class Boundary_Gradient>
+static Type integrate_boundary_gradient(const finite_element::element_1d_integrate_base<Type> *const be, const size_t i,
+                                        const matrix<Type> &coords, const matrix<Type> &jacobi_matrices, 
+                                        const Boundary_Gradient &boundary_gradient)
+{
+    Type integral = 0.;
+    for(size_t q = 0; q < be->qnodes_count(); ++q)
+        integral += be->weight(q) * be->qN(i, q) * boundary_gradient(coords(q, 0), coords(q, 1)) *
+                    sqrt(jacobi_matrices(q, 0)*jacobi_matrices(q, 0) + jacobi_matrices(q, 1)*jacobi_matrices(q, 1));
+    return integral;
+}
+
 #endif
