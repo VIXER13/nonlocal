@@ -34,7 +34,7 @@ public:
     }
 
     template<size_t Size>
-    void push_back(const std::array<Type, Size> &push) {
+    void push_back(const std::array<Type, Size>& push) {
         if(matr.capacity() < matr.size() + Size)
             matr.reserve(matr.size() + Size);
         for(size_t i = 0; i < Size; ++i)
@@ -42,7 +42,7 @@ public:
         shift.push_back(shift.back() + Size);
     }
 
-    void push_back(const std::vector<Type> &push) {
+    void push_back(const std::vector<Type>& push) {
         if(matr.capacity() < matr.size() + push.size())
             matr.reserve(matr.size() + push.size());
         for(size_t i = 0; i < push.size(); ++i)
@@ -63,7 +63,7 @@ public:
 };
 
 template<class Type, class Index>
-std::ostream& operator<<(std::ostream &os, const rows_different_sizes<Type, Index> &matr) {
+std::ostream& operator<<(std::ostream& os, const rows_different_sizes<Type, Index>& matr) {
     for(size_t i = 0; i < matr.rows(); ++i) {
         for(Index j = 0; j < matr.cols(i); ++j)
             os << matr(i, j) << " ";

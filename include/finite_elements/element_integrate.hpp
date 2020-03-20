@@ -39,7 +39,7 @@ public:
     using element_1d_base<Type>::N;
     using element_1d_base<Type>::Nxi;
     
-    virtual void set_quadrature(const quadrature_base<Type> &quadrature) = 0;
+    virtual void set_quadrature(const quadrature_base<Type>& quadrature) = 0;
 
     Type qNxi(const size_t i, const size_t q) const noexcept { return Nxi_in_quad_nodes(i, q); }
 };
@@ -58,9 +58,9 @@ public:
     using element_1d<Type, Element_Type>::N;
     using element_1d<Type, Element_Type>::Nxi;
 
-    explicit element_1d_integrate(const quadrature_base<Type> &quadrature) { set_quadrature(quadrature); }
+    explicit element_1d_integrate(const quadrature_base<Type>& quadrature) { set_quadrature(quadrature); }
 
-    void set_quadrature(const quadrature_base<Type> &quadrature) override {
+    void set_quadrature(const quadrature_base<Type>& quadrature) override {
         std::vector<Type> xi(quadrature.nodes_count());
         weights.resize(quadrature.nodes_count());
         Type jacobian = (           boundary(side_1d::RIGHT) -            boundary(side_1d::LEFT)) /
@@ -96,7 +96,7 @@ public:
     using element_2d_base<Type>::Nxi;
     using element_2d_base<Type>::Neta;
     
-    virtual void set_quadrature(const quadrature_base<Type> &quadrature_xi, const quadrature_base<Type> &quadrature_eta) = 0;
+    virtual void set_quadrature(const quadrature_base<Type>& quadrature_xi, const quadrature_base<Type>& quadrature_eta) = 0;
 
     Type qNxi (const size_t i, const size_t q) const noexcept { return Nxi_in_quad_nodes (i, q); }
     Type qNeta(const size_t i, const size_t q) const noexcept { return Neta_in_quad_nodes(i, q); }
@@ -118,14 +118,14 @@ public:
     using element_2d<Type, Element_Type>::Neta;
     using element_2d<Type, Element_Type>::boundary;
 
-    explicit element_2d_integrate(const quadrature_base<Type> &quadrature_xi, const quadrature_base<Type> &quadrature_eta) {
+    explicit element_2d_integrate(const quadrature_base<Type>& quadrature_xi, const quadrature_base<Type>& quadrature_eta) {
         set_quadrature(quadrature_xi, quadrature_eta);
     }
 
     // Узлы в которых происходит расчёт получаются путём декартова произведения квадратур с учётом того,
     // что геометрия описывается таким образом, что параметрическую зависимость имеет верхняя и нижняя границы,
     // а правая и левая заданы константами.
-    void set_quadrature(const quadrature_base<Type> &quadrature_xi, const quadrature_base<Type> &quadrature_eta) override
+    void set_quadrature(const quadrature_base<Type>& quadrature_xi, const quadrature_base<Type>& quadrature_eta) override
     {
         Type jacobian_xi = (              boundary(side_2d::RIGHT, 0) -               boundary(side_2d::LEFT, 0)) /
                            (quadrature_xi.boundary(side_1d::RIGHT   ) - quadrature_xi.boundary(side_1d::LEFT   ));

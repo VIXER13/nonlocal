@@ -52,11 +52,10 @@ int main()
                                        boundary_type::PRESSURE,
                                        boundary_type::PRESSURE },
 
-                                     { [](double, double) { return -5000.; },
-                                       [](double, double) { return 0; },
-                                       boundary_type::PRESSURE,
-                                       boundary_type::PRESSURE } },
-                                   [](double x, double) { return 0.*x; },
+                                     { [](double, double) { return 0.; },
+                                       [](double, double) { return 0.; },
+                                       boundary_type::DISPLACEMENT,
+                                       boundary_type::DISPLACEMENT } },
                                    p1, bell11);
     
     /*

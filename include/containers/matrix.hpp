@@ -43,7 +43,7 @@ public:
 };
 
 template<class Type, class Alloc = std::allocator<Type>>
-std::ostream& operator<<(std::ostream &os, const matrix<Type, Alloc> &matr) {
+std::ostream& operator<<(std::ostream& os, const matrix<Type, Alloc>& matr) {
     for(size_t i = 0; i < matr.rows(); ++i) {
         for(size_t j = 0; j < matr.cols(); ++j)
             os << matr(i, j) << " ";

@@ -11,7 +11,7 @@
 #include "rows_different_sizes.hpp"
 #include "element_integrate.hpp"
 
-template<class Type, class Index = uint32_t>
+template<class Type, class Index = int32_t>
 class mesh_2d
 {
     static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
@@ -49,9 +49,9 @@ public:
     enum elemType {BILINEAR, QUADRATIC_SERENDIP, QUBIC_SERENDIP};
 
     mesh_2d(const elemType type, const Index Ex, const Index Ey, const Type Lx, const Type Ly);
-    mesh_2d(const std::string &path);
+    mesh_2d(const std::string& path);
 
-    void read_su2(const std::string &path);
+    void read_su2(const std::string& path);
 
     void clear();
 
@@ -77,7 +77,7 @@ public:
           finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el)       noexcept;
     const finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el) const noexcept;
 
-    void print_to_file(const std::string &path, const Type *x) const;
+    void print_to_file(const std::string& path, const Type *x) const;
 
     ~mesh_2d();    
 };
@@ -300,13 +300,13 @@ mesh_2d<Type, Index>::mesh_2d(const elemType type, const Index Ex, const Index E
 }
 
 template<class Type, class Index>
-mesh_2d<Type, Index>::mesh_2d(const std::string &path)
+mesh_2d<Type, Index>::mesh_2d(const std::string& path)
 {
     read_su2(path);
 }
 
 template<class Type, class Index>
-void mesh_2d<Type, Index>::read_su2(const std::string &path)
+void mesh_2d<Type, Index>::read_su2(const std::string& path)
 {
     std::ifstream mesh_file(path);
 
@@ -491,7 +491,7 @@ template<class Type, class Index>
 const finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) const noexcept { return finite_elements_1d[el]; }
 
 template<class Type, class Index>
-void mesh_2d<Type, Index>::print_to_file(const std::string &path, const Type *x) const
+void mesh_2d<Type, Index>::print_to_file(const std::string& path, const Type *x) const
 {
     std::ofstream fout(path);
     fout.precision(20);
