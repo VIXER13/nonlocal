@@ -4,8 +4,7 @@ HDRS = include \
 	   include/finite_elements \
 	   Eigen
 
-SRC = src/main.cpp \
-	  src/static_analysis.cpp
+SRC = src/main.cpp
 	  
 
 .PHONY: all clean

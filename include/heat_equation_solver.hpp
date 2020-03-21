@@ -101,10 +101,9 @@ Type integrate_solution(const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Ty
 {
     Type integral = 0.;
     matrix<Type> jacobi_matrices;
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
-        e = mesh.element_2d(mesh.element_type(el));
+        const auto& e = mesh.element_2d(mesh.element_type(el));
         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         for(size_t i = 0; i < e->nodes_count(); ++i)
             for(size_t q = 0; q < e->qnodes_count(); ++q)
@@ -120,10 +119,9 @@ static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
                                  Eigen::Matrix<Type, Eigen::Dynamic, 1> &f)
 {
     matrix<Type> coords, jacobi_matrices;
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
-        e = mesh.element_2d(mesh.element_type(el));
+        const auto& e = mesh.element_2d(mesh.element_type(el));
         approx_quad_nodes_coords(mesh, e, el, coords);
         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         for(size_t i = 0; i < e->nodes_count(); ++i)

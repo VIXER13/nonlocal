@@ -36,7 +36,7 @@ int main()
     const parameters<double> param = {.nu = 0.3, .E = 2.1e5};
     const double p1 = 1.;
     
-    Eigen::VectorXd u = stationary(mesh, param,
+    auto u = stationary<double, int>(mesh, param,
                                    { { [](double, double) { return 0; },
                                        [](double, double) { return 0.; },
                                        boundary_type::PRESSURE,
@@ -57,40 +57,16 @@ int main()
                                        boundary_type::DISPLACEMENT,
                                        boundary_type::DISPLACEMENT } },
                                    p1, bell11);
-    
-    /*
-    Eigen::VectorXd u = stationary(mesh, param,
-                                   { { [](double, double) { return 0.; },
-                                       [](double, double) { return 0.; },
-                                       boundary_type::PRESSURE,
-                                       boundary_type::PRESSURE },
-
-                                     { [](double, double) { return 5000; },
-                                       [](double, double) { return 0.; },
-                                       boundary_type::PRESSURE,
-                                       boundary_type::PRESSURE },
-
-                                     { [](double, double) { return 0; },
-                                       [](double, double) { return 0; },
-                                       boundary_type::PRESSURE,
-                                       boundary_type::PRESSURE },
-                                    
-                                     { [](double, double) { return -5000.; },
-                                       [](double, double) { return 0.; },
-                                       boundary_type::PRESSURE,
-                                       boundary_type::PRESSURE, } },
-                                   p1, bell11);
-                                   */
 
     mesh.find_neighbors_for_nodes(1.05*r);
-    auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress(mesh, u, param, p1, bell11);
+    auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress<double, int>(mesh, u, param, p1, bell11);
     raw_output("results//", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
     save_as_vtk("results//loc.vtk", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
     }
     
 
     std::cout << std::endl << std::endl;
-    /*
+    
     {
     using namespace heat_equation_with_nonloc;
     stationary<double, int>(std::string("results//test.csv"), mesh,
@@ -101,7 +77,7 @@ int main()
                         [](double, double) { return -4.; },
                         1., bell11, 0.);
     }
-    */
+    
 
     /*
     heat_equation_with_nonloc::nonstationary(std::string("results//nonstationary_test//"), mesh, 0.01, 100,
