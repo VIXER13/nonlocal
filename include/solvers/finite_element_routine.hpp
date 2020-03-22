@@ -64,7 +64,7 @@ static matrix<Type> approx_all_quad_nodes_coords(const mesh_2d<Type, Index>& mes
 {
     if(mesh.elements_count()+1 != shifts.size())
         throw std::logic_error("mesh.elements_count()+1 != shifts.size()");
-    matrix<Type> coords(shifts.back(), 2, 0.0);
+    matrix<Type> coords(shifts.back(), 2, 0.);
 #pragma omp parallel for default(none) shared(mesh, shifts, coords)
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
@@ -110,7 +110,7 @@ static matrix<Type> approx_all_jacobi_matrices(const mesh_2d<Type, Index>& mesh,
 {
     if(mesh.elements_count()+1 != shifts.size())
         throw std::logic_error("mesh.elements_count()+1 != shifts.size()");
-    matrix<Type> jacobi_matrices(shifts.back(), 4, 0.0);
+    matrix<Type> jacobi_matrices(shifts.back(), 4, 0);
 #pragma omp parallel for default(none) shared(mesh, shifts, jacobi_matrices)
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
@@ -139,13 +139,26 @@ static void approx_jacobi_matrices_bound(const mesh_2d<Type, Index>& mesh, const
                 jacobi_matrices(q, comp) += mesh.coord(mesh.boundary(b)(el, i), comp) * be->qNxi(i, q);
 }
 
+// Right_Part - функтор с сигнатурой Type(Type, Type)
+template<class Type, class Finite_Element_2D_Pointer, class Right_Part>
+static Type integrate_right_part_function(const Finite_Element_2D_Pointer& e, const size_t i,
+                                          const matrix<Type>& coords, const matrix<Type>& jacobi_matrices,
+                                          const Right_Part& fun)
+{
+    Type integral = 0;
+    for(size_t q = 0; q < e->qnodes_count(); ++q)
+        integral += e->weight(q) * e->qN(i, q) * fun(coords(q, 0), coords(q, 1)) *
+                    (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2));
+    return integral;
+}
+
 // Boundary_Gradient - функтор с сигнатурой Type(Type, Type)
-template<class Type, class Finite_Element_1D_Pointer, template<class> class Boundary_Gradient>
+template<class Type, class Finite_Element_1D_Pointer, class Boundary_Gradient>
 static Type integrate_boundary_gradient(const Finite_Element_1D_Pointer& be, const size_t i,
                                         const matrix<Type>& coords, const matrix<Type>& jacobi_matrices, 
-                                        const Boundary_Gradient<Type(Type, Type)>& boundary_gradient)
+                                        const Boundary_Gradient& boundary_gradient)
 {
-    Type integral = 0.;
+    Type integral = 0;
     for(size_t q = 0; q < be->qnodes_count(); ++q)
         integral += be->weight(q) * be->qN(i, q) * boundary_gradient(coords(q, 0), coords(q, 1)) *
                     sqrt(jacobi_matrices(q, 0)*jacobi_matrices(q, 0) + jacobi_matrices(q, 1)*jacobi_matrices(q, 1));

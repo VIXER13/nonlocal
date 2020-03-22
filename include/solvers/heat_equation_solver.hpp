@@ -24,7 +24,7 @@ struct boundary_condition
 
 template<class Type>
 static Type integrate_basic(const finite_element::element_2d_integrate_base<Type> *const e,
-                            const size_t i, const matrix<Type> &jacobi_matrices)
+                            const size_t i, const matrix<Type>& jacobi_matrices)
 {
     Type integral = 0.;
     for(size_t q = 0; q < e->nodes_count(); ++q)
@@ -35,7 +35,7 @@ static Type integrate_basic(const finite_element::element_2d_integrate_base<Type
 
 template<class Type>
 static Type integrate_basic_pair(const finite_element::element_2d_integrate_base<Type> *const e,
-                                 const size_t i, const size_t j, const matrix<Type> &jacobi_matrices, size_t shift = 0)
+                                 const size_t i, const size_t j, const matrix<Type>& jacobi_matrices, size_t shift = 0)
 {
     Type integral = 0.;
     for(size_t q = 0; q < e->nodes_count(); ++q, ++shift)
@@ -46,7 +46,7 @@ static Type integrate_basic_pair(const finite_element::element_2d_integrate_base
 
 template<class Type>
 static Type integrate_gradient_pair(const finite_element::element_2d_integrate_base<Type> *const e,
-                                    const size_t i, const size_t j, const matrix<Type> &jacobi_matrices, size_t shift = 0)
+                                    const size_t i, const size_t j, const matrix<Type>& jacobi_matrices, size_t shift = 0)
 {
     Type integral = 0.;
     for(size_t q = 0; q < e->qnodes_count(); ++q, ++shift)
@@ -58,19 +58,19 @@ static Type integrate_gradient_pair(const finite_element::element_2d_integrate_b
     return integral;
 }
 
-template<class Type>
-static Type integrate_gradient_pair_nonloc(const finite_element::element_2d_integrate_base<Type> *const eL,
-                                           const finite_element::element_2d_integrate_base<Type> *const eNL,
+// Influence_Function - функтор с сигнатурой Type(Type, Type, Type, Type)
+template<class Type, class Finite_Element_2D_Pointer, class Influence_Function>
+static Type integrate_gradient_pair_nonloc(const Finite_Element_2D_Pointer& eL, const Finite_Element_2D_Pointer& eNL,
                                            const size_t iL, const size_t jNL, size_t shiftL, size_t shiftNL,
-                                           const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
-                                           const std::function<Type(Type, Type, Type, Type)> &influence_fun)
+                                           const matrix<Type>& coords, const matrix<Type>& jacobi_matrices,
+                                           const Influence_Function& influence_fun)
 {
     const size_t sub = shiftNL;
-    Type integral = 0., int_with_weight_x = 0., int_with_weight_y = 0., finit = 0.;
+    Type integral = 0, int_with_weight_x = 0, int_with_weight_y = 0, finit = 0;
     for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL)
     {
-        int_with_weight_x = 0.;
-        int_with_weight_y = 0.;
+        int_with_weight_x = 0;
+        int_with_weight_y = 0;
         for(size_t qNL = 0, shiftNL = sub; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL)
         {
             finit = eNL->weight(qNL) * influence_fun(coords(shiftL, 0), coords(shiftNL, 0), coords(shiftL, 1), coords(shiftNL, 1));
@@ -84,20 +84,8 @@ static Type integrate_gradient_pair_nonloc(const finite_element::element_2d_inte
     return integral;
 }
 
-template<class Type>
-static Type integrate_function(const finite_element::element_2d_integrate_base<Type> *const e, const size_t i,
-                               const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
-                               const std::function<Type(Type, Type)> &fun)
-{
-    Type integral = 0.;
-    for(size_t q = 0; q < e->qnodes_count(); ++q)
-        integral += e->weight(q) * e->qN(i, q) * fun(coords(q, 0), coords(q, 1)) *
-                    (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2));
-    return integral;
-}
-
 template<class Type, class Index>
-Type integrate_solution(const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1> &x)
+Type integrate_solution(const mesh_2d<Type, Index>& mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1>& x)
 {
     Type integral = 0.;
     matrix<Type> jacobi_matrices;
@@ -113,10 +101,8 @@ Type integrate_solution(const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Ty
     return integral;
 }
 
-template<class Type, class Index>
-static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
-                                 const std::function<Type(Type, Type)> &right_part,
-                                 Eigen::Matrix<Type, Eigen::Dynamic, 1> &f)
+template<class Type, class Index, class Right_Part>
+static void integrate_right_part(const mesh_2d<Type, Index>& mesh, const Right_Part& right_part, Eigen::Matrix<Type, Eigen::Dynamic, 1>& f)
 {
     matrix<Type> coords, jacobi_matrices;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
@@ -125,12 +111,12 @@ static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
         approx_quad_nodes_coords(mesh, e, el, coords);
         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
         for(size_t i = 0; i < e->nodes_count(); ++i)
-            f[mesh.node_number(el, i)] += integrate_function(e, i, coords, jacobi_matrices, right_part);
+            f[mesh.node_number(el, i)] += integrate_right_part_function(e, i, coords, jacobi_matrices, right_part);
     }
 }
 
 template<class Type, class Index>
-static std::vector<bool> inner_nodes_vector(const mesh_2d<Type, Index> &mesh, const std::vector<boundary_condition<Type>> &bounds_cond)
+static std::vector<bool> inner_nodes_vector(const mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond)
 {
     std::vector<bool> inner_nodes(mesh.nodes_count(), true);
     for(size_t b = 0; b < bounds_cond.size(); ++b)
@@ -143,8 +129,8 @@ static std::vector<bool> inner_nodes_vector(const mesh_2d<Type, Index> &mesh, co
 // Создаёт массив векторов, в каждом из которых хранятся номера узлов в которых заданы граничные условия первого рода на соответствующей границе,
 // с тем условием, что среди всех векторов нет повторяющихся номеров. То есть номер узла на стыке будет записан лишь в один из векторов.
 template<class Type, class Index>
-static std::vector<std::vector<Index>> temperature_nodes_vectors(const mesh_2d<Type, Index> &mesh,
-                                           const std::vector<boundary_condition<Type>> &bounds_cond)
+static std::vector<std::vector<Index>>
+    temperature_nodes_vectors(const mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond)
 {
     std::vector<std::vector<Index>> temperature_nodes(bounds_cond.size());
     for(size_t b = 0; b < bounds_cond.size(); ++b)
@@ -162,7 +148,7 @@ static std::vector<std::vector<Index>> temperature_nodes_vectors(const mesh_2d<T
 
 template<class Type, class Index>
 static std::array<std::vector<Index>, 4>
-    mesh_analysis(const mesh_2d<Type, Index> &mesh, const std::vector<bool> &inner_nodes, const bool nonlocal)
+    mesh_analysis(const mesh_2d<Type, Index>& mesh, const std::vector<bool>& inner_nodes, const bool nonlocal)
 {
     std::vector<Index> shifts_loc(mesh.elements_count()+1, 0), shifts_bound_loc(mesh.elements_count()+1, 0),
                        shifts_nonloc, shifts_bound_nonloc;
@@ -217,10 +203,11 @@ static std::array<std::vector<Index>, 4>
 
 // Integrate_Rule - функтор с сигнатурой Type(const finite_element::element_2d_integrate_base<Type>*, 
 //                                            const size_t, const size_t, const matrix<Type>&, size_t)
-template<class Type, class Index, class Integrate_Rule>
+// Influence_Function - функтор с сигнатурой Type(Type, Type, Type, Type)
+template<class Type, class Index, class Integrate_Rule, class Influence_Function>
 static std::array<std::vector<Eigen::Triplet<Type, Index>>, 2>
-    triplets_fill(const mesh_2d<Type, Index> &mesh, const std::vector<bool> &inner_nodes, const Integrate_Rule &integrate_rule,
-                  const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun)
+    triplets_fill(const mesh_2d<Type, Index>& mesh, const std::vector<bool>& inner_nodes, const Integrate_Rule& integrate_rule,
+                  const Type p1, const Influence_Function& influence_fun)
 {
     static constexpr Type MAX_LOCAL_WEIGHT = 0.999;
     bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
@@ -283,10 +270,10 @@ static std::array<std::vector<Eigen::Triplet<Type, Index>>, 2>
 // Integrate_Rule - функтор с сигнатурой Type(const finite_element::element_2d_integrate_base<Type>*, 
 //                                            const size_t, const size_t, const matrix<Type>&, size_t)
 template<int MatrixMajor, class Type, class Index, class Integrate_Rule>
-static void create_matrix(const mesh_2d<Type, Index> &mesh,
-                          const std::vector<boundary_condition<Type>> &bounds_cond,
-                          const Integrate_Rule &integrate_rule, const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun,
-                          Eigen::SparseMatrix<Type, MatrixMajor, Index> &K, Eigen::SparseMatrix<Type, MatrixMajor, Index> &K_bound)
+static void create_matrix(const mesh_2d<Type, Index>& mesh,
+                          const std::vector<boundary_condition<Type>>& bounds_cond,
+                          const Integrate_Rule& integrate_rule, const Type p1, const std::function<Type(Type, Type, Type, Type)>& influence_fun,
+                          Eigen::SparseMatrix<Type, MatrixMajor, Index>& K, Eigen::SparseMatrix<Type, MatrixMajor, Index>& K_bound)
 {
     double time = omp_get_wtime();
     auto [triplets, triplets_bound] = triplets_fill(mesh, inner_nodes_vector(mesh, bounds_cond), integrate_rule, p1, influence_fun);
@@ -300,18 +287,17 @@ static void create_matrix(const mesh_2d<Type, Index> &mesh,
 }
 
 template<class Type, int MatrixMajor, class Index>
-static void boundary_condition_calc(const mesh_2d<Type, Index> &mesh, const std::vector<std::vector<Index>> &temperature_nodes,
-                                    const std::vector<boundary_condition<Type>> &bounds_cond,
-                                    const Type tau, const Eigen::SparseMatrix<Type, MatrixMajor, Index> &K_bound,
-                                    Eigen::Matrix<Type, Eigen::Dynamic, 1> &f)
+static void boundary_condition_calc(const mesh_2d<Type, Index>& mesh, const std::vector<std::vector<Index>>& temperature_nodes,
+                                    const std::vector<boundary_condition<Type>>& bounds_cond,
+                                    const Type tau, const Eigen::SparseMatrix<Type, MatrixMajor, Index>& K_bound,
+                                    Eigen::Matrix<Type, Eigen::Dynamic, 1>& f)
 {
-    const finite_element::element_1d_integrate_base<Type> *be = nullptr;
     matrix<Type> coords, jacobi_matrices;
     for(size_t b = 0; b < bounds_cond.size(); ++b)
         if(bounds_cond[b].type == boundary_type::FLOW)
             for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
             {
-                be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
+                const auto& be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
                 approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
                 approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
                 for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
@@ -333,7 +319,7 @@ static void boundary_condition_calc(const mesh_2d<Type, Index> &mesh, const std:
 
 // Нелокальное условие для задачи Неймана.
 template<int MatrixMajor, class Type, class Index>
-static Eigen::SparseMatrix<Type, MatrixMajor, Index> nonlocal_condition(const mesh_2d<Type, Index> &mesh)
+static Eigen::SparseMatrix<Type, MatrixMajor, Index> nonlocal_condition(const mesh_2d<Type, Index>& mesh)
 {
     size_t triplets_count = 0;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
@@ -360,11 +346,12 @@ static Eigen::SparseMatrix<Type, MatrixMajor, Index> nonlocal_condition(const me
 
 // Решает стационарное уравнение теплопроводности
 template<class Type, class Index>
-void stationary(const std::string &path, const mesh_2d<Type, Index> &mesh,
-                const std::vector<boundary_condition<Type>> &bounds_cond,
-                const std::function<Type(Type, Type)> &right_part,
-                const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun,
-                const Type volume)
+Eigen::Matrix<Type, Eigen::Dynamic, 1>
+    stationary(const mesh_2d<Type, Index>& mesh,
+               const std::vector<boundary_condition<Type>>& bounds_cond,
+               const std::function<Type(Type, Type)>& right_part,
+               const Type p1, const std::function<Type(Type, Type, Type, Type)>& influence_fun,
+               const Type volume)
 {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
                               [](const boundary_condition<Type> &bound) { return bound.type == boundary_type::FLOW; });
@@ -408,18 +395,16 @@ void stationary(const std::string &path, const mesh_2d<Type, Index> &mesh,
     }
     
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
-    
-    //save_as_vtk(path, mesh, x);
-    mesh.print_to_file(path, T.data());
+    return T;
 }
 
 template<class Type, class Index>
-void nonstationary(const std::string &path,
-                   const mesh_2d<Type, Index> &mesh, const Type tau, const size_t time_steps,
-                   const std::vector<boundary_condition<Type>> &bounds_cond,
-                   const std::function<Type(Type, Type)> &init_dist,
-                   const std::function<Type(Type, Type)> &right_part,
-                   const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun,
+void nonstationary(const std::string& path,
+                   const mesh_2d<Type, Index>& mesh, const Type tau, const size_t time_steps,
+                   const std::vector<boundary_condition<Type>>& bounds_cond,
+                   const std::function<Type(Type, Type)>& init_dist,
+                   const std::function<Type(Type, Type)>& right_part,
+                   const Type p1, const std::function<Type(Type, Type, Type, Type)>& influence_fun,
                    const uint64_t print_frequency)
 {
     Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K      (mesh.nodes_count(), mesh.nodes_count()),
@@ -466,9 +451,17 @@ void nonstationary(const std::string &path,
     }
 }
 
-template<class Type, class Index>
-static void save_as_vtk(const std::string &path, const mesh_2d<Type, Index> &mesh,
-                        const Eigen::Matrix<Type, Eigen::Dynamic, 1> &T)
+template<class Type, class Index, class Vector>
+static void raw_output(const std::string& path, const mesh_2d<Type, Index>& mesh, const Vector& T)
+{
+    std::ofstream fout(path + std::string{"T.csv"});
+    fout.precision(20);
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << T[i] << std::endl;
+}
+
+template<class Type, class Index, class Vector>
+static void save_as_vtk(const std::string& path, const mesh_2d<Type, Index>& mesh, const Vector& T)
 {
     std::ofstream fout(path);
     fout.precision(20);

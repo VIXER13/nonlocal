@@ -1,3 +1,6 @@
+#ifndef STATIC_EQUATION_SOLVER_HPP
+#define STATIC_EQUATION_SOLVER_HPP
+
 #include <tuple>
 #include <functional>
 #include <algorithm>
@@ -7,7 +10,7 @@
 #include "Eigen/Sparse"
 #include "Eigen/PardisoSupport"
 
-namespace statics_with_nonloc
+namespace static_equation_with_nonloc
 {
 
 enum class boundary_type : uint8_t {DISPLACEMENT, PRESSURE};
@@ -20,6 +23,14 @@ struct boundary_condition
                                     func_y = [](Type, Type) { return 0.; };
     boundary_type type_x = boundary_type::PRESSURE,
                   type_y = boundary_type::PRESSURE;
+};
+
+template<class Type>
+struct distributed_load
+{
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
+    std::function<Type(Type, Type)> func_x = [](Type, Type) { return 0.; },
+                                    func_y = [](Type, Type) { return 0.; };
 };
 
 template<class Type>
@@ -338,7 +349,7 @@ static void pressure_cond(const mesh_2d<Type, Index> &mesh, const size_t b, cons
         approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
         approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
         for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-            f[2*mesh.boundary(b)(el, i)+Index(Shift)] += integrate_boundary_gradient<Type>(be, i, coords, jacobi_matrices, func);
+            f[2*mesh.boundary(b)(el, i)+Index(Shift)] += integrate_boundary_gradient(be, i, coords, jacobi_matrices, func);
     }
 }
 
@@ -390,9 +401,29 @@ static void boundary_condition_calc(const mesh_2d<Type, Index> &mesh, const std:
 }
 
 template<class Type, class Index>
+static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
+                                 const distributed_load<Type>& right_part,
+                                 Eigen::Matrix<Type, Eigen::Dynamic, 1> &f)
+{
+    matrix<Type> coords, jacobi_matrices;
+    for(size_t el = 0; el < mesh.elements_count(); ++el)
+    {
+        const auto& e = mesh.element_2d(mesh.element_type(el));
+        approx_quad_nodes_coords(mesh, e, el, coords);
+        approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+        {
+            f[2*mesh.node_number(el, i)]   += integrate_right_part_function(e, i, coords, jacobi_matrices, right_part.func_x);
+            f[2*mesh.node_number(el, i)+1] += integrate_right_part_function(e, i, coords, jacobi_matrices, right_part.func_y);
+        }
+    }
+}
+
+template<class Type, class Index>
 static Eigen::Matrix<Type, Eigen::Dynamic, 1> 
     stationary(const mesh_2d<Type, Index> &mesh, const parameters<Type> &params,
                const std::vector<boundary_condition<Type>> &bounds_cond,
+               const distributed_load<Type>& right_part,
                const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun)
 {
     Eigen::Matrix<Type, Eigen::Dynamic, 1> f = Eigen::Matrix<Type, Eigen::Dynamic, 1>::Zero(2*mesh.nodes_count());
@@ -402,6 +433,8 @@ static Eigen::Matrix<Type, Eigen::Dynamic, 1>
     double time = omp_get_wtime();
     create_matrix(mesh, params, bounds_cond, K, K_bound, p1, influence_fun);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
+
+    integrate_right_part(mesh, right_part, f);
 
     time = omp_get_wtime();
     boundary_condition_calc(mesh, kinematic_nodes_vectors(mesh, bounds_cond), bounds_cond, K_bound, f);
@@ -673,3 +706,5 @@ void save_as_vtk(const std::string &path,          const mesh_2d<Type, Index> &m
 }
 
 }
+
+#endif
