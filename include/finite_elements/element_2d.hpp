@@ -222,23 +222,23 @@ protected:
                        [](const Type xi, const Type eta) { return  (1.0-xi)      * (1.0+eta) * ((0.5625*p-0.0625)*(1.0+xi-eta) - (0.5625*p+0.1875)*xi*eta); },
                        [](const Type xi, const Type eta) { return -(1.0-eta*eta) * (1.0-xi)  * ((0.5625*p-0.3125)              + (0.5625*p+0.1875)*xi);     } },
 
-        basic_Nxi  = { [](const Type xi, const Type eta) { return -(1.0-eta)     * (xi * ((1.125*p+0.375)*eta + (1.125*p-0.125)) - 0.25*eta); },
-                       [](const Type xi, const Type eta) { return  (1.0-eta)     *  xi * ((1.125*p+0.375)*eta + (1.125*p-0.625));             },
-                       [](const Type xi, const Type eta) { return -(1.0-eta)     * (xi * ((1.125*p+0.375)*eta + (1.125*p-0.125)) + 0.25*eta); },
-                       [](const Type xi, const Type eta) { return  (1.0-eta*eta) * (xi *  (1.125*p+0.375)     +  0.5);                        },
-                       [](const Type xi, const Type eta) { return  (1.0+eta)     * (xi * ((1.125*p+0.375)*eta - (1.125*p-0.125)) + 0.25*eta); },
-                       [](const Type xi, const Type eta) { return -(1.0+eta)     *  xi * ((1.125*p+0.375)*eta - (1.125*p-0.625));             },
-                       [](const Type xi, const Type eta) { return  (1.0+eta)     * (xi * ((1.125*p+0.375)*eta - (1.125*p-0.125)) - 0.25*eta); },
-                       [](const Type xi, const Type eta) { return  (1.0-eta*eta) * (xi *  (1.125*p+0.375)     -  0.5);                        } },
+        basic_Nxi  = { [](const Type xi, const Type eta) { return -(1.0-eta)     * (xi * ((1.125*p+0.375)*eta + 1.125*p-0.125) - 0.25*eta); },
+                       [](const Type xi, const Type eta) { return  (1.0-eta)     *  xi * ((1.125*p+0.375)*eta + 1.125*p-0.625);             },
+                       [](const Type xi, const Type eta) { return -(1.0-eta)     * (xi * ((1.125*p+0.375)*eta + 1.125*p-0.125) + 0.25*eta); },
+                       [](const Type xi, const Type eta) { return  (1.0-eta*eta) * (xi *  (1.125*p+0.375)     + 0.5);                       },
+                       [](const Type xi, const Type eta) { return  (1.0+eta)     * (xi * ((1.125*p+0.375)*eta - 1.125*p+0.125) + 0.25*eta); },
+                       [](const Type xi, const Type eta) { return -(1.0+eta)     *  xi * ((1.125*p+0.375)*eta - 1.125*p+0.625);             },
+                       [](const Type xi, const Type eta) { return  (1.0+eta)     * (xi * ((1.125*p+0.375)*eta - 1.125*p+0.125) - 0.25*eta); },
+                       [](const Type xi, const Type eta) { return  (1.0-eta*eta) * (xi *  (1.125*p+0.375)     - 0.5);                       } },
 
-        basic_Neta = { [](const Type xi, const Type eta) { return -(1.0-xi)    * (eta * ((1.125*p+0.375)*xi + (1.125*p-0.125)) - 0.25*xi); },
-                       [](const Type xi, const Type eta) { return  (1.0-xi*xi) * (eta *  (1.125*p+0.375)    -  0.5);                       },
-                       [](const Type xi, const Type eta) { return -(1.0+xi)    * (eta * ((1.125*p+0.375)*xi + (1.125*p-0.125)) + 0.25*xi); },
-                       [](const Type xi, const Type eta) { return -(1.0+xi)    *  eta * ((1.125*p+0.375)*xi - (1.125*p-0.625));            },
-                       [](const Type xi, const Type eta) { return  (1.0+xi)    * (eta * ((1.125*p+0.375)*xi - (1.125*p-0.125)) + 0.25*xi); },
-                       [](const Type xi, const Type eta) { return  (1.0-xi*xi) * (eta *  (1.125*p+0.375)    +  0.5);                       },
-                       [](const Type xi, const Type eta) { return  (1.0-xi)    * (eta * ((1.125*p+0.375)*xi - (1.125*p-0.125)) - 0.25*xi); },
-                       [](const Type xi, const Type eta) { return  (1.0-xi)    *  eta * ((1.125*p+0.375)*xi + (1.125*p-0.625));            } };    
+        basic_Neta = { [](const Type xi, const Type eta) { return -(1.0-xi)    * (eta * ((1.125*p+0.375)*xi + 1.125*p-0.125) - 0.25*xi); },
+                       [](const Type xi, const Type eta) { return  (1.0-xi*xi) * (eta *  (1.125*p+0.375)    - 0.5);                      },
+                       [](const Type xi, const Type eta) { return  (1.0+xi)    * (eta * ((1.125*p+0.375)*xi - 1.125*p+0.125) - 0.25*xi); },
+                       [](const Type xi, const Type eta) { return -(1.0+xi)    *  eta * ((1.125*p+0.375)*xi - 1.125*p+0.625);            },
+                       [](const Type xi, const Type eta) { return  (1.0+xi)    * (eta * ((1.125*p+0.375)*xi - 1.125*p+0.125) + 0.25*xi); },
+                       [](const Type xi, const Type eta) { return  (1.0-xi*xi) * (eta *  (1.125*p+0.375)    + 0.5);                      },
+                       [](const Type xi, const Type eta) { return -(1.0-xi)    * (eta * ((1.125*p+0.375)*xi + 1.125*p-0.125) + 0.25*xi); },
+                       [](const Type xi, const Type eta) { return  (1.0-xi)    *  eta * ((1.125*p+0.375)*xi + 1.125*p-0.625);            } };
 };
 
 template<class Type>
