@@ -132,6 +132,28 @@ void mesh_2d<Type, Index>::make_bilinear(const Index Ex, const Index Ey, const T
     for(size_t i = 0; i < elements_1d_type.size(); ++i)
         for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 0;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // КОСТЫЛЬ ДЛЯ ЗАДАЧИ НЕЙМАНА
+    bounds.resize(6);
+
+    bounds[4].reserve(Ex, 2);
+    for(Index i = Ex * Ey / 2; i < Ex * Ey / 2 + Ex; ++i)
+    bounds[4].push_back(std::array<Index, 2>{ elements(i, 0), elements(i, 1) });
+
+    bounds[5].reserve(Ey, 2);
+    for(Index i = Ex / 2 - 1; i < Ex * Ey; i += Ex)
+        bounds[5].push_back(std::array<Index, 2>{ elements(i, 1), elements(i, 2) });
+
+
+    elements_1d_type.resize(6);
+
+    elements_1d_type[4].resize(Ex);
+    elements_1d_type[5].resize(Ey);
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
+            elements_1d_type[i][j] = 0;
+    //////////////////////////////////////////////////////////////////////////////////
 }
 
 template<class Type, class Index>
@@ -197,6 +219,28 @@ void mesh_2d<Type, Index>::make_quadratic_serendip(const Index Ex, const Index E
     for(size_t i = 0; i < elements_1d_type.size(); ++i)
         for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 1;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // КОСТЫЛЬ ДЛЯ ЗАДАЧИ НЕЙМАНА
+    bounds.resize(6);
+
+    bounds[4].reserve(Ex, 2);
+    for(Index i = Ex * Ey / 2; i < Ex * Ey / 2 + Ex; ++i)
+    bounds[4].push_back(std::array<Index, 3>{ elements(i, 0), elements(i, 1), elements(i, 2) });
+
+    bounds[5].reserve(Ey, 2);
+    for(Index i = Ex / 2 - 1; i < Ex * Ey; i += Ex)
+        bounds[5].push_back(std::array<Index, 3>{ elements(i, 2), elements(i, 3), elements(i, 4) });
+
+
+    elements_1d_type.resize(6);
+
+    elements_1d_type[4].resize(Ex);
+    elements_1d_type[5].resize(Ey);
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
+            elements_1d_type[i][j] = 1;
+    //////////////////////////////////////////////////////////////////////////////////
 }
 
 template<class Type, class Index>
@@ -274,6 +318,28 @@ void mesh_2d<Type, Index>::make_qubic_serendip(const Index Ex, const Index Ey, c
     for(size_t i = 0; i < elements_1d_type.size(); ++i)
         for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 2;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // КОСТЫЛЬ ДЛЯ ЗАДАЧИ НЕЙМАНА
+    bounds.resize(6);
+
+    bounds[4].reserve(Ex, 2);
+    for(Index i = Ex * Ey / 2; i < Ex * Ey / 2 + Ex; ++i)
+    bounds[4].push_back(std::array<Index, 4>{ elements(i, 0), elements(i, 1), elements(i, 2), elements(i, 3) });
+
+    bounds[5].reserve(Ey, 2);
+    for(Index i = Ex / 2 - 1; i < Ex * Ey; i += Ex)
+        bounds[5].push_back(std::array<Index, 4>{ elements(i, 3), elements(i, 4), elements(i, 5), elements(i, 6) });
+
+
+    elements_1d_type.resize(6);
+
+    elements_1d_type[4].resize(Ex);
+    elements_1d_type[5].resize(Ey);
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
+            elements_1d_type[i][j] = 2;
+    //////////////////////////////////////////////////////////////////////////////////
 }
 
 template<class Type, class Index>
