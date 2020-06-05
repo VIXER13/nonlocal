@@ -1,23 +1,30 @@
 #ifndef NONLOCAL_INFLUENCE_FUNCTIONS_HPP
 #define NONLOCAL_INFLUENCE_FUNCTIONS_HPP
 
+// В данном модуле описаны различные возмоные функции виляния
+
 #include <cmath>
 #include <array>
 #include "power.hpp"
 
 namespace nonlocal::influence {
 
+// Семейства функций с эллиптической областью влияния.
 class _elliptical_region {
     _elliptical_region() noexcept = default;
 
+    // Функция вычисления коэффициентов уравнения эллипса для различных радиусов и углов поворота.
+    // Угол поворота theta берётся против часовой стрелки.
     template<class Type>
     static std::array<Type, 3> calc_coeff(const std::array<Type, 2>& r, const Type theta = 0) noexcept {
         const Type cos_theta = cos(theta), sin_theta = sin(theta);
         return { math_meta::power<2>(cos_theta / r[0]) + math_meta::power<2>(sin_theta / r[1]),
-                                    2.*cos_theta*sin_theta * (1./(r[0]*r[0]) - 1./(r[1]*r[1])),
+                                       cos_theta*sin_theta * (2./(r[0]*r[0]) - 2./(r[1]*r[1])),
                  math_meta::power<2>(sin_theta / r[0]) + math_meta::power<2>(cos_theta / r[1]) };
     }
 
+    // Функция вычисления уравнения эллипса.
+    // Если она возвращает значение < 1, то точка находится внутри эллипса, иначе за его пределами.
     template<class Type>
     static Type calc_ellipse(const std::array<Type, 3>& coeff,
                              const std::array<Type, 2>& x, const std::array<Type, 2>& y) noexcept {
@@ -26,44 +33,23 @@ class _elliptical_region {
     }
 
 public:
-    template<class Type>
-    friend class constant;
-
+    // Широкий класс полиномиальных функций влияния у которых есть два параметра:
+    // параметр p отвечает за равномерность распределения, чем он больше, тем равномернее;
+    // параметр q концентрирует влияние в центре области, чем он больше, тем более концентрированное влияние в центре.
+    // Оба параметра должны быть больше 0. В наиболее общем случае они так же могут принимать и дробные значения,
+    // но было решено отдать предпочтение целочисленным, так как использование дробных параметров
+    // во-первых не представляет особого практического интереса, а во-вторых повышает сложность вычислений.
     template<class Type, uint64_t p, uint64_t q>
     friend class polynomial;
 
+    // Константа является предельным случаем полиномиальных функций влияния, в случае, когда p->inf.
+    // Была выделена в отдельный класс для ясности намерений и простоты вычислений.
+    template<class Type>
+    friend class constant;
+
+    // Функция нормального распределния.
     template<class Type>
     friend class normal_distribution;
-};
-
-template<class Type>
-class constant {
-    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
-
-    std::array<Type, 3> _coeff = {};
-    Type _norm = 0;
-
-public:
-    constant(const Type r) noexcept {
-        set_parameters(r);
-    }
-
-    constant(const std::array<Type, 2>& r, const Type theta = 0) noexcept {
-        set_parameters(r, theta);
-    }
-
-    void set_parameters(const Type r) noexcept {
-        set_parameters({r, r});
-    }
-
-    void set_parameters(const std::array<Type, 2>& r, const Type theta = 0) noexcept {
-        _coeff = _elliptical_region::calc_coeff(r, theta);
-        _norm = 1. / (M_PI * r[0] * r[1]);
-    }
-
-    Type operator()(Type xL, Type xNL, Type yL, Type yNL) const noexcept {
-        return _elliptical_region::calc_ellipse(_coeff, {xL, xNL}, {yL, yNL}) < 1. ? _norm : 0.;
-    }
 };
 
 template<class Type, uint64_t p, uint64_t q>
@@ -99,6 +85,36 @@ public:
             return h > 1 ? 0. : _norm * math_meta::power<q>(1. - math_meta::power<p/2>(h)*sqrt(h));
         else
             return h > 1 ? 0. : _norm * math_meta::power<q>(1. - math_meta::power<p/2>(h));
+    }
+};
+
+template<class Type>
+class constant {
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
+
+    std::array<Type, 3> _coeff = {};
+    Type _norm = 0;
+
+public:
+    constant(const Type r) noexcept {
+        set_parameters(r);
+    }
+
+    constant(const std::array<Type, 2>& r, const Type theta = 0) noexcept {
+        set_parameters(r, theta);
+    }
+
+    void set_parameters(const Type r) noexcept {
+        set_parameters({r, r});
+    }
+
+    void set_parameters(const std::array<Type, 2>& r, const Type theta = 0) noexcept {
+        _coeff = _elliptical_region::calc_coeff(r, theta);
+        _norm = 1. / (M_PI * r[0] * r[1]);
+    }
+
+    Type operator()(Type xL, Type xNL, Type yL, Type yNL) const noexcept {
+        return _elliptical_region::calc_ellipse(_coeff, {xL, xNL}, {yL, yNL}) < 1. ? _norm : 0.;
     }
 };
 
