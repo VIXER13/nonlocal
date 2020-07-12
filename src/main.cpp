@@ -13,7 +13,7 @@
 using heat_boundary_type = heat_equation_with_nonloc::boundary_type;
 using mechanical_boundary_type = static_equation_with_nonloc::boundary_type;
 
-int main()
+int main(int argc, char** argv)
 {
     std::cout.precision(5);
     const int threads = 4;
@@ -21,11 +21,13 @@ int main()
     Eigen::initParallel();
     Eigen::setNbThreads(threads);
 
-    const double r = 0.3, p1 = 0.5;
-    nonlocal::influence::polynomial<double, 2, 1> bell11(0.3);
+    const double r = 10, p1 = 0.66;
+    //nonlocal::influence::polynomial<double, 2, 1> bell11(r);
+    nonlocal::influence::normal_distribution bell11(r);
 
-    mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 50, 50, 1., 1.);
-    mesh.find_neighbors_for_elements(1.05*r);
+    //mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 50, 50, 1., 1.);
+    mesh_2d<double> mesh(argv[1]);
+    mesh.find_neighbors_for_elements(3.*r);
 
     size_t neighbors_count = 0;
     for(size_t i = 0; i < mesh.elements_count(); ++i)
@@ -37,40 +39,14 @@ int main()
         { { // DOWN
                 [](double, double) { return 0; },
                 [](double, double) { return 0; },
-                mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::PRESSURE },
-
-            { // RIGHT
-                [](double, double) { return 1; },
-                [](double, double) { return 0; },
-                mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::PRESSURE },
+                mechanical_boundary_type::DISPLACEMENT,
+                mechanical_boundary_type::DISPLACEMENT },
 
             { // UP
                 [](double, double) { return 0; },
-                [](double, double) { return 0; },
+                [](double, double) { return 1; },
                 mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::PRESSURE },
-
-            { // LEFT
-                [](double, double) { return -1; },
-                [](double, double) { return 0; },
-                mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::PRESSURE },
-            
-            { // Center X
-                [](double, double) { return 0; },
-                [](double, double) { return 0; },
-                mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::DISPLACEMENT
-            },
-            
-            { // Center Y
-                [](double, double) { return 0; },
-                [](double, double) { return 0; },
-                mechanical_boundary_type::DISPLACEMENT,
-                mechanical_boundary_type::PRESSURE
-            } 
+                mechanical_boundary_type::DISPLACEMENT },
         },
         
         { [](double, double) { return 0; },
@@ -78,7 +54,7 @@ int main()
 
         p1, bell11);
 
-    mesh.find_neighbors_for_nodes(1.05*r);
+    mesh.find_neighbors_for_nodes(3.*r);
     auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = 
         static_equation_with_nonloc::strains_and_stress<double, int>(mesh, u, {.nu = 0.2, .E = 1}, p1, bell11);
     static_equation_with_nonloc::raw_output("results//", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);

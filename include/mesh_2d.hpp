@@ -386,9 +386,9 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path)
         elements_2d_type.resize(count);
         for(size_t i = 0; i < count; ++i)
         {
-            mesh_file >> elements_2d_type[i];
-            elements_2d_type[i] -= '0';
-            if(elements_2d_type[i] == 9)
+            int temp = 0;
+            mesh_file >> temp;
+            if(temp == 9)
             {
                 elements_2d_type[i] = 3;
                 elements.push_back(std::array<Index, 4>({}));
@@ -397,7 +397,7 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path)
                           >> elements(i, 2)
                           >> elements(i, 1);
             }
-            else if(elements_2d_type[i] == 23)
+            else if(temp == 23)
             {
                 elements_2d_type[i] = 4;
                 elements.push_back(std::array<Index, 8>({}));
@@ -430,16 +430,17 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path)
                 elements_1d_type[b].resize(count);
                 for(size_t i = 0; i < count; ++i)
                 {
-                    mesh_file >> elements_1d_type[b][i];
-                    elements_1d_type[b][i] -= '0';
-                    if(elements_1d_type[b][i] == 3)
+                    int temp = 0;
+                    mesh_file >> temp;
+                    elements_1d_type[b][i] = temp - '0';
+                    if(temp == 3)
                     {
                         elements_1d_type[b][i] = 0;
                         bounds[b].push_back(std::array<Index, 2>({}));
                         mesh_file >> bounds[b](i, 0) >> bounds[b](i, 1);
                     }
 
-                    if(elements_1d_type[b][i] == 21)
+                    if(temp == 21)
                     {
                         elements_1d_type[b][i] = 1;
                         bounds[b].push_back(std::array<Index, 3>({}));

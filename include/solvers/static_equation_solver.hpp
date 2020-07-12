@@ -651,16 +651,37 @@ void save_as_vtk(const std::string &path,          const mesh_2d<Type, Index> &m
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
         fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
 
-    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * 5 << std::endl;
+    fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * (mesh.element_type(0) == 3 ? 5 : 9) << std::endl;
     for(size_t i = 0; i < mesh.elements_count(); ++i)
-        fout << 4 << " " << mesh.node_number(i, 0) << " "
-                         << mesh.node_number(i, 1) << " "
-                         << mesh.node_number(i, 2) << " "
-                         << mesh.node_number(i, 3) << std::endl;
+    {
+        if (mesh.element_type(i) == 3)
+        {
+            fout << 4 << " " << mesh.node_number(i, 0) << " "
+                             << mesh.node_number(i, 1) << " "
+                             << mesh.node_number(i, 2) << " "
+                             << mesh.node_number(i, 3);
+        }
+        else
+        {
+            fout << 8 << " " << mesh.node_number(i, 0) << " "
+                             << mesh.node_number(i, 2) << " "
+                             << mesh.node_number(i, 4) << " "
+                             << mesh.node_number(i, 6) << " "
+                             << mesh.node_number(i, 1) << " "
+                             << mesh.node_number(i, 3) << " "
+                             << mesh.node_number(i, 5) << " "
+                             << mesh.node_number(i, 7);
+        }
+        fout << std::endl;
+    }
+        //fout << 4 << " " << mesh.node_number(i, 0) << " "
+        //                 << mesh.node_number(i, 1) << " "
+        //                 << mesh.node_number(i, 2) << " "
+        //                 << mesh.node_number(i, 3) << std::endl;
 
     fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
     for(size_t i = 0; i < mesh.elements_count(); ++i)
-        fout << 9 << std::endl;
+        fout << (mesh.element_type(i) == 3 ? 9 : 23) << std::endl;
 
     fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
 
