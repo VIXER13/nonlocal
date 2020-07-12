@@ -6,15 +6,16 @@
 // Генерация сетки в дальнейшем будет убрана, сейчас же она встроена для тестирования и отладки программы.
 
 #include <fstream>
+#include "power.hpp"
 #include "matrix.hpp"
 #include "rows_different_sizes.hpp"
 #include "element_integrate.hpp"
 
-template<class Type, class Index = uint32_t>
+template<class Type, class Index = int32_t>
 class mesh_2d
 {
-    static_assert(std::is_floating_point<Type>::value, "Type must be floating point.");
-    static_assert(std::is_integral<Index>::value, "Index must be integral.");
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
+    static_assert(std::is_integral_v<Index>, "The Index must be integral.");
 
     rows_different_sizes<Index> elements;               // Массив с глобальными номерами узлов для каждого элемента. elements(n, i) - обращение к i-му узлу, n-го элемента
     matrix<Type> nodes;                                 // Глобальные координаты узлов сетки. nodes(n, i) - обращение к i-ой компоненте n-го узла
@@ -48,35 +49,35 @@ public:
     enum elemType {BILINEAR, QUADRATIC_SERENDIP, QUBIC_SERENDIP};
 
     mesh_2d(const elemType type, const Index Ex, const Index Ey, const Type Lx, const Type Ly);
-    mesh_2d(const std::string &path);
+    mesh_2d(const std::string& path);
 
-    void read_su2(const std::string &path);
+    void read_su2(const std::string& path);
 
     void clear();
 
-    void find_neighbors(const Type r);
+    void find_neighbors_for_elements(const Type r);
+    void find_neighbors_for_nodes(const Type r);
 
-    size_t nodes_count() const;
-    size_t elements_count() const;
-    size_t boundary_groups_count() const;
+    size_t nodes_count() const noexcept;
+    size_t elements_count() const noexcept;
+    size_t boundary_groups_count() const noexcept;
 
-    size_t node (const size_t el, const size_t i) const;                        // Глобальный номер узла под номером i элемента под номером el
-    Type   coord(const size_t node, const size_t component) const;              // Значение компоненты узла под номером node
+    Index node_number(const size_t el, const size_t i) const noexcept;                   // Глобальный номер узла под номером i элемента под номером el
+    Type  coord(const size_t node, const size_t component) const noexcept;               // Значение компоненты узла под номером node
 
-    const rows_different_sizes<Index>& boundary(const size_t b) const;          // Возвращает массив с номерами узлов на границе b
+    const rows_different_sizes<Index>& boundary(const size_t b) const noexcept;          // Возвращает массив с номерами узлов на границе b
 
-    uint8_t element_type(const size_t el) const;                                // возвращает номер типа элемента el
-    const std::vector<uint8_t>& elements_on_bound_types(const size_t b) const;  // Возвращает массив с типами элементов на границе b
+    uint8_t element_type(const size_t el) const noexcept;                                // возвращает номер типа элемента el
+    const std::vector<uint8_t>& elements_on_bound_types(const size_t b) const noexcept;  // Возвращает массив с типами элементов на границе b
 
-    const std::vector<Index>& neighbor(const size_t el) const;                  // Возвращает массив с номерами соседних элементов
+    const std::vector<Index>& neighbor(const size_t el) const noexcept;                  // Возвращает массив с номерами соседних элементов
 
-          finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el);
-    const finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el) const; // Аналогично.
+          finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el)       noexcept;
+    const finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el) const noexcept;
+          finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el)       noexcept;
+    const finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el) const noexcept;
 
-          finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el);
-    const finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el) const; // Возвращает элемент с индексом el.
-
-    void print_to_file(const std::string &path, const Type *x) const;
+    void print_to_file(const std::string& path, const Type *x) const;
 
     ~mesh_2d();    
 };
@@ -120,7 +121,7 @@ void mesh_2d<Type, Index>::make_bilinear(const Index Ex, const Index Ey, const T
         bounds[3].push_back(std::array<Index, 2>({ elements(i, 0), elements(i, 3) }));
 
     elements_2d_type.resize(Ex*Ey);
-    for(Index i = 0; i < elements_2d_type.size(); ++i)
+    for(size_t i = 0; i < elements_2d_type.size(); ++i)
         elements_2d_type[i] = 3;
 
     elements_1d_type.resize(4);
@@ -128,9 +129,31 @@ void mesh_2d<Type, Index>::make_bilinear(const Index Ex, const Index Ey, const T
     elements_1d_type[1].resize(Ey);
     elements_1d_type[2].resize(Ex);
     elements_1d_type[3].resize(Ey);
-    for(Index i = 0; i < elements_1d_type.size(); ++i)
-        for(Index j = 0; j < elements_1d_type[i].size(); ++j)
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 0;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // КОСТЫЛЬ ДЛЯ ЗАДАЧИ НЕЙМАНА
+    bounds.resize(6);
+
+    bounds[4].reserve(Ex, 2);
+    for(Index i = Ex * Ey / 2; i < Ex * Ey / 2 + Ex; ++i)
+    bounds[4].push_back(std::array<Index, 2>{ elements(i, 0), elements(i, 1) });
+
+    bounds[5].reserve(Ey, 2);
+    for(Index i = Ex / 2 - 1; i < Ex * Ey; i += Ex)
+        bounds[5].push_back(std::array<Index, 2>{ elements(i, 1), elements(i, 2) });
+
+
+    elements_1d_type.resize(6);
+
+    elements_1d_type[4].resize(Ex);
+    elements_1d_type[5].resize(Ey);
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
+            elements_1d_type[i][j] = 0;
+    //////////////////////////////////////////////////////////////////////////////////
 }
 
 template<class Type, class Index>
@@ -185,7 +208,7 @@ void mesh_2d<Type, Index>::make_quadratic_serendip(const Index Ex, const Index E
         bounds[3].push_back(std::array<Index, 3>({ elements(i, 0), elements(i, 7), elements(i, 6) }));
 
     elements_2d_type.resize(Ex*Ey);
-    for(Index i = 0; i < elements_2d_type.size(); ++i)
+    for(size_t i = 0; i < elements_2d_type.size(); ++i)
         elements_2d_type[i] = 4;
 
     elements_1d_type.resize(4);
@@ -193,9 +216,31 @@ void mesh_2d<Type, Index>::make_quadratic_serendip(const Index Ex, const Index E
     elements_1d_type[1].resize(Ey);
     elements_1d_type[2].resize(Ex);
     elements_1d_type[3].resize(Ey);
-    for(Index i = 0; i < elements_1d_type.size(); ++i)
-        for(Index j = 0; j < elements_1d_type[i].size(); ++j)
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 1;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // КОСТЫЛЬ ДЛЯ ЗАДАЧИ НЕЙМАНА
+    bounds.resize(6);
+
+    bounds[4].reserve(Ex, 2);
+    for(Index i = Ex * Ey / 2; i < Ex * Ey / 2 + Ex; ++i)
+    bounds[4].push_back(std::array<Index, 3>{ elements(i, 0), elements(i, 1), elements(i, 2) });
+
+    bounds[5].reserve(Ey, 2);
+    for(Index i = Ex / 2 - 1; i < Ex * Ey; i += Ex)
+        bounds[5].push_back(std::array<Index, 3>{ elements(i, 2), elements(i, 3), elements(i, 4) });
+
+
+    elements_1d_type.resize(6);
+
+    elements_1d_type[4].resize(Ex);
+    elements_1d_type[5].resize(Ey);
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
+            elements_1d_type[i][j] = 1;
+    //////////////////////////////////////////////////////////////////////////////////
 }
 
 template<class Type, class Index>
@@ -262,7 +307,7 @@ void mesh_2d<Type, Index>::make_qubic_serendip(const Index Ex, const Index Ey, c
         bounds[3].push_back(std::array<Index, 4>({ elements(i, 0), elements(i, 11), elements(i, 10), elements(i, 9) }));
 
     elements_2d_type.resize(Ex*Ey);
-    for(Index i = 0; i < elements_2d_type.size(); ++i)
+    for(size_t i = 0; i < elements_2d_type.size(); ++i)
         elements_2d_type[i] = 5;
 
     elements_1d_type.resize(4);
@@ -270,9 +315,31 @@ void mesh_2d<Type, Index>::make_qubic_serendip(const Index Ex, const Index Ey, c
     elements_1d_type[1].resize(Ey);
     elements_1d_type[2].resize(Ex);
     elements_1d_type[3].resize(Ey);
-    for(Index i = 0; i < elements_1d_type.size(); ++i)
-        for(Index j = 0; j < elements_1d_type[i].size(); ++j)
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
             elements_1d_type[i][j] = 2;
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // КОСТЫЛЬ ДЛЯ ЗАДАЧИ НЕЙМАНА
+    bounds.resize(6);
+
+    bounds[4].reserve(Ex, 2);
+    for(Index i = Ex * Ey / 2; i < Ex * Ey / 2 + Ex; ++i)
+    bounds[4].push_back(std::array<Index, 4>{ elements(i, 0), elements(i, 1), elements(i, 2), elements(i, 3) });
+
+    bounds[5].reserve(Ey, 2);
+    for(Index i = Ex / 2 - 1; i < Ex * Ey; i += Ex)
+        bounds[5].push_back(std::array<Index, 4>{ elements(i, 3), elements(i, 4), elements(i, 5), elements(i, 6) });
+
+
+    elements_1d_type.resize(6);
+
+    elements_1d_type[4].resize(Ex);
+    elements_1d_type[5].resize(Ey);
+    for(size_t i = 0; i < elements_1d_type.size(); ++i)
+        for(size_t j = 0; j < elements_1d_type[i].size(); ++j)
+            elements_1d_type[i][j] = 2;
+    //////////////////////////////////////////////////////////////////////////////////
 }
 
 template<class Type, class Index>
@@ -299,13 +366,13 @@ mesh_2d<Type, Index>::mesh_2d(const elemType type, const Index Ex, const Index E
 }
 
 template<class Type, class Index>
-mesh_2d<Type, Index>::mesh_2d(const std::string &path)
+mesh_2d<Type, Index>::mesh_2d(const std::string& path)
 {
     read_su2(path);
 }
 
 template<class Type, class Index>
-void mesh_2d<Type, Index>::read_su2(const std::string &path)
+void mesh_2d<Type, Index>::read_su2(const std::string& path)
 {
     std::ifstream mesh_file(path);
 
@@ -319,9 +386,9 @@ void mesh_2d<Type, Index>::read_su2(const std::string &path)
         elements_2d_type.resize(count);
         for(size_t i = 0; i < count; ++i)
         {
-            mesh_file >> elements_2d_type[i];
-            elements_2d_type[i] -= '0';
-            if(elements_2d_type[i] == 9)
+            int temp = 0;
+            mesh_file >> temp;
+            if(temp == 9)
             {
                 elements_2d_type[i] = 3;
                 elements.push_back(std::array<Index, 4>({}));
@@ -330,7 +397,7 @@ void mesh_2d<Type, Index>::read_su2(const std::string &path)
                           >> elements(i, 2)
                           >> elements(i, 1);
             }
-            else if(elements_2d_type[i] == 23)
+            else if(temp == 23)
             {
                 elements_2d_type[i] = 4;
                 elements.push_back(std::array<Index, 8>({}));
@@ -363,16 +430,17 @@ void mesh_2d<Type, Index>::read_su2(const std::string &path)
                 elements_1d_type[b].resize(count);
                 for(size_t i = 0; i < count; ++i)
                 {
-                    mesh_file >> elements_1d_type[b][i];
-                    elements_1d_type[b][i] -= '0';
-                    if(elements_1d_type[b][i] == 3)
+                    int temp = 0;
+                    mesh_file >> temp;
+                    elements_1d_type[b][i] = temp - '0';
+                    if(temp == 3)
                     {
                         elements_1d_type[b][i] = 0;
                         bounds[b].push_back(std::array<Index, 2>({}));
                         mesh_file >> bounds[b](i, 0) >> bounds[b](i, 1);
                     }
 
-                    if(elements_1d_type[b][i] == 21)
+                    if(temp == 21)
                     {
                         elements_1d_type[b][i] = 1;
                         bounds[b].push_back(std::array<Index, 3>({}));
@@ -402,28 +470,22 @@ void mesh_2d<Type, Index>::clear()
     elements_2d_type.clear();
 }
 
-template<class Type>
-inline Type distance(const Type x1, const Type x2, const Type y1, const Type y2)
-{
-    return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
-}
-
-// Данная функция корректно работает только с прямоугольными элементами
 template<class Type, class Index>
-void mesh_2d<Type, Index>::find_neighbors(const Type r)
+void mesh_2d<Type, Index>::find_neighbors_for_elements(const Type r)
 {
     matrix<Type> centers(elements_count(), 2, 0.0); // Координаты центров элементов
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
-
     for(size_t el = 0; el < elements_count(); ++el)
     {
-        e = element_2d(element_type(el));
+        const finite_element::element_2d_integrate_base<Type> *const e = element_2d(element_type(el));
+        const Type x0 = el < 3 ? 1.0/3.0 : 0.0;
         for(size_t i = 0; i < 2; ++i)
             for(size_t j = 0; j < e->nodes_count(); ++j)
-                centers(el, i) += coord(elements(el, j), i) * e->N(j, 0.0, 0.0);
+                centers(el, i) += coord(elements(el, j), i) * e->N(j, x0, x0);
     }
 
     neighbors.resize(elements_count());
+    const auto distance = [](const Type x1, const Type x2, const Type y1, const Type y2)
+                          { return sqrt(math_meta::power<2>(x1-x2) + math_meta::power<2>(y1-y2)); };
     for(size_t elL = 0; elL < elements_count(); ++elL)
     {
         neighbors[elL].resize(0);
@@ -436,40 +498,67 @@ void mesh_2d<Type, Index>::find_neighbors(const Type r)
 }
 
 template<class Type, class Index>
-size_t mesh_2d<Type, Index>::nodes_count() const { return nodes.rows(); }
-template<class Type, class Index>
-size_t mesh_2d<Type, Index>::elements_count() const { return elements.rows(); }
-template<class Type, class Index>
-size_t mesh_2d<Type, Index>::boundary_groups_count() const { return bounds.size(); }
+void mesh_2d<Type, Index>::find_neighbors_for_nodes(const Type r)
+{
+    matrix<Type> centers(elements_count(), 2, 0.0); // Координаты центров элементов
+    for(size_t el = 0; el < elements_count(); ++el)
+    {
+        const finite_element::element_2d_integrate_base<Type> *const e = element_2d(element_type(el));
+        const Type x0 = el < 3 ? 1.0/3.0 : 0.0;
+        for(size_t i = 0; i < 2; ++i)
+            for(size_t j = 0; j < e->nodes_count(); ++j)
+                centers(el, i) += coord(elements(el, j), i) * e->N(j, x0, x0);
+    }
+
+    neighbors.resize(nodes_count());
+    const auto distance = [](const Type x1, const Type x2, const Type y1, const Type y2)
+                          { return sqrt(math_meta::power<2>(x1-x2) + math_meta::power<2>(y1-y2)); };
+    for(size_t node = 0; node < nodes_count(); ++node)
+    {
+        neighbors[node].resize(0);
+        neighbors[node].reserve(elements_count());
+        for(size_t elN = 0; elN < elements_count(); ++elN)
+            if(distance(coord(node, 0), centers(elN, 0), coord(node, 1), centers(elN, 1)) < r)
+                neighbors[node].push_back(elN);
+        neighbors[node].shrink_to_fit();
+    }
+}
 
 template<class Type, class Index>
-size_t mesh_2d<Type, Index>::node(const size_t el, const size_t i) const { return elements(el, i); }
+size_t mesh_2d<Type, Index>::nodes_count() const noexcept { return nodes.rows(); }
 template<class Type, class Index>
-Type mesh_2d<Type, Index>::coord(const size_t node, const size_t component) const { return nodes(node, component); }
+size_t mesh_2d<Type, Index>::elements_count() const noexcept { return elements.rows(); }
+template<class Type, class Index>
+size_t mesh_2d<Type, Index>::boundary_groups_count() const noexcept { return bounds.size(); }
 
 template<class Type, class Index>
-const rows_different_sizes<Index>& mesh_2d<Type, Index>::boundary(const size_t b) const { return bounds[b]; }
+Index mesh_2d<Type, Index>::node_number(const size_t el, const size_t i) const noexcept { return elements(el, i); }
+template<class Type, class Index>
+Type mesh_2d<Type, Index>::coord(const size_t node, const size_t component) const noexcept { return nodes(node, component); }
 
 template<class Type, class Index>
-const std::vector<Index>& mesh_2d<Type, Index>::neighbor(const size_t el) const { return neighbors[el]; }
+const rows_different_sizes<Index>& mesh_2d<Type, Index>::boundary(const size_t b) const noexcept { return bounds[b]; }
 
 template<class Type, class Index>
-uint8_t mesh_2d<Type, Index>::element_type(const size_t el) const { return elements_2d_type[el]; }
-template<class Type, class Index>
-const std::vector<uint8_t>& mesh_2d<Type, Index>::elements_on_bound_types(const size_t b) const { return elements_1d_type[b]; }
+const std::vector<Index>& mesh_2d<Type, Index>::neighbor(const size_t el) const noexcept { return neighbors[el]; }
 
 template<class Type, class Index>
-finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) { return finite_elements_2d[el]; }
+uint8_t mesh_2d<Type, Index>::element_type(const size_t el) const noexcept { return elements_2d_type[el]; }
 template<class Type, class Index>
-finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) { return finite_elements_1d[el]; }
+const std::vector<uint8_t>& mesh_2d<Type, Index>::elements_on_bound_types(const size_t b) const noexcept { return elements_1d_type[b]; }
 
 template<class Type, class Index>
-const finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) const { return finite_elements_2d[el]; }
+finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) noexcept { return finite_elements_2d[el]; }
 template<class Type, class Index>
-const finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) const { return finite_elements_1d[el]; }
+finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) noexcept { return finite_elements_1d[el]; }
 
 template<class Type, class Index>
-void mesh_2d<Type, Index>::print_to_file(const std::string &path, const Type *x) const
+const finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) const noexcept { return finite_elements_2d[el]; }
+template<class Type, class Index>
+const finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) const noexcept { return finite_elements_1d[el]; }
+
+template<class Type, class Index>
+void mesh_2d<Type, Index>::print_to_file(const std::string& path, const Type *x) const
 {
     std::ofstream fout(path);
     fout.precision(20);

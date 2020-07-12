@@ -7,11 +7,11 @@
 #include <cmath>
 #include "geometry_1d.hpp"
 
-namespace finite_element{
+namespace finite_element {
 
 template<class Type>
 class quadrature_base {
-    static_assert(std::is_floating_point<Type>::value, "The Type must be floating point.");
+    static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
 
 public:
     virtual size_t nodes_count() const = 0; // Количество узлов квадратуры
@@ -21,7 +21,7 @@ public:
 
     virtual Type boundary(const side_1d bound) const = 0; // Геометрия квадратуры.
 
-    virtual ~quadrature_base() {}
+    virtual ~quadrature_base() noexcept = default;
 };
 
 // Данная реализация подразумевает, что данные об узлах и весах квадратуры, а так же геометрия наследуются от класса Quadrature_Type.
@@ -29,6 +29,9 @@ public:
 template<class Type, template<class> class Quadrature_Type>
 class quadrature : public quadrature_base<Type>,
                    public Quadrature_Type<Type> {
+    static_assert(Quadrature_Type<Type>::nodes.size() == Quadrature_Type<Type>::weights.size(),
+                  "The number of nodes and weights does not match.");
+
 public:
     size_t nodes_count() const override { return Quadrature_Type<Type>::nodes.size(); }
         
@@ -47,7 +50,7 @@ public:
 template<class Type>
 class gauss1 : public geometry_1d<Type, standart_segment_geometry> {
 protected:
-    gauss1() {}
+    explicit gauss1() noexcept = default;
     static constexpr std::array<Type, 1> nodes   = { 0.0 },
                                          weights = { 2.0 };
 };
@@ -55,7 +58,7 @@ protected:
 template<class Type>
 class gauss2 : public geometry_1d<Type, standart_segment_geometry> {
 protected:
-    gauss2() {}
+    explicit gauss2() noexcept = default;
     static constexpr std::array<Type, 2> nodes   = { -1.0/sqrt(3.0), 1.0/sqrt(3.0) }, 
                                          weights = {            1.0,           1.0 };
 };
@@ -63,7 +66,7 @@ protected:
 template<class Type>
 class gauss3 : public geometry_1d<Type, standart_segment_geometry> {
 protected:
-    gauss3() {}
+    explicit gauss3() noexcept = default;
     static constexpr std::array<Type, 3> nodes   = { -sqrt(0.6),     0.0, sqrt(0.6) }, 
                                          weights = {    5.0/9.0, 8.0/9.0,   5.0/9.0 };
 };
@@ -71,7 +74,7 @@ protected:
 template<class Type>
 class gauss4 : public geometry_1d<Type, standart_segment_geometry> {
 protected:
-    gauss4() {}
+    explicit gauss4() noexcept = default;
     static constexpr std::array<Type, 4> nodes   = { -sqrt(3.0/7.0 + 2.0/7.0*sqrt(1.2)),
                                                      -sqrt(3.0/7.0 - 2.0/7.0*sqrt(1.2)),
                                                       sqrt(3.0/7.0 - 2.0/7.0*sqrt(1.2)),
@@ -86,7 +89,7 @@ protected:
 template<class Type>
 class gauss5 : public geometry_1d<Type, standart_segment_geometry> {
 protected:
-    gauss5() {}    
+    explicit gauss5() noexcept = default;
     static constexpr std::array<Type, 5> nodes   = { -1.0/3.0 * sqrt(5.0 + 2.0*sqrt(10.0/7.0)),
                                                      -1.0/3.0 * sqrt(5.0 - 2.0*sqrt(10.0/7.0)),
                                                                                            0.0,
