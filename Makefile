@@ -1,7 +1,6 @@
 TARGET = a.out
 HDRS = include \
 	   include/containers \
-	   include/finite_elements \
 	   include/solvers \
 	   Eigen
 

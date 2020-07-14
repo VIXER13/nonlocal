@@ -5,8 +5,7 @@
 #include <vector>
 
 template<class Type, class Index = uint32_t, class Alloc_Data = std::allocator<Type>, class Alloc_Index = std::allocator<Index>>
-class rows_different_sizes
-{
+class rows_different_sizes {
     static_assert(std::is_integral_v<Index>, "The Index must be integral type.");
 
     std::vector<Type, Alloc_Data> matr;

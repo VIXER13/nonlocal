@@ -6,10 +6,10 @@
 // Генерация сетки в дальнейшем будет убрана, сейчас же она встроена для тестирования и отладки программы.
 
 #include <fstream>
-#include "power.hpp"
 #include "matrix.hpp"
 #include "rows_different_sizes.hpp"
-#include "element_integrate.hpp"
+#include "metamath/power.hpp"
+#include "metamath/finite_element/finite_element.hpp"
 
 template<class Type, class Index = int32_t>
 class mesh_2d
@@ -28,18 +28,18 @@ class mesh_2d
 
     std::vector<std::vector<Index>> neighbors;          // Номера соседних элементов. neighbors[el][i] - i-ый сосед el-го элемента.
 
-    std::array<finite_element::element_1d_integrate_base<Type>*, 3> finite_elements_1d =
-        { new finite_element::element_1d_integrate<Type, finite_element::linear>   ((finite_element::quadrature<Type, finite_element::gauss1>())),
-          new finite_element::element_1d_integrate<Type, finite_element::quadratic>((finite_element::quadrature<Type, finite_element::gauss2>())),
-          new finite_element::element_1d_integrate<Type, finite_element::qubic>    ((finite_element::quadrature<Type, finite_element::gauss2>())) };
+    std::array<metamath::finite_element::element_1d_integrate_base<Type>*, 3> finite_elements_1d =
+        { new metamath::finite_element::element_1d_integrate<Type, metamath::finite_element::linear>   ((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss1>())),
+          new metamath::finite_element::element_1d_integrate<Type, metamath::finite_element::quadratic>((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss2>())),
+          new metamath::finite_element::element_1d_integrate<Type, metamath::finite_element::qubic>    ((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss2>())) };
 
-    std::array<finite_element::element_2d_integrate_base<Type>*, 6> finite_elements_2d =
-        { new finite_element::element_2d_integrate<Type, finite_element::triangle>          ((finite_element::quadrature<Type, finite_element::gauss1>()), (finite_element::quadrature<Type, finite_element::gauss1>())),
-          new finite_element::element_2d_integrate<Type, finite_element::quadratic_triangle>((finite_element::quadrature<Type, finite_element::gauss2>()), (finite_element::quadrature<Type, finite_element::gauss2>())),
-          new finite_element::element_2d_integrate<Type, finite_element::qubic_triangle>    ((finite_element::quadrature<Type, finite_element::gauss3>()), (finite_element::quadrature<Type, finite_element::gauss3>())),
-          new finite_element::element_2d_integrate<Type, finite_element::bilinear>          ((finite_element::quadrature<Type, finite_element::gauss2>()), (finite_element::quadrature<Type, finite_element::gauss2>())),
-          new finite_element::element_2d_integrate<Type, finite_element::quadratic_serendip>((finite_element::quadrature<Type, finite_element::gauss3>()), (finite_element::quadrature<Type, finite_element::gauss3>())),
-          new finite_element::element_2d_integrate<Type, finite_element::qubic_serendip>    ((finite_element::quadrature<Type, finite_element::gauss4>()), (finite_element::quadrature<Type, finite_element::gauss4>())) };
+    std::array<metamath::finite_element::element_2d_integrate_base<Type>*, 6> finite_elements_2d =
+        { new metamath::finite_element::element_2d_integrate<Type, metamath::finite_element::triangle>          ((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss1>()), (metamath::finite_element::quadrature<Type, metamath::finite_element::gauss1>())),
+          new metamath::finite_element::element_2d_integrate<Type, metamath::finite_element::quadratic_triangle>((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss2>()), (metamath::finite_element::quadrature<Type, metamath::finite_element::gauss2>())),
+          new metamath::finite_element::element_2d_integrate<Type, metamath::finite_element::qubic_triangle>    ((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss3>()), (metamath::finite_element::quadrature<Type, metamath::finite_element::gauss3>())),
+          new metamath::finite_element::element_2d_integrate<Type, metamath::finite_element::bilinear>          ((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss2>()), (metamath::finite_element::quadrature<Type, metamath::finite_element::gauss2>())),
+          new metamath::finite_element::element_2d_integrate<Type, metamath::finite_element::quadratic_serendipity>((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss3>()), (metamath::finite_element::quadrature<Type, metamath::finite_element::gauss3>())),
+          new metamath::finite_element::element_2d_integrate<Type, metamath::finite_element::qubic_serendipity>    ((metamath::finite_element::quadrature<Type, metamath::finite_element::gauss4>()), (metamath::finite_element::quadrature<Type, metamath::finite_element::gauss4>())) };
 
     void make_bilinear          (const Index Ex, const Index Ey, const Type Lx, const Type Ly);
     void make_quadratic_serendip(const Index Ex, const Index Ey, const Type Lx, const Type Ly);
@@ -55,6 +55,7 @@ public:
 
     void clear();
 
+    bool check_intersect_with_bound(const std::array<Type, 2>& A, const std::array<Type, 2>& B);
     void find_neighbors_for_elements(const Type r);
     void find_neighbors_for_nodes(const Type r);
 
@@ -72,10 +73,10 @@ public:
 
     const std::vector<Index>& neighbor(const size_t el) const noexcept;                  // Возвращает массив с номерами соседних элементов
 
-          finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el)       noexcept;
-    const finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el) const noexcept;
-          finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el)       noexcept;
-    const finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el) const noexcept;
+          metamath::finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el)       noexcept;
+    const metamath::finite_element::element_1d_integrate_base<Type>* element_1d(const size_t el) const noexcept;
+          metamath::finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el)       noexcept;
+    const metamath::finite_element::element_2d_integrate_base<Type>* element_2d(const size_t el) const noexcept;
 
     void print_to_file(const std::string& path, const Type *x) const;
 
@@ -470,28 +471,65 @@ void mesh_2d<Type, Index>::clear()
     elements_2d_type.clear();
 }
 
+// Вычисление ориентированной площади треугольника на точках a, b, c.
+template<class T>
+T oriented_triangle_area(const std::array<T, 2>& a, const std::array<T, 2>& b, const std::array<T, 2>& c) noexcept {
+    return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+}
+
+// Проверка отрезков AB и CD на предмет пересечения.
+template<class T>
+bool intersect(const std::array<T, 2>& a, const std::array<T, 2>& b, const std::array<T, 2>& c, const std::array<T, 2>& d) noexcept {
+    static constexpr auto check_segment = [](T a, T b, T c, T d) {
+        if (a > b) std::swap(a, b);
+        if (c > d) std::swap(c, d);
+        return std::max(a, c) <= std::min(b, d);
+    };
+    
+    return check_segment(a[0], b[0], c[0], d[0]) && 
+           check_segment(a[1], b[1], c[1], d[1]) &&
+           oriented_triangle_area(a, b, c) * oriented_triangle_area(a, b, d) <= 0 &&
+           oriented_triangle_area(c, d, a) * oriented_triangle_area(c, d, b) <= 0;
+}
+
+template<class Type, class Index>
+bool mesh_2d<Type, Index>::check_intersect_with_bound(const std::array<Type, 2>& A, const std::array<Type, 2>& B)
+{
+    for(size_t b = 0; b < bounds.size(); ++b)
+        for(size_t i = 0; i < bounds[b].rows(); ++i)
+            for(size_t j = 0; j < bounds[b].cols(i)-1; ++j)
+            {
+                std::array<Type, 2> C = { coord(bounds[b](i, j  ), 0), coord(bounds[b](i, j  ), 1) },
+                                    D = { coord(bounds[b](i, j+1), 0), coord(bounds[b](i, j+1), 1) };
+                if(intersect(A, B, C, D))
+                    return true;
+            }
+    return false;
+}
+
 template<class Type, class Index>
 void mesh_2d<Type, Index>::find_neighbors_for_elements(const Type r)
 {
     matrix<Type> centers(elements_count(), 2, 0.0); // Координаты центров элементов
     for(size_t el = 0; el < elements_count(); ++el)
     {
-        const finite_element::element_2d_integrate_base<Type> *const e = element_2d(element_type(el));
+        const metamath::finite_element::element_2d_integrate_base<Type> *const e = element_2d(element_type(el));
         const Type x0 = el < 3 ? 1.0/3.0 : 0.0;
         for(size_t i = 0; i < 2; ++i)
             for(size_t j = 0; j < e->nodes_count(); ++j)
-                centers(el, i) += coord(elements(el, j), i) * e->N(j, x0, x0);
+                centers(el, i) += coord(elements(el, j), i) * e->N(j, {x0, x0});
     }
 
     neighbors.resize(elements_count());
     const auto distance = [](const Type x1, const Type x2, const Type y1, const Type y2)
-                          { return sqrt(math_meta::power<2>(x1-x2) + math_meta::power<2>(y1-y2)); };
+                          { return sqrt(metamath::power<2>(x1-x2) + metamath::power<2>(y1-y2)); };
     for(size_t elL = 0; elL < elements_count(); ++elL)
     {
         neighbors[elL].resize(0);
         neighbors[elL].reserve(elements_count());
         for(size_t elN = 0; elN < elements_count(); ++elN)
-            if(distance(centers(elL, 0), centers(elN, 0), centers(elL, 1), centers(elN, 1)) < r)
+            if(distance(centers(elL, 0), centers(elN, 0), centers(elL, 1), centers(elN, 1)) < r &&
+               !check_intersect_with_bound({centers(elL, 0), centers(elL, 1)}, {centers(elN, 0), centers(elN, 1)}))
                 neighbors[elL].push_back(elN);
         neighbors[elL].shrink_to_fit();
     }
@@ -503,22 +541,23 @@ void mesh_2d<Type, Index>::find_neighbors_for_nodes(const Type r)
     matrix<Type> centers(elements_count(), 2, 0.0); // Координаты центров элементов
     for(size_t el = 0; el < elements_count(); ++el)
     {
-        const finite_element::element_2d_integrate_base<Type> *const e = element_2d(element_type(el));
+        const metamath::finite_element::element_2d_integrate_base<Type> *const e = element_2d(element_type(el));
         const Type x0 = el < 3 ? 1.0/3.0 : 0.0;
         for(size_t i = 0; i < 2; ++i)
             for(size_t j = 0; j < e->nodes_count(); ++j)
-                centers(el, i) += coord(elements(el, j), i) * e->N(j, x0, x0);
+                centers(el, i) += coord(elements(el, j), i) * e->N(j, {x0, x0});
     }
 
     neighbors.resize(nodes_count());
     const auto distance = [](const Type x1, const Type x2, const Type y1, const Type y2)
-                          { return sqrt(math_meta::power<2>(x1-x2) + math_meta::power<2>(y1-y2)); };
+                          { return sqrt(metamath::power<2>(x1-x2) + metamath::power<2>(y1-y2)); };
     for(size_t node = 0; node < nodes_count(); ++node)
     {
         neighbors[node].resize(0);
         neighbors[node].reserve(elements_count());
         for(size_t elN = 0; elN < elements_count(); ++elN)
-            if(distance(coord(node, 0), centers(elN, 0), coord(node, 1), centers(elN, 1)) < r)
+            if(distance(coord(node, 0), centers(elN, 0), coord(node, 1), centers(elN, 1)) < r &&
+               !check_intersect_with_bound({centers(node, 0), centers(node, 1)}, {centers(elN, 0), centers(elN, 1)}))
                 neighbors[node].push_back(elN);
         neighbors[node].shrink_to_fit();
     }
@@ -548,14 +587,14 @@ template<class Type, class Index>
 const std::vector<uint8_t>& mesh_2d<Type, Index>::elements_on_bound_types(const size_t b) const noexcept { return elements_1d_type[b]; }
 
 template<class Type, class Index>
-finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) noexcept { return finite_elements_2d[el]; }
+metamath::finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) noexcept { return finite_elements_2d[el]; }
 template<class Type, class Index>
-finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) noexcept { return finite_elements_1d[el]; }
+metamath::finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) noexcept { return finite_elements_1d[el]; }
 
 template<class Type, class Index>
-const finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) const noexcept { return finite_elements_2d[el]; }
+const metamath::finite_element::element_2d_integrate_base<Type>* mesh_2d<Type, Index>::element_2d(const size_t el) const noexcept { return finite_elements_2d[el]; }
 template<class Type, class Index>
-const finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) const noexcept { return finite_elements_1d[el]; }
+const metamath::finite_element::element_1d_integrate_base<Type>* mesh_2d<Type, Index>::element_1d(const size_t el) const noexcept { return finite_elements_1d[el]; }
 
 template<class Type, class Index>
 void mesh_2d<Type, Index>::print_to_file(const std::string& path, const Type *x) const

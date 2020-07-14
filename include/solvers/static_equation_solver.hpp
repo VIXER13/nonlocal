@@ -51,7 +51,7 @@ static std::array<Type, 3> hooke_matrix(const parameters<Type> &params)
 }
 
 template<class Type, component Projection, component Form>
-static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> *const e,
+static Type integrate_loc(const metamath::finite_element::element_2d_integrate_base<Type> *const e,
                           const size_t i, const size_t j, const matrix<Type> &jacobi_matrices, size_t shift,
                           const std::array<Type, 3> &D)
 {
@@ -90,8 +90,8 @@ static Type integrate_loc(const finite_element::element_2d_integrate_base<Type> 
 }
 
 template<class Type, component Projection, component Form>
-static Type integrate_nonloc(const finite_element::element_2d_integrate_base<Type> *const eL,
-                             const finite_element::element_2d_integrate_base<Type> *const eNL,
+static Type integrate_nonloc(const metamath::finite_element::element_2d_integrate_base<Type> *const eL,
+                             const metamath::finite_element::element_2d_integrate_base<Type> *const eNL,
                              const size_t iL, const size_t jNL, size_t shiftL, size_t shiftNL,
                              const matrix<Type> &coords, const matrix<Type> &jacobi_matrices,
                              const std::function<Type(Type, Type, Type, Type)> &influence_fun,
@@ -465,7 +465,7 @@ static std::array<std::vector<Type>, 6>
     std::array<Type, 4> jacobi;
     std::array<Type, 3> loc_eps;
     std::vector<uint8_t> repeating(mesh.nodes_count(), 0);
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
+    const metamath::finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
         e = mesh.element_2d(mesh.element_type(el));
@@ -476,18 +476,18 @@ static std::array<std::vector<Type>, 6>
             memset(jacobi.data(), 0, jacobi.size() * sizeof(Type));
             for(size_t j = 0; j < e->nodes_count(); ++j)
             {
-                jacobi[0] += mesh.coord(mesh.node_number(el, j), 0) * e->Nxi (j, node[0], node[1]);
-                jacobi[1] += mesh.coord(mesh.node_number(el, j), 0) * e->Neta(j, node[0], node[1]);
-                jacobi[2] += mesh.coord(mesh.node_number(el, j), 1) * e->Nxi (j, node[0], node[1]);
-                jacobi[3] += mesh.coord(mesh.node_number(el, j), 1) * e->Neta(j, node[0], node[1]);
+                jacobi[0] += mesh.coord(mesh.node_number(el, j), 0) * e->Nxi (j, node);
+                jacobi[1] += mesh.coord(mesh.node_number(el, j), 0) * e->Neta(j, node);
+                jacobi[2] += mesh.coord(mesh.node_number(el, j), 1) * e->Nxi (j, node);
+                jacobi[3] += mesh.coord(mesh.node_number(el, j), 1) * e->Neta(j, node);
             }
 
             memset(loc_eps.data(), 0, loc_eps.size() * sizeof(Type));
             for(size_t j = 0; j < e->nodes_count(); ++j)
             {
                 const Type jacobian = jacobi[0]*jacobi[3] - jacobi[1]*jacobi[2],
-                           dx1 =  jacobi[3] * e->Nxi(j, node[0], node[1]) - jacobi[2] * e->Neta(j, node[0], node[1]),
-                           dx2 = -jacobi[1] * e->Nxi(j, node[0], node[1]) + jacobi[0] * e->Neta(j, node[0], node[1]);
+                           dx1 =  jacobi[3] * e->Nxi(j, node) - jacobi[2] * e->Neta(j, node),
+                           dx2 = -jacobi[1] * e->Nxi(j, node) + jacobi[0] * e->Neta(j, node);
                 loc_eps[0] +=  dx1 * u[2*mesh.node_number(el, j)  ]  / jacobian;
                 loc_eps[1] +=  dx2 * u[2*mesh.node_number(el, j)+1]  / jacobian;
                 loc_eps[2] += (dx2 * u[2*mesh.node_number(el, j)  ] +
@@ -522,7 +522,7 @@ static std::array<std::vector<Type>, 3>
                                const std::vector<Type> &eps11, const std::vector<Type> &eps22, const std::vector<Type> &eps12)
 {
     std::vector<Type> all_eps11(shifts.back(), 0.), all_eps22(shifts.back(), 0.), all_eps12(shifts.back(), 0.);
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
+    const metamath::finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
         e = mesh.element_2d(mesh.element_type(el));
@@ -544,7 +544,7 @@ static void stress_nonloc(const mesh_2d<Type, Index> &mesh, const std::array<Typ
                           const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun)
 {
     const Type p2 = 1. - p1;
-    const finite_element::element_2d_integrate_base<Type> *eNL = nullptr;
+    const metamath::finite_element::element_2d_integrate_base<Type> *eNL = nullptr;
     const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
     const matrix<Type> all_quad_coords = approx_all_quad_nodes_coords(mesh, shifts_quad);
     const matrix<Type> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);

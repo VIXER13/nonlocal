@@ -23,7 +23,7 @@ struct boundary_condition
 };
 
 template<class Type>
-static Type integrate_basic(const finite_element::element_2d_integrate_base<Type> *const e,
+static Type integrate_basic(const metamath::finite_element::element_2d_integrate_base<Type> *const e,
                             const size_t i, const matrix<Type>& jacobi_matrices)
 {
     Type integral = 0.;
@@ -34,7 +34,7 @@ static Type integrate_basic(const finite_element::element_2d_integrate_base<Type
 }
 
 template<class Type>
-static Type integrate_basic_pair(const finite_element::element_2d_integrate_base<Type> *const e,
+static Type integrate_basic_pair(const metamath::finite_element::element_2d_integrate_base<Type> *const e,
                                  const size_t i, const size_t j, const matrix<Type>& jacobi_matrices, size_t shift = 0)
 {
     Type integral = 0.;
@@ -45,7 +45,7 @@ static Type integrate_basic_pair(const finite_element::element_2d_integrate_base
 }
 
 template<class Type>
-static Type integrate_gradient_pair(const finite_element::element_2d_integrate_base<Type> *const e,
+static Type integrate_gradient_pair(const metamath::finite_element::element_2d_integrate_base<Type> *const e,
                                     const size_t i, const size_t j, const matrix<Type>& jacobi_matrices, size_t shift = 0)
 {
     Type integral = 0.;
@@ -201,7 +201,7 @@ static std::array<std::vector<Index>, 4>
     return {std::move(shifts_loc), std::move(shifts_bound_loc), std::move(shifts_nonloc), std::move(shifts_bound_nonloc)};
 }
 
-// Integrate_Rule - функтор с сигнатурой Type(const finite_element::element_2d_integrate_base<Type>*, 
+// Integrate_Rule - функтор с сигнатурой Type(const metamath::finite_element::element_2d_integrate_base<Type>*, 
 //                                            const size_t, const size_t, const matrix<Type>&, size_t)
 // Influence_Function - функтор с сигнатурой Type(Type, Type, Type, Type)
 template<class Type, class Index, class Integrate_Rule, class Influence_Function>
@@ -267,7 +267,7 @@ static std::array<std::vector<Eigen::Triplet<Type, Index>>, 2>
 // Вычисление матрицы теплопроводности (или теплоёмкости, в зависимости от функции integrate_rule)
 // с разделением матрицы на две части, одна из которых является матрицей после учёта гран условий первого рода,
 // а вторая та часть матрицы, которая уйдёт в правую часть при учёте гран условий первого рода.
-// Integrate_Rule - функтор с сигнатурой Type(const finite_element::element_2d_integrate_base<Type>*, 
+// Integrate_Rule - функтор с сигнатурой Type(const metamath::finite_element::element_2d_integrate_base<Type>*, 
 //                                            const size_t, const size_t, const matrix<Type>&, size_t)
 template<int MatrixMajor, class Type, class Index, class Integrate_Rule>
 static void create_matrix(const mesh_2d<Type, Index>& mesh,
@@ -329,7 +329,7 @@ static Eigen::SparseMatrix<Type, MatrixMajor, Index> nonlocal_condition(const me
     std::vector<Eigen::Triplet<Type, Index>> triplets(triplets_count);
 
     triplets_count = 0;
-    const finite_element::element_2d_integrate_base<Type> *e = nullptr;
+    const metamath::finite_element::element_2d_integrate_base<Type> *e = nullptr;
     for(size_t el = 0; el < mesh.elements_count(); ++el)
     {
         e = mesh.element_2d(mesh.element_type(el));
