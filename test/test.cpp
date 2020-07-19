@@ -1,6 +1,5 @@
 #include <iostream>
-#include "include/mesh/mesh.hpp"
-#include "include/containers/matrix.hpp"
+#include "solvers/heat_equation_solver.hpp"
 
 int main(int argc, char** argv) {
     mesh::mesh_2d<double> mesh{argv[1]};
@@ -22,8 +21,8 @@ int main(int argc, char** argv) {
 
     std::cout << "boundary groups count: " << mesh.boundary_groups_count() << std::endl;
     for(size_t b = 0; b < mesh.boundary_groups_count(); ++b) {
-        std::cout << b << " bound " << mesh.nodes_count(b) << std::endl;
-        for(size_t el = 0; el < mesh.nodes_count(b); ++el) {
+        std::cout << b << " bound " << mesh.elements_count(b) << std::endl;
+        for(size_t el = 0; el < mesh.elements_count(b); ++el) {
             const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
             for(size_t i = 0; i < e->nodes_count(); ++i)
                 std::cout << " " << mesh.node_number(b, el, i);
@@ -32,17 +31,19 @@ int main(int argc, char** argv) {
     }
     std::cout << std::endl;
 
-    const auto& e = mesh.element_2d(mesh.element_2d_type(0));
-    matrix<double> jacobi_matrices(e->qnodes_count(), 4, 0);
-    for(size_t q = 0; q < e->qnodes_count(); ++q)
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-        {
-            jacobi_matrices(q, 0) += mesh.node(mesh.node_number(0, i))[0] * e->qNxi (i, q);
-            jacobi_matrices(q, 1) += mesh.node(mesh.node_number(0, i))[0] * e->qNeta(i, q);
-            jacobi_matrices(q, 2) += mesh.node(mesh.node_number(0, i))[1] * e->qNxi (i, q);
-            jacobi_matrices(q, 3) += mesh.node(mesh.node_number(0, i))[1] * e->qNeta(i, q);
-        }
-    std::cout << jacobi_matrices << std::endl;
+    // const auto shifts = nonlocal::quadrature_shifts_init(mesh);
+    // for(size_t i = 0; i < shifts.size(); ++i)
+    //     std::cout << shifts[i] << ' ';
+    
+    // const auto coords = nonlocal::approx_all_quad_nodes(mesh, shifts);
+    // for(size_t i = 0; i < coords.size(); ++i)
+    //     std::cout << coords[i][0] << ' ' << coords[i][1] << std::endl;
+
+    // std::cout << std::endl;
+
+    // const auto jacobi = nonlocal::approx_all_jacobi_matrices(mesh, shifts);
+    // for(size_t i = 0; i < jacobi.size(); ++i)
+    //     std::cout << jacobi[i][0] << ' ' << jacobi[i][1] << ' ' << jacobi[i][2] << ' ' << jacobi[i][3] << std::endl;
 
     return 0;
 }

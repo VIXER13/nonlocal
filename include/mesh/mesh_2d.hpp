@@ -29,6 +29,16 @@ class mesh_2d {
     static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
     static_assert(std::is_integral_v<Index>, "The Index must be integral.");
 
+    enum class vtk_element_number : uintmax_t {
+        LINEAR = 3,
+        QUADRATIC = 21,
+        TRIANGLE = 5,
+        QUADRATIC_TRIANGLE = 22,
+        BILINEAR = 9,
+        QUADRATIC_SERENDIPITY = 23,
+        QUADRATIC_LAGRANGE = 28
+    };
+
     std::vector<std::array<Type, 2>> _nodes;                  // Глобальные кооридинаты узлов.
     std::vector<std::vector<Index>> _elements;                // Массив с глобальными номерами узлов для каждого элемента
                                                               // _elements[e][i] --- номер i-го узла элемента под номером e.
@@ -55,13 +65,6 @@ class mesh_2d {
     using linear = metamath::finite_element::linear<T>;
     template<class T>
     using quadratic = metamath::finite_element::quadratic<T>;
-    
-    // Наиболее употребительные одномерные и двумерные элементы
-    using fe_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<Type>>;
-    std::array<fe_1d_ptr, 2> _elements_1d = {
-        std::make_unique<element_1d_integrate<Type,    linear>>(quadrature<Type, gauss1>{}),
-        std::make_unique<element_1d_integrate<Type, quadratic>>(quadrature<Type, gauss2>{}),
-    };
 
     template<class T, template<class> class Element_Type>
     using element_2d_integrate = metamath::finite_element::element_2d_integrate<T, Element_Type>;
@@ -76,7 +79,24 @@ class mesh_2d {
     template<class T>
     using quadratic_lagrange = metamath::finite_element::quadratic_lagrange<T>;
 
+    template<size_t... I>
+    void read_element(std::ifstream& mesh_file, std::vector<Index>& element);
+    void read_su2(const std::string& path);
+
+    template<size_t... I>
+    void write_element(std::ofstream& mesh_file, std::vector<Index>& element);
+
+public:
+    using fe_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<Type>>;
     using fe_2d_ptr = std::unique_ptr<metamath::finite_element::element_2d_integrate_base<Type>>;
+
+private:
+    // Наиболее употребительные одномерные и двумерные элементы
+    std::array<fe_1d_ptr, 2> _elements_1d = {
+        std::make_unique<element_1d_integrate<Type,    linear>>(quadrature<Type, gauss1>{}),
+        std::make_unique<element_1d_integrate<Type, quadratic>>(quadrature<Type, gauss2>{}),
+    };
+
     std::array<fe_2d_ptr, 5> _elements_2d = {
         std::make_unique<element_2d_integrate<Type,              triangle>>(quadrature<Type, gauss1>{}),
         std::make_unique<element_2d_integrate<Type,    quadratic_triangle>>(quadrature<Type, gauss2>{}),
@@ -84,10 +104,6 @@ class mesh_2d {
         std::make_unique<element_2d_integrate<Type, quadratic_serendipity>>(quadrature<Type, gauss3>{}),
         std::make_unique<element_2d_integrate<Type,    quadratic_lagrange>>(quadrature<Type, gauss3>{}),
     };
-
-    template<size_t... I>
-    void read_element(std::ifstream& mesh_file, std::vector<Index>& element);
-    void read_su2(const std::string& path);
 
 public:
     explicit mesh_2d(const std::string& path);
@@ -103,7 +119,7 @@ public:
     Index node_number(const size_t element, const size_t node) const noexcept;
 
     size_t boundary_groups_count() const noexcept;
-    size_t nodes_count(const size_t boundary) const noexcept;
+    size_t elements_count(const size_t boundary) const noexcept;
     Index node_number(const size_t boundary, const size_t element, const size_t node) const noexcept;
 
     element_1d_t element_1d_type(const size_t boundary, const size_t element) const noexcept;
@@ -117,6 +133,9 @@ public:
 
     void find_elements_neighbors(const Type r); // Ищет соседние элементы, центры которых попали в зону влияния
     void find_nodes_neighbors(const Type r);    // Ищет соседние узлы, которые попадают в зону влияния
+
+    template<class Vector>
+    void save_as_vtk(const std::string& path, const Vector& T);
 };
 
 template<class Type, class Index>
@@ -181,7 +200,7 @@ size_t mesh_2d<Type, Index>::boundary_groups_count() const noexcept {
 }
 
 template<class Type, class Index>
-size_t mesh_2d<Type, Index>::nodes_count(const size_t boundary) const noexcept {
+size_t mesh_2d<Type, Index>::elements_count(const size_t boundary) const noexcept {
     return _boundaries[boundary].size();
 }
 

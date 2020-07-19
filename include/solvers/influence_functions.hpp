@@ -79,8 +79,8 @@ public:
         _norm = p / ((M_PI + M_PI) * r[0] * r[1] * std::beta(2./p, q+1.));
     }
 
-    Type operator()(Type xL, Type xNL, Type yL, Type yNL) const noexcept {
-        const Type h = _elliptical_region::calc_ellipse(_coeff, {xL, xNL}, {yL, yNL});
+    Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
+        const Type h = _elliptical_region::calc_ellipse(_coeff, x, y);
         if constexpr (p % 2)
             return h > 1 ? 0. : _norm * metamath::power<q>(1. - metamath::power<p/2>(h)*sqrt(h));
         else
@@ -113,8 +113,8 @@ public:
         _norm = 1. / (M_PI * r[0] * r[1]);
     }
 
-    Type operator()(Type xL, Type xNL, Type yL, Type yNL) const noexcept {
-        return _elliptical_region::calc_ellipse(_coeff, {xL, xNL}, {yL, yNL}) < 1. ? _norm : 0.;
+    Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
+        return _elliptical_region::calc_ellipse(_coeff, x, y) < 1. ? _norm : 0.;
     }
 };
 
@@ -143,8 +143,8 @@ public:
         _norm = 1. / (M_PI * r[0] * r[1]);
     }
 
-    Type operator()(Type xL, Type xNL, Type yL, Type yNL) const noexcept {
-        return _norm * exp(-_elliptical_region::calc_ellipse(_coeff, {xL, xNL}, {yL, yNL}));
+    Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
+        return _norm * exp(-_elliptical_region::calc_ellipse(_coeff, x, y));
     }
 };
 

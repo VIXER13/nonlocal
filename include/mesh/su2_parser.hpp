@@ -5,16 +5,6 @@
 
 namespace mesh {
 
-enum class vtk_element_number : uintmax_t {
-    LINEAR = 3,
-    QUADRATIC = 21,
-    TRIANGLE = 5,
-    QUADRATIC_TRIANGLE = 22,
-    BILINEAR = 9,
-    QUADRATIC_SERENDIPITY = 23,
-    QUADRATIC_LAGRANGE = 28
-};
-
 template<class Type, class Index>
 template<size_t... I>
 void mesh_2d<Type, Index>::read_element(std::ifstream& mesh_file, std::vector<Index>& element) {

@@ -1,7 +1,5 @@
 TARGET = a.out
 HDRS = include \
-	   include/containers \
-	   include/solvers \
 	   Eigen
 
 SRC = src/main.cpp

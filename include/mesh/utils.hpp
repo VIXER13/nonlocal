@@ -22,9 +22,9 @@ bool is_trinagle(const element_2d_t type) noexcept {
 
 template<class T, size_t N>
 std::array<T, N> operator*(std::array<T, N> arr, const T val) noexcept {
-    for(size_t i = 0; i < N; ++i)
+    for(size_t i = 0; i < arr.size(); ++i)
         arr[i] *= val;
-    return val;
+    return arr;
 }
 
 template<class T, size_t N>
@@ -36,7 +36,7 @@ std::array<T, N>& operator+=(std::array<T, N>& lhs, const std::array<T, N>& rhs)
 
 template<class T, class Index>
 std::vector<std::array<T, 2>> get_centres_of_elements(const mesh_2d<T, Index>& mesh) {
-    std::vector<std::array<T, 2>> centres(mesh.elements_count(), {});
+    std::vector<std::array<T, 2>> centres(mesh.elements_count(), std::array<T, 2>{});
     for(size_t element = 0; element < centres.size(); ++element) {
         const T x0 = is_trinagle(mesh.element_2d_type(element)) ? 1./3. : 0.;
         const auto& e = mesh.element_2d(mesh.element_2d_type(element));

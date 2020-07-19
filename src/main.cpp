@@ -1,64 +1,58 @@
-#include <iostream>
-#include "nonlocal_influence_functions.hpp"
-#include "mesh_2d.hpp"
-#include "heat_equation_solver.hpp"
-#include "static_equation_solver.hpp"
-#include "thermomechanical_equation_solver.hpp"
-#include "Eigen/Core"
-#include "omp.h"
+#include "solvers/influence_functions.hpp"
+#include "solvers/heat_equation_solver.hpp"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+int main(int argc, char** argv) {
+    if(argc < 2) {
+        std::cerr << "Input format [program name] <path to mesh>";
+        return EXIT_FAILURE;
+    }
 
-using heat_boundary_type = heat_equation_with_nonloc::boundary_type;
-using mechanical_boundary_type = static_equation_with_nonloc::boundary_type;
+    try {
+        static constexpr double r = 0.2, p1 = 0.5;
+        static const nonlocal::influence::polynomial<double, 2, 2> bell(r);
+        mesh::mesh_2d<double> msh{argv[1]};
+        if(p1 < 1) {
+            msh.find_elements_neighbors(r);
+            size_t neighbors_count = 0;
+            for(size_t i = 0; i < msh.elements_count(); ++i)
+                neighbors_count += msh.element_neighbors(i).size();
+            std::cout << "Average number of neighbors: " << double(neighbors_count) / msh.elements_count() << std::endl;
+        }
 
-int main(int argc, char** argv)
-{
-    std::cout.precision(5);
-    const int threads = 4;
-    omp_set_num_threads(threads);
-    Eigen::initParallel();
-    Eigen::setNbThreads(threads);
+        const auto T = nonlocal::heat::stationary(msh,
+            {
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::TEMPERATURE
+                },
+                
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::FLOW
+                },
 
-    const double r = 30, p1 = 0.66;
-    nonlocal::influence::polynomial<double, 2, 1> bell11(r);
-    //nonlocal::influence::normal_distribution bell11(r);
+                {
+                    [](const std::array<double, 2>&) { return 1; },
+                    nonlocal::heat::boundary_t::TEMPERATURE
+                },
 
-    //mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 50, 50, 1., 1.);
-    mesh_2d<double> mesh(argv[1]);
-    mesh.find_neighbors_for_elements(1.05*r);
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::FLOW
+                }
+            },
+            [](const std::array<double, 2>&){ return 0; },
+            p1, bell
+        );
 
-    size_t neighbors_count = 0;
-    for(size_t i = 0; i < mesh.elements_count(); ++i)
-        neighbors_count += mesh.neighbor(i).size();
-    std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
-  
-    const auto u = static_equation_with_nonloc::stationary<double, int>(
-        mesh, {.nu = 0.2, .E = 1},
-        { { // DOWN
-                [](double, double) { return 0; },
-                [](double, double) { return 0; },
-                mechanical_boundary_type::DISPLACEMENT,
-                mechanical_boundary_type::DISPLACEMENT },
+        msh.save_as_vtk("test.vtk", T);
+    } catch(const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch(...) {
+        std::cerr << "Unknown error" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-            { // UP
-                [](double, double) { return 0; },
-                [](double, double) { return 1; },
-                mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::DISPLACEMENT },
-        },
-        
-        { [](double, double) { return 0; },
-          [](double, double) { return 0; } },
-
-        p1, bell11);
-
-    mesh.find_neighbors_for_nodes(1.05*r);
-    auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = 
-        static_equation_with_nonloc::strains_and_stress<double, int>(mesh, u, {.nu = 0.2, .E = 1}, p1, bell11);
-    static_equation_with_nonloc::raw_output("results//", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
-    static_equation_with_nonloc::save_as_vtk("results//loc.vtk", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
-
-    return 0;
+    return EXIT_SUCCESS;
 }
