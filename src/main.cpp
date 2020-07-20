@@ -8,6 +8,8 @@ int main(int argc, char** argv) {
     }
 
     try {
+        omp_set_num_threads(4);
+
         static constexpr double r = 0.2, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 2> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};

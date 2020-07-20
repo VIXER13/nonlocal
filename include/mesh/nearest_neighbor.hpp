@@ -2,6 +2,7 @@
 #define MESH_NEAREST_NEIGHBOR_HPP
 
 #include "utils.hpp"
+#include <iostream>
 
 namespace mesh {
 
