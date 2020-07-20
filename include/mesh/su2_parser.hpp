@@ -97,6 +97,8 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path) {
                 _elements_1d_type.pop_back();
             }
         }
+    } else {
+        throw std::domain_error{"File don't open."};
     }
 }
 

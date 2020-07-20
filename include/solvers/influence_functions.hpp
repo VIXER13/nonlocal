@@ -80,7 +80,7 @@ public:
     }
 
     Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
-        const Type h = _elliptical_region::calc_ellipse(_coeff, x, y);
+        const Type h = _elliptical_region::calc_ellipse(_coeff, {x[0], y[0]}, {x[1], y[1]});
         if constexpr (p % 2)
             return h > 1 ? 0. : _norm * metamath::power<q>(1. - metamath::power<p/2>(h)*sqrt(h));
         else
@@ -114,7 +114,7 @@ public:
     }
 
     Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
-        return _elliptical_region::calc_ellipse(_coeff, x, y) < 1. ? _norm : 0.;
+        return _elliptical_region::calc_ellipse(_coeff, {x[0], y[0]}, {x[1], y[1]}) < 1. ? _norm : 0.;
     }
 };
 
@@ -144,7 +144,7 @@ public:
     }
 
     Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
-        return _norm * exp(-_elliptical_region::calc_ellipse(_coeff, x, y));
+        return _norm * exp(-_elliptical_region::calc_ellipse(_coeff, {x[0], y[0]}, {x[1], y[1]}));
     }
 };
 

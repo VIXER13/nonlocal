@@ -77,11 +77,11 @@ protected:
                                             const std::vector<std::array<T, 4>>& jacobi_matrices,
                                             size_t shiftL, size_t shiftNL, const Influence_Function& influence_function) {
         const size_t sub_shift = shiftNL;
-        T integral = 0, int_with_weight_x = 0, int_with_weight_y = 0, influence_weight = 0;
+        T integral = 0;
         for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL) {
-            int_with_weight_x = int_with_weight_y = 0;
+            T int_with_weight_x = 0, int_with_weight_y = 0;
             for(size_t qNL = 0, shiftNL = sub_shift; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL) {
-                influence_weight = eNL->weight(qNL) * influence_function(quad_coords[shiftL], quad_coords[shiftNL]);
+                const T influence_weight = eNL->weight(qNL) * influence_function(quad_coords[shiftL], quad_coords[shiftNL]);
                 int_with_weight_x += influence_weight * ( eNL->qNxi (jNL, qNL) * jacobi_matrices[shiftNL][3] - 
                                                           eNL->qNeta(jNL, qNL) * jacobi_matrices[shiftNL][2]);
                 int_with_weight_y += influence_weight * (-eNL->qNxi (jNL, qNL) * jacobi_matrices[shiftNL][1] + 
@@ -238,7 +238,7 @@ protected:
                 if(mesh.node_number(el, i) >= mesh.node_number(el, j)) {
                     const Type integral = p1 * integrate_rule(mesh.element_2d(mesh.element_2d_type(el)), i, j, all_jacobi_matrices, shifts_quad[el]);
                     if(inner_nodes[mesh.node_number(el, i)] && inner_nodes[mesh.node_number(el, j)])
-                        triplets[shifts_loc[el]++] = Eigen::Triplet<Type>(mesh.node_number(el, i), mesh.node_number(el, j), integral);
+                        triplets[shifts_loc[el]++] = Eigen::Triplet<Type, Index>(mesh.node_number(el, i), mesh.node_number(el, j), integral);
                     else if(mesh.node_number(el, i) != mesh.node_number(el, j))
                         triplets_bound[shifts_bound_loc[el]++] = inner_nodes[mesh.node_number(el, j)] ?
                                                                  Eigen::Triplet<Type, Index>(mesh.node_number(el, j), mesh.node_number(el, i), integral) :
@@ -253,12 +253,12 @@ protected:
                 &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1]
                 (size_t iL, size_t jNL, size_t elL, size_t elNL) {
                     if(mesh.node_number(elL, iL) >= mesh.node_number(elNL, jNL)) {
-                        const Type integral = p2 * integrate_gradient_pair_nonloc(mesh.element_2d(mesh.element_2d_type(elL )), elL,
-                                                                                  mesh.element_2d(mesh.element_2d_type(elNL)), elNL,
+                        const Type integral = p2 * integrate_gradient_pair_nonloc(mesh.element_2d(mesh.element_2d_type(elL )), iL,
+                                                                                  mesh.element_2d(mesh.element_2d_type(elNL)), jNL,
                                                                                   all_quad_coords, all_jacobi_matrices,
                                                                                   shifts_quad[elL], shifts_quad[elNL], influence_fun);
                         if(inner_nodes[mesh.node_number(elL, iL)] && inner_nodes[mesh.node_number(elNL, jNL)])
-                            triplets[shifts_nonloc[elL]++] = Eigen::Triplet<Type>(mesh.node_number(elL, iL), mesh.node_number(elNL, jNL), integral);
+                            triplets[shifts_nonloc[elL]++] = Eigen::Triplet<Type, Index>(mesh.node_number(elL, iL), mesh.node_number(elNL, jNL), integral);
                         else if(mesh.node_number(elL, iL) != mesh.node_number(elNL, jNL))
                             triplets_bound[shifts_bound_nonloc[elL]++] = inner_nodes[mesh.node_number(elNL, jNL)] ?
                                                                          Eigen::Triplet<Type, Index>(mesh.node_number(elNL, jNL), mesh.node_number(elL,   iL), integral) :
