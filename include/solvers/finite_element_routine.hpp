@@ -14,7 +14,7 @@ enum class boundary_type : uint8_t {
 
 class finite_element_routine {
 protected:
-    explicit finite_element_routine() = default;
+    explicit finite_element_routine() noexcept = default;
 
     // Функция обхода сетки в локальных постановках.
     // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
@@ -60,7 +60,8 @@ protected:
     // Аппроксимация глобальных координат всех квадратурных узлов сетки.
     // Перед вызовом обязательно должны быть проинициализированы квадратурные сдвиги
     template<class Type, class Index>
-    static std::vector<std::array<Type, 2>> approx_all_quad_nodes(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<Index>& shifts) {
+    static std::vector<std::array<Type, 2>> approx_all_quad_nodes(const mesh::mesh_2d<Type, Index>& mesh,
+                                                                  const std::vector<Index>& shifts) {
         if(mesh.elements_count()+1 != shifts.size())
             throw std::logic_error{"mesh.elements_count()+1 != shifts.size()"};
         std::vector<std::array<Type, 2>> coords(shifts.back(), std::array<Type, 2>{});
@@ -75,10 +76,24 @@ protected:
         return std::move(coords);
     }
 
+    template<class Type, class Index>
+    static void approx_quad_nodes_on_bound(std::vector<std::array<Type, 2>>& quad_nodes, 
+                                           const mesh::mesh_2d<Type, Index>& mesh,
+                                           const size_t b, const size_t el) {
+        const auto& be = mesh.element_1d(mesh.element_1d_type(b, el));
+        quad_nodes.clear();
+        quad_nodes.resize(be->qnodes_count(), {});
+        for(size_t q = 0; q < be->qnodes_count(); ++q)
+            for(size_t i = 0; i < be->nodes_count(); ++i)
+                for(size_t comp = 0; comp < 2; ++comp)
+                    quad_nodes[q][comp] += mesh.node(mesh.node_number(b, el, i))[comp] * be->qN(i, q);
+    }
+
     // Аппроксимация матриц Якоби во всех квадратурных узлах сетки.
     // Перед вызовом обязательно должны быть проинициализированы квадратурные сдвиги
     template<class Type, class Index>
-    static std::vector<std::array<Type, 4>> approx_all_jacobi_matrices(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<Index>& shifts) {
+    static std::vector<std::array<Type, 4>> approx_all_jacobi_matrices(const mesh::mesh_2d<Type, Index>& mesh, 
+                                                                       const std::vector<Index>& shifts) {
         if(mesh.elements_count()+1 != shifts.size())
             throw std::logic_error{"mesh.elements_count()+1 != shifts.size()"};
         std::vector<std::array<Type, 4>> jacobi_matrices(shifts.back(), std::array<Type, 4>{});
@@ -94,6 +109,53 @@ protected:
                 }
         }
         return std::move(jacobi_matrices);
+    }
+
+    template<class Type, class Index>
+    static void approx_jacobi_matrices_on_bound(std::vector<std::array<Type, 2>>& jacobi_matrices, 
+                                                const mesh::mesh_2d<Type, Index>& mesh,
+                                                const size_t b, const size_t el) {
+        const auto& be = mesh.element_1d(mesh.element_1d_type(b, el));
+        jacobi_matrices.clear();
+        jacobi_matrices.resize(be->qnodes_count(), {});
+        for(size_t q = 0; q < be->qnodes_count(); ++q)
+            for(size_t i = 0; i < be->nodes_count(); ++i)
+                for(size_t comp = 0; comp < 2; ++comp)
+                    jacobi_matrices[q][comp] += mesh.node(mesh.node_number(b, el, i))[comp] * be->qNxi(i, q);
+    }
+
+    template<class Type>
+    static Type jacobian(const std::array<Type, 4>& jacobi_matrix) noexcept {
+        return jacobi_matrix[0] * jacobi_matrix[3] - jacobi_matrix[1] * jacobi_matrix[2];
+    }
+
+    template<class Type>
+    static Type jacobian(const std::array<Type, 2>& jacobi_matrix) noexcept {
+        return sqrt(jacobi_matrix[0] * jacobi_matrix[0] + jacobi_matrix[1] * jacobi_matrix[1]);
+    }
+
+    // Function - функтор с сигнатурой Type(std::array<Type, 2>&)
+    template<class Type, class Finite_Element_2D_Ptr, class Function>
+    static Type integrate_function(const Finite_Element_2D_Ptr& e, const size_t i,
+                                   const std::vector<std::array<Type, 2>>& quad_nodes,
+                                   const std::vector<std::array<Type, 4>>& jacobi_matrices,
+                                   size_t quad_shift, const Function& func) {
+        Type integral = 0;
+        for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
+            integral += e->weight(q) * e->qN(i, q) * func(quad_nodes[quad_shift]) * jacobian(jacobi_matrices[quad_shift]);
+        return integral;
+    }
+
+    // Boundary_Gradient - функтор с сигнатурой Type(std::array<Type, 2>&)
+    template<class Type, class Finite_Element_1D_Pointer, class Boundary_Gradient>
+    static Type integrate_boundary_gradient(const Finite_Element_1D_Pointer& be, const size_t i,
+                                            const std::vector<std::array<Type, 2>>& quad_nodes, 
+                                            const std::vector<std::array<Type, 2>>& jacobi_matrices, 
+                                            const Boundary_Gradient& boundary_gradient) {
+        Type integral = 0;
+        for(size_t q = 0; q < be->qnodes_count(); ++q)
+            integral += be->weight(q) * be->qN(i, q) * boundary_gradient(quad_nodes[q]) * jacobian(jacobi_matrices[q]);
+        return integral;
     }
 };
 
@@ -111,18 +173,6 @@ protected:
 //                 coords(q, component) += mesh.coord(mesh.node_number(el, i), component) * e->qN(i, q);
 // }
 
-// template<class Type, class Index, class Finite_Element_1D_Pointer>
-// static void approx_quad_nodes_coord_bound(const mesh_2d<Type, Index>& mesh, const Finite_Element_1D_Pointer& be,
-//                                           const size_t b, const size_t el, matrix<Type>& coords)
-// {
-//     coords.resize(be->qnodes_count(), 2);
-//     memset(coords.data(), 0, coords.size() * sizeof(Type));
-//     for(size_t q = 0; q < be->qnodes_count(); ++q)
-//         for(size_t i = 0; i < be->nodes_count(); ++i)
-//             for(size_t comp = 0; comp < 2; ++comp)
-//                 coords(q, comp) += mesh.coord(mesh.boundary(b)(el, i), comp) * be->qN(i, q);
-// }
-
 // template<class Type, class Index, class Finite_Element_2D_Pointer>
 // static void approx_jacobi_matrices(const mesh_2d<Type, Index>& mesh, const Finite_Element_2D_Pointer& e,
 //                                    const size_t el, matrix<Type>& jacobi_matrices) 
@@ -137,44 +187,6 @@ protected:
 //             jacobi_matrices(q, 2) += mesh.coord(mesh.node_number(el, i), 1) * e->qNxi (i, q);
 //             jacobi_matrices(q, 3) += mesh.coord(mesh.node_number(el, i), 1) * e->qNeta(i, q);
 //         }
-// }
-
-// template<class Type, class Index, class Finite_Element_1D_Pointer>
-// static void approx_jacobi_matrices_bound(const mesh_2d<Type, Index>& mesh, const Finite_Element_1D_Pointer& be,
-//                                          const size_t b, const size_t el, matrix<Type>& jacobi_matrices)
-// {
-//     jacobi_matrices.resize(be->qnodes_count(), 2);
-//     memset(jacobi_matrices.data(), 0, jacobi_matrices.size() * sizeof(Type));
-//     for(size_t q = 0; q < be->qnodes_count(); ++q)
-//         for(size_t i = 0; i < be->nodes_count(); ++i)
-//             for(size_t comp = 0; comp < 2; ++comp)
-//                 jacobi_matrices(q, comp) += mesh.coord(mesh.boundary(b)(el, i), comp) * be->qNxi(i, q);
-// }
-
-// // Right_Part - функтор с сигнатурой Type(Type, Type)
-// template<class Type, class Finite_Element_2D_Pointer, class Right_Part>
-// static Type integrate_right_part_function(const Finite_Element_2D_Pointer& e, const size_t i,
-//                                           const matrix<Type>& coords, const matrix<Type>& jacobi_matrices,
-//                                           const Right_Part& fun)
-// {
-//     Type integral = 0;
-//     for(size_t q = 0; q < e->qnodes_count(); ++q)
-//         integral += e->weight(q) * e->qN(i, q) * fun(coords(q, 0), coords(q, 1)) *
-//                     (jacobi_matrices(q, 0)*jacobi_matrices(q, 3) - jacobi_matrices(q, 1)*jacobi_matrices(q, 2));
-//     return integral;
-// }
-
-// // Boundary_Gradient - функтор с сигнатурой Type(Type, Type)
-// template<class Type, class Finite_Element_1D_Pointer, class Boundary_Gradient>
-// static Type integrate_boundary_gradient(const Finite_Element_1D_Pointer& be, const size_t i,
-//                                         const matrix<Type>& coords, const matrix<Type>& jacobi_matrices, 
-//                                         const Boundary_Gradient& boundary_gradient)
-// {
-//     Type integral = 0;
-//     for(size_t q = 0; q < be->qnodes_count(); ++q)
-//         integral += be->weight(q) * be->qN(i, q) * boundary_gradient(coords(q, 0), coords(q, 1)) *
-//                     sqrt(jacobi_matrices(q, 0)*jacobi_matrices(q, 0) + jacobi_matrices(q, 1)*jacobi_matrices(q, 1));
-//     return integral;
 // }
 
 #endif

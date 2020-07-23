@@ -23,21 +23,19 @@ struct boundary_condition {
     boundary_t type = boundary_t::FLOW;
 };
 
-class _heat : public finite_element_routine {
+class _heat : protected finite_element_routine {
 protected:
-    explicit _heat() = default;
+    explicit _heat() noexcept = default;
 
     // Интегрирование базисной функции i по элементу e.
     // Для использования, предварительно должны быть проинициализированы jacobi_matrices текущего элемента.
     // Квадратурный сдвиг quad_shift нужен в случае если матрицы Якоби текуще элемента хранятся со сдвигом.
     template<class T, class Finite_Element_2D_Ptr>
-    static T integrate_basis(const Finite_Element_2D_Ptr& e, const size_t i, 
+    static T integrate_basic(const Finite_Element_2D_Ptr& e, const size_t i, 
                              const std::vector<std::array<T, 4>>& jacobi_matrices, size_t quad_shift) {
         T integral = 0;
         for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
-            integral += e->weight(q) * e->qN(i, q) *
-                        (jacobi_matrices[quad_shift][0] * jacobi_matrices[quad_shift][3] - 
-                         jacobi_matrices[quad_shift][1] * jacobi_matrices[quad_shift][2]);
+            integral += e->weight(q) * e->qN(i, q) * jacobian(jacobi_matrices[quad_shift]);
         return integral;
     }
 
@@ -47,9 +45,7 @@ protected:
                                   const std::vector<std::array<T, 4>>& jacobi_matrices, size_t quad_shift) {
         T integral = 0;
         for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
-            integral += e->weight(q) * e->qN(i, q) * e->qN(j, q) *
-                        (jacobi_matrices[quad_shift][0] * jacobi_matrices[quad_shift][3] - 
-                         jacobi_matrices[quad_shift][1] * jacobi_matrices[quad_shift][2]);
+            integral += e->weight(q) * e->qN(i, q) * e->qN(j, q) * jacobian(jacobi_matrices[quad_shift]);
         return integral;
     }
 
@@ -62,9 +58,8 @@ protected:
             integral += (( e->qNxi(i, q) * jacobi_matrices[quad_shift][3] - e->qNeta(i, q) * jacobi_matrices[quad_shift][2]) *
                          ( e->qNxi(j, q) * jacobi_matrices[quad_shift][3] - e->qNeta(j, q) * jacobi_matrices[quad_shift][2]) +
                          (-e->qNxi(i, q) * jacobi_matrices[quad_shift][1] + e->qNeta(i, q) * jacobi_matrices[quad_shift][0]) *
-                         (-e->qNxi(j, q) * jacobi_matrices[quad_shift][1] + e->qNeta(j, q) * jacobi_matrices[quad_shift][0])) /
-                        (jacobi_matrices[quad_shift][0] * jacobi_matrices[quad_shift][3] - 
-                         jacobi_matrices[quad_shift][1] * jacobi_matrices[quad_shift][2]) * e->weight(q);
+                         (-e->qNxi(j, q) * jacobi_matrices[quad_shift][1] + e->qNeta(j, q) * jacobi_matrices[quad_shift][0])) *
+                        e->weight(q) / jacobian(jacobi_matrices[quad_shift]);
         return integral;
     }
 
@@ -76,8 +71,8 @@ protected:
                                             const std::vector<std::array<T, 2>>& quad_coords,
                                             const std::vector<std::array<T, 4>>& jacobi_matrices,
                                             size_t shiftL, size_t shiftNL, const Influence_Function& influence_function) {
-        const size_t sub_shift = shiftNL;
         T integral = 0;
+        const size_t sub_shift = shiftNL;
         for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL) {
             T int_with_weight_x = 0, int_with_weight_y = 0;
             for(size_t qNL = 0, shiftNL = sub_shift; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL) {
@@ -96,34 +91,17 @@ protected:
         return integral;
     }
 
-    // template<class Type, class Index>
-    // Type integrate_solution(const mesh_2d<Type, Index>& mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1>& T) {
-    //     Type integral = 0;
-    //     std::vector<std::array<Type, 4>> jacobi_matrices;
-    //     for(size_t el = 0; el < mesh.elements_count(); ++el) {
-    //         const auto& e = mesh.element_2d(mesh.element_type(el));
-    //         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
-    //         for(size_t i = 0; i < e->nodes_count(); ++i)
-    //             for(size_t q = 0; q < e->qnodes_count(); ++q)
-    //                 integral += e->weight(q) * e->qN(i, q) * T[mesh.node_number(el, i)] *
-    //                             (jacobi_matrices[q][0] * jacobi_matrices[q][3] -
-    //                              jacobi_matrices[q][1] * jacobi_matrices[q][2]);
-    //     }
-    //     return integral;
-    // }
-
-    // template<class Type, class Index, class Right_Part>
-    // static void integrate_right_part(const mesh_2d<Type, Index>& mesh, const Right_Part& right_part, Eigen::Matrix<Type, Eigen::Dynamic, 1>& f) {
-    //     std::vector<std::array<Type, 2>> coords;
-    //     std::vector<std::array<Type, 4>> jacobi_matrices;
-    //     for(size_t el = 0; el < mesh.elements_count(); ++el) {
-    //         const auto& e = mesh.element_2d(mesh.element_type(el));
-    //         approx_quad_nodes_coords(mesh, e, el, coords);
-    //         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
-    //         for(size_t i = 0; i < e->nodes_count(); ++i)
-    //             f[mesh.node_number(el, i)] += integrate_right_part_function(e, i, coords, jacobi_matrices, right_part);
-    //     }
-    // }
+    template<class Type, class Index, class Vector, class Right_Part>
+    static void integrate_right_part(Vector& f, const mesh::mesh_2d<Type, Index>& mesh, const Right_Part& right_part) {
+        const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
+        const std::vector<std::array<Type, 2>> all_quad_coords = approx_all_quad_nodes(mesh, shifts_quad);
+        const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
+        for(size_t el = 0; el < mesh.elements_count(); ++el) {
+            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+            for(size_t i = 0; i < e->nodes_count(); ++i)
+                f[mesh.node_number(el, i)] += integrate_function(e, i, all_quad_coords, all_jacobi_matrices, shifts_quad[el], right_part);
+        }
+    }
 
     // Функция возвращает массив флагов, где true свидетельствует о том, что узел под данным номером внутренний,
     // т.е. на нём не задано граничное условие первого рода
@@ -297,19 +275,19 @@ protected:
     // Параметр tau - шаг интегрирования, в стационарной задаче равен 1.
     template<class Type, class Index, class Vector>
     static void boundary_condition_calc(Vector& f, const mesh::mesh_2d<Type, Index>& mesh,
-                                        const std::vector<boundary_condition<Type>>& bounds_cond,
-                                        const Type tau, const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
-        // matrix<Type> coords, jacobi_matrices;
-        // for(size_t b = 0; b < bounds_cond.size(); ++b)
-        //     if(bounds_cond[b].type == boundary_type::FLOW)
-        //         for(size_t el = 0; el < mesh.boundary(b).rows(); ++el)
-        //         {
-        //             const auto& be = mesh.element_1d(mesh.elements_on_bound_types(b)[el]);
-        //             approx_jacobi_matrices_bound(mesh, be, b, el, jacobi_matrices);
-        //             approx_quad_nodes_coord_bound(mesh, be, b, el, coords);
-        //             for(size_t i = 0; i < mesh.boundary(b).cols(el); ++i)
-        //                 f[mesh.boundary(b)(el, i)] += tau * integrate_boundary_gradient(be, i, coords, jacobi_matrices, bounds_cond[b].func);
-        //         }
+                                        const std::vector<boundary_condition<Type>>& bounds_cond, const Type tau, 
+                                        const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
+        std::vector<std::array<Type, 2>> quad_nodes, jacobi_matrices;
+        for(size_t b = 0; b < bounds_cond.size(); ++b)
+            if(bounds_cond[b].type == boundary_t::FLOW)
+                for(size_t el = 0; el < mesh.elements_count(b); ++el) {
+                    approx_quad_nodes_on_bound(quad_nodes, mesh, b, el);
+                    approx_jacobi_matrices_on_bound(jacobi_matrices, mesh, b, el);
+                    const auto& be = mesh.element_1d(mesh.element_1d_type(b, el));
+                    for(size_t i = 0; i < be->nodes_count(); ++i)
+                        f[mesh.node_number(b, el, i)] += 
+                            tau * integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func);
+                }
 
         // Граничные условия первого рода
         const std::vector<std::vector<Index>> temperature_nodes = temperature_nodes_vectors(mesh, bounds_cond);
@@ -326,7 +304,33 @@ protected:
                 f[node] = bounds_cond[b].func(mesh.node(node));
     }
 
+    // Нелокальное условие для задачи Неймана
+    template<class Type, class Index>
+    static Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> nonlocal_condition(const mesh::mesh_2d<Type, Index>& mesh) {
+        size_t triplets_count = 0;
+        for(size_t el = 0; el < mesh.elements_count(); ++el)
+            triplets_count += mesh.element_2d(mesh.element_2d_type(el))->nodes_count();
+        std::vector<Eigen::Triplet<Type, Index>> triplets(triplets_count);
+
+        triplets_count = 0;
+        const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
+        const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
+        for(size_t el = 0; el < mesh.elements_count(); ++el) {
+            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+            for(size_t i = 0; i < e->nodes_count(); ++i)
+                triplets[triplets_count++] = Eigen::Triplet<Type, Index>(mesh.nodes_count(), mesh.node_number(el, i), 
+                                                                         integrate_basic(e, i, all_jacobi_matrices, shifts_quad[el]));
+        }
+
+        Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K_last_row(mesh.nodes_count()+1, mesh.nodes_count()+1);
+        K_last_row.setFromTriplets(triplets.cbegin(), triplets.cend());
+        return std::move(K_last_row);
+    }
+
 public:
+    template<class Type, class Index, class Vector>
+    friend Type integrate_solution(const mesh::mesh_2d<Type, Index>& mesh, const Vector& T);
+
     // Функция, решающая стационарное уравнение теплопроводности в нелокальной постановке.
     // Right_Part - функтор с сигнатурой Type(std::array<Type, 2>&),
     // Influence_Function - функтор с сигнатурой Type(std::array<Type, 2>&, std::array<Type, 2>&)
@@ -336,6 +340,22 @@ public:
         stationary(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond, 
                    const Right_Part& right_part, const Type p1, const Influence_Function& influence_fun, const Type volume = 0);
 };
+
+template<class Type, class Index, class Vector>
+Type integrate_solution(const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
+    if(mesh.nodes_count() != T.size())
+        throw std::logic_error{"mesh.nodes_count() != T.size()"};
+    Type integral = 0;
+    const std::vector<Index> shifts_quad = _heat::quadrature_shifts_init(mesh);
+    const std::vector<std::array<Type, 4>> all_jacobi_matrices = _heat::approx_all_jacobi_matrices(mesh, shifts_quad);
+    for(size_t el = 0; el < mesh.elements_count(); ++el) {
+        const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            for(size_t q = 0, shift = shifts_quad[el]; q < e->qnodes_count(); ++q, ++shift)
+                integral += e->weight(q) * e->qN(i, q) * T[mesh.node_number(el, i)] * _heat::jacobian(all_jacobi_matrices[shift]);
+    }
+    return integral;
+}
 
 template<class Type, class Index, class Right_Part, class Influence_Function>
 Eigen::Matrix<Type, Eigen::Dynamic, 1>
@@ -351,9 +371,9 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
         f[mesh.nodes_count()] = volume;
 
     double time = omp_get_wtime();
-    //std::cout << "Right part Integrate: ";
-    //integrate_right_part(mesh, right_part, f);
-    //std::cout << omp_get_wtime() - time << std::endl;
+    std::cout << "Right part Integrate: ";
+    _heat::integrate_right_part(f, mesh, right_part);
+    std::cout << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
     _heat::create_matrix<Type, Index>(
@@ -361,8 +381,8 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
         _heat::integrate_gradient_pair<Type, typename mesh::mesh_2d<Type, Index>::fe_2d_ptr>, 
         p1, influence_fun
     );
-    //if(neumann_task)
-    //    K += nonlocal_condition(mesh);
+    if(neumann_task)
+       K += _heat::nonlocal_condition(mesh);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
@@ -377,7 +397,7 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     Eigen::Matrix<Type, Eigen::Dynamic, 1> T = solver.solve(f);
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
 
-    return T;
+    return std::move(T);
 }
 
 }
@@ -385,33 +405,6 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
 
 // namespace heat_equation_with_nonloc
 // {
-
-// // Нелокальное условие для задачи Неймана.
-// template<class Type, class Index>
-// static Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> nonlocal_condition(const mesh_2d<Type, Index>& mesh)
-// {
-//     size_t triplets_count = 0;
-//     for(size_t el = 0; el < mesh.elements_count(); ++el)
-//         triplets_count += mesh.element_2d(mesh.element_type(el))->nodes_count();
-
-//     matrix<Type> jacobi_matrices;
-//     std::vector<Eigen::Triplet<Type, Index>> triplets(triplets_count);
-
-//     triplets_count = 0;
-//     const metamath::finite_element::element_2d_integrate_base<Type> *e = nullptr;
-//     for(size_t el = 0; el < mesh.elements_count(); ++el)
-//     {
-//         e = mesh.element_2d(mesh.element_type(el));
-//         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
-//         for(size_t i = 0; i < e->nodes_count(); ++i)
-//             triplets[triplets_count++] = Eigen::Triplet<Type, Index>(mesh.nodes_count(), mesh.node_number(el, i), 
-//                                                                      integrate_basic(e, i, jacobi_matrices));
-//     }
-
-//     Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K_last_row(mesh.nodes_count()+1, mesh.nodes_count()+1);
-//     K_last_row.setFromTriplets(triplets.cbegin(), triplets.cend());
-//     return K_last_row;
-// }
 
 // template<class Type, class Index>
 // void nonstationary(const std::string& path,
