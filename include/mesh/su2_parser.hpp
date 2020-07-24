@@ -39,7 +39,7 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path) {
 
                 case vtk_element_number::BILINEAR:
                     _elements_2d_type[el] = element_2d_t::BILINEAR;
-                    read_element<0, 3, 2, 1>(mesh_file, _elements[el]);
+                    read_element<0, 1, 2, 3>(mesh_file, _elements[el]);
                 break;
 
                 case vtk_element_number::QUADRATIC_SERENDIPITY:

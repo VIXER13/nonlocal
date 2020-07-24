@@ -12,9 +12,9 @@ enum class boundary_type : uint8_t {
     SECOND_KIND
 };
 
-class finite_element_routine {
+class _finite_element_routine {
 protected:
-    explicit finite_element_routine() noexcept = default;
+    explicit _finite_element_routine() noexcept = default;
 
     // Функция обхода сетки в локальных постановках.
     // Нужна для предварительного подсчёта количества элементов и интегрирования системы.

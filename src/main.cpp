@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
         std::cout.precision(5);
         omp_set_num_threads(4);
 
-        static constexpr double r = 0.2, p1 = 0.3;
+        static constexpr double r = 0.2, p1 = 1;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};
         if(p1 < 1) {
@@ -34,32 +34,32 @@ int main(int argc, char** argv) {
         const auto T = nonlocal::heat::stationary(msh,
             {
                 {
-                    [](const std::array<double, 2>&) { return 1; },
-                    nonlocal::heat::boundary_t::FLOW
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                    nonlocal::heat::boundary_t::TEMPERATURE
                 },
                 
                 {
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::heat::boundary_t::FLOW
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                    nonlocal::heat::boundary_t::TEMPERATURE
                 },
 
                 {
-                    [](const std::array<double, 2>&) { return -1; },
-                    nonlocal::heat::boundary_t::FLOW
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                    nonlocal::heat::boundary_t::TEMPERATURE
                 },
 
                 {
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::heat::boundary_t::FLOW
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                    nonlocal::heat::boundary_t::TEMPERATURE
                 }
             },
-            [](const std::array<double, 2>&){ return 0; },
+            [](const std::array<double, 2>&){ return -4; },
             p1, bell, 1.
         );
 
         std::cout << "Energy: " << nonlocal::heat::integrate_solution(msh, T) << std::endl;
 
-        msh.save_as_vtk("test.vtk", T);
+        //msh.save_as_vtk("test.vtk", T);
         raw_output("test.csv", msh, T);
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

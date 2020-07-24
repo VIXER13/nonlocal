@@ -23,7 +23,7 @@ struct boundary_condition {
     boundary_t type = boundary_t::FLOW;
 };
 
-class _heat : protected finite_element_routine {
+class _heat : protected _finite_element_routine {
 protected:
     explicit _heat() noexcept = default;
 
@@ -92,10 +92,11 @@ protected:
     }
 
     template<class Type, class Index, class Vector, class Right_Part>
-    static void integrate_right_part(Vector& f, const mesh::mesh_2d<Type, Index>& mesh, const Right_Part& right_part) {
-        const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
-        const std::vector<std::array<Type, 2>> all_quad_coords = approx_all_quad_nodes(mesh, shifts_quad);
-        const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
+    static void integrate_right_part(Vector& f, const mesh::mesh_2d<Type, Index>& mesh, 
+                                     const std::vector<Index>& shifts_quad,
+                                     const std::vector<std::array<Type, 2>>& all_quad_coords,
+                                     const std::vector<std::array<Type, 4>>& all_jacobi_matrices,
+                                     const Right_Part& right_part) {
         for(size_t el = 0; el < mesh.elements_count(); ++el) {
             const auto& e = mesh.element_2d(mesh.element_2d_type(el));
             for(size_t i = 0; i < e->nodes_count(); ++i)
@@ -195,20 +196,30 @@ protected:
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     template<class Type, class Index, class Integrate_Rule, class Influence_Function>
     static std::array<std::vector<Eigen::Triplet<Type, Index>>, 2>
-        triplets_fill(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond,
-                      const Integrate_Rule& integrate_rule, const Type p1, const Influence_Function& influence_fun) {
+        triplets_fill(const mesh::mesh_2d<Type, Index>& mesh, 
+                      const std::vector<Index>& shifts_quad,
+                      const std::vector<std::array<Type, 2>>& all_quad_coords,
+                      const std::vector<std::array<Type, 4>>& all_jacobi_matrices,
+                      const std::vector<boundary_condition<Type>>& bounds_cond, const bool neumann_task,
+                      const Integrate_Rule& integrate_rule,
+                      const Type p1, const Influence_Function& influence_fun) {
         static constexpr Type MAX_LOCAL_WEIGHT = 0.999;
         const bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
         const std::vector<bool> inner_nodes = inner_nodes_vector(mesh, bounds_cond);
         auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, inner_nodes, nonlocal);
-        std::vector<Eigen::Triplet<Type, Index>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
-                                                 triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
-        for(size_t i = 0, j = 0; i < inner_nodes.size(); ++i)
-            if(!inner_nodes[i])
-                triplets[j++] = Eigen::Triplet<Type, Index>(i, i, 1.);
 
-        const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
-        const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
+        size_t neumann_triplets = 0;
+        if(neumann_task) {
+            for(size_t el = 0; el < mesh.elements_count(); ++el)
+                neumann_triplets += mesh.element_2d(mesh.element_2d_type(el))->nodes_count();
+        }
+
+        std::vector<Eigen::Triplet<Type, Index>> triplets      ((nonlocal ? shifts_nonloc.back()       : shifts_loc.back()) + neumann_triplets),
+                                                 triplets_bound( nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
+        if(!neumann_task)
+            for(size_t i = 0, j = 0; i < inner_nodes.size(); ++i)
+                if(!inner_nodes[i])
+                    triplets[j++] = Eigen::Triplet<Type, Index>(i, i, 1.);
 
         mesh_run_loc(mesh,
             [&mesh, &inner_nodes, &triplets, &triplets_bound, &shifts_loc, &shifts_bound_loc,
@@ -225,7 +236,6 @@ protected:
             });
 
         if(nonlocal) {
-            const std::vector<std::array<Type, 2>> all_quad_coords = approx_all_quad_nodes(mesh, shifts_quad);
             mesh_run_nonloc(mesh, 
                 [&mesh, &inner_nodes, &triplets, &triplets_bound, &shifts_nonloc, &shifts_bound_nonloc,
                 &shifts_quad, &all_jacobi_matrices, &all_quad_coords, &influence_fun, p2 = 1. - p1]
@@ -245,6 +255,17 @@ protected:
                 });
         }
 
+        if(neumann_task)
+        {
+            size_t last_index = nonlocal ? shifts_nonloc.back() : shifts_loc.back();
+            for(size_t el = 0; el < mesh.elements_count(); ++el) {
+                const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+                for(size_t i = 0; i < e->nodes_count(); ++i)
+                    triplets[last_index++] = Eigen::Triplet<Type, Index>(mesh.nodes_count(), mesh.node_number(el, i), 
+                                                                         integrate_basic(e, i, all_jacobi_matrices, shifts_quad[el]));
+            }
+        }
+
         return {std::move(triplets), std::move(triplets_bound)};
     }
 
@@ -257,11 +278,16 @@ protected:
     // матрицы K и K_bound передаются по ссылке в функцию.
     template<class Type, class Index, class Integrate_Rule, class Influence_Function>
     static void create_matrix(Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K, Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound,
-                              const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond,
+                              const mesh::mesh_2d<Type, Index>& mesh, 
+                              const std::vector<Index>& shifts_quad,
+                              const std::vector<std::array<Type, 2>>& all_quad_coords,
+                              const std::vector<std::array<Type, 4>>& all_jacobi_matrices,
+                              const std::vector<boundary_condition<Type>>& bounds_cond, const bool neumann_task,
                               const Integrate_Rule& integrate_rule, const Type p1, const Influence_Function& influence_fun) {
         double time = omp_get_wtime();
         std::cout << "Triplets calc: ";
-        auto [triplets, triplets_bound] = triplets_fill(mesh, bounds_cond, integrate_rule, p1, influence_fun);
+        auto [triplets, triplets_bound] = triplets_fill(mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, 
+                                                        bounds_cond, neumann_task, integrate_rule, p1, influence_fun);
         std::cout << omp_get_wtime() - time << std::endl
                   << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
 
@@ -271,12 +297,9 @@ protected:
         std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
     }
 
-    // Учёт граничных условий.
-    // Параметр tau - шаг интегрирования, в стационарной задаче равен 1.
     template<class Type, class Index, class Vector>
-    static void boundary_condition_calc(Vector& f, const mesh::mesh_2d<Type, Index>& mesh,
-                                        const std::vector<boundary_condition<Type>>& bounds_cond, const Type tau, 
-                                        const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
+    static void integrate_boundary_flow(Vector& f, const mesh::mesh_2d<Type, Index>& mesh,
+                                        const std::vector<boundary_condition<Type>>& bounds_cond) {
         std::vector<std::array<Type, 2>> quad_nodes, jacobi_matrices;
         for(size_t b = 0; b < bounds_cond.size(); ++b)
             if(bounds_cond[b].type == boundary_t::FLOW)
@@ -286,9 +309,16 @@ protected:
                     const auto& be = mesh.element_1d(mesh.element_1d_type(b, el));
                     for(size_t i = 0; i < be->nodes_count(); ++i)
                         f[mesh.node_number(b, el, i)] += 
-                            tau * integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func);
+                            integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func);
                 }
+    }
 
+    // Учёт граничных условий.
+    // Параметр tau - шаг интегрирования, в стационарной задаче равен 1.
+    template<class Type, class Index, class Vector>
+    static void temperature_on_boundary(Vector& f, const mesh::mesh_2d<Type, Index>& mesh,
+                                        const std::vector<boundary_condition<Type>>& bounds_cond,
+                                        const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
         // Граничные условия первого рода
         const std::vector<std::vector<Index>> temperature_nodes = temperature_nodes_vectors(mesh, bounds_cond);
         for(size_t b = 0; b < temperature_nodes.size(); ++b)
@@ -302,29 +332,6 @@ protected:
         for(size_t b = 0; b < temperature_nodes.size(); ++b)
             for(const Index node : temperature_nodes[b])
                 f[node] = bounds_cond[b].func(mesh.node(node));
-    }
-
-    // Нелокальное условие для задачи Неймана
-    template<class Type, class Index>
-    static Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> nonlocal_condition(const mesh::mesh_2d<Type, Index>& mesh) {
-        size_t triplets_count = 0;
-        for(size_t el = 0; el < mesh.elements_count(); ++el)
-            triplets_count += mesh.element_2d(mesh.element_2d_type(el))->nodes_count();
-        std::vector<Eigen::Triplet<Type, Index>> triplets(triplets_count);
-
-        triplets_count = 0;
-        const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
-        const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
-        for(size_t el = 0; el < mesh.elements_count(); ++el) {
-            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
-            for(size_t i = 0; i < e->nodes_count(); ++i)
-                triplets[triplets_count++] = Eigen::Triplet<Type, Index>(mesh.nodes_count(), mesh.node_number(el, i), 
-                                                                         integrate_basic(e, i, all_jacobi_matrices, shifts_quad[el]));
-        }
-
-        Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K_last_row(mesh.nodes_count()+1, mesh.nodes_count()+1);
-        K_last_row.setFromTriplets(triplets.cbegin(), triplets.cend());
-        return std::move(K_last_row);
     }
 
 public:
@@ -343,7 +350,7 @@ public:
 
 template<class Type, class Index, class Vector>
 Type integrate_solution(const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
-    if(mesh.nodes_count() != T.size())
+    if(mesh.nodes_count() != size_t(T.size()))
         throw std::logic_error{"mesh.nodes_count() != T.size()"};
     Type integral = 0;
     const std::vector<Index> shifts_quad = _heat::quadrature_shifts_init(mesh);
@@ -367,27 +374,41 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K      (matrix_size, matrix_size),
                                                       K_bound(matrix_size, matrix_size);
     Eigen::Matrix<Type, Eigen::Dynamic, 1> f = Eigen::Matrix<Type, Eigen::Dynamic, 1>::Zero(matrix_size);
-    if(neumann_task)
+
+    _heat::integrate_boundary_flow<Type, Index>(f, mesh, bounds_cond);
+
+    if(neumann_task) {
+        Type sum = 0;
+        for(size_t i = 0; i < matrix_size; ++i)
+            sum += f[i];
+        if(std::abs(sum) > 1e-5)
+            throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
         f[mesh.nodes_count()] = volume;
+    }
 
     double time = omp_get_wtime();
+    std::cout << "Quadratures data init: ";
+    const std::vector<Index> shifts_quad = _heat::quadrature_shifts_init(mesh);
+    const std::vector<std::array<Type, 2>> all_quad_coords = _heat::approx_all_quad_nodes(mesh, shifts_quad);
+    const std::vector<std::array<Type, 4>> all_jacobi_matrices = _heat::approx_all_jacobi_matrices(mesh, shifts_quad);
+    std::cout << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
     std::cout << "Right part Integrate: ";
-    _heat::integrate_right_part(f, mesh, right_part);
+    _heat::integrate_right_part(f, mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, right_part);
     std::cout << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
     _heat::create_matrix<Type, Index>(
-        K, K_bound, mesh, bounds_cond, 
+        K, K_bound, mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, bounds_cond, neumann_task,
         _heat::integrate_gradient_pair<Type, typename mesh::mesh_2d<Type, Index>::fe_2d_ptr>, 
         p1, influence_fun
     );
-    if(neumann_task)
-       K += _heat::nonlocal_condition(mesh);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
     std::cout << "Boundary filling: ";
-    _heat::boundary_condition_calc<Type, Index>(f, mesh, bounds_cond, 1, K_bound);
+    _heat::temperature_on_boundary<Type, Index>(f, mesh, bounds_cond, K_bound);
     std::cout << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
@@ -396,6 +417,7 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     solver.compute(K);
     Eigen::Matrix<Type, Eigen::Dynamic, 1> T = solver.solve(f);
     std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
+    T.conservativeResize(mesh.nodes_count());
 
     return std::move(T);
 }
