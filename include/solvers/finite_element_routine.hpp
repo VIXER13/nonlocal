@@ -161,32 +161,4 @@ protected:
 
 }
 
-// template<class Type, class Index, class Finite_Element_2D_Pointer>
-// static void approx_quad_nodes_coords(const mesh_2d<Type, Index>& mesh, const Finite_Element_2D_Pointer& e,
-//                                      const size_t el, matrix<Type>& coords)
-// {
-//     coords.resize(e->qnodes_count(), 2);
-//     memset(coords.data(), 0, coords.size() * sizeof(Type));
-//     for(size_t q = 0; q < e->qnodes_count(); ++q)
-//         for(size_t i = 0; i < e->nodes_count(); ++i)
-//             for(size_t component = 0; component < 2; ++component)
-//                 coords(q, component) += mesh.coord(mesh.node_number(el, i), component) * e->qN(i, q);
-// }
-
-// template<class Type, class Index, class Finite_Element_2D_Pointer>
-// static void approx_jacobi_matrices(const mesh_2d<Type, Index>& mesh, const Finite_Element_2D_Pointer& e,
-//                                    const size_t el, matrix<Type>& jacobi_matrices) 
-// {
-//     jacobi_matrices.resize(e->qnodes_count(), 4);
-//     memset(jacobi_matrices.data(), 0, jacobi_matrices.size() * sizeof(Type));
-//     for(size_t q = 0; q < e->qnodes_count(); ++q)
-//         for(size_t i = 0; i < e->nodes_count(); ++i)
-//         {
-//             jacobi_matrices(q, 0) += mesh.coord(mesh.node_number(el, i), 0) * e->qNxi (i, q);
-//             jacobi_matrices(q, 1) += mesh.coord(mesh.node_number(el, i), 0) * e->qNeta(i, q);
-//             jacobi_matrices(q, 2) += mesh.coord(mesh.node_number(el, i), 1) * e->qNxi (i, q);
-//             jacobi_matrices(q, 3) += mesh.coord(mesh.node_number(el, i), 1) * e->qNeta(i, q);
-//         }
-// }
-
 #endif

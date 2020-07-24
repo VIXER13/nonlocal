@@ -346,6 +346,15 @@ public:
     friend Eigen::Matrix<Type, Eigen::Dynamic, 1>
         stationary(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond, 
                    const Right_Part& right_part, const Type p1, const Influence_Function& influence_fun, const Type volume = 0);
+
+    template<class Type, class Index, class Init_Distribution, class Right_Part, class Influence_Function>
+    friend void nonstationary(const std::string& path, 
+                              const mesh::mesh_2d<Type, Index>& mesh, const Type tau, const uintmax_t time_steps,
+                              const std::vector<boundary_condition<Type>>& bounds_cond,
+                              const Init_Distribution& init_dist,
+                              const Right_Part& right_part,
+                              const Type p1, const Influence_Function& influence_fun,
+                              const uintmax_t print_frequency);
 };
 
 template<class Type, class Index, class Vector>
@@ -386,15 +395,15 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
         f[mesh.nodes_count()] = volume;
     }
 
-    double time = omp_get_wtime();
     std::cout << "Quadratures data init: ";
+    double time = omp_get_wtime();
     const std::vector<Index> shifts_quad = _heat::quadrature_shifts_init(mesh);
     const std::vector<std::array<Type, 2>> all_quad_coords = _heat::approx_all_quad_nodes(mesh, shifts_quad);
     const std::vector<std::array<Type, 4>> all_jacobi_matrices = _heat::approx_all_jacobi_matrices(mesh, shifts_quad);
     std::cout << omp_get_wtime() - time << std::endl;
 
-    time = omp_get_wtime();
     std::cout << "Right part Integrate: ";
+    time = omp_get_wtime();
     _heat::integrate_right_part(f, mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, right_part);
     std::cout << omp_get_wtime() - time << std::endl;
 
@@ -406,8 +415,8 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     );
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
-    time = omp_get_wtime();
     std::cout << "Boundary filling: ";
+    time = omp_get_wtime();
     _heat::temperature_on_boundary<Type, Index>(f, mesh, bounds_cond, K_bound);
     std::cout << omp_get_wtime() - time << std::endl;
 
@@ -422,74 +431,75 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     return std::move(T);
 }
 
+template<class Type, class Index, class Init_Distribution, class Right_Part, class Influence_Function>
+void nonstationary(const std::string& path, 
+                   const mesh::mesh_2d<Type, Index>& mesh, const Type tau, const uintmax_t time_steps,
+                   const std::vector<boundary_condition<Type>>& bounds_cond,
+                   const Init_Distribution& init_dist,
+                   const Right_Part& right_part,
+                   const Type p1, const Influence_Function& influence_fun,
+                   const uintmax_t print_frequency) {
+    const std::vector<Index> shifts_quad = _heat::quadrature_shifts_init(mesh);
+    const std::vector<std::array<Type, 2>> all_quad_coords = _heat::approx_all_quad_nodes(mesh, shifts_quad);
+    const std::vector<std::array<Type, 4>> all_jacobi_matrices = _heat::approx_all_jacobi_matrices(mesh, shifts_quad);
+    Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K      (mesh.nodes_count(), mesh.nodes_count()),
+                                                      K_bound(mesh.nodes_count(), mesh.nodes_count()),
+                                                      C      (mesh.nodes_count(), mesh.nodes_count()),
+                                                      C_bound(mesh.nodes_count(), mesh.nodes_count());
+
+    static constexpr bool NOT_NEUMANN_TASK = false;
+    _heat::create_matrix<Type, Index>(
+        K, K_bound, mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, bounds_cond, NOT_NEUMANN_TASK,
+        _heat::integrate_gradient_pair<Type, typename mesh::mesh_2d<Type, Index>::fe_2d_ptr>, 
+        p1, influence_fun
+    );
+
+    static constexpr Type LOCAL = 1;
+    _heat::create_matrix<Type, Index>(
+        C, C_bound, mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, bounds_cond, NOT_NEUMANN_TASK,
+        _heat::integrate_basic_pair<Type, typename mesh::mesh_2d<Type, Index>::fe_2d_ptr>, 
+        LOCAL, influence_fun
+    );
+
+    C_bound.setZero();
+    K_bound *= tau;
+    K *= tau;
+    K += C;
+    for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
+        if(bounds_cond[b].type == boundary_t::TEMPERATURE)
+            for(size_t el = 0; el < mesh.elements_count(b); ++el) {
+                const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
+                for(size_t i = 0; i < e->nodes_count(); ++i)
+                    K.coeffRef(mesh.node_number(b, el, i), mesh.node_number(b, el, i)) = 1;
+            }
+
+    Eigen::Matrix<Type, Eigen::Dynamic, 1> f = Eigen::Matrix<Type, Eigen::Dynamic, 1>::Zero(mesh.nodes_count()),
+                                           T_prev(mesh.nodes_count()), T(mesh.nodes_count());
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        T_prev[i] = init_dist(mesh.node(i));
+
+    Eigen::PardisoLDLT<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
+    solver.compute(K);
+    if(print_frequency != uintmax_t(-1)) {
+        mesh.save_as_vtk(path + "0.vtk", T_prev);
+        std::cout << "step = " << 0 << " Volume = " << integrate_solution(mesh, T_prev) << std::endl;
+    }
+    for(size_t i = 1; i < time_steps; ++i) {
+        f.setZero();
+        _heat::integrate_boundary_flow<Type, Index>(f, mesh, bounds_cond);
+        _heat::integrate_right_part(f, mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, right_part);
+        f *= tau;
+        f += C.template selfadjointView<Eigen::Lower>() * T_prev;
+        _heat::temperature_on_boundary<Type, Index>(f, mesh, bounds_cond, K_bound);
+        T = solver.solve(f);
+        T_prev.swap(T);
+        if(i % print_frequency == 0) {
+            mesh.save_as_vtk(path + std::to_string(i) + ".vtk", T_prev);
+            std::cout << "step = " << i << " Volume = " << integrate_solution(mesh, T_prev) << std::endl;
+        }
+    }
 }
 
-
-// namespace heat_equation_with_nonloc
-// {
-
-// template<class Type, class Index>
-// void nonstationary(const std::string& path,
-//                    const mesh_2d<Type, Index>& mesh, const Type tau, const size_t time_steps,
-//                    const std::vector<boundary_condition<Type>>& bounds_cond,
-//                    const std::function<Type(Type, Type)>& init_dist,
-//                    const std::function<Type(Type, Type)>& right_part,
-//                    const Type p1, const std::function<Type(Type, Type, Type, Type)>& influence_fun,
-//                    const uint64_t print_frequency)
-// {
-//     Eigen::SparseMatrix<Type, Eigen::ColMajor, Index> K      (mesh.nodes_count(), mesh.nodes_count()),
-//                                                       K_bound(mesh.nodes_count(), mesh.nodes_count()),
-//                                                       C      (mesh.nodes_count(), mesh.nodes_count()),
-//                                                       C_bound(mesh.nodes_count(), mesh.nodes_count());
-//     create_matrix(mesh, bounds_cond, integrate_gradient_pair<Type>, p1, influence_fun, K, K_bound);
-//     create_matrix(mesh, bounds_cond, integrate_basic_pair<Type>,    1., influence_fun, C, C_bound);
-//     C_bound.setZero();
-//     K *= tau;
-//     K_bound *= tau;
-//     K += C;
-
-//     std::vector<std::vector<Index>> temperature_nodes = temperature_nodes_vectors(mesh, bounds_cond);
-//     for(size_t b = 0; b < temperature_nodes.size(); ++b)
-//         for(auto node : temperature_nodes[b])
-//             K.coeffRef(node, node) = 1.;
-
-//     Eigen::Matrix<Type, Eigen::Dynamic, 1> f = Eigen::Matrix<Type, Eigen::Dynamic, 1>::Zero(mesh.nodes_count()),
-//                                            T_prev(mesh.nodes_count()), T(mesh.nodes_count());
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//         T_prev[i] = init_dist(mesh.coord(i, 0), mesh.coord(i, 1));
-
-//     Eigen::PardisoLDLT<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
-//     solver.compute(K);
-
-//     if(print_frequency != uint64_t(-1))
-//     {
-//         mesh.print_to_file(path+std::string("0.csv"), T_prev.data());
-//         std::cout << "step = " << 0 << " Volume = " << integrate_solution(mesh, T_prev) << std::endl;
-//     }
-//     for(size_t i = 1; i < time_steps; ++i)
-//     {
-//         f = C.template selfadjointView<Eigen::Lower>() * T_prev;
-//         integrate_right_part(mesh, right_part, f);
-//         boundary_condition_calc(mesh, temperature_nodes, bounds_cond, tau, K_bound, f);
-//         T = solver.solve(f);
-//         if(i % print_frequency == 0)
-//         {
-//             mesh.print_to_file(path+std::to_string(i)+std::string(".csv"), T.data());
-//             std::cout << "step = " << i << " Volume = " << integrate_solution(mesh, T) << std::endl;
-//         }
-//         T_prev.swap(T);
-//     }
-// }
-
-// template<class Type, class Index, class Vector>
-// static void raw_output(const std::string& path, const mesh_2d<Type, Index>& mesh, const Vector& T)
-// {
-//     std::ofstream fout(path + std::string{"T.csv"});
-//     fout.precision(20);
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//         fout << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << T[i] << std::endl;
-// }
-
-// }
+}
 
 #endif

@@ -61,6 +61,35 @@ int main(int argc, char** argv) {
 
         //msh.save_as_vtk("test.vtk", T);
         raw_output("test.csv", msh, T);
+
+        nonlocal::heat::nonstationary("results/nonstationary/",
+            msh, 0.0001, 1000,
+            {
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::FLOW
+                },
+                
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::FLOW
+                },
+
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::FLOW
+                },
+
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::heat::boundary_t::FLOW
+                }
+            },
+            [](const std::array<double, 2>& x) { return 1.2 * (1. - metamath::power<2>(x[0] - 0.5) -
+                                                                    metamath::power<2>(x[1] - 0.5)); },
+            [](const std::array<double, 2>&) { return 0; },
+            p1, bell, 1
+        );
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

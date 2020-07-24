@@ -29,12 +29,12 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path) {
             switch(vtk_element_number(type)) {
                 case vtk_element_number::TRIANGLE:
                     _elements_2d_type[el] = element_2d_t::TRIANGLE;
-                    read_element<0, 2, 1>(mesh_file, _elements[el]);
+                    read_element<0, 1, 2>(mesh_file, _elements[el]);
                 break;
 
                 case vtk_element_number::QUADRATIC_TRIANGLE:
                    _elements_2d_type[el] = element_2d_t::QUADRATIC_TRIANGLE;
-                   read_element<0, 2, 1, 5, 4, 3>(mesh_file, _elements[el]);
+                   read_element<0, 1, 2, 3, 4, 5>(mesh_file, _elements[el]);
                 break;
 
                 case vtk_element_number::BILINEAR:
@@ -44,12 +44,12 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path) {
 
                 case vtk_element_number::QUADRATIC_SERENDIPITY:
                     _elements_2d_type[el] = element_2d_t::QUADRATIC_SERENDIPITY;
-                    read_element<0, 6, 4, 2, 7, 5, 3, 1>(mesh_file, _elements[el]);
+                    read_element<0, 2, 4, 6, 1, 3, 5, 7>(mesh_file, _elements[el]);
                 break;
 
                 case vtk_element_number::QUADRATIC_LAGRANGE:
                    _elements_2d_type[el] = element_2d_t::QUADRATIC_LAGRANGE;
-                   read_element<0, 6, 4, 2, 7, 5, 3, 1, 8>(mesh_file, _elements[el]);
+                   read_element<0, 2, 4, 6, 1, 3, 5, 7, 8>(mesh_file, _elements[el]);
                 break;
 
                 default:
