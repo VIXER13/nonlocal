@@ -55,10 +55,8 @@ protected:
                                      const std::vector<std::array<T, 4>>& jacobi_matrices, size_t quad_shift) {
         T integral = 0;
         for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
-            integral += (( e->qNxi(i, q) * jacobi_matrices[quad_shift][3] - e->qNeta(i, q) * jacobi_matrices[quad_shift][2]) *
-                         ( e->qNxi(j, q) * jacobi_matrices[quad_shift][3] - e->qNeta(j, q) * jacobi_matrices[quad_shift][2]) +
-                         (-e->qNxi(i, q) * jacobi_matrices[quad_shift][1] + e->qNeta(i, q) * jacobi_matrices[quad_shift][0]) *
-                         (-e->qNxi(j, q) * jacobi_matrices[quad_shift][1] + e->qNeta(j, q) * jacobi_matrices[quad_shift][0])) *
+            integral += (dNd<X>(e, i, q, jacobi_matrices[quad_shift]) * dNd<X>(e, j, q, jacobi_matrices[quad_shift]) +
+                         dNd<Y>(e, i, q, jacobi_matrices[quad_shift]) * dNd<Y>(e, j, q, jacobi_matrices[quad_shift])) *
                         e->weight(q) / jacobian(jacobi_matrices[quad_shift]);
         return integral;
     }
@@ -70,23 +68,20 @@ protected:
                                             const Finite_Element_2D_Ptr& eNL, const size_t jNL,
                                             const std::vector<std::array<T, 2>>& quad_coords,
                                             const std::vector<std::array<T, 4>>& jacobi_matrices,
-                                            size_t shiftL, size_t shiftNL, const Influence_Function& influence_function) {
+                                            size_t shiftL, size_t shiftNL,
+                                            const Influence_Function& influence_function) {
         T integral = 0;
         const size_t sub_shift = shiftNL;
         for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL) {
             T int_with_weight_x = 0, int_with_weight_y = 0;
             for(size_t qNL = 0, shiftNL = sub_shift; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL) {
                 const T influence_weight = eNL->weight(qNL) * influence_function(quad_coords[shiftL], quad_coords[shiftNL]);
-                int_with_weight_x += influence_weight * ( eNL->qNxi (jNL, qNL) * jacobi_matrices[shiftNL][3] - 
-                                                          eNL->qNeta(jNL, qNL) * jacobi_matrices[shiftNL][2]);
-                int_with_weight_y += influence_weight * (-eNL->qNxi (jNL, qNL) * jacobi_matrices[shiftNL][1] + 
-                                                          eNL->qNeta(jNL, qNL) * jacobi_matrices[shiftNL][0]);
+                int_with_weight_x += influence_weight * dNd<X>(eNL, jNL, qNL, jacobi_matrices[shiftNL]);
+                int_with_weight_y += influence_weight * dNd<Y>(eNL, jNL, qNL, jacobi_matrices[shiftNL]);
             }
             integral += eL->weight(qL) *
-                        (int_with_weight_x * ( eL->qNxi (iL, qL) * jacobi_matrices[shiftL][3] -
-                                               eL->qNeta(iL, qL) * jacobi_matrices[shiftL][2]) +
-                         int_with_weight_y * (-eL->qNxi (iL, qL) * jacobi_matrices[shiftL][1] + 
-                                               eL->qNeta(iL, qL) * jacobi_matrices[shiftL][0]));
+                        (int_with_weight_x * dNd<X>(eL, iL, qL, jacobi_matrices[shiftL]) +
+                         int_with_weight_y * dNd<Y>(eL, iL, qL, jacobi_matrices[shiftL]));
         }
         return integral;
     }
@@ -102,41 +97,6 @@ protected:
             for(size_t i = 0; i < e->nodes_count(); ++i)
                 f[mesh.node_number(el, i)] += integrate_function(e, i, all_quad_coords, all_jacobi_matrices, shifts_quad[el], right_part);
         }
-    }
-
-    // Функция возвращает массив флагов, где true свидетельствует о том, что узел под данным номером внутренний,
-    // т.е. на нём не задано граничное условие первого рода
-    template<class Type, class Index>
-    static std::vector<bool> inner_nodes_vector(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond) {
-        std::vector<bool> inner_nodes(mesh.nodes_count(), true);
-        for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
-            if(bounds_cond[b].type == boundary_t::TEMPERATURE)
-                for(size_t el = 0; el < mesh.elements_count(b); ++el) {
-                    const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
-                    for(size_t i = 0; i < e->nodes_count(); ++i)
-                        inner_nodes[mesh.node_number(b, el, i)] = false;
-                }
-        return std::move(inner_nodes);
-    }
-
-    // Создаёт массив векторов размерности равной количеству граничных условий и записывает в них узлы,
-    // на которых заданы граничные условия первого рода, исключая повторяющиеся.
-    template<class Type, class Index>
-    static std::vector<std::vector<Index>> temperature_nodes_vectors(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>>& bounds_cond) {
-        std::vector<std::vector<Index>> temperature_nodes(mesh.boundary_groups_count());
-        for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
-            if(bounds_cond[b].type == boundary_t::TEMPERATURE)
-                for(size_t el = 0; el < mesh.elements_count(b); ++el) {
-                    const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
-                    for(size_t i = 0; i < e->nodes_count(); ++i) {
-                        bool push = true;
-                        for(const auto& bound : temperature_nodes)
-                            push = push && std::find(bound.cbegin(), bound.cend(), mesh.node_number(b, el, i)) == bound.cend();
-                        if(push)
-                            temperature_nodes[b].push_back(mesh.node_number(b, el, i));
-                    }
-                }
-        return std::move(temperature_nodes);
     }
 
     // Данная функция анализирует сетку и вычисляет сдвиги для дальнейшего интегрирования.
@@ -205,7 +165,11 @@ protected:
                       const Type p1, const Influence_Function& influence_fun) {
         static constexpr Type MAX_LOCAL_WEIGHT = 0.999;
         const bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
-        const std::vector<bool> inner_nodes = inner_nodes_vector(mesh, bounds_cond);
+        std::vector<bool> inner_nodes(mesh.nodes_count(), true);
+        boundary_nodes_run(mesh, [&mesh, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
+            if(bounds_cond[b].type == boundary_t::TEMPERATURE)
+                inner_nodes[mesh.node_number(b, el, i)] = false;
+        });
         auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, inner_nodes, nonlocal);
 
         size_t neumann_triplets = 0;
@@ -320,7 +284,17 @@ protected:
                                         const std::vector<boundary_condition<Type>>& bounds_cond,
                                         const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
         // Граничные условия первого рода
-        const std::vector<std::vector<Index>> temperature_nodes = temperature_nodes_vectors(mesh, bounds_cond);
+        std::vector<std::vector<Index>> temperature_nodes(mesh.boundary_groups_count());
+        boundary_nodes_run(mesh, [&mesh, &bounds_cond, &temperature_nodes](const size_t b, const size_t el, const size_t i) {
+            if(bounds_cond[b].type == boundary_t::TEMPERATURE) {
+                bool push = true;
+                for(const std::vector<Index>& bound : temperature_nodes)
+                    push = push && std::find(bound.cbegin(), bound.cend(), mesh.node_number(b, el, i)) == bound.cend();
+                if(push)
+                    temperature_nodes[b].push_back(mesh.node_number(b, el, i));
+            }
+        });
+
         for(size_t b = 0; b < temperature_nodes.size(); ++b)
             for(const Index node : temperature_nodes[b]) {
                 const Type temp = bounds_cond[b].func(mesh.node(node));
@@ -465,13 +439,10 @@ void nonstationary(const std::string& path,
     K_bound *= tau;
     K *= tau;
     K += C;
-    for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
+    _heat::boundary_nodes_run(mesh, [&mesh, &bounds_cond, &K](const size_t b, const size_t el, const size_t i) {
         if(bounds_cond[b].type == boundary_t::TEMPERATURE)
-            for(size_t el = 0; el < mesh.elements_count(b); ++el) {
-                const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
-                for(size_t i = 0; i < e->nodes_count(); ++i)
-                    K.coeffRef(mesh.node_number(b, el, i), mesh.node_number(b, el, i)) = 1;
-            }
+            K.coeffRef(mesh.node_number(b, el, i), mesh.node_number(b, el, i)) = 1;
+    });
 
     Eigen::Matrix<Type, Eigen::Dynamic, 1> f = Eigen::Matrix<Type, Eigen::Dynamic, 1>::Zero(mesh.nodes_count()),
                                            T_prev(mesh.nodes_count()), T(mesh.nodes_count());

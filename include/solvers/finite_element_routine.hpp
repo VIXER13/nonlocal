@@ -14,6 +14,8 @@ enum class boundary_type : uint8_t {
 
 class _finite_element_routine {
 protected:
+    enum component : bool { X, Y };
+
     explicit _finite_element_routine() noexcept = default;
 
     // Функция обхода сетки в локальных постановках.
@@ -45,6 +47,17 @@ protected:
                         rule(iL, jNL, elL, elNL);
             }
         }
+    }
+
+    template<class Type, class Index, class Rule>
+    static void boundary_nodes_run(const mesh::mesh_2d<Type, Index>& mesh, 
+                                   const Rule& rule) {
+        for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
+            for(size_t el = 0; el < mesh.elements_count(b); ++el) {
+                const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
+                for(size_t i = 0; i < e->nodes_count(); ++i)
+                    rule(b, el, i);
+            }
     }
 
     // Квадратурные сдвиги по элементам.
@@ -124,35 +137,44 @@ protected:
                     jacobi_matrices[q][comp] += mesh.node(mesh.node_number(b, el, i))[comp] * be->qNxi(i, q);
     }
 
-    template<class Type>
-    static Type jacobian(const std::array<Type, 4>& jacobi_matrix) noexcept {
+    template<class T>
+    static T jacobian(const std::array<T, 4>& jacobi_matrix) noexcept {
         return jacobi_matrix[0] * jacobi_matrix[3] - jacobi_matrix[1] * jacobi_matrix[2];
     }
 
-    template<class Type>
-    static Type jacobian(const std::array<Type, 2>& jacobi_matrix) noexcept {
+    template<class T>
+    static T jacobian(const std::array<T, 2>& jacobi_matrix) noexcept {
         return sqrt(jacobi_matrix[0] * jacobi_matrix[0] + jacobi_matrix[1] * jacobi_matrix[1]);
     }
 
-    // Function - функтор с сигнатурой Type(std::array<Type, 2>&)
-    template<class Type, class Finite_Element_2D_Ptr, class Function>
-    static Type integrate_function(const Finite_Element_2D_Ptr& e, const size_t i,
-                                   const std::vector<std::array<Type, 2>>& quad_nodes,
-                                   const std::vector<std::array<Type, 4>>& jacobi_matrices,
-                                   size_t quad_shift, const Function& func) {
-        Type integral = 0;
+    template<bool Component, class T, class Finite_Element_2D_Ptr>
+    static T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q,
+                 const std::array<T, 4>& jacobi_matrix) {
+        if constexpr (Component == component::X)
+            return e->qNxi(i, q) * jacobi_matrix[3] - e->qNeta(i, q) * jacobi_matrix[2];
+        if constexpr (Component == component::Y)
+            return -e->qNxi(i, q) * jacobi_matrix[1] + e->qNeta(i, q) * jacobi_matrix[0];
+    }
+
+    // Function - функтор с сигнатурой T(std::array<T, 2>&)
+    template<class T, class Finite_Element_2D_Ptr, class Function>
+    static T integrate_function(const Finite_Element_2D_Ptr& e, const size_t i,
+                                const std::vector<std::array<T, 2>>& quad_nodes,
+                                const std::vector<std::array<T, 4>>& jacobi_matrices,
+                                size_t quad_shift, const Function& func) {
+        T integral = 0;
         for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
             integral += e->weight(q) * e->qN(i, q) * func(quad_nodes[quad_shift]) * jacobian(jacobi_matrices[quad_shift]);
         return integral;
     }
 
-    // Boundary_Gradient - функтор с сигнатурой Type(std::array<Type, 2>&)
-    template<class Type, class Finite_Element_1D_Pointer, class Boundary_Gradient>
-    static Type integrate_boundary_gradient(const Finite_Element_1D_Pointer& be, const size_t i,
-                                            const std::vector<std::array<Type, 2>>& quad_nodes, 
-                                            const std::vector<std::array<Type, 2>>& jacobi_matrices, 
-                                            const Boundary_Gradient& boundary_gradient) {
-        Type integral = 0;
+    // Boundary_Gradient - функтор с сигнатурой T(std::array<T, 2>&)
+    template<class T, class Finite_Element_1D_Pointer, class Boundary_Gradient>
+    static T integrate_boundary_gradient(const Finite_Element_1D_Pointer& be, const size_t i,
+                                         const std::vector<std::array<T, 2>>& quad_nodes, 
+                                         const std::vector<std::array<T, 2>>& jacobi_matrices, 
+                                         const Boundary_Gradient& boundary_gradient) {
+        T integral = 0;
         for(size_t q = 0; q < be->qnodes_count(); ++q)
             integral += be->weight(q) * be->qN(i, q) * boundary_gradient(quad_nodes[q]) * jacobian(jacobi_matrices[q]);
         return integral;
