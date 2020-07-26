@@ -1,13 +1,17 @@
 #include "solvers/influence_functions.hpp"
-#include "solvers/heat_equation_solver.hpp"
+#include "solvers/static_equation_solver.hpp"
 
 template<class Type, class Index, class Vector>
-static void raw_output(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& T)
-{
-    std::ofstream fout(path + std::string{"T.csv"});
-    fout.precision(20);
+static void raw_output(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& u) {
+    std::ofstream fu1{path + std::string{"u1.csv"}},
+                  fu2{path + std::string{"u2.csv"}};
+    fu1.precision(20);
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-        fout << mesh.node(i)[0] << "," << mesh.node(i)[1] << "," << T[i] << std::endl;
+        fu1 << mesh.node(i)[0] << "," << mesh.node(i)[1] << "," << u[2*i] << std::endl;
+
+    fu2.precision(20);
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fu2 << mesh.node(i)[0] << "," << mesh.node(i)[1] << "," << u[2*i+1] << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -20,7 +24,7 @@ int main(int argc, char** argv) {
         std::cout.precision(5);
         omp_set_num_threads(4);
 
-        static constexpr double r = 0.2, p1 = 1;
+        static constexpr double r = 0.2, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};
         if(p1 < 1) {
@@ -31,65 +35,42 @@ int main(int argc, char** argv) {
             std::cout << "Average number of neighbors: " << double(neighbors_count) / msh.elements_count() << std::endl;
         }
 
-        const auto T = nonlocal::heat::stationary(msh,
-            {
-                {
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                    nonlocal::heat::boundary_t::TEMPERATURE
-                },
-                
-                {
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                    nonlocal::heat::boundary_t::TEMPERATURE
-                },
-
-                {
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                    nonlocal::heat::boundary_t::TEMPERATURE
-                },
-
-                {
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                    nonlocal::heat::boundary_t::TEMPERATURE
-                }
-            },
-            [](const std::array<double, 2>&){ return -4; },
-            p1, bell, 1.
-        );
-
-        std::cout << "Energy: " << nonlocal::heat::integrate_solution(msh, T) << std::endl;
-
-        //msh.save_as_vtk("test.vtk", T);
-        raw_output("test.csv", msh, T);
-
-        nonlocal::heat::nonstationary("results/nonstationary/",
-            msh, 0.0001, 1000,
+        const nonlocal::structural::parameters<double> params = {.nu = 0.25, .E = 2.1e5};
+        const auto u = nonlocal::structural::stationary(
+            msh, 
             {
                 {
                     [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::heat::boundary_t::FLOW
-                },
-                
-                {
                     [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::heat::boundary_t::FLOW
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
+
+                {
+                    [](const std::array<double, 2>&) { return 0.01; },
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    nonlocal::structural::boundary_t::DISPLACEMENT
                 },
 
                 {
                     [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::heat::boundary_t::FLOW
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
                 },
 
                 {
                     [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::heat::boundary_t::FLOW
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    nonlocal::structural::boundary_t::DISPLACEMENT
                 }
             },
-            [](const std::array<double, 2>& x) { return 1.2 * (1. - metamath::power<2>(x[0] - 0.5) -
-                                                                    metamath::power<2>(x[1] - 0.5)); },
-            [](const std::array<double, 2>&) { return 0; },
-            p1, bell, 1
+            params, p1, bell
         );
+
+        raw_output("", msh, u);
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

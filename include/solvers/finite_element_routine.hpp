@@ -54,8 +54,8 @@ protected:
                                    const Rule& rule) {
         for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
             for(size_t el = 0; el < mesh.elements_count(b); ++el) {
-                const auto& e = mesh.element_1d(mesh.element_1d_type(b, el));
-                for(size_t i = 0; i < e->nodes_count(); ++i)
+                const auto& be = mesh.element_1d(mesh.element_1d_type(b, el));
+                for(size_t i = 0; i < be->nodes_count(); ++i)
                     rule(b, el, i);
             }
     }

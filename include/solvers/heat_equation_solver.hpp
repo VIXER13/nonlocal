@@ -277,13 +277,11 @@ protected:
                 }
     }
 
-    // Учёт граничных условий.
-    // Параметр tau - шаг интегрирования, в стационарной задаче равен 1.
+    // Учёт граничных условий первого рода.
     template<class Type, class Index, class Vector>
     static void temperature_on_boundary(Vector& f, const mesh::mesh_2d<Type, Index>& mesh,
                                         const std::vector<boundary_condition<Type>>& bounds_cond,
                                         const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
-        // Граничные условия первого рода
         std::vector<std::vector<Index>> temperature_nodes(mesh.boundary_groups_count());
         boundary_nodes_run(mesh, [&mesh, &bounds_cond, &temperature_nodes](const size_t b, const size_t el, const size_t i) {
             if(bounds_cond[b].type == boundary_t::TEMPERATURE) {
