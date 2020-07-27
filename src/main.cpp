@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
                 },
 
                 {
-                    [](const std::array<double, 2>&) { return 0.01; },
+                    [](const std::array<double, 2>&) { return 0.1; },
                     [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::DISPLACEMENT,
                     nonlocal::structural::boundary_t::DISPLACEMENT
@@ -70,7 +70,17 @@ int main(int argc, char** argv) {
             params, p1, bell
         );
 
-        raw_output("", msh, u);
+        nonlocal::structural::save_as_vtk("test.vtk", msh, u);
+
+        //msh.save_as_vtk("test.vtk", u);
+
+        // msh.save_as_vtk(std::string{"test.vtk"},
+        // {
+        //     {std::string{"u_x"}, std::move(u_x)},
+        //     {std::string{"u_y"}, std::move(u_y)}
+        // });
+
+        //raw_output("", msh, u);
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

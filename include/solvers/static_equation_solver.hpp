@@ -332,12 +332,32 @@ protected:
     }
 
 public:
+    template<class Type, class Index, class Vector>
+    friend void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U);
+
     template<class Type, class Index, class Influence_Function>
     friend Eigen::Matrix<Type, Eigen::Dynamic, 1>
         stationary(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>> &bounds_cond,
                    const parameters<Type>& params, //const distributed_load<Type>& right_part,
                    const Type p1, const Influence_Function& influence_fun);
 };
+
+template<class Type, class Index, class Vector>
+void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U) {
+    static constexpr std::string_view data_type = std::is_same_v<Type, double> ? "double" : "float";
+
+    if(mesh.nodes_count() != size_t(U.size() / 2))
+        throw std::domain_error{"mesh.nodes_count() != U.size() / 2."};
+
+    std::ofstream fout{path};
+    fout.precision(20);
+
+    mesh.save_as_vtk(fout);
+
+    fout << "VECTORS Displacement " << data_type << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << U[2*i] << ' ' << U[2*i+1] << " 0\n";
+}
 
 template<class Type, class Index, class Influence_Function>
 Eigen::Matrix<Type, Eigen::Dynamic, 1>
@@ -373,6 +393,14 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     Eigen::Matrix<Type, Eigen::Dynamic, 1> u = solver.solve(f);
     std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
 
+    //std::vector<Type> u_x(mesh.nodes_count()),
+    //                  u_y(mesh.nodes_count());
+    //for(size_t i = 0; i < mesh.nodes_count(); ++i) {
+    //    u_x[i] = u[2*i];
+    //    u_y[i] = u[2*i+1];
+    //}
+
+    //return {std::move(u_x), std::move(u_y)};
     return u;
 }
 

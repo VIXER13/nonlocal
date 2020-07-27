@@ -58,8 +58,8 @@ int main(int argc, char** argv) {
 
         std::cout << "Energy: " << nonlocal::heat::integrate_solution(msh, T) << std::endl;
 
-        //msh.save_as_vtk("test.vtk", T);
-        raw_output("test.csv", msh, T);
+        nonlocal::heat::save_as_vtk("test.vtk", msh, T);
+        //raw_output("test.csv", msh, T);
 
         nonlocal::heat::nonstationary("results/nonstationary/",
             msh, 0.0001, 1000,

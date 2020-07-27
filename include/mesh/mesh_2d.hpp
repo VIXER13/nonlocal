@@ -134,8 +134,7 @@ public:
     void find_elements_neighbors(const Type r); // Ищет соседние элементы, центры которых попали в зону влияния
     void find_nodes_neighbors(const Type r);    // Ищет соседние узлы, которые попадают в зону влияния
 
-    template<class Vector>
-    void save_as_vtk(const std::string& path, const Vector& T) const;
+    void save_as_vtk(std::ofstream& fout) const;
 };
 
 template<class Type, class Index>

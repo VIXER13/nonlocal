@@ -308,6 +308,9 @@ protected:
 
 public:
     template<class Type, class Index, class Vector>
+    friend void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& T);
+
+    template<class Type, class Index, class Vector>
     friend Type integrate_solution(const mesh::mesh_2d<Type, Index>& mesh, const Vector& T);
 
     // Функция, решающая стационарное уравнение теплопроводности в нелокальной постановке.
@@ -328,6 +331,24 @@ public:
                               const Type p1, const Influence_Function& influence_fun,
                               const uintmax_t print_frequency);
 };
+
+template<class Type, class Index, class Vector>
+void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
+    static constexpr std::string_view data_type = std::is_same_v<Type, double> ? "double" : "float";
+
+    if(mesh.nodes_count() != size_t(T.size()))
+        throw std::domain_error{"mesh.nodes_count() != T.size()."};
+
+    std::ofstream fout{path};
+    fout.precision(20);
+
+    mesh.save_as_vtk(fout);
+
+    fout << "SCALARS Temperature " << data_type << " 1" << std::endl
+         << "LOOKUP_TABLE default" << std::endl;
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << T[i] << '\n';
+}
 
 template<class Type, class Index, class Vector>
 Type integrate_solution(const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
@@ -450,7 +471,7 @@ void nonstationary(const std::string& path,
     Eigen::PardisoLDLT<Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>, Eigen::Lower> solver;
     solver.compute(K);
     if(print_frequency != uintmax_t(-1)) {
-        mesh.save_as_vtk(path + "0.vtk", T_prev);
+        save_as_vtk(path + "0.vtk", mesh, T_prev);
         std::cout << "step = " << 0 << " Volume = " << integrate_solution(mesh, T_prev) << std::endl;
     }
     for(size_t i = 1; i < time_steps; ++i) {
@@ -463,7 +484,7 @@ void nonstationary(const std::string& path,
         T = solver.solve(f);
         T_prev.swap(T);
         if(i % print_frequency == 0) {
-            mesh.save_as_vtk(path + std::to_string(i) + ".vtk", T_prev);
+            save_as_vtk(path + std::to_string(i) + ".vtk", mesh, T_prev);
             std::cout << "step = " << i << " Volume = " << integrate_solution(mesh, T_prev) << std::endl;
         }
     }
