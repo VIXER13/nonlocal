@@ -26,18 +26,19 @@ int main(int argc, char** argv) {
 
         static constexpr double r = 0.2, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        mesh::mesh_2d<double> msh{argv[1]};
+        mesh::mesh_2d<double> mesh{argv[1]};
+
         if(p1 < 1) {
-            msh.find_elements_neighbors(r);
+            mesh.find_elements_neighbors(1.05*r);
             size_t neighbors_count = 0;
-            for(size_t i = 0; i < msh.elements_count(); ++i)
-                neighbors_count += msh.element_neighbors(i).size();
-            std::cout << "Average number of neighbors: " << double(neighbors_count) / msh.elements_count() << std::endl;
+            for(size_t i = 0; i < mesh.elements_count(); ++i)
+                neighbors_count += mesh.element_neighbors(i).size();
+            std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
         }
 
         const nonlocal::structural::parameters<double> params = {.nu = 0.25, .E = 2.1e5};
         const auto u = nonlocal::structural::stationary(
-            msh, 
+            mesh, 
             {
                 {
                     [](const std::array<double, 2>&) { return 0; },
@@ -47,10 +48,10 @@ int main(int argc, char** argv) {
                 },
 
                 {
-                    [](const std::array<double, 2>&) { return 0.1; },
+                    [](const std::array<double, 2>&) { return 10000; },
                     [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
-                    nonlocal::structural::boundary_t::DISPLACEMENT
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
                 },
 
                 {
@@ -70,17 +71,11 @@ int main(int argc, char** argv) {
             params, p1, bell
         );
 
-        nonlocal::structural::save_as_vtk("test.vtk", msh, u);
+        if(p1 < 1)
+            mesh.find_nodes_neighbors(1.05*r);
+        auto [strain, stress] = nonlocal::structural::strains_and_stress(mesh, params, u, p1, bell);
 
-        //msh.save_as_vtk("test.vtk", u);
-
-        // msh.save_as_vtk(std::string{"test.vtk"},
-        // {
-        //     {std::string{"u_x"}, std::move(u_x)},
-        //     {std::string{"u_y"}, std::move(u_y)}
-        // });
-
-        //raw_output("", msh, u);
+        nonlocal::structural::save_as_vtk("test.vtk", mesh, u, strain, stress);
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

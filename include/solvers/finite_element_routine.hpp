@@ -15,6 +15,7 @@ enum class boundary_type : uint8_t {
 class _finite_element_routine {
 protected:
     enum component : bool { X, Y };
+    static constexpr double MAX_LOCAL_WEIGHT = 0.999;
 
     explicit _finite_element_routine() noexcept = default;
 

@@ -163,7 +163,6 @@ protected:
                       const std::vector<boundary_condition<Type>>& bounds_cond, const bool neumann_task,
                       const Integrate_Rule& integrate_rule,
                       const Type p1, const Influence_Function& influence_fun) {
-        static constexpr Type MAX_LOCAL_WEIGHT = 0.999;
         const bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
         std::vector<bool> inner_nodes(mesh.nodes_count(), true);
         boundary_nodes_run(mesh, [&mesh, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
@@ -344,6 +343,7 @@ void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh
 
     mesh.save_as_vtk(fout);
 
+    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
     fout << "SCALARS Temperature " << data_type << " 1" << std::endl
          << "LOOKUP_TABLE default" << std::endl;
     for(size_t i = 0; i < mesh.nodes_count(); ++i)

@@ -24,20 +24,20 @@ enum class element_2d_t : uint8_t {
     QUADRATIC_LAGRANGE
 };
 
+enum class vtk_element_number : uintmax_t {
+    LINEAR = 3,
+    QUADRATIC = 21,
+    TRIANGLE = 5,
+    QUADRATIC_TRIANGLE = 22,
+    BILINEAR = 9,
+    QUADRATIC_SERENDIPITY = 23,
+    QUADRATIC_LAGRANGE = 28
+};
+
 template<class Type, class Index = int32_t>
 class mesh_2d {
     static_assert(std::is_floating_point_v<Type>, "The Type must be floating point.");
     static_assert(std::is_integral_v<Index>, "The Index must be integral.");
-
-    enum class vtk_element_number : uintmax_t {
-        LINEAR = 3,
-        QUADRATIC = 21,
-        TRIANGLE = 5,
-        QUADRATIC_TRIANGLE = 22,
-        BILINEAR = 9,
-        QUADRATIC_SERENDIPITY = 23,
-        QUADRATIC_LAGRANGE = 28
-    };
 
     std::vector<std::array<Type, 2>> _nodes;                  // Глобальные кооридинаты узлов.
     std::vector<std::vector<Index>> _elements;                // Массив с глобальными номерами узлов для каждого элемента

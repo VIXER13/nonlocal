@@ -26,17 +26,18 @@ struct parameters {
 template<class T>
 struct boundary_condition {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
-    std::function<T(const std::array<T, 2>&)> func_x = [](const std::array<T, 2>&) noexcept { return 0.; },
-                                              func_y = [](const std::array<T, 2>&) noexcept { return 0.; };
-    boundary_t type_x = boundary_t::PRESSURE,
-               type_y = boundary_t::PRESSURE;
+    std::array<std::function<T(const std::array<T, 2>&)>, 2> 
+        func = { [](const std::array<T, 2>&) noexcept { return 0.; },
+                 [](const std::array<T, 2>&) noexcept { return 0.; } };
+    std::array<boundary_t, 2> type = { boundary_t::PRESSURE, boundary_t::PRESSURE };
 };
 
 template<class T>
 struct distributed_load {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
-    std::function<T(const std::array<T, 2>&)> func_x = [](const std::array<T, 2>&) noexcept { return 0.; },
-                                              func_y = [](const std::array<T, 2>&) noexcept { return 0.; };
+    std::array<std::function<T(const std::array<T, 2>&)>, 2> 
+        func = { [](const std::array<T, 2>&) noexcept { return 0.; },
+                 [](const std::array<T, 2>&) noexcept { return 0.; } };
 };
 
 class _structural : protected _finite_element_routine {
@@ -171,15 +172,12 @@ protected:
                       const std::vector<boundary_condition<Type>> &bounds_cond,
                       const parameters<Type>& params,
                       const Type p1, const Influence_Function& influence_fun) {
-        static constexpr Type MAX_LOCAL_WEIGHT = 0.999;
         const bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
         std::vector<bool> inner_nodes(2*mesh.nodes_count(), true);
         boundary_nodes_run(mesh, [&mesh, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
-            if(bounds_cond[b].type_x == boundary_t::DISPLACEMENT)
-                inner_nodes[2*mesh.node_number(b, el, i)] = false;
-
-            if(bounds_cond[b].type_y == boundary_t::DISPLACEMENT)
-                inner_nodes[2*mesh.node_number(b, el, i)+1] = false;
+            for(size_t comp = 0; comp < 2; ++comp)
+                if(bounds_cond[b].type[comp] == boundary_t::DISPLACEMENT)
+                    inner_nodes[2*mesh.node_number(b, el, i)+comp] = false;
         });
 
         auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, inner_nodes, nonlocal);
@@ -273,19 +271,16 @@ protected:
                                             const std::vector<boundary_condition<Type>>& bounds_cond) {
         std::vector<std::array<Type, 2>> quad_nodes, jacobi_matrices;
         for(size_t b = 0; b < bounds_cond.size(); ++b)
-            if(bounds_cond[b].type_x == boundary_t::PRESSURE || bounds_cond[b].type_y == boundary_t::PRESSURE)
+            if(bounds_cond[b].type[0] == boundary_t::PRESSURE || bounds_cond[b].type[1] == boundary_t::PRESSURE)
                 for(size_t el = 0; el < mesh.elements_count(b); ++el) {
                     approx_quad_nodes_on_bound(quad_nodes, mesh, b, el);
                     approx_jacobi_matrices_on_bound(jacobi_matrices, mesh, b, el);
                     const auto& be = mesh.element_1d(mesh.element_1d_type(b, el));
-                    for(size_t i = 0; i < be->nodes_count(); ++i) {
-                        if(bounds_cond[b].type_x == boundary_t::PRESSURE)
-                            f[2*mesh.node_number(b, el, i)] += 
-                                integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func_x);
-                        else
-                            f[2*mesh.node_number(b, el, i)+1] += 
-                                integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func_y);
-                    }
+                    for(size_t i = 0; i < be->nodes_count(); ++i) 
+                        for(size_t comp = 0; comp < 2; ++comp)
+                            if(bounds_cond[b].type[comp] == boundary_t::PRESSURE)
+                                f[2*mesh.node_number(b, el, i)+comp] += 
+                                    integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func[comp]);
                 }
     }
 
@@ -296,7 +291,7 @@ protected:
                                          const Eigen::SparseMatrix<Type, Eigen::ColMajor, Index>& K_bound) {
         std::vector<std::vector<Index>> kinematic_nodes(mesh.boundary_groups_count());
         boundary_nodes_run(mesh, [&mesh, &bounds_cond, &kinematic_nodes](const size_t b, const size_t el, const size_t i) {
-            if(bounds_cond[b].type_x == boundary_t::DISPLACEMENT || bounds_cond[b].type_y == boundary_t::DISPLACEMENT) {
+            if(bounds_cond[b].type[0] == boundary_t::DISPLACEMENT || bounds_cond[b].type[1] == boundary_t::DISPLACEMENT) {
                 bool push = true;
                 for(const std::vector<Index>& bound : kinematic_nodes)
                     push = push && std::find(bound.cbegin(), bound.cend(), mesh.node_number(b, el, i)) == bound.cend();
@@ -306,57 +301,164 @@ protected:
         });
 
         for(size_t b = 0; b < kinematic_nodes.size(); ++b)
-            for(const Index node : kinematic_nodes[b]) {
-                if(bounds_cond[b].type_x == boundary_t::DISPLACEMENT) {
-                    const Type temp = bounds_cond[b].func_x(mesh.node(node));
-                    for(typename Eigen::SparseMatrix<Type>::InnerIterator it(K_bound, 2*node); it; ++it)
-                        f[it.row()] -= temp * it.value();
-                }
-                
-                if(bounds_cond[b].type_x == boundary_t::DISPLACEMENT) {
-                    const Type temp = bounds_cond[b].func_y(mesh.node(node));
-                    for(typename Eigen::SparseMatrix<Type>::InnerIterator it(K_bound, 2*node+1); it; ++it)
-                        f[it.row()] -= temp * it.value();
-                }
-            }
+            for(const Index node : kinematic_nodes[b]) 
+                for(size_t comp = 0; comp < 2; ++comp)
+                    if(bounds_cond[b].type[comp] == boundary_t::DISPLACEMENT) {
+                        const Type temp = bounds_cond[b].func[comp](mesh.node(node));
+                        for(typename Eigen::SparseMatrix<Type>::InnerIterator it(K_bound, 2*node+comp); it; ++it)
+                            f[it.row()] -= temp * it.value();
+                    }
 
         // Повторный проход для корректировки
-        for(size_t b = 0; b < kinematic_nodes.size(); ++b) {
-            if(bounds_cond[b].type_x == boundary_t::DISPLACEMENT)
-                for(const Index node : kinematic_nodes[b])
-                    f[2*node]   = bounds_cond[b].func_x(mesh.node(node));
-            if(bounds_cond[b].type_y == boundary_t::DISPLACEMENT)
-                for(const Index node : kinematic_nodes[b])
-                    f[2*node+1] = bounds_cond[b].func_y(mesh.node(node));
+        for(size_t b = 0; b < kinematic_nodes.size(); ++b)
+            for(size_t comp = 0; comp < 2; ++comp)
+                if(bounds_cond[b].type[comp] == boundary_t::DISPLACEMENT)
+                    for(const Index node : kinematic_nodes[b])
+                        f[2*node+comp] = bounds_cond[b].func[comp](mesh.node(node));
+    }
+
+    template<class Type, class Index, class Vector>
+    static std::array<std::vector<std::array<Type, 3>>, 2>
+        strains_and_stress_loc(const mesh::mesh_2d<Type, Index>& mesh, const std::array<Type, 3>& D, const Vector& displacement) {
+        std::vector<uint8_t> repeating(mesh.nodes_count(), 0); // Подсчёт повторений узла.
+                                                               // Будем надеяться, что один узел может принадлежать не более 255 элементам
+        std::vector<std::array<Type, 3>> strain(mesh.nodes_count(), std::array<Type, 3>{}),
+                                         stress(mesh.nodes_count(), std::array<Type, 3>{});
+        for(size_t el = 0; el < mesh.elements_count(); ++el) {
+            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+            for(size_t i = 0; i < e->nodes_count(); ++i) {
+                ++repeating[mesh.node_number(el, i)];
+                std::array<Type, 4> jacobi_matrix = {};
+                for(size_t j = 0; j < e->nodes_count(); ++j) {
+                    jacobi_matrix[0] += mesh.node(mesh.node_number(el, j))[0] * e->Nxi (j, e->node(i));
+                    jacobi_matrix[1] += mesh.node(mesh.node_number(el, j))[0] * e->Neta(j, e->node(i));
+                    jacobi_matrix[2] += mesh.node(mesh.node_number(el, j))[1] * e->Nxi (j, e->node(i));
+                    jacobi_matrix[3] += mesh.node(mesh.node_number(el, j))[1] * e->Neta(j, e->node(i));
+                }
+
+                std::array<Type, 3> strain_loc = {};
+                for(size_t j = 0; j < e->nodes_count(); ++j) {
+                    const Type jac = jacobian(jacobi_matrix),
+                               dx1 =  jacobi_matrix[3] * e->Nxi(j, e->node(i)) - jacobi_matrix[2] * e->Neta(j, e->node(i)),
+                               dx2 = -jacobi_matrix[1] * e->Nxi(j, e->node(i)) + jacobi_matrix[0] * e->Neta(j, e->node(i));
+                    strain_loc[0] +=  dx1 * displacement[2*mesh.node_number(el, j)  ]  / jac;
+                    strain_loc[1] +=  dx2 * displacement[2*mesh.node_number(el, j)+1]  / jac;
+                    strain_loc[2] += (dx2 * displacement[2*mesh.node_number(el, j)  ] +
+                                      dx1 * displacement[2*mesh.node_number(el, j)+1]) / jac;
+                }
+
+                stress[mesh.node_number(el, i)][0] += D[0] * strain_loc[0] + D[1] * strain_loc[1];
+                stress[mesh.node_number(el, i)][1] += D[1] * strain_loc[0] + D[0] * strain_loc[1];
+                stress[mesh.node_number(el, i)][2] += D[2] * strain_loc[2];
+                for(size_t j = 0; j < 3; ++j)
+                    strain[mesh.node_number(el, i)][j] += strain_loc[j];
+            }
         }
+
+        for(size_t i = 0; i < mesh.nodes_count(); ++i) {
+            strain[i][0] /=   repeating[i];
+            strain[i][1] /=   repeating[i];
+            strain[i][2] /= 2*repeating[i];
+            stress[i][0] /=   repeating[i];
+            stress[i][1] /=   repeating[i];
+            stress[i][2] /= 2*repeating[i];
+        }
+
+        return {std::move(strain), std::move(stress)};
+    }
+
+    template<class Type, class Index>
+    static std::vector<std::array<Type, 3>>
+        approx_strains_in_quad(const mesh::mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts,
+                               const std::vector<std::array<Type, 3>>& strains) {
+        std::vector<std::array<Type, 3>> strains_in_quad(shifts.back(), std::array<Type, 3>{});
+        for(size_t el = 0; el < mesh.elements_count(); ++el) {
+            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+            for(size_t q = 0, shift = shifts[el]; q < e->qnodes_count(); ++q, ++shift)
+                for(size_t i = 0; i < e->nodes_count(); ++i)
+                    for(size_t comp = 0; comp < 3; ++comp)
+                        strains_in_quad[shift][comp] += strains[mesh.node_number(el, i)][comp] * e->qN(i, q);
+        }
+        return std::move(strains_in_quad);
+    }
+
+    template<class Type, class Index, class Influence_Function>
+    static void stress_nonloc(std::vector<std::array<Type, 3>>& stress,
+                              const std::vector<std::array<Type, 3>>& strain,
+                              const mesh::mesh_2d<Type, Index>& mesh, const std::array<Type, 3>& D,
+                              const Type p1, const Influence_Function& influence_fun) {
+        const Type p2 = 1. - p1;
+        const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
+        const std::vector<std::array<Type, 2>> all_quad_coords = approx_all_quad_nodes(mesh, shifts_quad);
+        const std::vector<std::array<Type, 3>> strains_in_quad = approx_strains_in_quad(mesh, shifts_quad, strain);
+        const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
+        for(size_t node = 0; node < mesh.nodes_count(); ++node)
+            for(const auto elNL : mesh.node_neighbors(node)) {
+                const auto& eNL = mesh.element_2d(mesh.element_2d_type(elNL));
+                for(size_t q = 0, shift = shifts_quad[elNL]; q < eNL->qnodes_count(); ++q, ++shift) {
+                    const Type influence_weight = p2 * eNL->weight(q) * jacobian(all_jacobi_matrices[shift]) *
+                                                  influence_fun(all_quad_coords[shift], mesh.node(node));
+                    stress[node][0] += influence_weight * (D[0] * strains_in_quad[shift][0] + D[1] * strains_in_quad[shift][1]);
+                    stress[node][1] += influence_weight * (D[1] * strains_in_quad[shift][0] + D[0] * strains_in_quad[shift][1]);
+                    stress[node][2] += influence_weight *  D[2] * strains_in_quad[shift][2];
+                }
+            }
     }
 
 public:
     template<class Type, class Index, class Vector>
-    friend void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U);
+    friend void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U,
+                            const std::vector<std::array<Type, 3>>& strain,
+                            const std::vector<std::array<Type, 3>>& stress);
 
     template<class Type, class Index, class Influence_Function>
     friend Eigen::Matrix<Type, Eigen::Dynamic, 1>
         stationary(const mesh::mesh_2d<Type, Index>& mesh, const std::vector<boundary_condition<Type>> &bounds_cond,
                    const parameters<Type>& params, //const distributed_load<Type>& right_part,
                    const Type p1, const Influence_Function& influence_fun);
+
+    template<class Type, class Index, class Vector, class Influence_Function>
+    friend std::array<std::vector<std::array<Type, 3>>, 2>
+        strains_and_stress(const mesh::mesh_2d<Type, Index>& mesh, const parameters<Type>& params, const Vector& displacement,
+                           const Type p1, const Influence_Function& influence_fun);
 };
 
 template<class Type, class Index, class Vector>
-void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U) {
+void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U,
+                 const std::vector<std::array<Type, 3>>& strain,
+                 const std::vector<std::array<Type, 3>>& stress) {
     static constexpr std::string_view data_type = std::is_same_v<Type, double> ? "double" : "float";
 
-    if(mesh.nodes_count() != size_t(U.size() / 2))
-        throw std::domain_error{"mesh.nodes_count() != U.size() / 2."};
+    if(2 * mesh.nodes_count() != size_t(U.size()))
+        throw std::domain_error{"2 * mesh.nodes_count() != U.size()."};
 
     std::ofstream fout{path};
     fout.precision(20);
 
     mesh.save_as_vtk(fout);
 
+    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
     fout << "VECTORS Displacement " << data_type << std::endl;
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
         fout << U[2*i] << ' ' << U[2*i+1] << " 0\n";
+
+    static constexpr std::array<std::string_view, 3>
+        strain_number = {"strain11", "strain22", "strain12"},
+        stress_number = {"stress11", "stress22", "stress12"};
+
+    for(size_t comp = 0; comp < 3; ++comp) {
+        fout << "SCALARS " << strain_number[comp] << ' ' << data_type << " 1" << std::endl
+             << "LOOKUP_TABLE default" << std::endl;
+        for(size_t i = 0; i < mesh.nodes_count(); ++i)
+            fout << strain[i][comp] << '\n';
+    }
+
+    for(size_t comp = 0; comp < 3; ++comp) {
+        fout << "SCALARS " << stress_number[comp] << ' ' << data_type << " 1" << std::endl
+             << "LOOKUP_TABLE default" << std::endl;
+        for(size_t i = 0; i < mesh.nodes_count(); ++i)
+            fout << stress[i][comp] << '\n';
+    }
 }
 
 template<class Type, class Index, class Influence_Function>
@@ -392,319 +494,27 @@ Eigen::Matrix<Type, Eigen::Dynamic, 1>
     solver.compute(K);
     Eigen::Matrix<Type, Eigen::Dynamic, 1> u = solver.solve(f);
     std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
-
-    //std::vector<Type> u_x(mesh.nodes_count()),
-    //                  u_y(mesh.nodes_count());
-    //for(size_t i = 0; i < mesh.nodes_count(); ++i) {
-    //    u_x[i] = u[2*i];
-    //    u_y[i] = u[2*i+1];
-    //}
-
-    //return {std::move(u_x), std::move(u_y)};
+    
     return u;
 }
 
+template<class Type, class Index, class Vector, class Influence_Function>
+std::array<std::vector<std::array<Type, 3>>, 2>
+    strains_and_stress(const mesh::mesh_2d<Type, Index>& mesh, const parameters<Type>& params, const Vector& displacement,
+                       const Type p1, const Influence_Function& influence_fun) {
+    const std::array<Type, 3> D = _structural::hooke_matrix(params);
+    auto [strain, stress] = _structural::strains_and_stress_loc(mesh, D, displacement);
+
+    if(p1 < _structural::MAX_LOCAL_WEIGHT) { // Нелокальная задача
+        for(size_t i = 0; i < mesh.nodes_count(); ++i)
+            for(size_t j = 0; j < 3; ++j)
+                stress[i][j] *= p1;
+        _structural::stress_nonloc(stress, strain, mesh, D, p1, influence_fun);
+    }
+
+    return {std::move(strain), std::move(stress)};
 }
 
-// namespace static_equation_with_nonloc
-// {
-
-// template<class Type, class Index>
-// static void integrate_right_part(const mesh_2d<Type, Index> &mesh,
-//                                  const distributed_load<Type>& right_part,
-//                                  Eigen::Matrix<Type, Eigen::Dynamic, 1> &f)
-// {
-//     matrix<Type> coords, jacobi_matrices;
-//     for(size_t el = 0; el < mesh.elements_count(); ++el)
-//     {
-//         const auto& e = mesh.element_2d(mesh.element_type(el));
-//         approx_quad_nodes_coords(mesh, e, el, coords);
-//         approx_jacobi_matrices(mesh, e, el, jacobi_matrices);
-//         for(size_t i = 0; i < e->nodes_count(); ++i)
-//         {
-//             f[2*mesh.node_number(el, i)]   += integrate_right_part_function(e, i, coords, jacobi_matrices, right_part.func_x);
-//             f[2*mesh.node_number(el, i)+1] += integrate_right_part_function(e, i, coords, jacobi_matrices, right_part.func_y);
-//         }
-//     }
-// }
-
-// template<class Type, class Index>
-// static std::array<std::vector<Type>, 6>
-//     strains_and_stress_loc(const mesh_2d<Type, Index>& mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1>& u, const std::array<Type, 3>& D)
-// {
-//     std::vector<Type> eps11  (mesh.nodes_count(), 0.0),
-//                       eps22  (mesh.nodes_count(), 0.0),
-//                       eps12  (mesh.nodes_count(), 0.0),
-//                       sigma11(mesh.nodes_count(), 0.0),
-//                       sigma22(mesh.nodes_count(), 0.0),
-//                       sigma12(mesh.nodes_count(), 0.0);
-
-//     eps11.shrink_to_fit();
-
-//     std::array<Type, 4> jacobi;
-//     std::array<Type, 3> loc_eps;
-//     std::vector<uint8_t> repeating(mesh.nodes_count(), 0);
-//     const metamath::finite_element::element_2d_integrate_base<Type> *e = nullptr;
-//     for(size_t el = 0; el < mesh.elements_count(); ++el)
-//     {
-//         e = mesh.element_2d(mesh.element_type(el));
-//         for(size_t i = 0; i < e->nodes_count(); ++i)
-//         {
-//             ++repeating[mesh.node_number(el, i)];
-//             const std::array<Type, 2>& node = e->node(i);
-//             memset(jacobi.data(), 0, jacobi.size() * sizeof(Type));
-//             for(size_t j = 0; j < e->nodes_count(); ++j)
-//             {
-//                 jacobi[0] += mesh.coord(mesh.node_number(el, j), 0) * e->Nxi (j, node);
-//                 jacobi[1] += mesh.coord(mesh.node_number(el, j), 0) * e->Neta(j, node);
-//                 jacobi[2] += mesh.coord(mesh.node_number(el, j), 1) * e->Nxi (j, node);
-//                 jacobi[3] += mesh.coord(mesh.node_number(el, j), 1) * e->Neta(j, node);
-//             }
-
-//             memset(loc_eps.data(), 0, loc_eps.size() * sizeof(Type));
-//             for(size_t j = 0; j < e->nodes_count(); ++j)
-//             {
-//                 const Type jacobian = jacobi[0]*jacobi[3] - jacobi[1]*jacobi[2],
-//                            dx1 =  jacobi[3] * e->Nxi(j, node) - jacobi[2] * e->Neta(j, node),
-//                            dx2 = -jacobi[1] * e->Nxi(j, node) + jacobi[0] * e->Neta(j, node);
-//                 loc_eps[0] +=  dx1 * u[2*mesh.node_number(el, j)  ]  / jacobian;
-//                 loc_eps[1] +=  dx2 * u[2*mesh.node_number(el, j)+1]  / jacobian;
-//                 loc_eps[2] += (dx2 * u[2*mesh.node_number(el, j)  ] +
-//                                dx1 * u[2*mesh.node_number(el, j)+1]) / jacobian;
-//             }
-
-//             eps11  [mesh.node_number(el, i)] += loc_eps[0];
-//             eps22  [mesh.node_number(el, i)] += loc_eps[1];
-//             eps12  [mesh.node_number(el, i)] += loc_eps[2];
-//             sigma11[mesh.node_number(el, i)] += D[0] * loc_eps[0] + D[1] * loc_eps[1];
-//             sigma22[mesh.node_number(el, i)] += D[1] * loc_eps[0] + D[0] * loc_eps[1];
-//             sigma12[mesh.node_number(el, i)] += D[2] * loc_eps[2];
-//         }
-//     }
-
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//     {
-//         eps11  [i] /=   repeating[i];
-//         eps22  [i] /=   repeating[i];
-//         eps12  [i] /= 2*repeating[i];
-//         sigma11[i] /=   repeating[i];
-//         sigma22[i] /=   repeating[i];
-//         sigma12[i] /= 2*repeating[i];
-//     }
-
-//     return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
-// }
-
-// template<class Type, class Index>
-// static std::array<std::vector<Type>, 3>
-//     approx_all_eps_in_all_quad(const mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts,
-//                                const std::vector<Type> &eps11, const std::vector<Type> &eps22, const std::vector<Type> &eps12)
-// {
-//     std::vector<Type> all_eps11(shifts.back(), 0.), all_eps22(shifts.back(), 0.), all_eps12(shifts.back(), 0.);
-//     const metamath::finite_element::element_2d_integrate_base<Type> *e = nullptr;
-//     for(size_t el = 0; el < mesh.elements_count(); ++el)
-//     {
-//         e = mesh.element_2d(mesh.element_type(el));
-//         for(size_t q = 0, shift = shifts[el]; q < e->qnodes_count(); ++q, ++shift)
-//             for(size_t i = 0; i < e->nodes_count(); ++i)
-//             {
-//                 all_eps11[shift] += eps11[mesh.node_number(el, i)] * e->qN(i, q);
-//                 all_eps22[shift] += eps22[mesh.node_number(el, i)] * e->qN(i, q);
-//                 all_eps12[shift] += eps12[mesh.node_number(el, i)] * e->qN(i, q);
-//             }
-//     }
-//     return {std::move(all_eps11), std::move(all_eps22), std::move(all_eps12)};
-// }
-
-// template<class Type, class Index>
-// static void stress_nonloc(const mesh_2d<Type, Index> &mesh, const std::array<Type, 3> &D,
-//                           const std::vector<Type> &eps11,   const std::vector<Type> &eps22,   const std::vector<Type> &eps12,
-//                                 std::vector<Type> &sigma11,       std::vector<Type> &sigma22,       std::vector<Type> &sigma12,
-//                           const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun)
-// {
-//     const Type p2 = 1. - p1;
-//     const metamath::finite_element::element_2d_integrate_base<Type> *eNL = nullptr;
-//     const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
-//     const matrix<Type> all_quad_coords = approx_all_quad_nodes_coords(mesh, shifts_quad);
-//     const matrix<Type> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
-//     auto [all_eps11, all_eps22, all_eps12] = approx_all_eps_in_all_quad(mesh, shifts_quad, eps11, eps22, eps12);
-//     for(size_t node = 0; node < mesh.nodes_count(); ++node)
-//         for(const auto elNL : mesh.neighbor(node))
-//         {
-//             eNL = mesh.element_2d(mesh.element_type(elNL));
-//             for(size_t q = 0, shift = shifts_quad[elNL]; q < eNL->qnodes_count(); ++q, ++shift)
-//             {
-//                 const Type finit = influence_fun(mesh.coord(node, 0), all_quad_coords(shift, 0), mesh.coord(node, 1), all_quad_coords(shift, 1)) *
-//                                    (all_jacobi_matrices(shift, 0)*all_jacobi_matrices(shift, 3) - all_jacobi_matrices(shift, 1)*all_jacobi_matrices(shift, 2));
-//                 sigma11[node] += p2 * finit * (D[0] * all_eps11[shift] + D[1] * all_eps22[shift]);
-//                 sigma22[node] += p2 * finit * (D[1] * all_eps11[shift] + D[0] * all_eps22[shift]);
-//                 sigma12[node] += p2 * finit *  D[2] * all_eps12[shift];
-//             }
-//         }
-// }
-
-// template<class Type, class Index>
-// static std::array<std::vector<Type>, 6>
-//     strains_and_stress(const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1> &u, const parameters<Type> &params,
-//                        const Type p1, const std::function<Type(Type, Type, Type, Type)> &influence_fun)
-// {
-//     static constexpr Type MAX_LOCAL_WEIGHT = 0.999;
-//     bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
-//     const std::array<Type, 3> D = hooke_matrix(params);
-//     auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = strains_and_stress_loc(mesh, u, D);
-
-//     if(nonlocal)
-//     {
-//         for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//         {
-//             sigma11[i] *= p1;
-//             sigma22[i] *= p1;
-//             sigma12[i] *= p1;
-//         }
-//         stress_nonloc(mesh, D, eps11, eps22, eps12, sigma11, sigma22, sigma12, p1, influence_fun);
-//     }
-
-//     return {std::move(eps11), std::move(eps22), std::move(eps12), std::move(sigma11), std::move(sigma22), std::move(sigma12)};
-// }
-
-// template<class Type, class Index>
-// void raw_output(const std::string &path,          const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1> &u,
-//                 const std::vector<Type> &eps11,   const std::vector<Type> &eps22,   const std::vector<Type> &eps12,
-//                 const std::vector<Type> &sigma11, const std::vector<Type> &sigma22, const std::vector<Type> &sigma12)
-// {
-//     std::ofstream fout_ux(path + std::string("u_x.csv")),
-//                   fout_uy(path + std::string("u_y.csv"));
-//     fout_ux.precision(20);
-//     fout_uy.precision(20);
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//     {
-//         fout_ux << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i) << std::endl;
-//         fout_uy << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << u(2*i+1) << std::endl;
-//     }
-
-//     std::ofstream fout_eps11(path + std::string("eps11.csv")),
-//                   fout_eps22(path + std::string("eps22.csv")),
-//                   fout_eps12(path + std::string("eps12.csv"));
-//     fout_eps11.precision(20);
-//     fout_eps22.precision(20);
-//     fout_eps12.precision(20);
-//     for(size_t i = 0; i < eps11.size(); ++i)
-//         fout_eps11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps11[i] << std::endl;
-
-//     for(size_t i = 0; i < eps22.size(); ++i)
-//         fout_eps22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps22[i] << std::endl;
-
-//     for(size_t i = 0; i < eps12.size(); ++i)
-//         fout_eps12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << eps12[i] << std::endl;
-
-//     std::ofstream fout_sigma11(path + std::string("sigma11.csv")),
-//                   fout_sigma22(path + std::string("sigma22.csv")),
-//                   fout_sigma12(path + std::string("sigma12.csv"));
-//     fout_sigma11.precision(20);
-//     fout_sigma22.precision(20);
-//     fout_sigma12.precision(20);
-//     for(size_t i = 0; i < sigma11.size(); ++i)
-//         fout_sigma11 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma11[i] << std::endl;
-
-//     for(size_t i = 0; i < sigma22.size(); ++i)
-//         fout_sigma22 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma22[i] << std::endl;
-
-//     for(size_t i = 0; i < sigma12.size(); ++i)
-//         fout_sigma12 << mesh.coord(i, 0) << "," << mesh.coord(i, 1) << "," << sigma12[i] << std::endl;
-// }
-
-// template<class Type, class Index>
-// void save_as_vtk(const std::string &path,          const mesh_2d<Type, Index> &mesh, const Eigen::Matrix<Type, Eigen::Dynamic, 1> &u,
-//                  const std::vector<Type> &eps11,   const std::vector<Type> &eps22,   const std::vector<Type> &eps12,
-//                  const std::vector<Type> &sigma11, const std::vector<Type> &sigma22, const std::vector<Type> &sigma12)
-// {
-//     std::ofstream fout(path);
-//     fout.precision(20);
-
-//     fout << "# vtk DataFile Version 4.2" << std::endl
-//          << "Temperature"                << std::endl
-//          << "ASCII"                      << std::endl
-//          << "DATASET UNSTRUCTURED_GRID"  << std::endl;
-
-//     fout << "POINTS " << mesh.nodes_count() << " double" << std::endl;
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//         fout << mesh.coord(i, 0) << " " << mesh.coord(i, 1) << " 0" << std::endl;
-
-//     fout << "CELLS " << mesh.elements_count() << " " << mesh.elements_count() * (mesh.element_type(0) == 3 ? 5 : 9) << std::endl;
-//     for(size_t i = 0; i < mesh.elements_count(); ++i)
-//     {
-//         if (mesh.element_type(i) == 3)
-//         {
-//             fout << 4 << " " << mesh.node_number(i, 0) << " "
-//                              << mesh.node_number(i, 1) << " "
-//                              << mesh.node_number(i, 2) << " "
-//                              << mesh.node_number(i, 3);
-//         }
-//         else
-//         {
-//             fout << 8 << " " << mesh.node_number(i, 0) << " "
-//                              << mesh.node_number(i, 2) << " "
-//                              << mesh.node_number(i, 4) << " "
-//                              << mesh.node_number(i, 6) << " "
-//                              << mesh.node_number(i, 1) << " "
-//                              << mesh.node_number(i, 3) << " "
-//                              << mesh.node_number(i, 5) << " "
-//                              << mesh.node_number(i, 7);
-//         }
-//         fout << std::endl;
-//     }
-//         //fout << 4 << " " << mesh.node_number(i, 0) << " "
-//         //                 << mesh.node_number(i, 1) << " "
-//         //                 << mesh.node_number(i, 2) << " "
-//         //                 << mesh.node_number(i, 3) << std::endl;
-
-//     fout << "CELL_TYPES " << mesh.elements_count() << std::endl;
-//     for(size_t i = 0; i < mesh.elements_count(); ++i)
-//         fout << (mesh.element_type(i) == 3 ? 9 : 23) << std::endl;
-
-//     fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
-
-//     fout << "SCALARS U_X double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//         fout << u[2*i] << std::endl;
-
-//     fout << "SCALARS U_Y double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < mesh.nodes_count(); ++i)
-//         fout << u[2*i+1] << std::endl;
-
-//     fout << "SCALARS EPS_XX double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < eps11.size(); ++i)
-//         fout << eps11[i] << std::endl;
-
-//     fout << "SCALARS EPS_YY double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < eps22.size(); ++i)
-//         fout << eps22[i] << std::endl;
-
-//     fout << "SCALARS EPS_XY double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < eps12.size(); ++i)
-//         fout << eps12[i] << std::endl;
-
-//     fout << "SCALARS SIGMA_XX double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < sigma11.size(); ++i)
-//         fout << sigma11[i] << std::endl;
-
-//     fout << "SCALARS SIGMA_YY double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < sigma22.size(); ++i)
-//         fout << sigma22[i] << std::endl;
-
-//     fout << "SCALARS SIGMA_XY double " << 1 << std::endl
-//          << "LOOKUP_TABLE default" << std::endl;
-//     for(size_t i = 0; i < sigma12.size(); ++i)
-//         fout << sigma12[i] << std::endl;
-// }
-
-// }
+}
 
 #endif
