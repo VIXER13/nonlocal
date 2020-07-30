@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
         std::cout.precision(5);
         omp_set_num_threads(4);
 
-        static constexpr double r = 0.15, p1 = 1;
+        static constexpr double r = 0.05, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> mesh{argv[1]};
 
@@ -42,7 +42,21 @@ int main(int argc, char** argv) {
             {
                 {
                     [](const std::array<double, 2>&) { return 0; },
-                    [](const std::array<double, 2>&) { return -100; },
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
+
+                {
+                    [](const std::array<double, 2>&) { return 10000; },
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
+
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::PRESSURE,
                     nonlocal::structural::boundary_t::PRESSURE
                 },
@@ -52,9 +66,7 @@ int main(int argc, char** argv) {
                     [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::DISPLACEMENT,
                     nonlocal::structural::boundary_t::DISPLACEMENT
-                },
-
-                {}//, {}, {}, {}, {}, {}, {}
+                }
             },
             params, p1, bell
         );

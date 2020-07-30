@@ -181,6 +181,10 @@ protected:
         });
 
         auto [shifts_loc, shifts_bound_loc, shifts_nonloc, shifts_bound_nonloc] = mesh_analysis(mesh, inner_nodes, nonlocal);
+
+        const size_t triplets_count = nonlocal ? shifts_nonloc.back() + shifts_bound_nonloc.back()
+                                               : shifts_loc.back()    + shifts_bound_loc.back();
+        std::cout << "Triplets count: " << triplets_count << std::endl;
         std::vector<Eigen::Triplet<Type, Index>> triplets      (nonlocal ? shifts_nonloc.back()       : shifts_loc.back()),
                                                  triplets_bound(nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
         for(size_t i = 0, j = 0; i < inner_nodes.size(); ++i)
@@ -257,8 +261,7 @@ protected:
         double time = omp_get_wtime();
         auto [triplets, triplets_bound] = triplets_fill(mesh, shifts_quad, all_quad_coords, all_jacobi_matrices,
                                                         bounds_cond, params, p1, influence_fun);
-        std::cout << omp_get_wtime() - time << std::endl
-                  << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
+        std::cout << "Triplets fill: " << omp_get_wtime() - time << std::endl;
 
         K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
         triplets_bound.reserve(0);

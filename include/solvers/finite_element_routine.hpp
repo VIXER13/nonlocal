@@ -140,7 +140,7 @@ protected:
 
     template<class T>
     static T jacobian(const std::array<T, 4>& jacobi_matrix) noexcept {
-        return jacobi_matrix[0] * jacobi_matrix[3] - jacobi_matrix[1] * jacobi_matrix[2];
+        return std::abs(jacobi_matrix[0] * jacobi_matrix[3] - jacobi_matrix[1] * jacobi_matrix[2]);
     }
 
     template<class T>
@@ -152,7 +152,7 @@ protected:
     static T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q,
                  const std::array<T, 4>& jacobi_matrix) {
         if constexpr (Component == component::X)
-            return e->qNxi(i, q) * jacobi_matrix[3] - e->qNeta(i, q) * jacobi_matrix[2];
+            return  e->qNxi(i, q) * jacobi_matrix[3] - e->qNeta(i, q) * jacobi_matrix[2];
         if constexpr (Component == component::Y)
             return -e->qNxi(i, q) * jacobi_matrix[1] + e->qNeta(i, q) * jacobi_matrix[0];
     }

@@ -2,6 +2,7 @@
 #define MESH_SU2_PARSER_HPP
 
 #include "mesh_2d.hpp"
+#include <iostream>
 
 namespace mesh {
 
@@ -85,7 +86,7 @@ void mesh_2d<Type, Index>::read_su2(const std::string& path) {
 
                         case vtk_element_number::QUADRATIC:
                             _elements_1d_type[b][el] = element_1d_t::QUADRATIC;
-                            read_element<0, 1, 2>(mesh_file, _boundaries[b][el]);
+                            read_element<0, 2, 1>(mesh_file, _boundaries[b][el]);
                         break;
 
                         default:

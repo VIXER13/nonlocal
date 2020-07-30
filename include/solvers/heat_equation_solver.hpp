@@ -177,6 +177,9 @@ protected:
                 neumann_triplets += mesh.element_2d(mesh.element_2d_type(el))->nodes_count();
         }
 
+        const size_t triplets_count = nonlocal ? shifts_nonloc.back() + shifts_bound_nonloc.back()
+                                               : shifts_loc.back()    + shifts_bound_loc.back();
+        std::cout << "Triplets count: " << triplets_count + neumann_triplets << std::endl
         std::vector<Eigen::Triplet<Type, Index>> triplets      ((nonlocal ? shifts_nonloc.back()       : shifts_loc.back()) + neumann_triplets),
                                                  triplets_bound( nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
         if(!neumann_task)
@@ -251,8 +254,7 @@ protected:
         std::cout << "Triplets calc: ";
         auto [triplets, triplets_bound] = triplets_fill(mesh, shifts_quad, all_quad_coords, all_jacobi_matrices, 
                                                         bounds_cond, neumann_task, integrate_rule, p1, influence_fun);
-        std::cout << omp_get_wtime() - time << std::endl
-                  << "Triplets count: " << triplets.size() + triplets_bound.size() << std::endl;
+        std::cout << omp_get_wtime() - time << std::endl;
 
         K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
         triplets_bound.reserve(0);
