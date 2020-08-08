@@ -261,7 +261,7 @@ protected:
         double time = omp_get_wtime();
         auto [triplets, triplets_bound] = triplets_fill(mesh, shifts_quad, all_quad_coords, all_jacobi_matrices,
                                                         bounds_cond, params, p1, influence_fun);
-        std::cout << "Triplets fill: " << omp_get_wtime() - time << std::endl;
+        std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
 
         K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
         triplets_bound.reserve(0);

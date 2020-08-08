@@ -105,6 +105,8 @@ private:
         std::make_unique<element_2d_integrate<Type,    quadratic_lagrange>>(quadrature<Type, gauss3>{}),
     };
 
+    bool check_intersect(const std::array<Type, 2>& a, const std::array<Type, 2>& b) const;
+
 public:
     explicit mesh_2d(const std::string& path);
     void read_from_file(const std::string& path);

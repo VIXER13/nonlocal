@@ -3,7 +3,11 @@
 **CMakeCache.txt
 **cmake_install.cmake
 
+.vscode
+
 a.out
 Eigen
 mesh
 **.vtk
+
+results
