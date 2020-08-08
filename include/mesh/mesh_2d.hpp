@@ -83,8 +83,8 @@ class mesh_2d {
     void read_element(std::ifstream& mesh_file, std::vector<Index>& element);
     void read_su2(const std::string& path);
 
-    template<size_t... I>
-    void write_element(std::ofstream& mesh_file, std::vector<Index>& element);
+    template<size_t Ind, size_t... I>
+    void write_element(std::ofstream& mesh_file, const std::vector<Index>& element) const;
 
 public:
     using fe_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<Type>>;
@@ -136,7 +136,7 @@ public:
     void find_elements_neighbors(const Type r); // Ищет соседние элементы, центры которых попали в зону влияния
     void find_nodes_neighbors(const Type r);    // Ищет соседние узлы, которые попадают в зону влияния
 
-    void save_as_vtk(std::ofstream& fout) const;
+    void save_as_vtk(std::ofstream& mesh_file) const;
 };
 
 template<class Type, class Index>

@@ -430,7 +430,7 @@ template<class Type, class Index, class Vector>
 void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& U,
                  const std::vector<std::array<Type, 3>>& strain,
                  const std::vector<std::array<Type, 3>>& stress) {
-    static constexpr std::string_view data_type = std::is_same_v<Type, double> ? "double" : "float";
+    static constexpr std::string_view data_type = std::is_same_v<Type, float> ? "float" : "double";
 
     if(2 * mesh.nodes_count() != size_t(U.size()))
         throw std::domain_error{"2 * mesh.nodes_count() != U.size()."};
@@ -440,8 +440,8 @@ void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh
 
     mesh.save_as_vtk(fout);
 
-    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
-    fout << "VECTORS Displacement " << data_type << std::endl;
+    fout << "POINT_DATA " << mesh.nodes_count() << '\n';
+    fout << "VECTORS Displacement " << data_type << '\n';
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
         fout << U[2*i] << ' ' << U[2*i+1] << " 0\n";
 
@@ -450,15 +450,15 @@ void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh
         stress_number = {"stress11", "stress22", "stress12"};
 
     for(size_t comp = 0; comp < 3; ++comp) {
-        fout << "SCALARS " << strain_number[comp] << ' ' << data_type << " 1" << std::endl
-             << "LOOKUP_TABLE default" << std::endl;
+        fout << "SCALARS " << strain_number[comp] << ' ' << data_type << " 1" << '\n'
+             << "LOOKUP_TABLE default" << '\n';
         for(size_t i = 0; i < mesh.nodes_count(); ++i)
             fout << strain[i][comp] << '\n';
     }
 
     for(size_t comp = 0; comp < 3; ++comp) {
-        fout << "SCALARS " << stress_number[comp] << ' ' << data_type << " 1" << std::endl
-             << "LOOKUP_TABLE default" << std::endl;
+        fout << "SCALARS " << stress_number[comp] << ' ' << data_type << " 1" << '\n'
+             << "LOOKUP_TABLE default" << '\n';
         for(size_t i = 0; i < mesh.nodes_count(); ++i)
             fout << stress[i][comp] << '\n';
     }

@@ -334,7 +334,7 @@ public:
 
 template<class Type, class Index, class Vector>
 void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
-    static constexpr std::string_view data_type = std::is_same_v<Type, double> ? "double" : "float";
+    static constexpr std::string_view data_type = std::is_same_v<Type, float> ? "float" : "double";
 
     if(mesh.nodes_count() != size_t(T.size()))
         throw std::domain_error{"mesh.nodes_count() != T.size()."};
@@ -344,9 +344,9 @@ void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh
 
     mesh.save_as_vtk(fout);
 
-    fout << "POINT_DATA " << mesh.nodes_count() << std::endl;
-    fout << "SCALARS Temperature " << data_type << " 1" << std::endl
-         << "LOOKUP_TABLE default" << std::endl;
+    fout << "POINT_DATA " << mesh.nodes_count() << '\n';
+    fout << "SCALARS Temperature " << data_type << " 1" << '\n'
+         << "LOOKUP_TABLE default" << '\n';
     for(size_t i = 0; i < mesh.nodes_count(); ++i)
         fout << T[i] << '\n';
 }
