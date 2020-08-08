@@ -16,10 +16,10 @@ int main(int argc, char** argv) {
     }
 
     try {
-        std::cout.precision(5);
+        std::cout.precision(20);
         omp_set_num_threads(4);
 
-        static constexpr double r = 0.2, p1 = 0.5;
+        static constexpr double r = 0.2, p1 = 1.;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};
         if(p1 < 1) {
@@ -56,13 +56,13 @@ int main(int argc, char** argv) {
             p1, bell, 1.
         );
 
-        std::cout << "Energy: " << nonlocal::heat::integrate_solution(msh, T) << std::endl;
+        std::cout << "Energy: " << nonlocal::heat::integrate_solution(msh, T) << std::endl << std::endl;
 
         nonlocal::heat::save_as_vtk("test.vtk", msh, T);
         //raw_output("test.csv", msh, T);
 
         nonlocal::heat::nonstationary("results/nonstationary/",
-            msh, 0.0001, 1000,
+            msh, 0.01, 10,
             {
                 {
                     [](const std::array<double, 2>&) { return 0; },

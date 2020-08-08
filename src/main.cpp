@@ -14,9 +14,19 @@ static void raw_output(const std::string& path, const mesh::mesh_2d<Type, Index>
         fu2 << mesh.node(i)[0] << "," << mesh.node(i)[1] << "," << u[2*i+1] << std::endl;
 }
 
+template<class Type>
+static std::tuple<std::string, std::string, Type, Type>
+    parse_parameters(const std::string& path) {
+    std::ifstream parameters{path};
+    std::string in, out;
+    Type r = 0, p1 = 0;
+    parameters >> in >> out >> r >> p1;
+    return {std::move(in), std::move(out), r, p1};
+}
+
 int main(int argc, char** argv) {
     if(argc < 2) {
-        std::cerr << "Input format [program name] <path to mesh>";
+        std::cerr << "Input format [program name] <path to init>";
         return EXIT_FAILURE;
     }
 
@@ -24,9 +34,9 @@ int main(int argc, char** argv) {
         std::cout.precision(5);
         omp_set_num_threads(4);
 
-        static constexpr double r = 0.15, p1 = 1;
+        const auto [in_file, out_file, r, p1] = parse_parameters<double>(argv[1]);
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        mesh::mesh_2d<double> mesh{argv[1]};
+        mesh::mesh_2d<double> mesh{in_file};
 
         if(p1 < 1) {
             mesh.find_elements_neighbors(1.05*r);
@@ -42,19 +52,21 @@ int main(int argc, char** argv) {
             {
                 {
                     [](const std::array<double, 2>&) { return 0; },
-                    [](const std::array<double, 2>&) { return -100; },
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    nonlocal::structural::boundary_t::PRESSURE
-                },
-
-                {
-                    [](const std::array<double, 2>&) { return 0; },
                     [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::DISPLACEMENT,
                     nonlocal::structural::boundary_t::DISPLACEMENT
                 },
 
-                {}//, {}, {}, {}, {}, {}, {}
+                {}, {}, {}, {}, {},
+
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    [](const std::array<double, 2>&) { return 10000; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
+
+                {}
             },
             params, p1, bell
         );
@@ -63,7 +75,10 @@ int main(int argc, char** argv) {
             mesh.find_nodes_neighbors(1.05*r);
         auto [strain, stress] = nonlocal::structural::strains_and_stress(mesh, params, u, p1, bell);
 
-        nonlocal::structural::save_as_vtk("test.vtk", mesh, u, strain, stress);
+        std::cout.precision(10);
+        std::cout << "Energy: " <<  nonlocal::structural::calc_energy(mesh, strain, stress) << std::endl;
+
+        nonlocal::structural::save_as_vtk(out_file, mesh, u, strain, stress);
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

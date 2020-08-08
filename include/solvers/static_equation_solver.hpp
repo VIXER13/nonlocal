@@ -372,17 +372,17 @@ protected:
 
     template<class Type, class Index>
     static std::vector<std::array<Type, 3>>
-        approx_strains_in_quad(const mesh::mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts,
-                               const std::vector<std::array<Type, 3>>& strains) {
-        std::vector<std::array<Type, 3>> strains_in_quad(shifts.back(), std::array<Type, 3>{});
+        approx_tensor_in_quad(const mesh::mesh_2d<Type, Index> &mesh, const std::vector<Index> &shifts,
+                               const std::vector<std::array<Type, 3>>& tensor) {
+        std::vector<std::array<Type, 3>> tensor_in_quad(shifts.back(), std::array<Type, 3>{});
         for(size_t el = 0; el < mesh.elements_count(); ++el) {
             const auto& e = mesh.element_2d(mesh.element_2d_type(el));
             for(size_t q = 0, shift = shifts[el]; q < e->qnodes_count(); ++q, ++shift)
                 for(size_t i = 0; i < e->nodes_count(); ++i)
                     for(size_t comp = 0; comp < 3; ++comp)
-                        strains_in_quad[shift][comp] += strains[mesh.node_number(el, i)][comp] * e->qN(i, q);
+                        tensor_in_quad[shift][comp] += tensor[mesh.node_number(el, i)][comp] * e->qN(i, q);
         }
-        return std::move(strains_in_quad);
+        return std::move(tensor_in_quad);
     }
 
     template<class Type, class Index, class Influence_Function>
@@ -393,7 +393,7 @@ protected:
         const Type p2 = 1. - p1;
         const std::vector<Index> shifts_quad = quadrature_shifts_init(mesh);
         const std::vector<std::array<Type, 2>> all_quad_coords = approx_all_quad_nodes(mesh, shifts_quad);
-        const std::vector<std::array<Type, 3>> strains_in_quad = approx_strains_in_quad(mesh, shifts_quad, strain);
+        const std::vector<std::array<Type, 3>> strains_in_quad = approx_tensor_in_quad(mesh, shifts_quad, strain);
         const std::vector<std::array<Type, 4>> all_jacobi_matrices = approx_all_jacobi_matrices(mesh, shifts_quad);
         for(size_t node = 0; node < mesh.nodes_count(); ++node)
             for(const auto elNL : mesh.node_neighbors(node)) {
@@ -424,6 +424,11 @@ public:
     friend std::array<std::vector<std::array<Type, 3>>, 2>
         strains_and_stress(const mesh::mesh_2d<Type, Index>& mesh, const parameters<Type>& params, const Vector& displacement,
                            const Type p1, const Influence_Function& influence_fun);
+
+    template<class Type, class Index>
+    friend Type calc_energy(const mesh::mesh_2d<Type, Index>& mesh,
+                            const std::vector<std::array<Type, 3>>& strain,
+                            const std::vector<std::array<Type, 3>>& stress);
 };
 
 template<class Type, class Index, class Vector>
@@ -516,6 +521,25 @@ std::array<std::vector<std::array<Type, 3>>, 2>
     }
 
     return {std::move(strain), std::move(stress)};
+}
+
+template<class Type, class Index>
+Type calc_energy(const mesh::mesh_2d<Type, Index>& mesh,
+                 const std::vector<std::array<Type, 3>>& strain,
+                 const std::vector<std::array<Type, 3>>& stress) {
+    Type integral = 0;
+    const std::vector<Index> shifts_quad = _structural::quadrature_shifts_init(mesh);
+    const std::vector<std::array<Type, 4>> all_jacobi_matrices = _structural::approx_all_jacobi_matrices(mesh, shifts_quad);
+    for(size_t el = 0; el < mesh.elements_count(); ++el) {
+        const auto& e = mesh.element_2d(mesh.element_2d_type(el));
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            for(size_t q = 0, shift = shifts_quad[el]; q < e->qnodes_count(); ++q, ++shift)
+                integral += e->weight(q) * e->qN(i, q) * _structural::jacobian(all_jacobi_matrices[shift]) * 
+                            (    strain[mesh.node_number(el, i)][0] * stress[mesh.node_number(el, i)][0] +
+                                 strain[mesh.node_number(el, i)][1] * stress[mesh.node_number(el, i)][1] + 
+                             2 * strain[mesh.node_number(el, i)][2] * stress[mesh.node_number(el, i)][2]);
+    }
+    return 0.5 * integral;
 }
 
 }
