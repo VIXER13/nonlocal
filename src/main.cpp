@@ -46,27 +46,45 @@ int main(int argc, char** argv) {
             std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
         }
 
-        const nonlocal::structural::parameters<double> params = {.nu = 0.25, .E = 2.1e5};
+        const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 2.1e5};
         const auto u = nonlocal::structural::stationary(
             mesh, 
             {
-                {
+                {   // Down
+                    [](const std::array<double, 2>&) { return 0; },
+                    [](const std::array<double, 2>&) { return -10000; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
+
+                {}, // Right
+
+                {   // Horizontal
                     [](const std::array<double, 2>&) { return 0; },
                     [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    nonlocal::structural::boundary_t::PRESSURE,
                     nonlocal::structural::boundary_t::DISPLACEMENT
                 },
 
-                {}, {}, {}, {}, {},
+                {}, // Left
 
-                {
+                {   // Vertical
+                    [](const std::array<double, 2>&) { return 0; },
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
+
+                {}, // EllipseUpDown
+
+                {   // Up
                     [](const std::array<double, 2>&) { return 0; },
                     [](const std::array<double, 2>&) { return 10000; },
                     nonlocal::structural::boundary_t::PRESSURE,
                     nonlocal::structural::boundary_t::PRESSURE
                 },
 
-                {}
+                {}  // EllipseLeftRight
             },
             params, p1, bell
         );

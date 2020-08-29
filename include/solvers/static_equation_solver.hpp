@@ -27,8 +27,8 @@ template<class T>
 struct boundary_condition {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     std::array<std::function<T(const std::array<T, 2>&)>, 2> 
-        func = { [](const std::array<T, 2>&) noexcept { return 0.; },
-                 [](const std::array<T, 2>&) noexcept { return 0.; } };
+        func = { [](const std::array<T, 2>&) noexcept { return 0; },
+                 [](const std::array<T, 2>&) noexcept { return 0; } };
     std::array<boundary_t, 2> type = { boundary_t::PRESSURE, boundary_t::PRESSURE };
 };
 
@@ -36,8 +36,8 @@ template<class T>
 struct distributed_load {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     std::array<std::function<T(const std::array<T, 2>&)>, 2> 
-        func = { [](const std::array<T, 2>&) noexcept { return 0.; },
-                 [](const std::array<T, 2>&) noexcept { return 0.; } };
+        func = { [](const std::array<T, 2>&) noexcept { return 0; },
+                 [](const std::array<T, 2>&) noexcept { return 0; } };
 };
 
 class _structural : protected _finite_element_routine {
@@ -455,18 +455,26 @@ void save_as_vtk(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh
         stress_number = {"stress11", "stress22", "stress12"};
 
     for(size_t comp = 0; comp < 3; ++comp) {
-        fout << "SCALARS " << strain_number[comp] << ' ' << data_type << " 1" << '\n'
-             << "LOOKUP_TABLE default" << '\n';
+        fout << "SCALARS " << strain_number[comp] << ' ' << data_type << " 1\n"
+             << "LOOKUP_TABLE default\n";
         for(size_t i = 0; i < mesh.nodes_count(); ++i)
             fout << strain[i][comp] << '\n';
     }
 
     for(size_t comp = 0; comp < 3; ++comp) {
-        fout << "SCALARS " << stress_number[comp] << ' ' << data_type << " 1" << '\n'
-             << "LOOKUP_TABLE default" << '\n';
+        fout << "SCALARS " << stress_number[comp] << ' ' << data_type << " 1\n"
+             << "LOOKUP_TABLE default\n";
         for(size_t i = 0; i < mesh.nodes_count(); ++i)
             fout << stress[i][comp] << '\n';
     }
+
+    fout << "SCALARS mises " << data_type << " 1\n"
+         << "LOOKUP_TABLE default\n";
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << sqrt(stress[i][0] * stress[i][0] + 
+                     stress[i][1] * stress[i][1] -
+                     stress[i][0] * stress[i][1] + 
+                 3 * stress[i][2] * stress[i][2]) << '\n';
 }
 
 template<class Type, class Index, class Influence_Function>
