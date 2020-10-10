@@ -12,6 +12,7 @@ protected:
     using geometry_2d<T, rectangle_element_geometry>::eta;
 
     explicit bilinear() = default;
+    ~bilinear() override = default;
 
     // Нумерация узлов на билинейном элементе: 3---2
     //                                         |   |
@@ -28,11 +29,6 @@ protected:
         0.25 * (1. + xi) * (1. + eta),
         0.25 * (1. - xi) * (1. + eta)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 2>&)>, 4>
-        N    = symdiff::to_function<T, 2>(basis),
-        Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 };
 
 }

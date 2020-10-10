@@ -21,6 +21,7 @@ public:
     using element_1d<T, Element_Type>::Nxi;
 
     explicit element_1d_integrate(const quadrature_base<T>& quadrature) { set_quadrature(quadrature); }
+    ~element_1d_integrate() override = default;
 
     void set_quadrature(const quadrature_base<T>& quadrature) override {
         std::vector<T> xi(quadrature.nodes_count());

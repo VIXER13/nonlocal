@@ -12,6 +12,7 @@ protected:
     using geometry_2d<Type, triangle_element_geometry>::eta;
 
     explicit barycentric() = default;
+    ~barycentric() override = default;
 
     static constexpr auto L1 = xi;
     static constexpr auto L2 = eta;

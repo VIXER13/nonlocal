@@ -26,6 +26,7 @@ protected:
     static constexpr symdiff::variable<2> p{}; // В силу особенностей вычисления выражений, дополнительному параметру необходимо завести дополнительную переменную.
 
     explicit qubic_serendipity() = default;
+    ~qubic_serendipity() override = default;
 
     // Нумерация узлов на кубическом серендиповом элементе: 9---8---7---6
     //                                                      |           |
@@ -65,11 +66,6 @@ protected:
          (1.-xi)    * (1.-eta*eta) * (0.84375*eta            - (0.28125*p+0.140625)*xi               - 0.28125*p + 0.140625),
         -(1.-xi)    * (1.-eta*eta) * (0.84375*eta            + (0.28125*p+0.140625)*xi               + 0.28125*p - 0.140625)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 3>&)>, 12>
-        N    = symdiff::to_function<T, 3>(basis),
-        Nxi  = symdiff::to_function<T, 3>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 3>(symdiff::derivative<eta>(basis));
 };
 
 }

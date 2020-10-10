@@ -39,6 +39,8 @@ public:
     using element_1d_base<T>::node;
     using element_1d_base<T>::N;
     using element_1d_base<T>::Nxi;
+
+    ~element_1d_integrate_base() override = default;
     
     virtual void set_quadrature(const quadrature_base<T>& quadrature) = 0;
 
@@ -59,6 +61,8 @@ public:
     using element_2d_base<T>::N;
     using element_2d_base<T>::Nxi;
     using element_2d_base<T>::Neta;
+
+    ~element_2d_integrate_base() override = default;
     
     virtual void set_quadrature(const quadrature_base<T>& quadrature_xi, const quadrature_base<T>& quadrature_eta) = 0;
 

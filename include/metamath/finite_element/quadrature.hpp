@@ -33,6 +33,8 @@ class quadrature : public quadrature_base<T>,
                   "The number of nodes and weights does not match.");
 
 public:
+    ~quadrature() override = default;
+
     size_t nodes_count() const override { return Quadrature_Type<T>::nodes.size(); }
         
     T node  (const size_t i) const override { return Quadrature_Type<T>::nodes[i]; }
@@ -51,6 +53,8 @@ template<class T>
 class gauss1 : public geometry_1d<T, standart_segment_geometry> {
 protected:
     explicit gauss1() noexcept = default;
+    ~gauss1() override = default;
+
     static constexpr std::array<T, 1> nodes   = { 0. },
                                       weights = { 2. };
 };
@@ -59,6 +63,8 @@ template<class T>
 class gauss2 : public geometry_1d<T, standart_segment_geometry> {
 protected:
     explicit gauss2() noexcept = default;
+    ~gauss2() override = default;
+
     static constexpr std::array<T, 2> nodes   = { -1./sqrt(3.), 1./sqrt(3.) }, 
                                       weights = {           1.,          1. };
 };
@@ -67,6 +73,8 @@ template<class T>
 class gauss3 : public geometry_1d<T, standart_segment_geometry> {
 protected:
     explicit gauss3() noexcept = default;
+    ~gauss3() override = default;
+
     static constexpr std::array<T, 3> nodes   = { -sqrt(0.6),    0., sqrt(0.6) }, 
                                       weights = {      5./9., 8./9.,     5./9. };
 };
@@ -75,6 +83,8 @@ template<class T>
 class gauss4 : public geometry_1d<T, standart_segment_geometry> {
 protected:
     explicit gauss4() noexcept = default;
+    ~gauss4() override = default;
+
     static constexpr std::array<T, 4> nodes   = { -sqrt(3./7. + 2./7.*sqrt(1.2)),
                                                   -sqrt(3./7. - 2./7.*sqrt(1.2)),
                                                    sqrt(3./7. - 2./7.*sqrt(1.2)),
@@ -90,6 +100,8 @@ template<class T>
 class gauss5 : public geometry_1d<T, standart_segment_geometry> {
 protected:
     explicit gauss5() noexcept = default;
+    ~gauss5() override = default;
+    
     static constexpr std::array<T, 5> nodes   = { -1./3. * sqrt(5. + 2.*sqrt(10./7.)),
                                                   -1./3. * sqrt(5. - 2.*sqrt(10./7.)),
                                                                                    0.,

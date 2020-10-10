@@ -15,6 +15,7 @@ protected:
     using barycentric<T>::L3;
 
     explicit qubic_triangle() = default;
+    ~qubic_triangle() override = default;
 
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
@@ -55,11 +56,6 @@ protected:
         4.5 * L3 * L1 * (3.*L1 - 1.),
         27. * L1 * L2 * L3
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 2>&)>, 10>
-        N    = symdiff::to_function<T, 2>(basis),
-        Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 };
 
 }

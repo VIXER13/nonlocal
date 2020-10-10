@@ -10,20 +10,29 @@ namespace metamath::finite_element {
 template<class T, template<class> class Element_Type>
 class element_2d : public virtual element_2d_base<T>,
                    public Element_Type<T> {
-    static_assert(Element_Type<T>::N.size() == Element_Type<T>::nodes.size(),
-                  "The number of functions and nodes does not match.");
-    static_assert(Element_Type<T>::N.size() == Element_Type<T>::Nxi.size() &&
-                  Element_Type<T>::N.size() == Element_Type<T>::Neta.size(),
-                  "The number of functions and their derivatives does not match.");
+    using Element_Type<T>::xi;
+    using Element_Type<T>::eta;
+    using Element_Type<T>::nodes;
+    using Element_Type<T>::basis;
+
+    static_assert(std::tuple_size<decltype(basis)>::value == nodes.size(), "The number of functions and nodes does not match.");
+
+protected:
+    static inline const std::array<std::function<T(const std::array<T, 2>&)>, nodes.size()>
+        _N    = symdiff::to_function<T, 2>(basis),
+        _Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
+        _Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 
 public:
-    size_t nodes_count() const override { return Element_Type<T>::N.size(); }
+    ~element_2d() override = default;
 
-    const std::array<T, 2>& node(const size_t i) const override { return Element_Type<T>::nodes[i]; }
+    size_t nodes_count() const override { return _N.size(); }
 
-    T N   (const size_t i, const std::array<T, 2>& xi) const override { return Element_Type<T>::N   [i](xi); }
-    T Nxi (const size_t i, const std::array<T, 2>& xi) const override { return Element_Type<T>::Nxi [i](xi); }
-    T Neta(const size_t i, const std::array<T, 2>& xi) const override { return Element_Type<T>::Neta[i](xi); }
+    const std::array<T, 2>& node(const size_t i) const override { return nodes[i]; }
+
+    T N   (const size_t i, const std::array<T, 2>& xi) const override { return _N   [i](xi); }
+    T Nxi (const size_t i, const std::array<T, 2>& xi) const override { return _Nxi [i](xi); }
+    T Neta(const size_t i, const std::array<T, 2>& xi) const override { return _Neta[i](xi); }
 
     T boundary(const side_2d bound, const T x) const override { return Element_Type<T>::boundary(bound, x); }
 };

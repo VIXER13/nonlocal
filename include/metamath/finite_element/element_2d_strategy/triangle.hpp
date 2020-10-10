@@ -15,6 +15,7 @@ protected:
     using barycentric<T>::L3;
 
     explicit triangle() = default;
+    ~triangle() override = default;
 
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
@@ -27,11 +28,6 @@ protected:
 
     // Базисные функции в барицентрических координатах имеют вид: N_i = L_i, i = 1..3
     static constexpr auto basis = std::make_tuple(L1, L2, L3);
-
-    static inline const std::array<std::function<T(const std::array<T, 2>&)>, 3>
-        N    = symdiff::to_function<T, 2>(basis),
-        Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 };
 
 }

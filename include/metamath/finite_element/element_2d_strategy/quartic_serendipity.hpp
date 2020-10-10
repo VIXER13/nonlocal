@@ -16,6 +16,7 @@ protected:
     using geometry_2d<T, rectangle_element_geometry>::eta;
     
     explicit quartic_serendipity() = default;
+    ~quartic_serendipity() override = default;
 
     // Нумерация узлов на тетричном серендиповом элементе:  12--11--10--9---8
     //                                                      |               |
@@ -64,11 +65,6 @@ protected:
          (1.-xi)      * (1.-eta*eta) * (-2.000*eta*eta + 0.0705 *xi   + 0.57050),
         -(1.-xi)      * (1.-eta*eta) * ( 2./3.*eta     + 0.25375*xi   + 0.25375) * (1.-2.*eta)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 2>&)>, 16>
-        N    = symdiff::to_function<T, 2>(basis),
-        Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 };
 
 }

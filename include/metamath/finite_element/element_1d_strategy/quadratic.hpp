@@ -12,6 +12,7 @@ protected:
     using geometry_1d<T, standart_segment_geometry>::xi;
 
     explicit quadratic() noexcept = default;
+    ~quadratic() override = default;
 
     // Нумерация узлов на квадратичном элементе: 0--1--2
     static constexpr std::array<T, 3> nodes = { -1., 0., 1. };
@@ -21,10 +22,6 @@ protected:
         1.0 - xi * xi,
         0.5 * xi * (xi + 1.)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 1>&)>, 3>
-        N   = symdiff::to_function<T, 1>(basis),
-        Nxi = symdiff::to_function<T, 1>(symdiff::derivative<xi>(basis));
 };
 
 }

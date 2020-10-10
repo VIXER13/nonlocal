@@ -15,6 +15,7 @@ protected:
     using barycentric<T>::L3;
 
     explicit quadratic_triangle() = default;
+    ~quadratic_triangle() override = default;
 
     /*
         Нумерация узлов на линейном треугольном элементе: 1\
@@ -42,11 +43,6 @@ protected:
         4. *  L2 * L3,
         4. *  L3 * L1
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 2>&)>, 6>
-        N    = symdiff::to_function<T, 2>(basis),
-        Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 };
 
 }

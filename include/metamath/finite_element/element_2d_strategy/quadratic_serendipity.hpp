@@ -20,6 +20,7 @@ protected:
     using geometry_2d<T, rectangle_element_geometry>::eta;
     
     explicit quadratic_serendipity() = default;
+    ~quadratic_serendipity() override = default;
 
     // В серендиповой аппроксимации высших порядков возникает проблема с негативизмом стандартного базиса в угловых узлах.
     // Для этого вводится специальный параметр p, который позволяет её избежать.
@@ -55,11 +56,6 @@ protected:
          (1.-xi)      * (1.+eta) * ((0.5625*p-0.0625)*(1.+xi-eta) - (0.5625*p+0.1875)*xi*eta),
         -(1.-eta*eta) * (1.-xi)  * ((0.5625*p-0.3125)             + (0.5625*p+0.1875)*xi)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 3>&)>, 8>
-        N    = symdiff::to_function<T, 3>(basis),
-        Nxi  = symdiff::to_function<T, 3>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 3>(symdiff::derivative<eta>(basis));
 };
 
 }

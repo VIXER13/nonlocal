@@ -12,6 +12,7 @@ protected:
     using geometry_1d<T, standart_segment_geometry>::xi;
 
     explicit qubic() noexcept = default;
+    ~qubic() override = default;
 
     // Нумерация узлов на кубическом элементе: 0--1--2--3
     static constexpr std::array<T, 4> nodes = { -1., -1./3., 1./3., 1. };
@@ -22,10 +23,6 @@ protected:
         -1.6875 * (xi + 1./3.) * (xi*xi -    1.),
          0.5625 * (xi +    1.) * (xi*xi - 1./9.)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 1>&)>, 4>
-        N   = symdiff::to_function<T, 1>(basis),
-        Nxi = symdiff::to_function<T, 1>(symdiff::derivative<xi>(basis));
 };
 
 }

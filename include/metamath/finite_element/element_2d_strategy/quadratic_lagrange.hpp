@@ -12,6 +12,7 @@ protected:
     using geometry_2d<T, rectangle_element_geometry>::eta;
 
     explicit quadratic_lagrange() = default;
+    ~quadratic_lagrange() override = default;
 
     // Нумерация узлов на квадоратичном лагранжевом элементе: 6---5---4
     //                                                        |       |
@@ -40,11 +41,6 @@ protected:
         -0.50 * xi  *       (xi    - 1.) * (eta*eta - 1.),
                             (xi*xi - 1.) * (eta*eta - 1.)
     );
-
-    static inline const std::array<std::function<T(const std::array<T, 2>&)>, 9>
-        N    = symdiff::to_function<T, 2>(basis),
-        Nxi  = symdiff::to_function<T, 2>(symdiff::derivative<xi>(basis)),
-        Neta = symdiff::to_function<T, 2>(symdiff::derivative<eta>(basis));
 };
 
 }

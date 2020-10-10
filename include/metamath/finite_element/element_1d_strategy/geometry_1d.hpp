@@ -30,6 +30,8 @@ class geometry_1d : public geometry_1d_base<T>,
     static_assert(Shape_Type<T>::boundary.size() == 2, "Wrong number of boundaries.");
 
 public:
+    ~geometry_1d() override = default;
+
     T boundary(const side_1d bound) const override { return Shape_Type<T>::boundary[size_t(bound)]; }
 };
 
