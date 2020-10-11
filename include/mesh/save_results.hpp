@@ -6,16 +6,16 @@
 
 namespace mesh {
 
-template<class Type, class Index>
-template<size_t Ind, size_t... I>
-void mesh_2d<Type, Index>::write_element(std::ofstream& mesh_file, const std::vector<Index>& element) const {
-    mesh_file << element[Ind];
-    ((mesh_file << ' ' << element[I]), ...);
+template<class T, class I>
+template<size_t K0, size_t... K>
+void mesh_2d<T, I>::write_element(std::ofstream& mesh_file, const std::vector<I>& element) const {
+    mesh_file << element[K0];
+    ((mesh_file << ' ' << element[K]), ...);
 }
 
-template<class Type, class Index>
-void mesh_2d<Type, Index>::save_as_vtk(std::ofstream& mesh_file) const {
-    static constexpr std::string_view data_type = std::is_same_v<Type, float> ? "float" : "double";
+template<class T, class I>
+void mesh_2d<T, I>::save_as_vtk(std::ofstream& mesh_file) const {
+    static constexpr std::string_view data_type = std::is_same_v<T, float> ? "float" : "double";
 
     mesh_file << "# vtk DataFile Version 4.2" << '\n'
               << "Data"                       << '\n'
@@ -24,7 +24,7 @@ void mesh_2d<Type, Index>::save_as_vtk(std::ofstream& mesh_file) const {
 
     mesh_file << "POINTS " << nodes_count() << ' ' << data_type << '\n';
     for(size_t i = 0; i < nodes_count(); ++i) {
-        const std::array<Type, 2>& point = node(i);
+        const std::array<T, 2>& point = node(i);
         mesh_file << point[0] << ' ' << point[1] << " 0" << '\n';
     }
 

@@ -6,15 +6,15 @@
 
 namespace mesh {
 
-template<class Type, class Index>
-template<size_t... I>
-void mesh_2d<Type, Index>::read_element(std::ifstream& mesh_file, std::vector<Index>& element) {
-    element.resize(sizeof...(I));
-    (mesh_file >> ... >> element[I]);
+template<class T, class I>
+template<size_t... K>
+void mesh_2d<T, I>::read_element(std::ifstream& mesh_file, std::vector<I>& element) {
+    element.resize(sizeof...(K));
+    (mesh_file >> ... >> element[K]);
 }
 
-template<class Type, class Index>
-void mesh_2d<Type, Index>::read_su2(const std::string& path) {
+template<class T, class I>
+void mesh_2d<T, I>::read_su2(const std::string& path) {
     std::ifstream mesh_file{path};
     if(mesh_file.is_open()) {
         std::string pass;
