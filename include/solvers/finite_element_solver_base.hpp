@@ -4,6 +4,7 @@
 // Базовые операции, которые требуются во всех конечно-элементных решателях.
 
 #include "mesh/mesh.hpp"
+#include "utils.hpp"
 
 namespace nonlocal {
 
@@ -15,9 +16,10 @@ enum class boundary_type : uint8_t {
 template<class T, class I>
 class finite_element_solver_base {
     mesh::mesh_2d<T, I>           _mesh;
-    std::vector<I>                _quad_shifts;     // Квадратурные сдвиги
-    std::vector<std::array<T, 2>> _quad_coords;     // Координаты квадратурных узлов сетки
-    std::vector<std::array<T, 4>> _jacobi_matrices; // Матрицы Якоби вычисленные в квадратурных узлах
+    std::vector<I>                _quad_shifts;        // Квадратурные сдвиги
+    std::vector<std::array<T, 2>> _quad_coords;        // Координаты квадратурных узлов сетки
+    std::vector<std::array<T, 4>> _jacobi_matrices;    // Матрицы Якоби вычисленные в квадратурных узлах
+    std::vector<std::vector<I>>   _elements_neighbors;
 
     // Квадратурные сдвиги по элементам.
     static std::vector<I> quadrature_shifts_init(const mesh::mesh_2d<T, I>& mesh) {
@@ -86,6 +88,34 @@ protected:
 
     virtual ~finite_element_solver_base() noexcept = default;
 
+    static std::vector<std::array<T, 2>> approx_centres_of_elements(const mesh::mesh_2d<T, I>& mesh) {
+        std::vector<std::array<T, 2>> centres(mesh.elements_count(), std::array<T, 2>{});
+#pragma omp parallel for default(none) shared(mesh, centres)
+        for(size_t el = 0; el < centres.size(); ++el) {
+            const auto& e = mesh.element_2d(el);
+            const T x0 = mesh::is_trinagle(mesh.element_2d_type(el)) ? 1./3. : 0.;
+            for(size_t node = 0; node < e->nodes_count(); ++node) {
+                using namespace utils;
+                centres[el] += mesh.node(mesh.node_number(el, node)) * e->N(node, {x0, x0});
+            }
+        }
+        return std::move(centres);
+    }
+
+    static std::vector<std::vector<I>> 
+    find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
+        std::vector<std::vector<I>> elements_neighbors(mesh.elements_count());
+#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors)
+        for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
+            elements_neighbors[elL].reserve(mesh.elements_count());
+            for(size_t elNL = 0; elNL < mesh.elements_count(); ++elNL)
+                if(utils::distance(centres[elL], centres[elNL]) < r)
+                    elements_neighbors[elL].push_back(elNL);
+            elements_neighbors[elL].shrink_to_fit();
+        }
+        return std::move(elements_neighbors);
+    }
+
     const mesh::mesh_2d<T, I>& mesh() const { return _mesh; }
     I quad_shift(const size_t element) const { return _quad_shifts[element]; }
     const std::array<T, 2>& quad_coord(const size_t global_quad_node) const { return _quad_coords[global_quad_node]; }
@@ -113,7 +143,7 @@ protected:
 #pragma omp parallel for default(none) firstprivate(callback)
         for(size_t elL = 0; elL < _mesh.elements_count(); ++elL) {
             const auto& eL = _mesh.element_2d(elL);
-            for(const auto elNL : _mesh.element_neighbors(elL)) {
+            for(const I elNL : _elements_neighbors[elL]) {
                 const auto& eNL = _mesh.element_2d(elNL);
                 for(size_t iL = 0; iL < eL->nodes_count(); ++iL)         // Проекционные функции
                     for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL) // Функции формы
@@ -196,6 +226,16 @@ protected:
             return  e->qNxi(i, q) * jacobi_matrix[3] - e->qNeta(i, q) * jacobi_matrix[2];
         if constexpr (Component == component::Y)
             return -e->qNxi(i, q) * jacobi_matrix[1] + e->qNeta(i, q) * jacobi_matrix[0];
+    }
+
+public:
+    void find_neighbors(const T r) {
+        const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
+        _elements_neighbors = find_elements_neighbors(_mesh, centres, r);
+    }
+
+    void set_neighbors(std::vector<std::vector<I>>&& neighbors) {
+        _elements_neighbors = std::move(neighbors);
     }
 };
 

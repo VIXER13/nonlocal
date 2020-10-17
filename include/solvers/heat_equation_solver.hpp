@@ -319,14 +319,14 @@ public:
     template<class Right_Part, class Influence_Function>
     Eigen::Matrix<T, Eigen::Dynamic, 1>
     stationary(const std::vector<boundary_condition<T>>& bounds_cond, const Right_Part& right_part, 
-               const T p1, const Influence_Function& influence_fun, const T volume = 0) const;
+               const T r, const T p1, const Influence_Function& influence_fun, const T volume = 0);
 
     template<class Init_Distribution, class Right_Part, class Influence_Function>
     void nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
                        const std::vector<boundary_condition<T>>& bounds_cond, 
                        const Init_Distribution& init_dist, const Right_Part& right_part,
-                       const T p1, const Influence_Function& influence_fun,
-                       const uintmax_t print_frequency = std::numeric_limits<uintmax_t>::max()) const;
+                       const T r, const T p1, const Influence_Function& influence_fun,
+                       const uintmax_t print_frequency = std::numeric_limits<uintmax_t>::max());
 };
 
 template<class T, class I>
@@ -367,10 +367,12 @@ template<class T, class I>
 template<class Right_Part, class Influence_Function>
 Eigen::Matrix<T, Eigen::Dynamic, 1> 
 heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>& bounds_cond, const Right_Part& right_part, 
-                                       const T p1, const Influence_Function& influence_fun, const T volume) const {
+                                       const T r, const T p1, const Influence_Function& influence_fun, const T volume) const {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(), 
         [](const boundary_condition<T>& bound) { return bound.type == boundary_t::FLOW; });
     const size_t matrix_size = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
+
+    _base::find_neighbors(r);
 
     double time = omp_get_wtime();
     Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (matrix_size, matrix_size),
@@ -420,7 +422,9 @@ template<class Init_Distribution, class Right_Part, class Influence_Function>
 void heat_equation_solver<T, I>::nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
                                                const std::vector<boundary_condition<T>>& bounds_cond,
                                                const Init_Distribution& init_dist, const Right_Part& right_part,
-                                               const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) const {
+                                               const T r, const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) const {
+    _base::find_neighbors(r);
+
     static constexpr bool NOT_NEUMANN_TASK = false;
     Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (mesh().nodes_count(), mesh().nodes_count()),
                                                K_bound(mesh().nodes_count(), mesh().nodes_count());

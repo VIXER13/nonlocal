@@ -65,6 +65,7 @@ class structural_solver : protected finite_element_solver_base<T, I>
     using _base::approx_jacobi_matrices_on_bound;
 
     std::array<T, 3> _D;
+    std::vector<std::vector<I>> _nodes_neighbors;
 
     // Матрица Гука, которая имеет следующий портрет:
     // arr[0] arr[1]   0
@@ -386,7 +387,8 @@ class structural_solver : protected finite_element_solver_base<T, I>
         const T p2 = 1. - p1;
         const std::vector<std::array<T, 3>> strains_in_quad = approx_strain_in_quad(strains);
         for(size_t node = 0; node < mesh().nodes_count(); ++node)
-            for(const auto elNL : mesh().node_neighbors(node)) {
+            //for(const auto elNL : mesh().node_neighbors(node)) {
+            for(const I elNL : _nodes_neighbors[node]) {
                 const auto& eNL = mesh().element_2d(mesh().element_2d_type(elNL));
                 for(size_t q = 0, shift = quad_shift(elNL); q < eNL->qnodes_count(); ++q, ++shift) {
                     const T influence_weight = p2 * eNL->weight(q) * jacobian(shift) * influence_fun(quad_coord(shift), mesh().node(node));
@@ -395,6 +397,24 @@ class structural_solver : protected finite_element_solver_base<T, I>
                     stress[node][2] += influence_weight *  _D[2] * strains_in_quad[shift][2];
                 }
             }
+    }
+
+    // Ищет соседние элементы относительно узлов сетки.
+    // За соседа принимаем те элементы, центры которых попали в радиус.
+    static std::vector<std::vector<I>> 
+    find_nodes_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
+        std::vector<std::vector<I>> nodes_neighbors(mesh.nodes_count());
+#pragma omp parallel for default(none) shared(mesh, centres, nodes_neighbors)
+        for(size_t node = 0; node < mesh.nodes_count(); ++node) {
+            nodes_neighbors[node].resize(0);
+            nodes_neighbors[node].reserve(mesh.elements_count());
+            for(size_t el = 0; el < mesh.elements_count(); ++el) {
+                if(utils::distance(mesh.node(node), centres[el]) < r)
+                    nodes_neighbors[node].push_back(el);
+            }
+            nodes_neighbors[node].shrink_to_fit();
+        }
+        return std::move(nodes_neighbors);
     }
 
 public:
@@ -415,7 +435,7 @@ public:
     template<class Influence_Function>
     Eigen::Matrix<T, Eigen::Dynamic, 1> stationary(
         const std::vector<boundary_condition<T>> &bounds_cond, //const distributed_load<T>& right_part,
-        const T p1, const Influence_Function& influence_fun);
+        const T r, const T p1, const Influence_Function& influence_fun);
 
     template<class Vector, class Influence_Function>
     std::array<std::vector<std::array<T, 3>>, 2> strains_and_stress(
@@ -423,6 +443,8 @@ public:
 
     T calc_energy(const std::vector<std::array<T, 3>>& strain, 
                   const std::vector<std::array<T, 3>>& stress) const;
+
+    void find_neighbors(const T r);
 };
 
 template<class T, class I>
@@ -475,7 +497,9 @@ template<class T, class I>
 template<class Influence_Function>
 Eigen::Matrix<T, Eigen::Dynamic, 1> structural_solver<T, I>::stationary(
     const std::vector<boundary_condition<T>> &bounds_cond, //const distributed_load<T>& right_part,
-    const T p1, const Influence_Function& influence_fun) {
+    const T r, const T p1, const Influence_Function& influence_fun) {
+    find_neighbors(r);
+
     double time = omp_get_wtime();
     Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (2*mesh().nodes_count(), 2*mesh().nodes_count()),
                                                K_bound(2*mesh().nodes_count(), 2*mesh().nodes_count());
@@ -518,7 +542,6 @@ T structural_solver<T, I>::calc_energy(const std::vector<std::array<T, 3>>& stra
                                        const std::vector<std::array<T, 3>>& stress) const {
     T integral = 0;
     for(size_t el = 0; el < mesh().elements_count(); ++el) {
-        //std::cout << el << " " << std::endl;
         const auto& e = mesh().element_2d(el);
         for(size_t i = 0; i < e->nodes_count(); ++i)
             for(size_t q = 0, shift = quad_shift(el); q < e->qnodes_count(); ++q, ++shift)
@@ -528,6 +551,14 @@ T structural_solver<T, I>::calc_energy(const std::vector<std::array<T, 3>>& stra
                              2 * strain[mesh().node_number(el, i)][_12] * stress[mesh().node_number(el, i)][_12]);
     }
     return 0.5 * integral;
+}
+
+template<class T, class I>
+void structural_solver<T, I>::find_neighbors(const T r)
+{
+    const std::vector<std::array<T, 2>> centres = _base::approx_centres_of_elements(mesh());
+    _base::set_neighbors(_base::find_elements_neighbors(mesh(), centres, r));
+    _nodes_neighbors = find_nodes_neighbors(mesh(), centres, r);
 }
 
 }

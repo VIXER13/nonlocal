@@ -25,14 +25,6 @@ int main(int argc, char** argv) {
         static constexpr double r = 0.05, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};
-        if(p1 < 1) {
-            msh.find_elements_neighbors(r);
-            size_t neighbors_count = 0;
-            for(size_t i = 0; i < msh.elements_count(); ++i)
-                neighbors_count += msh.element_neighbors(i).size();
-            std::cout << "Average number of neighbors: " << double(neighbors_count) / msh.elements_count() << std::endl;
-            msh.find_nodes_neighbors(r);
-        }
 
         std::cout << "test" << std::endl;
         const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 42};
@@ -60,7 +52,7 @@ int main(int argc, char** argv) {
 
                 {}, {}
             },
-            p1, bell
+            r, p1, bell
         );
 
         const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);

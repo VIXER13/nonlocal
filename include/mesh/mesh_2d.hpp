@@ -24,6 +24,10 @@ enum class element_2d_t : uint8_t {
     QUADRATIC_LAGRANGE
 };
 
+bool is_trinagle(const element_2d_t type) noexcept {
+    return type == element_2d_t::TRIANGLE || type == element_2d_t::QUADRATIC_TRIANGLE;
+}
+
 enum class vtk_element_number : uintmax_t {
     LINEAR = 3,
     QUADRATIC = 21,
@@ -47,8 +51,6 @@ class mesh_2d {
                                                                   // _boundaries[b][e][i] - обращение к b-ой группе, i-ому узлу элемента под номером e.
     std::vector<std::vector<element_1d_t>>   _elements_1d_type;   // Массив с индексами одномерных элементов.
     std::vector<element_2d_t>                _elements_2d_type;   // Массив с индексами двумерных элементов.
-    std::vector<std::vector<I>>              _elements_neighbors, // Ближайшие соседи элементов.
-                                             _nodes_neighbors;    // Ближайшие соседи узлов.
 
     template<class U, template<class> class Quadrature_Type>
     using quadrature = metamath::finite_element::quadrature<U, Quadrature_Type>;
@@ -138,12 +140,6 @@ public:
     const Finite_Element_2D_Ptr& element_2d(const element_2d_t type) const noexcept;
     const Finite_Element_2D_Ptr& element_2d(const size_t number) const noexcept;
 
-    const std::vector<I>& element_neighbors(const size_t element) const noexcept;
-    const std::vector<I>& node_neighbors(const size_t node) const noexcept;
-
-    void find_elements_neighbors(const T r); // Ищет соседние элементы, центры которых попали в зону влияния
-    void find_nodes_neighbors(const T r);    // Ищет соседние узлы, которые попадают в зону влияния
-
     void save_as_vtk(std::ofstream& mesh_file) const;
 };
 
@@ -158,9 +154,7 @@ mesh_2d<T, I>::mesh_2d(const mesh_2d& other) :
     _elements{other._elements},
     _boundaries{other._boundaries},
     _elements_1d_type{other._elements_1d_type},
-    _elements_2d_type{other._elements_2d_type},
-    _elements_neighbors{other._elements_neighbors},
-    _nodes_neighbors{other._nodes_neighbors} {}
+    _elements_2d_type{other._elements_2d_type} {}
 
 template<class T, class I>
 void mesh_2d<T, I>::read_from_file(const std::string& path) {
@@ -178,8 +172,6 @@ void mesh_2d<T, I>::clear() noexcept {
     _boundaries.clear();
     _elements_1d_type.clear();
     _elements_2d_type.clear();
-    _elements_neighbors.clear();
-    _nodes_neighbors.clear();
 }
 
 template<class T, class I>
@@ -189,8 +181,6 @@ void mesh_2d<T, I>::shrink_to_fit() noexcept {
     _boundaries.shrink_to_fit();
     _elements_1d_type.shrink_to_fit();
     _elements_2d_type.shrink_to_fit();
-    _elements_neighbors.shrink_to_fit();
-    _nodes_neighbors.shrink_to_fit();
 }
 
 template<class T, class I>
@@ -256,16 +246,6 @@ const typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(c
 template<class T, class I>
 const typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const size_t number) const noexcept {
     return element_2d(element_2d_type(number));
-}
-
-template<class T, class I>
-const std::vector<I>& mesh_2d<T, I>::element_neighbors(const size_t element) const noexcept {
-    return _elements_neighbors[element];
-}
-
-template<class T, class I>
-const std::vector<I>& mesh_2d<T, I>::node_neighbors(const size_t node) const noexcept {
-    return _nodes_neighbors[node];
 }
 
 }
