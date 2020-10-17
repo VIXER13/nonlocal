@@ -39,16 +39,16 @@ class mesh_2d {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     static_assert(std::is_integral_v<I>, "The I must be integral.");
 
-    std::vector<std::array<T, 2>> _nodes;                  // Глобальные кооридинаты узлов.
-    std::vector<std::vector<I>> _elements;                // Массив с глобальными номерами узлов для каждого элемента
-                                                              // _elements[e][i] --- номер i-го узла элемента под номером e.
-    std::vector<std::vector<std::vector<I>>> _boundaries; // Массив с группами элементов на границе. Считаем, что на гранях элементов,
-                                                              // которые располагаются вблизи границы, заданы одномерные элементы, поэтому
-                                                              // _boundaries[b][e][i] - обращение к b-ой группе, i-ому узлу элемента под номером e.
-    std::vector<std::vector<element_1d_t>> _elements_1d_type; // Массив с индексами одномерных элементов.
-    std::vector<element_2d_t> _elements_2d_type;              // Массив с индексами двумерных элементов.
-    std::vector<std::vector<I>> _elements_neighbors,      // Ближайшие соседи элементов.
-                                    _nodes_neighbors;         // Ближайшие соседи узлов.
+    std::vector<std::array<T, 2>>            _nodes;              // Глобальные кооридинаты узлов.
+    std::vector<std::vector<I>>              _elements;           // Массив с глобальными номерами узлов для каждого элемента
+                                                                  // _elements[e][i] --- номер i-го узла элемента под номером e.
+    std::vector<std::vector<std::vector<I>>> _boundaries;         // Массив с группами элементов на границе. Считаем, что на гранях элементов,
+                                                                  // которые располагаются вблизи границы, заданы одномерные элементы, поэтому
+                                                                  // _boundaries[b][e][i] - обращение к b-ой группе, i-ому узлу элемента под номером e.
+    std::vector<std::vector<element_1d_t>>   _elements_1d_type;   // Массив с индексами одномерных элементов.
+    std::vector<element_2d_t>                _elements_2d_type;   // Массив с индексами двумерных элементов.
+    std::vector<std::vector<I>>              _elements_neighbors, // Ближайшие соседи элементов.
+                                             _nodes_neighbors;    // Ближайшие соседи узлов.
 
     template<class U, template<class> class Quadrature_Type>
     using quadrature = metamath::finite_element::quadrature<U, Quadrature_Type>;
@@ -87,28 +87,34 @@ class mesh_2d {
     void write_element(std::ofstream& mesh_file, const std::vector<I>& element) const;
 
 public:
-    using fe_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<T>>;
-    using fe_2d_ptr = std::unique_ptr<metamath::finite_element::element_2d_integrate_base<T>>;
+    using Finite_Element_1D_Ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<T>>;
+    using Finite_Element_2D_Ptr = std::unique_ptr<metamath::finite_element::element_2d_integrate_base<T>>;
 
 private:
-    // Наиболее употребительные одномерные и двумерные элементы
-    std::array<fe_1d_ptr, 2> _elements_1d = {
-        std::make_unique<element_1d_integrate<T,    linear>>(quadrature<T, gauss1>{}),
-        std::make_unique<element_1d_integrate<T, quadratic>>(quadrature<T, gauss2>{}),
-    };
+    static std::array<Finite_Element_1D_Ptr, 2> make_default_1d_elements() {
+        return { std::make_unique<element_1d_integrate<T,    linear>>(quadrature<T, gauss1>{}),
+                 std::make_unique<element_1d_integrate<T, quadratic>>(quadrature<T, gauss2>{}) };
+    }
 
-    std::array<fe_2d_ptr, 5> _elements_2d = {
-        std::make_unique<element_2d_integrate<T,              triangle>>(quadrature<T, gauss1>{}),
-        std::make_unique<element_2d_integrate<T,    quadratic_triangle>>(quadrature<T, gauss2>{}),
-        std::make_unique<element_2d_integrate<T,              bilinear>>(quadrature<T, gauss2>{}),
-        std::make_unique<element_2d_integrate<T, quadratic_serendipity>>(quadrature<T, gauss3>{}),
-        std::make_unique<element_2d_integrate<T,    quadratic_lagrange>>(quadrature<T, gauss3>{}),
-    };
+    static std::array<Finite_Element_2D_Ptr, 5> make_default_2d_elements() {
+        return { std::make_unique<element_2d_integrate<T,              triangle>>(quadrature<T, gauss1>{}),
+                 std::make_unique<element_2d_integrate<T,    quadratic_triangle>>(quadrature<T, gauss2>{}),
+                 std::make_unique<element_2d_integrate<T,              bilinear>>(quadrature<T, gauss2>{}),
+                 std::make_unique<element_2d_integrate<T, quadratic_serendipity>>(quadrature<T, gauss3>{}),
+                 std::make_unique<element_2d_integrate<T,    quadratic_lagrange>>(quadrature<T, gauss3>{}) };
+    }
+
+    // Наиболее употребительные одномерные и двумерные элементы
+    std::array<Finite_Element_1D_Ptr, 2> _elements_1d = make_default_1d_elements();
+    std::array<Finite_Element_2D_Ptr, 5> _elements_2d = make_default_2d_elements();
 
     bool check_intersect(const std::array<T, 2>& a, const std::array<T, 2>& b) const;
 
 public:
     explicit mesh_2d(const std::string& path);
+    mesh_2d(const mesh_2d& other);
+    mesh_2d(mesh_2d&&) = default;
+
     void read_from_file(const std::string& path);
 
     void clear() noexcept;
@@ -125,10 +131,12 @@ public:
     I node_number(const size_t boundary, const size_t element, const size_t node) const noexcept;
 
     element_1d_t element_1d_type(const size_t boundary, const size_t element) const noexcept;
-    const fe_1d_ptr& element_1d(const element_1d_t type) const noexcept;
+    const Finite_Element_1D_Ptr& element_1d(const element_1d_t type) const noexcept;
+    const Finite_Element_1D_Ptr& element_1d(const size_t boundary, const size_t element) const noexcept;
 
     element_2d_t element_2d_type(const size_t element) const noexcept;
-    const fe_2d_ptr& element_2d(const element_2d_t type) const noexcept;
+    const Finite_Element_2D_Ptr& element_2d(const element_2d_t type) const noexcept;
+    const Finite_Element_2D_Ptr& element_2d(const size_t number) const noexcept;
 
     const std::vector<I>& element_neighbors(const size_t element) const noexcept;
     const std::vector<I>& node_neighbors(const size_t node) const noexcept;
@@ -143,6 +151,16 @@ template<class T, class I>
 mesh_2d<T, I>::mesh_2d(const std::string& path) {
     read_from_file(path);
 }
+
+template<class T, class I>
+mesh_2d<T, I>::mesh_2d(const mesh_2d& other) :
+    _nodes{other._nodes},
+    _elements{other._elements},
+    _boundaries{other._boundaries},
+    _elements_1d_type{other._elements_1d_type},
+    _elements_2d_type{other._elements_2d_type},
+    _elements_neighbors{other._elements_neighbors},
+    _nodes_neighbors{other._nodes_neighbors} {}
 
 template<class T, class I>
 void mesh_2d<T, I>::read_from_file(const std::string& path) {
@@ -216,8 +234,13 @@ element_1d_t mesh_2d<T, I>::element_1d_type(const size_t boundary, const size_t 
 }
 
 template<class T, class I>
-const typename mesh_2d<T, I>::fe_1d_ptr& mesh_2d<T, I>::element_1d(const element_1d_t type) const noexcept {
+const typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const element_1d_t type) const noexcept {
     return _elements_1d[size_t(type)];
+}
+
+template<class T, class I>
+const typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const size_t boundary, const size_t element) const noexcept {
+    return element_1d(element_1d_type(boundary, element));
 }
 
 template<class T, class I>
@@ -226,8 +249,13 @@ element_2d_t mesh_2d<T, I>::element_2d_type(const size_t element) const noexcept
 }
 
 template<class T, class I>
-const typename mesh_2d<T, I>::fe_2d_ptr& mesh_2d<T, I>::element_2d(const element_2d_t type) const noexcept {
+const typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const element_2d_t type) const noexcept {
     return _elements_2d[size_t(type)];
+}
+
+template<class T, class I>
+const typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const size_t number) const noexcept {
+    return element_2d(element_2d_type(number));
 }
 
 template<class T, class I>
