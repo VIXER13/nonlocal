@@ -1,64 +1,69 @@
-#include <iostream>
-#include "nonlocal_influence_functions.hpp"
-#include "mesh_2d.hpp"
-#include "heat_equation_solver.hpp"
-#include "static_equation_solver.hpp"
-#include "thermomechanical_equation_solver.hpp"
-#include "Eigen/Core"
-#include "omp.h"
+#include "solvers/influence_functions.hpp"
+#include "solvers/structural_solver.hpp"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+template<class Type, class Index, class Vector>
+static void raw_output(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
+    std::ofstream fout(path + std::string{"T.csv"});
+    fout.precision(20);
+    for(size_t i = 0; i < mesh.nodes_count(); ++i)
+        fout << mesh.node(i)[0] << "," << mesh.node(i)[1] << "," << T[i] << std::endl;
+}
 
-using heat_boundary_type = heat_equation_with_nonloc::boundary_type;
-using mechanical_boundary_type = static_equation_with_nonloc::boundary_type;
+int main(int argc, char** argv) {
+    std::cout << "test" << std::endl;
+    if(argc < 2) {
+        std::cerr << "Input format [program name] <path to mesh>";
+        return EXIT_FAILURE;
+    }
 
-int main(int argc, char** argv)
-{
-    std::cout.precision(5);
-    const int threads = 4;
-    omp_set_num_threads(threads);
-    Eigen::initParallel();
-    Eigen::setNbThreads(threads);
+    std::cout << "test" << std::endl;
 
-    const double r = 10, p1 = 0.66;
-    //nonlocal::influence::polynomial<double, 2, 1> bell11(r);
-    nonlocal::influence::normal_distribution bell11(r);
+    try {
+        std::cout.precision(16);
+        omp_set_num_threads(4);
 
-    //mesh_2d<double> mesh(mesh_2d<double>::BILINEAR, 50, 50, 1., 1.);
-    mesh_2d<double> mesh(argv[1]);
-    mesh.find_neighbors_for_elements(3.*r);
+        static constexpr double r = 0.05, p1 = 0.5;
+        static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
+        mesh::mesh_2d<double> msh{argv[1]};
 
-    size_t neighbors_count = 0;
-    for(size_t i = 0; i < mesh.elements_count(); ++i)
-        neighbors_count += mesh.neighbor(i).size();
-    std::cout << "Average number of neighbors: " << double(neighbors_count) / mesh.elements_count() << std::endl;
-  
-    const auto u = static_equation_with_nonloc::stationary<double, int>(
-        mesh, {.nu = 0.2, .E = 1},
-        { { // DOWN
-                [](double, double) { return 0; },
-                [](double, double) { return 0; },
-                mechanical_boundary_type::DISPLACEMENT,
-                mechanical_boundary_type::DISPLACEMENT },
+        std::cout << "test" << std::endl;
+        const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 42};
+        nonlocal::structural::structural_solver<double, int> fem_sol{msh, params};
 
-            { // UP
-                [](double, double) { return 0; },
-                [](double, double) { return 1; },
-                mechanical_boundary_type::PRESSURE,
-                mechanical_boundary_type::DISPLACEMENT },
-        },
-        
-        { [](double, double) { return 0; },
-          [](double, double) { return 0; } },
+        const auto U = fem_sol.stationary(
+            {
+                {},
 
-        p1, bell11);
+                {
+                    [](const std::array<double, 2>&) { return 1; },
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    nonlocal::structural::boundary_t::PRESSURE
+                },
 
-    mesh.find_neighbors_for_nodes(3.*r);
-    auto [eps11, eps22, eps12, sigma11, sigma22, sigma12] = 
-        static_equation_with_nonloc::strains_and_stress<double, int>(mesh, u, {.nu = 0.2, .E = 1}, p1, bell11);
-    static_equation_with_nonloc::raw_output("results//", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
-    static_equation_with_nonloc::save_as_vtk("results//loc.vtk", mesh, u, eps11, eps22, eps12, sigma11, sigma22, sigma12);
+                {},
 
-    return 0;
+                {
+                    [](const std::array<double, 2>&) { return 0; },
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    nonlocal::structural::boundary_t::DISPLACEMENT
+                },
+
+                {}, {}
+            },
+            r, p1, bell
+        );
+
+        const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);
+        std::cout << "Energy U = " << fem_sol.calc_energy(strain, stress) << std::endl;
+    } catch(const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    } catch(...) {
+        std::cerr << "Unknown error." << std::endl;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
