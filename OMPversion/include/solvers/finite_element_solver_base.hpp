@@ -232,6 +232,12 @@ public:
     void find_neighbors(const T r) {
         const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
         _elements_neighbors = find_elements_neighbors(_mesh, centres, r);
+
+        double sum = 0;
+        for(size_t i = 0; i < _elements_neighbors.size(); ++i)
+            sum += _elements_neighbors[i].size();
+        sum /= _elements_neighbors.size();
+        std::cout << "Neighbours count: " << sum << std::endl;
     }
 
     void set_neighbors(std::vector<std::vector<I>>&& neighbors) {

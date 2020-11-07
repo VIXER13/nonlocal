@@ -2,7 +2,7 @@ TARGET = a.out
 HDRS = include \
 	   Eigen
 
-SRC = src/main.cpp
+SRC = src/thermal.cpp
 	  
 
 .PHONY: all clean
