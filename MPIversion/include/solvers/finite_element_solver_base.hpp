@@ -117,7 +117,7 @@ protected:
     find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
         std::vector<std::vector<I>> elements_neighbors(mesh.elements_count());
         const auto [el_start, el_finish] = get_elements_range(mesh.elements_count());
-#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors)
+#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors) firstprivate(el_start, el_finish)
         for(size_t elL = el_start; elL < el_finish; ++elL) {
             elements_neighbors[elL].reserve(mesh.elements_count());
             for(size_t elNL = 0; elNL < mesh.elements_count(); ++elNL)
@@ -139,7 +139,7 @@ protected:
     template<class Callback>
     void mesh_run_loc(const Callback& callback) const {
         const auto [el_start, el_finish] = get_elements_range(mesh().elements_count());
-#pragma omp parallel for default(none) firstprivate(callback)
+#pragma omp parallel for default(none) firstprivate(callback, el_start, el_finish)
         for(size_t el = el_start; el < el_finish; ++el) {
             const auto& e = _mesh.element_2d(el);
             for(size_t i = 0; i < e->nodes_count(); ++i)     // Проекционные функции
@@ -154,7 +154,7 @@ protected:
     template<class Callback>
     void mesh_run_nonloc(const Callback& callback) const {
         const auto [el_start, el_finish] = get_elements_range(mesh().elements_count());
-#pragma omp parallel for default(none) firstprivate(callback)
+#pragma omp parallel for default(none) firstprivate(callback, el_start, el_finish)
         for(size_t elL = el_start; elL < el_finish; ++elL) {
             const auto& eL = _mesh.element_2d(elL);
             for(const I elNL : _elements_neighbors[elL]) {

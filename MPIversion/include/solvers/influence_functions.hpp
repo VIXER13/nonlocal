@@ -5,7 +5,7 @@
 
 #include <cmath>
 #include <array>
-#include "metamath/power.hpp"
+#include "power.hpp"
 
 namespace nonlocal::influence {
 
@@ -18,9 +18,9 @@ class _elliptical_region {
     template<class Type>
     static std::array<Type, 3> calc_coeff(const std::array<Type, 2>& r, const Type theta = 0) noexcept {
         const Type cos_theta = cos(theta), sin_theta = sin(theta);
-        return { metamath::power<2>(cos_theta / r[0]) + metamath::power<2>(sin_theta / r[1]),
+        return { metamath::function::power<2>(cos_theta / r[0]) + metamath::function::power<2>(sin_theta / r[1]),
                                        cos_theta*sin_theta * (2./(r[0]*r[0]) - 2./(r[1]*r[1])),
-                 metamath::power<2>(sin_theta / r[0]) + metamath::power<2>(cos_theta / r[1]) };
+                 metamath::function::power<2>(sin_theta / r[0]) + metamath::function::power<2>(cos_theta / r[1]) };
     }
 
     // Функция вычисления уравнения эллипса.
@@ -82,9 +82,9 @@ public:
     Type operator()(const std::array<Type, 2>& x, const std::array<Type, 2>& y) const noexcept {
         const Type h = _elliptical_region::calc_ellipse(_coeff, {x[0], y[0]}, {x[1], y[1]});
         if constexpr (p % 2)
-            return h > 1 ? 0. : _norm * metamath::power<q>(1. - metamath::power<p/2>(h)*sqrt(h));
+            return h > 1 ? 0. : _norm * metamath::function::power<q>(1. - metamath::function::power<p/2>(h)*sqrt(h));
         else
-            return h > 1 ? 0. : _norm * metamath::power<q>(1. - metamath::power<p/2>(h));
+            return h > 1 ? 0. : _norm * metamath::function::power<q>(1. - metamath::function::power<p/2>(h));
     }
 };
 

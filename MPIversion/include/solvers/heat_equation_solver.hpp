@@ -4,10 +4,14 @@
 #include <iostream>
 #include <algorithm>
 #include <omp.h>
+#include <petscmat.h>
+#include <petsctime.h>
 #include "finite_element_solver_base.hpp"
-#include "Eigen/Dense"
-#include "Eigen/Sparse"
-#include "Eigen/PardisoSupport"
+#include "../../Eigen/Eigen/Dense"
+#include "../../Eigen/Eigen/Sparse"
+//#include "Eigen/Dense"
+//#include "Eigen/Sparse"
+//#include "Eigen/PardisoSupport"
 
 namespace nonlocal::heat {
 
@@ -110,7 +114,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
                        shifts_nonloc, shifts_bound_nonloc;
 
         _base::template mesh_run_loc(
-            [this, &inner_nodes, &shifts_loc, &shifts_bound_loc](const size_t el, const size_t i, const size_t j) { 
+            [this, &inner_nodes, &shifts_loc, &shifts_bound_loc]
+            (const size_t el, const size_t i, const size_t j) {
                 const I row = mesh().node_number(el, i),
                         col = mesh().node_number(el, j);
                 if(row >= col) {
@@ -179,10 +184,14 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
 
         const size_t triplets_count = nonlocal ? shifts_nonloc.back() + shifts_bound_nonloc.back()
                                                : shifts_loc.back()    + shifts_bound_loc.back();
-        std::cout << "Triplets count: " << triplets_count + neumann_triplets << std::endl;
         std::vector<Eigen::Triplet<T, I>> triplets      ((nonlocal ? shifts_nonloc.back()       : shifts_loc.back()) + neumann_triplets),
                                           triplets_bound( nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
-        if(!neumann_task)
+
+        int size = -1, rank = -1;
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        if(!neumann_task && rank == size-1)
             for(size_t i = 0, j = 0; i < inner_nodes.size(); ++i)
                 if(!inner_nodes[i])
                     triplets[j++] = Eigen::Triplet<T, I>(i, i, 1);
@@ -222,7 +231,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
                 });
         }
 
-        if(neumann_task)
+        if(neumann_task && rank == size-1)
         {
             size_t last_index = nonlocal ? shifts_nonloc.back() : shifts_loc.back();
             for(size_t el = 0; el < mesh().elements_count(); ++el) {
@@ -242,16 +251,63 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
     // P.S. На момент написания, в Eigen были проблемы с move-семантикой, поэтому вопреки выше описанным функциям,
     // матрицы K и K_bound передаются по ссылке в функцию.
     template<class Integrate_Rule, class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K, Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K_bound,
+    void create_matrix(//Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K, Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K_bound,
                        const std::vector<boundary_condition<T>>& bounds_cond, const bool neumann_task,
                        const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
-        const double time = omp_get_wtime();
+        //const double time = omp_get_wtime();
+        int rank = -1;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        PetscLogDouble start_time = 0;
+        PetscTime(&start_time);
+
         auto [triplets, triplets_bound] = triplets_fill(bounds_cond, neumann_task, integrate_rule, p1, influence_fun);
-        std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
-        K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
+
+        //for(size_t i = 0; i < triplets.size(); ++i)
+        //    std::cout << triplets[i].row() << ' ' << triplets[i].col() << ' ' << triplets[i].value() << std::endl;
+
+        PetscLogDouble end_time = 0;
+        PetscTime(&end_time);
+        //if (rank == 0)
+            std::cout << "rank = " << rank << " time = " << end_time - start_time << std::endl;
+        start_time = end_time;
+
+        const I matrix_size = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
+        Eigen::SparseMatrix<T, Eigen::RowMajor, I> temp_eigen{matrix_size, matrix_size};
+        Mat K = nullptr, K_bound = nullptr, temp_seq = nullptr;
+
+        temp_eigen.setFromTriplets(triplets.cbegin(), triplets.cend());
+        triplets.reserve(0);
+        MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, temp_eigen.rows(), temp_eigen.cols(), temp_eigen.outerIndexPtr(),
+                                  temp_eigen.innerIndexPtr(), temp_eigen.valuePtr(), &temp_seq);
+        temp_eigen.data().squeeze();
+        MatCreateMPIAIJSumSeqAIJ(PETSC_COMM_WORLD, temp_seq, PETSC_DECIDE, PETSC_DECIDE, MAT_INITIAL_MATRIX, &K);
+        MatDestroy(&temp_seq);
+
+        temp_eigen.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
+        temp_eigen = temp_eigen.transpose();
         triplets_bound.reserve(0);
-        K.setFromTriplets(triplets.cbegin(), triplets.cend());
-        std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
+        MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, temp_eigen.rows(), temp_eigen.cols(), temp_eigen.outerIndexPtr(),
+                                  temp_eigen.innerIndexPtr(), temp_eigen.valuePtr(), &temp_seq);
+        temp_eigen.data().squeeze();
+        MatCreateMPIAIJSumSeqAIJ(PETSC_COMM_WORLD, temp_seq, PETSC_DECIDE, PETSC_DECIDE, MAT_INITIAL_MATRIX, &K_bound);
+        MatDestroy(&temp_seq);
+
+        //MatView(K, PETSC_VIEWER_STDOUT_WORLD);
+        //MatView(K_bound, PETSC_VIEWER_STDOUT_WORLD);
+        MatDestroy(&K);
+        MatDestroy(&K_bound);
+
+        end_time = 0;
+        PetscTime(&end_time);
+
+        if (rank == 0)
+            std::cout << end_time - start_time << std::endl;
+
+        //std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
+        //K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
+        //triplets_bound.reserve(0);
+        //K.setFromTriplets(triplets.cbegin(), triplets.cend());
+        //std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
     }
 
     template<class Vector>
@@ -321,12 +377,12 @@ public:
     stationary(const std::vector<boundary_condition<T>>& bounds_cond, const Right_Part& right_part, 
                const T r, const T p1, const Influence_Function& influence_fun, const T volume = 0);
 
-    template<class Init_Distribution, class Right_Part, class Influence_Function>
-    void nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
-                       const std::vector<boundary_condition<T>>& bounds_cond, 
-                       const Init_Distribution& init_dist, const Right_Part& right_part,
-                       const T r, const T p1, const Influence_Function& influence_fun,
-                       const uintmax_t print_frequency = std::numeric_limits<uintmax_t>::max());
+//    template<class Init_Distribution, class Right_Part, class Influence_Function>
+//    void nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
+//                       const std::vector<boundary_condition<T>>& bounds_cond,
+//                       const Init_Distribution& init_dist, const Right_Part& right_part,
+//                       const T r, const T p1, const Influence_Function& influence_fun,
+//                       const uintmax_t print_frequency = std::numeric_limits<uintmax_t>::max());
 };
 
 template<class T, class I>
@@ -378,12 +434,15 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
     Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (matrix_size, matrix_size),
                                                K_bound(matrix_size, matrix_size);
     create_matrix(
-        K, K_bound, bounds_cond, neumann_task,
+        //K, K_bound,
+        bounds_cond, neumann_task,
         [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
             return integrate_loc(e, i, j, quad_shift); },
         p1, influence_fun
     );
-    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
+    //std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
+
+    //std::cout << std::endl << std::endl << Eigen::MatrixXd{K} << std::endl << std::endl;
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix_size);
     integrate_boundary_flow(f, bounds_cond);
@@ -397,90 +456,91 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
         f[mesh().nodes_count()] = volume;
     }
 
-    std::cout << "Right part Integrate: ";
+    //std::cout << "Right part Integrate: ";
     time = omp_get_wtime();
     integrate_right_part(f, right_part);
-    std::cout << omp_get_wtime() - time << std::endl;
+    //std::cout << omp_get_wtime() - time << std::endl;
 
-    std::cout << "Boundary filling: ";
+    //std::cout << "Boundary filling: ";
     time = omp_get_wtime();
     temperature_on_boundary(f, bounds_cond, K_bound);
-    std::cout << omp_get_wtime() - time << std::endl;
+    //std::cout << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
-    Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
-    solver.compute(K);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
-    std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
-    temperature.conservativeResize(mesh().nodes_count());
+    //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
+    //solver.compute(K);
+    //Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    //std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
+    //temperature.conservativeResize(mesh().nodes_count());
 
-    return std::move(temperature);
+    //return std::move(temperature);
+    return {};
 }
 
-template<class T, class I>
-template<class Init_Distribution, class Right_Part, class Influence_Function>
-void heat_equation_solver<T, I>::nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
-                                               const std::vector<boundary_condition<T>>& bounds_cond,
-                                               const Init_Distribution& init_dist, const Right_Part& right_part,
-                                               const T r, const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) {
-    _base::find_neighbors(r);
-
-    static constexpr bool NOT_NEUMANN_TASK = false;
-    Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (mesh().nodes_count(), mesh().nodes_count()),
-                                               K_bound(mesh().nodes_count(), mesh().nodes_count());
-    create_matrix(
-       K, K_bound, bounds_cond, NOT_NEUMANN_TASK,
-       [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
-            return integrate_loc(e, i, j, quad_shift); },
-       p1, influence_fun
-    );
-
-    static constexpr T LOCAL = 1;
-    Eigen::SparseMatrix<T, Eigen::ColMajor, I> C      (mesh().nodes_count(), mesh().nodes_count()),
-                                               C_bound(mesh().nodes_count(), mesh().nodes_count());
-    create_matrix(
-       C, C_bound, bounds_cond, NOT_NEUMANN_TASK,
-       [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
-            return integrate_basic_pair(e, i, j, quad_shift); },
-       LOCAL, influence_fun
-    );
-
-    C_bound.setZero();
-    K_bound *= tau;
-    K *= tau;
-    K += C;
-    _base::template boundary_nodes_run([this, &bounds_cond, &K](const size_t b, const size_t el, const size_t i) {
-        if(bounds_cond[b].type == boundary_t::TEMPERATURE)
-            K.coeffRef(mesh().node_number(b, el, i), mesh().node_number(b, el, i)) = 1;
-    });
-
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh().nodes_count()),
-                                        temperature_prev(mesh().nodes_count()), 
-                                        temperature     (mesh().nodes_count());
-    for(size_t i = 0; i < mesh().nodes_count(); ++i)
-        temperature_prev[i] = init_dist(mesh().node(i));
-
-    Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
-    solver.compute(K);
-    if(print_frequency != std::numeric_limits<uintmax_t>::max()) {
-        save_as_vtk(path + "0.vtk", temperature_prev);
-        std::cout << "step = " << 0 << " Volume = " << integrate_solution(temperature_prev) << std::endl;
-    }
-    for(size_t i = 1; i < time_steps; ++i) {
-        f.setZero();
-        integrate_boundary_flow(f, bounds_cond);
-        integrate_right_part(f, right_part);
-        f *= tau;
-        f += C.template selfadjointView<Eigen::Lower>() * temperature_prev;
-        temperature_on_boundary(f, bounds_cond, K_bound);
-        temperature = solver.solve(f);
-        temperature_prev.swap(temperature);
-        if(i % print_frequency == 0) {
-            save_as_vtk(path + std::to_string(i) + ".vtk", temperature_prev);
-            std::cout << "step = " << i << " Volume = " << integrate_solution(temperature_prev) << std::endl;
-        }
-    }
-}
+//template<class T, class I>
+//template<class Init_Distribution, class Right_Part, class Influence_Function>
+//void heat_equation_solver<T, I>::nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
+//                                               const std::vector<boundary_condition<T>>& bounds_cond,
+//                                               const Init_Distribution& init_dist, const Right_Part& right_part,
+//                                               const T r, const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) {
+//    _base::find_neighbors(r);
+//
+//    static constexpr bool NOT_NEUMANN_TASK = false;
+//    Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (mesh().nodes_count(), mesh().nodes_count()),
+//                                               K_bound(mesh().nodes_count(), mesh().nodes_count());
+//    create_matrix(
+//       K, K_bound, bounds_cond, NOT_NEUMANN_TASK,
+//       [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
+//            return integrate_loc(e, i, j, quad_shift); },
+//       p1, influence_fun
+//    );
+//
+//    static constexpr T LOCAL = 1;
+//    Eigen::SparseMatrix<T, Eigen::ColMajor, I> C      (mesh().nodes_count(), mesh().nodes_count()),
+//                                               C_bound(mesh().nodes_count(), mesh().nodes_count());
+//    create_matrix(
+//       C, C_bound, bounds_cond, NOT_NEUMANN_TASK,
+//       [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
+//            return integrate_basic_pair(e, i, j, quad_shift); },
+//       LOCAL, influence_fun
+//    );
+//
+//    C_bound.setZero();
+//    K_bound *= tau;
+//    K *= tau;
+//    K += C;
+//    _base::template boundary_nodes_run([this, &bounds_cond, &K](const size_t b, const size_t el, const size_t i) {
+//        if(bounds_cond[b].type == boundary_t::TEMPERATURE)
+//            K.coeffRef(mesh().node_number(b, el, i), mesh().node_number(b, el, i)) = 1;
+//    });
+//
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh().nodes_count()),
+//                                        temperature_prev(mesh().nodes_count()),
+//                                        temperature     (mesh().nodes_count());
+//    for(size_t i = 0; i < mesh().nodes_count(); ++i)
+//        temperature_prev[i] = init_dist(mesh().node(i));
+//
+//    Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
+//    solver.compute(K);
+//    if(print_frequency != std::numeric_limits<uintmax_t>::max()) {
+//        save_as_vtk(path + "0.vtk", temperature_prev);
+//        std::cout << "step = " << 0 << " Volume = " << integrate_solution(temperature_prev) << std::endl;
+//    }
+//    for(size_t i = 1; i < time_steps; ++i) {
+//        f.setZero();
+//        integrate_boundary_flow(f, bounds_cond);
+//        integrate_right_part(f, right_part);
+//        f *= tau;
+//        f += C.template selfadjointView<Eigen::Lower>() * temperature_prev;
+//        temperature_on_boundary(f, bounds_cond, K_bound);
+//        temperature = solver.solve(f);
+//        temperature_prev.swap(temperature);
+//        if(i % print_frequency == 0) {
+//            save_as_vtk(path + std::to_string(i) + ".vtk", temperature_prev);
+//            std::cout << "step = " << i << " Volume = " << integrate_solution(temperature_prev) << std::endl;
+//        }
+//    }
+//}
 
 }
 
