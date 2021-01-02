@@ -4,13 +4,9 @@
 #include <iostream>
 #include <algorithm>
 #include <omp.h>
-#include <petscmat.h>
-#include <petsctime.h>
 #include "finite_element_solver_base.hpp"
 #include "../../Eigen/Eigen/Dense"
 #include "../../Eigen/Eigen/Sparse"
-//#include "Eigen/Dense"
-//#include "Eigen/Sparse"
 //#include "Eigen/PardisoSupport"
 
 namespace nonlocal::heat {
@@ -37,7 +33,6 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
 
     using _base::X;
     using _base::Y;
-    using _base::MAX_LOCAL_WEIGHT;
 
     using _base::mesh;
     using _base::quad_shift;
@@ -114,8 +109,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
                        shifts_nonloc, shifts_bound_nonloc;
 
         _base::template mesh_run_loc(
-            [this, &inner_nodes, &shifts_loc, &shifts_bound_loc]
-            (const size_t el, const size_t i, const size_t j) {
+            [this, &inner_nodes, &shifts_loc, &shifts_bound_loc](const size_t el, const size_t i, const size_t j) { 
                 const I row = mesh().node_number(el, i),
                         col = mesh().node_number(el, j);
                 if(row >= col) {
@@ -168,7 +162,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
     std::array<std::vector<Eigen::Triplet<T, I>>, 2>
     triplets_fill(const std::vector<boundary_condition<T>>& bounds_cond, const bool neumann_task,
                   const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
-        const bool nonlocal = p1 < MAX_LOCAL_WEIGHT;
+        const bool nonlocal = p1 < _base::MAX_LOCAL_WEIGHT;
         std::vector<bool> inner_nodes(mesh().nodes_count(), true);
         _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
             if(bounds_cond[b].type == boundary_t::TEMPERATURE)
@@ -184,14 +178,10 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
 
         const size_t triplets_count = nonlocal ? shifts_nonloc.back() + shifts_bound_nonloc.back()
                                                : shifts_loc.back()    + shifts_bound_loc.back();
+        std::cout << "Triplets count: " << triplets_count + neumann_triplets << std::endl;
         std::vector<Eigen::Triplet<T, I>> triplets      ((nonlocal ? shifts_nonloc.back()       : shifts_loc.back()) + neumann_triplets),
                                           triplets_bound( nonlocal ? shifts_bound_nonloc.back() : shifts_bound_loc.back());
-
-        int size = -1, rank = -1;
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-        if(!neumann_task && rank == size-1)
+        if(!neumann_task)
             for(size_t i = 0, j = 0; i < inner_nodes.size(); ++i)
                 if(!inner_nodes[i])
                     triplets[j++] = Eigen::Triplet<T, I>(i, i, 1);
@@ -231,7 +221,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
                 });
         }
 
-        if(neumann_task && rank == size-1)
+        if(neumann_task)
         {
             size_t last_index = nonlocal ? shifts_nonloc.back() : shifts_loc.back();
             for(size_t el = 0; el < mesh().elements_count(); ++el) {
@@ -250,64 +240,121 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     // P.S. На момент написания, в Eigen были проблемы с move-семантикой, поэтому вопреки выше описанным функциям,
     // матрицы K и K_bound передаются по ссылке в функцию.
+//    template<class Integrate_Rule, class Influence_Function>
+//    void create_matrix(Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K, Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K_bound,
+//                       const std::vector<boundary_condition<T>>& bounds_cond, const bool neumann_task,
+//                       const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
+//        const double time = omp_get_wtime();
+//        auto [triplets, triplets_bound] = triplets_fill(bounds_cond, neumann_task, integrate_rule, p1, influence_fun);
+//        std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
+//        K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
+//        triplets_bound.reserve(0);
+//        K.setFromTriplets(triplets.cbegin(), triplets.cend());
+//        std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
+//    }
+
+    void convert_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const std::vector<std::set<I>>& portrait) const {
+        static constexpr auto accumulator = [](const size_t sum, const std::set<I>& row) { return sum + row.size(); };
+        K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
+        size_t count = 0;
+        K.outerIndexPtr()[0] = 0;
+        for(size_t row = 0, inner_index = 0; row < mesh().nodes_count(); ++row) {
+            count += portrait[row].size();
+            K.outerIndexPtr()[row+1] = count;
+            for(const I col : portrait[row]) {
+                K.valuePtr()[inner_index] = 0;
+                K.innerIndexPtr()[inner_index++] = col;
+            }
+        }
+    }
+
+    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                                Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                                const std::vector<bool>& inner_nodes, const bool nonlocal) const {
+        std::vector<std::set<I>> inner_portrait(mesh().nodes_count()),
+                                 bound_portrait(mesh().nodes_count());
+
+        const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait](const I row, const I col) {
+            if (inner_nodes[row] && inner_nodes[col])
+            {
+                if (row <= col)
+                    inner_portrait[row].insert(col);
+            }
+            else if (row != col)
+                bound_portrait[row].insert(col);
+        };
+
+        if (nonlocal) {
+            _base::template mesh_run_nonloc(
+                [this, &indexator](const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
+                    indexator(mesh().node_number(elL, iL), mesh().node_number(elNL, jNL));
+                });
+        } else {
+            _base::template mesh_run_loc(
+                [this, &indexator] (const size_t el, const size_t i, const size_t j) {
+                    indexator(mesh().node_number(el, i), mesh().node_number(el, j));
+                });
+        }
+
+        convert_portrait(K, inner_portrait);
+        inner_portrait.reserve(0);
+        convert_portrait(K_bound, bound_portrait);
+        bound_portrait.reserve(0);
+
+        //std::cout << Eigen::MatrixXd{K} << std::endl << std::endl;
+        //std::cout << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
+    }
+
     template<class Integrate_Rule, class Influence_Function>
-    void create_matrix(//Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K, Eigen::SparseMatrix<T, Eigen::ColMajor, I>& K_bound,
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                        const std::vector<boundary_condition<T>>& bounds_cond, const bool neumann_task,
                        const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
-        //const double time = omp_get_wtime();
-        int rank = -1;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        PetscLogDouble start_time = 0;
-        PetscTime(&start_time);
+        const bool nonlocal = p1 < _base::MAX_LOCAL_WEIGHT;
+        std::vector<bool> inner_nodes(mesh().nodes_count(), true);
+        _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
+            if(bounds_cond[b].type == boundary_t::TEMPERATURE)
+                inner_nodes[mesh().node_number(b, el, i)] = false;
+        });
 
-        auto [triplets, triplets_bound] = triplets_fill(bounds_cond, neumann_task, integrate_rule, p1, influence_fun);
+        double time = omp_get_wtime();
+        create_matrix_portrait(K, K_bound, inner_nodes, nonlocal);
+        std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl;
 
-        //for(size_t i = 0; i < triplets.size(); ++i)
-        //    std::cout << triplets[i].row() << ' ' << triplets[i].col() << ' ' << triplets[i].value() << std::endl;
+        time = omp_get_wtime();
+        _base::template nodes_run_loc(
+            [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t el, const size_t i, const size_t j) {
+                const I row = mesh().node_number(el, i),
+                        col = mesh().node_number(el, j);
+                if (inner_nodes[row] && inner_nodes[col])
+                {
+                    if (row <= col)
+                        K.coeffRef(row, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                }
+                else if (row != col)
+                    K_bound.coeffRef(row, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+            }
+        );
 
-        PetscLogDouble end_time = 0;
-        PetscTime(&end_time);
-        //if (rank == 0)
-            std::cout << "rank = " << rank << " time = " << end_time - start_time << std::endl;
-        start_time = end_time;
+        _base::template nodes_run_nonloc(
+            [this, &K, &K_bound, &inner_nodes, &integrate_rule, &influence_fun, p2 = 1 - p1]
+            (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
+                const I row = mesh().node_number(elL,  iL ),
+                        col = mesh().node_number(elNL, jNL);
+                if (inner_nodes[row] && inner_nodes[col])
+                {
+                    if (row <= col)
+                        K.coeffRef(row, col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL),
+                                                                      mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                }
+                else if (row != col)
+                    K_bound.coeffRef(row, col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL),
+                                                                        mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+            }
+        );
+        std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 
-        const I matrix_size = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
-        Eigen::SparseMatrix<T, Eigen::RowMajor, I> temp_eigen{matrix_size, matrix_size};
-        Mat K = nullptr, K_bound = nullptr, temp_seq = nullptr;
-
-        temp_eigen.setFromTriplets(triplets.cbegin(), triplets.cend());
-        triplets.reserve(0);
-        MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, temp_eigen.rows(), temp_eigen.cols(), temp_eigen.outerIndexPtr(),
-                                  temp_eigen.innerIndexPtr(), temp_eigen.valuePtr(), &temp_seq);
-        temp_eigen.data().squeeze();
-        MatCreateMPIAIJSumSeqAIJ(PETSC_COMM_WORLD, temp_seq, PETSC_DECIDE, PETSC_DECIDE, MAT_INITIAL_MATRIX, &K);
-        MatDestroy(&temp_seq);
-
-        temp_eigen.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
-        temp_eigen = temp_eigen.transpose();
-        triplets_bound.reserve(0);
-        MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, temp_eigen.rows(), temp_eigen.cols(), temp_eigen.outerIndexPtr(),
-                                  temp_eigen.innerIndexPtr(), temp_eigen.valuePtr(), &temp_seq);
-        temp_eigen.data().squeeze();
-        MatCreateMPIAIJSumSeqAIJ(PETSC_COMM_WORLD, temp_seq, PETSC_DECIDE, PETSC_DECIDE, MAT_INITIAL_MATRIX, &K_bound);
-        MatDestroy(&temp_seq);
-
-        //MatView(K, PETSC_VIEWER_STDOUT_WORLD);
-        //MatView(K_bound, PETSC_VIEWER_STDOUT_WORLD);
-        MatDestroy(&K);
-        MatDestroy(&K_bound);
-
-        end_time = 0;
-        PetscTime(&end_time);
-
-        if (rank == 0)
-            std::cout << end_time - start_time << std::endl;
-
-        //std::cout << "Triplets calc: " << omp_get_wtime() - time << std::endl;
-        //K_bound.setFromTriplets(triplets_bound.cbegin(), triplets_bound.cend());
-        //triplets_bound.reserve(0);
-        //K.setFromTriplets(triplets.cbegin(), triplets.cend());
-        //std::cout << "Nonzero elemets count: " << K.nonZeros() + K_bound.nonZeros() << std::endl;
+        //std::cout << Eigen::MatrixXd{K} << std::endl << std::endl;
+        //std::cout << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
     }
 
     template<class Vector>
@@ -428,50 +475,34 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
         [](const boundary_condition<T>& bound) { return bound.type == boundary_t::FLOW; });
     const size_t matrix_size = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
 
-    _base::find_neighbors(r);
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix_size);
+//    integrate_boundary_flow(f, bounds_cond);
+//    if(neumann_task) {
+//        if(std::abs(std::accumulate(f.begin(), f.end(), T{0}, [](const T sum, const T val) { return sum + val; })) > 1e-5)
+//            throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
+//        f[mesh().nodes_count()] = volume;
+//    }
+//    integrate_right_part(f, right_part);
 
-    double time = omp_get_wtime();
-    Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (matrix_size, matrix_size),
+    if (p1 < _base::MAX_LOCAL_WEIGHT)
+        _base::find_neighbors(r);
+
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (matrix_size, matrix_size),
                                                K_bound(matrix_size, matrix_size);
     create_matrix(
-        //K, K_bound,
-        bounds_cond, neumann_task,
+        K, K_bound, bounds_cond, neumann_task,
         [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
             return integrate_loc(e, i, j, quad_shift); },
         p1, influence_fun
     );
-    //std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
-    //std::cout << std::endl << std::endl << Eigen::MatrixXd{K} << std::endl << std::endl;
+//    temperature_on_boundary(f, bounds_cond, K_bound);
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix_size);
-    integrate_boundary_flow(f, bounds_cond);
-
-    if(neumann_task) {
-        T sum = 0;
-        for(size_t i = 0; i < matrix_size; ++i)
-            sum += f[i];
-        if(std::abs(sum) > 1e-5)
-            throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
-        f[mesh().nodes_count()] = volume;
-    }
-
-    //std::cout << "Right part Integrate: ";
-    time = omp_get_wtime();
-    integrate_right_part(f, right_part);
-    //std::cout << omp_get_wtime() - time << std::endl;
-
-    //std::cout << "Boundary filling: ";
-    time = omp_get_wtime();
-    temperature_on_boundary(f, bounds_cond, K_bound);
-    //std::cout << omp_get_wtime() - time << std::endl;
-
-    time = omp_get_wtime();
-    //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
-    //solver.compute(K);
-    //Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
-    //std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
-    //temperature.conservativeResize(mesh().nodes_count());
+//    Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
+//    solver.compute(K);
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+//    std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
+//    temperature.conservativeResize(mesh().nodes_count());
 
     //return std::move(temperature);
     return {};
@@ -520,26 +551,26 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
 //    for(size_t i = 0; i < mesh().nodes_count(); ++i)
 //        temperature_prev[i] = init_dist(mesh().node(i));
 //
-//    Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
-//    solver.compute(K);
-//    if(print_frequency != std::numeric_limits<uintmax_t>::max()) {
-//        save_as_vtk(path + "0.vtk", temperature_prev);
-//        std::cout << "step = " << 0 << " Volume = " << integrate_solution(temperature_prev) << std::endl;
-//    }
-//    for(size_t i = 1; i < time_steps; ++i) {
-//        f.setZero();
-//        integrate_boundary_flow(f, bounds_cond);
-//        integrate_right_part(f, right_part);
-//        f *= tau;
-//        f += C.template selfadjointView<Eigen::Lower>() * temperature_prev;
-//        temperature_on_boundary(f, bounds_cond, K_bound);
-//        temperature = solver.solve(f);
-//        temperature_prev.swap(temperature);
-//        if(i % print_frequency == 0) {
-//            save_as_vtk(path + std::to_string(i) + ".vtk", temperature_prev);
-//            std::cout << "step = " << i << " Volume = " << integrate_solution(temperature_prev) << std::endl;
-//        }
-//    }
+////    Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
+////    solver.compute(K);
+////    if(print_frequency != std::numeric_limits<uintmax_t>::max()) {
+////        save_as_vtk(path + "0.vtk", temperature_prev);
+////        std::cout << "step = " << 0 << " Volume = " << integrate_solution(temperature_prev) << std::endl;
+////    }
+////    for(size_t i = 1; i < time_steps; ++i) {
+////        f.setZero();
+////        integrate_boundary_flow(f, bounds_cond);
+////        integrate_right_part(f, right_part);
+////        f *= tau;
+////        f += C.template selfadjointView<Eigen::Lower>() * temperature_prev;
+////        temperature_on_boundary(f, bounds_cond, K_bound);
+////        temperature = solver.solve(f);
+////        temperature_prev.swap(temperature);
+////        if(i % print_frequency == 0) {
+////            save_as_vtk(path + std::to_string(i) + ".vtk", temperature_prev);
+////            std::cout << "step = " << i << " Volume = " << integrate_solution(temperature_prev) << std::endl;
+////        }
+////    }
 //}
 
 }
