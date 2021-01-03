@@ -12,6 +12,7 @@
 #include "element_1d/element_1d_integrate.hpp"
 #include "element_1d/basis/basis.hpp"
 
+#include "element_2d/element_2d_serendipity.hpp"
 #include "element_2d/element_2d_integrate.hpp"
 #include "element_2d/basis/basis.hpp"
 

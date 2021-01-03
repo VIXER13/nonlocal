@@ -1,9 +1,7 @@
 #ifndef FINITE_ELEMENT_2D_SERENDIPITY_HPP
 #define FINITE_ELEMENT_2D_SERENDIPITY_HPP
 
-#include "element_2d_base.hpp"
-#include "derivative.hpp"
-#include "to_function.hpp"
+#include "element_2d.hpp"
 #include "basis/quadratic_serendipity.hpp"
 #include "basis/qubic_serendipity.hpp"
 
@@ -22,9 +20,9 @@ class element_2d_serendipity : public virtual element_2d_base<T>,
 
 protected:
     static inline const std::array<std::function<T(const std::array<T, 3>&)>, nodes.size()>
-    _N    = symdiff::to_function<T, 3>(basis),
-            _Nxi  = symdiff::to_function<T, 3>(symdiff::derivative<xi>(basis)),
-            _Neta = symdiff::to_function<T, 3>(symdiff::derivative<eta>(basis));
+        _N    = symdiff::to_function<T, 3>(basis),
+        _Nxi  = symdiff::to_function<T, 3>(symdiff::derivative<xi>(basis)),
+        _Neta = symdiff::to_function<T, 3>(symdiff::derivative<eta>(basis));
 
 public:
     ~element_2d_serendipity() override = default;
@@ -42,16 +40,14 @@ public:
 
 // Специализация под квадратичные серендиповы элементы
 template<class T>
-class element_2d<T, quadratic_serendipity> : public element_2d_serendipity<T, quadratic_serendipity>
-{
+class element_2d<T, quadratic_serendipity> : public element_2d_serendipity<T, quadratic_serendipity> {
 public:
     ~element_2d() override = default;
 };
 
 // Специализация под кубические серендиповы элементы
 template<class T>
-class element_2d<T, qubic_serendipity> : public element_2d_serendipity<T, qubic_serendipity>
-{
+class element_2d<T, qubic_serendipity> : public element_2d_serendipity<T, qubic_serendipity> {
 public:
     ~element_2d() override = default;
 };
