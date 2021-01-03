@@ -57,10 +57,21 @@ void print_mesh(const mesh::mesh_2d<double>& msh) {
 //    }
 //}
 
+namespace {
+
+void save_raw_data(const mesh::mesh_2d<double>& msh, const Eigen::Matrix<double, Eigen::Dynamic, 1>& T) {
+    std::ofstream Tout{"T.csv"};
+    for(size_t i = 0; i < msh.nodes_count(); ++i)
+        Tout << msh.node(i)[0] << ',' << msh.node(i)[1] << ',' << T[i] << '\n';
+}
+
+}
+
 int main(int argc, char** argv) {
     PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
 
     try {
+        std::cout.precision(2);
         //PetscMPIInt size = -1, rank = -1;
         //MPI_Comm_size(MPI_COMM_WORLD, &size);
         //MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -70,37 +81,40 @@ int main(int argc, char** argv) {
 
         mesh::mesh_2d<PetscScalar, PetscInt> msh{argv[1]};
 
-        static constexpr double r = 0.2, p1 = 0.5;
+        static constexpr double r = 0.2, p1 = 1;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
 
         const auto T = fem_sol.stationary(
             { // Граничные условия
                 {   // Down
-                        [](const std::array<double, 2>&) { return 0; },
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                         nonlocal::heat::boundary_t::TEMPERATURE
                 },
 
                 {   // Right
-                        [](const std::array<double, 2>&) { return 0; },
-                        nonlocal::heat::boundary_t::FLOW
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::heat::boundary_t::TEMPERATURE
                 },
 
                 {   // Up
-                        [](const std::array<double, 2>&) { return 0; },
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                         nonlocal::heat::boundary_t::TEMPERATURE
                 },
 
                 {   // Left
-                        [](const std::array<double, 2>&) { return 0; },
-                        nonlocal::heat::boundary_t::FLOW
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::heat::boundary_t::TEMPERATURE
                 }
             },
-            [](const std::array<double, 2>&) { return 0; }, // Правая часть
+            [](const std::array<double, 2>&) { return -4; }, // Правая часть
             r,  // Радиус влияния
             p1, // Вес
             bell // Функция влияния
         );
+
+        fem_sol.save_as_vtk("heat.vtk", T);
+        save_raw_data(msh, T);
 
         //nonlocal::heat::heat_equation_solver<PetscScalar, PetscInt> solver{msh};
         //solver.test();
@@ -123,8 +137,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    //return PetscFinalize();
-    return 0;
+    return PetscFinalize();
 }
 
 

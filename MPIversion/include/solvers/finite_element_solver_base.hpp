@@ -155,33 +155,59 @@ protected:
     const std::vector<I>& neighbors(const size_t element) const { return _elements_neighbors[element]; }
 
 
-    // Функция обхода сетки в локальных постановках.
-    // Нужна для предварительного подсчёта количества элементов  и интегрирования системы.
-    // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
+//    // Функция обхода сетки в локальных постановках.
+//    // Нужна для предварительного подсчёта количества элементов  и интегрирования системы.
+//    // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
+//    template<class Callback>
+//    void mesh_run_loc(const Callback& callback) const {
+////#pragma omp parallel for default(none) firstprivate(callback)
+//        for(size_t el = 0; el < _mesh.elements_count(); ++el) {
+//            const auto& e = _mesh.element_2d(el);
+//            for(size_t i = 0; i < e->nodes_count(); ++i)     // Проекционные функции
+//                for(size_t j = 0; j < e->nodes_count(); ++j) // Аппроксимационные функции
+//                    callback(el, i, j);
+//        }
+//    }
+//
+//    // Функция обхода сетки в нелокальных постановках.
+//    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
+//    // Callback - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
+//    template<class Callback>
+//    void mesh_run_nonloc(const Callback& callback) const {
+////#pragma omp parallel for default(none) firstprivate(callback)
+//        for(size_t elL = 0; elL < _mesh.elements_count(); ++elL) {
+//            const auto& eL = _mesh.element_2d(elL);
+//            for(const I elNL : _elements_neighbors[elL]) {
+//                const auto& eNL = _mesh.element_2d(elNL);
+//                for(size_t iL = 0; iL < eL->nodes_count(); ++iL)         // Проекционные функции
+//                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL) // Аппроксимационные функции
+//                        callback(elL, iL, elNL, jNL);
+//            }
+//        }
+//    }
+
     template<class Callback>
     void mesh_run_loc(const Callback& callback) const {
-//#pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t el = 0; el < _mesh.elements_count(); ++el) {
-            const auto& e = _mesh.element_2d(el);
-            for(size_t i = 0; i < e->nodes_count(); ++i)     // Проекционные функции
-                for(size_t j = 0; j < e->nodes_count(); ++j) // Аппроксимационные функции
-                    callback(el, i, j);
+#pragma omp parallel for default(none) firstprivate(callback)
+        for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
+            for(const I el : _nodes_elements_map[node]) {
+                const auto& e = _mesh.element_2d(el);
+                for(size_t j = 0; j < e->nodes_count(); ++j)
+                    callback(el, _global_to_local_numbering[el].find(node)->second, j);
+            }
         }
     }
 
-    // Функция обхода сетки в нелокальных постановках.
-    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
-    // Callback - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
     template<class Callback>
     void mesh_run_nonloc(const Callback& callback) const {
-//#pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t elL = 0; elL < _mesh.elements_count(); ++elL) {
-            const auto& eL = _mesh.element_2d(elL);
-            for(const I elNL : _elements_neighbors[elL]) {
-                const auto& eNL = _mesh.element_2d(elNL);
-                for(size_t iL = 0; iL < eL->nodes_count(); ++iL)         // Проекционные функции
-                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL) // Аппроксимационные функции
-                        callback(elL, iL, elNL, jNL);
+#pragma omp parallel for default(none) firstprivate(callback)
+        for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
+            for(const I elL : _nodes_elements_map[node]) {
+                for(const I elNL : _elements_neighbors[elL]) {
+                    const auto& eNL = _mesh.element_2d(elNL);
+                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL)
+                        callback(elL, _global_to_local_numbering[elL].find(node)->second, elNL, jNL);
+                }
             }
         }
     }
@@ -196,28 +222,20 @@ protected:
             }
     }
 
-    template<class Callback>
-    void nodes_run_loc(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
-            for(const I el : _nodes_elements_map[node]) {
-                const auto& e = _mesh.element_2d(el);
-                for(size_t j = 0; j < e->nodes_count(); ++j)
-                    callback(el, _global_to_local_numbering[el].find(node)->second, j);
-            }
-        }
-    }
+    void convert_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const std::vector<std::set<I>>& portrait) const {
+        static constexpr auto accumulator = [](const size_t sum, const std::set<I>& row) { return sum + row.size(); };
+        K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
 
-    template<class Callback>
-    void nodes_run_nonloc(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
-            for(const I elL : _nodes_elements_map[node]) {
-                for(const I elNL : _elements_neighbors[elL]) {
-                    const auto& eNL = _mesh.element_2d(elNL);
-                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL)
-                        callback(elL, _global_to_local_numbering[elL].find(node)->second, elNL, jNL);
-                }
+        K.outerIndexPtr()[0] = 0;
+        for(size_t row = 0; row < mesh().nodes_count(); ++row)
+            K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row] + portrait[row].size();
+
+#pragma omp parallel for default(none) shared(K, portrait)
+        for(size_t row = 0; row < mesh().nodes_count(); ++row) {
+            I inner_index = K.outerIndexPtr()[row];
+            for(const I col : portrait[row]) {
+                K.valuePtr()[inner_index] = 0;
+                K.innerIndexPtr()[inner_index++] = col;
             }
         }
     }
