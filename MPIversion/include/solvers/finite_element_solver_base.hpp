@@ -153,60 +153,38 @@ protected:
     const std::array<T, 2>& quad_coord(const size_t global_quad_node) const { return _quad_coords[global_quad_node]; }
     const std::array<T, 4>& jacobi_matrix(const size_t global_quad_node) const { return _jacobi_matrices[global_quad_node]; }
     const std::vector<I>& neighbors(const size_t element) const { return _elements_neighbors[element]; }
+    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _global_to_local_numbering[element]; }
+    const std::vector<I>& nodes_elements_map(const size_t node) const { return _nodes_elements_map[node]; }
 
-
-//    // Функция обхода сетки в локальных постановках.
-//    // Нужна для предварительного подсчёта количества элементов  и интегрирования системы.
-//    // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
-//    template<class Callback>
-//    void mesh_run_loc(const Callback& callback) const {
-////#pragma omp parallel for default(none) firstprivate(callback)
-//        for(size_t el = 0; el < _mesh.elements_count(); ++el) {
-//            const auto& e = _mesh.element_2d(el);
-//            for(size_t i = 0; i < e->nodes_count(); ++i)     // Проекционные функции
-//                for(size_t j = 0; j < e->nodes_count(); ++j) // Аппроксимационные функции
-//                    callback(el, i, j);
-//        }
-//    }
-//
-//    // Функция обхода сетки в нелокальных постановках.
-//    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
-//    // Callback - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
-//    template<class Callback>
-//    void mesh_run_nonloc(const Callback& callback) const {
-////#pragma omp parallel for default(none) firstprivate(callback)
-//        for(size_t elL = 0; elL < _mesh.elements_count(); ++elL) {
-//            const auto& eL = _mesh.element_2d(elL);
-//            for(const I elNL : _elements_neighbors[elL]) {
-//                const auto& eNL = _mesh.element_2d(elNL);
-//                for(size_t iL = 0; iL < eL->nodes_count(); ++iL)         // Проекционные функции
-//                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL) // Аппроксимационные функции
-//                        callback(elL, iL, elNL, jNL);
-//            }
-//        }
-//    }
-
+    // Функция обхода сетки в локальных постановках.
+    // Нужна для предварительного подсчёта количества элементов  и интегрирования системы.
+    // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
     template<class Callback>
     void mesh_run_loc(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback)
         for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
             for(const I el : _nodes_elements_map[node]) {
                 const auto& e = _mesh.element_2d(el);
-                for(size_t j = 0; j < e->nodes_count(); ++j)
-                    callback(el, _global_to_local_numbering[el].find(node)->second, j);
+                const size_t i = _global_to_local_numbering[el].find(node)->second; // Проекционные функции
+                for(size_t j = 0; j < e->nodes_count(); ++j) // Аппроксимационные функции
+                    callback(el, i, j);
             }
         }
     }
 
+    // Функция обхода сетки в нелокальных постановках.
+    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
+    // Callback - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
     template<class Callback>
     void mesh_run_nonloc(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback)
         for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
             for(const I elL : _nodes_elements_map[node]) {
+                const size_t iL =  _global_to_local_numbering[elL].find(node)->second; // Проекционные функции
                 for(const I elNL : _elements_neighbors[elL]) {
                     const auto& eNL = _mesh.element_2d(elNL);
-                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL)
-                        callback(elL, _global_to_local_numbering[elL].find(node)->second, elNL, jNL);
+                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL) // Аппроксимационные функции
+                        callback(elL, iL, elNL, jNL);
                 }
             }
         }

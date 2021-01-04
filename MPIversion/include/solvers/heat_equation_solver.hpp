@@ -24,25 +24,15 @@ struct boundary_condition {
 };
 
 template<class T, class I>
-class heat_equation_solver : protected finite_element_solver_base<T, I>
-{
+class heat_equation_solver : protected finite_element_solver_base<T, I> {
     using _base = finite_element_solver_base<T, I>;
-
-    using typename _base::Finite_Element_1D_Ptr;
     using typename _base::Finite_Element_2D_Ptr;
-
     using _base::X;
     using _base::Y;
-
     using _base::mesh;
     using _base::quad_shift;
     using _base::quad_coord;
-
-    using _base::convert_portrait;
-
     using _base::jacobian;
-    using _base::approx_quad_nodes_on_bound;
-    using _base::approx_jacobi_matrices_on_bound;
 
     // Интегрирование базисной функции i по элементу e.
     // Для использования, предварительно должны быть проинициализированы jacobi_matrices текущего элемента.
@@ -103,9 +93,15 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
     }
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                const T p1, const std::vector<bool>& inner_nodes) const {
+                                const bool neumann_task, const T p1, const std::vector<bool>& inner_nodes) const {
         std::vector<std::set<I>> inner_portrait(mesh().nodes_count()),
                                  bound_portrait(mesh().nodes_count());
+
+        if (neumann_task) {
+#pragma omp parallel for default(none) shared(K, inner_portrait)
+            for(size_t node = 0; node < mesh().nodes_count(); ++node)
+                inner_portrait[node].insert(mesh().nodes_count());
+        }
 
         const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait](const I row, const I col) {
             if (inner_nodes[row] && inner_nodes[col]) {
@@ -130,15 +126,28 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
                 });
         }
 
-        convert_portrait(K, inner_portrait);
+        _base::convert_portrait(K, inner_portrait);
         inner_portrait.reserve(0);
-        convert_portrait(K_bound, bound_portrait);
+        _base::convert_portrait(K_bound, bound_portrait);
         bound_portrait.reserve(0);
     }
 
     template<class Integrate_Rule, class Influence_Function>
     void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                     const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun, const std::vector<bool>& inner_nodes) const {
+                     const Integrate_Rule& integrate_rule, const bool neumann_task,
+                     const T p1, const Influence_Function& influence_fun, const std::vector<bool>& inner_nodes) const {
+        if (neumann_task) {
+#pragma omp parallel for default(none) shared(K)
+            for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+                T& val = K.coeffRef(node, mesh().nodes_count());
+                for(const I el : _base::nodes_elements_map(node)) {
+                    const auto& e = mesh().element_2d(el);
+                    const size_t i = _base::global_to_local_numbering(el).find(node)->second;
+                    val += integrate_basic(e, i, quad_shift(el));
+                }
+            }
+        }
+
         _base::template mesh_run_loc(
             [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t el, const size_t i, const size_t j) {
                 const I row = mesh().node_number(el, i),
@@ -157,7 +166,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
         if (p1 < _base::MAX_LOCAL_WEIGHT) {
             _base::template mesh_run_nonloc(
                 [this, &K, &K_bound, &inner_nodes, &integrate_rule, &influence_fun, p2 = 1 - p1]
-                        (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
+                (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
                     const I row = mesh().node_number(elL,  iL ),
                             col = mesh().node_number(elNL, jNL);
                     if (inner_nodes[row] && inner_nodes[col]) {
@@ -188,15 +197,15 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
         });
 
         double time = omp_get_wtime();
-        create_matrix_portrait(K, K_bound, p1, inner_nodes);
+        create_matrix_portrait(K, K_bound, neumann_task, p1, inner_nodes);
         std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl;
 
         time = omp_get_wtime();
-        calc_matrix(K, K_bound, integrate_rule, p1, influence_fun, inner_nodes);
+        calc_matrix(K, K_bound, integrate_rule, neumann_task, p1, influence_fun, inner_nodes);
         std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 
-        //std::cout << Eigen::MatrixXd{K} << std::endl << std::endl;
-        //std::cout << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
+//        std::cout << Eigen::MatrixXd{K} << std::endl << std::endl;
+//        std::cout << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
     }
 
     void integrate_boundary_flow(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T>>& bounds_cond) const {
@@ -204,8 +213,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
         for(size_t b = 0; b < bounds_cond.size(); ++b)
             if(bounds_cond[b].type == boundary_t::FLOW)
                 for(size_t el = 0; el < mesh().elements_count(b); ++el) {
-                    approx_quad_nodes_on_bound(quad_nodes, b, el);
-                    approx_jacobi_matrices_on_bound(jacobi_matrices, b, el);
+                    _base::approx_quad_nodes_on_bound(quad_nodes, b, el);
+                    _base::approx_jacobi_matrices_on_bound(jacobi_matrices, b, el);
                     const auto& be = mesh().element_1d(b, el);
                     for(size_t i = 0; i < be->nodes_count(); ++i)
                         f[mesh().node_number(b, el, i)] += _base::template integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func);
@@ -220,7 +229,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I>
             [this, &bounds_cond, &temperature](const size_t b, const size_t el, const size_t i) {
                 if (bounds_cond[b].type == boundary_t::TEMPERATURE) {
                     const I node = mesh().node_number(b, el, i);
-                    temperature[node] = bounds_cond[b].func(mesh().node(node));
+                    if (temperature[node] == 0)
+                        temperature[node] = bounds_cond[b].func(mesh().node(node));
                 }
             });
 
@@ -309,12 +319,12 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
     const size_t matrix_size = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix_size);
-//    integrate_boundary_flow(f, bounds_cond);
-//    if(neumann_task) {
-//        if(std::abs(std::accumulate(f.begin(), f.end(), T{0}, [](const T sum, const T val) { return sum + val; })) > 1e-5)
-//            throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
-//        f[mesh().nodes_count()] = volume;
-//    }
+    integrate_boundary_flow(f, bounds_cond);
+    if(neumann_task) {
+        if(std::abs(std::accumulate(f.data(), f.data() + f.size(), T{0}, [](const T sum, const T val) { return sum + val; })) > 1e-5)
+            throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
+        f[mesh().nodes_count()] = volume;
+    }
 
     if (p1 < _base::MAX_LOCAL_WEIGHT)
         _base::find_neighbors(r);
