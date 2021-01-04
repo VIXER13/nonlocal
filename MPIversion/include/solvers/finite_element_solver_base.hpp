@@ -205,11 +205,11 @@ protected:
         K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
 
         K.outerIndexPtr()[0] = 0;
-        for(size_t row = 0; row < mesh().nodes_count(); ++row)
+        for(size_t row = 0; row < portrait.size(); ++row)
             K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row] + portrait[row].size();
 
 #pragma omp parallel for default(none) shared(K, portrait)
-        for(size_t row = 0; row < mesh().nodes_count(); ++row) {
+        for(size_t row = 0; row < portrait.size(); ++row) {
             I inner_index = K.outerIndexPtr()[row];
             for(const I col : portrait[row]) {
                 K.valuePtr()[inner_index] = 0;

@@ -7,6 +7,8 @@
 #include "finite_element_solver_base.hpp"
 #include "../../Eigen/Eigen/Dense"
 #include "../../Eigen/Eigen/Sparse"
+#include "../../Eigen/Eigen/Eigen"
+#include "../../Eigen/Eigen/SparseCholesky"
 //#include "Eigen/PardisoSupport"
 
 namespace nonlocal::heat {
@@ -165,7 +167,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
         if (p1 < _base::MAX_LOCAL_WEIGHT) {
             _base::template mesh_run_nonloc(
-                [this, &K, &K_bound, &inner_nodes, &integrate_rule, &influence_fun, p2 = 1 - p1]
+                [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
                 (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
                     const I row = mesh().node_number(elL,  iL ),
                             col = mesh().node_number(elNL, jNL);
@@ -342,8 +344,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
     temperature_on_boundary(f, bounds_cond, K_bound);
 
     //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver;
-    solver.compute(K);
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
     //std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
     temperature.conservativeResize(mesh().nodes_count());
