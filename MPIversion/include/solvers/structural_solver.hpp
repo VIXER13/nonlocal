@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <algorithm>
+#include <unordered_set>
 #include <omp.h>
 #include "finite_element_solver_base.hpp"
 #include "../../Eigen/Eigen/Dense"
@@ -54,7 +55,7 @@ class structural_solver : protected finite_element_solver_base<T, I> {
     using _base::jacobian;
 
     std::array<T, 3> _D;
-    std::vector<std::vector<I>> _nodes_neighbors;
+    //std::vector<std::vector<I>> _nodes_neighbors;
 
     // Матрица Гука, которая имеет следующий портрет:
     // arr[0] arr[1]   0
@@ -326,36 +327,25 @@ class structural_solver : protected finite_element_solver_base<T, I> {
     void stress_nonloc(      std::vector<std::array<T, 3>>& stress, 
                        const std::vector<std::array<T, 3>>& strains,
                        const T p1, const Influence_Function& influence_fun) const {
-        const T p2 = 1. - p1;
+        const T p2 = 1 - p1;
         const std::vector<std::array<T, 3>> strains_in_quad = approx_strain_in_quad(strains);
-        for(size_t node = 0; node < mesh().nodes_count(); ++node)
-            for(const I elNL : _nodes_neighbors[node]) {
-                const auto& eNL = mesh().element_2d(mesh().element_2d_type(elNL));
-                for(size_t q = 0, shift = quad_shift(elNL); q < eNL->qnodes_count(); ++q, ++shift) {
-                    const T influence_weight = p2 * eNL->weight(q) * jacobian(shift) * influence_fun(quad_coord(shift), mesh().node(node));
-                    stress[node][0] += influence_weight * (_D[0] * strains_in_quad[shift][0] + _D[1] * strains_in_quad[shift][1]);
-                    stress[node][1] += influence_weight * (_D[1] * strains_in_quad[shift][0] + _D[0] * strains_in_quad[shift][1]);
-                    stress[node][2] += influence_weight *  _D[2] * strains_in_quad[shift][2];
+#pragma omp parallel for default(none) shared(stress, influence_fun)
+        for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+            std::unordered_set<I> neighbors;
+            for(const I elL : _base::nodes_elements_map(node))
+                for(const I elNL : _base::neighbors(elL)) {
+                    const auto [it, inserted] = neighbors.insert(elNL);
+                    if (inserted) {
+                        const auto& eNL = mesh().element_2d(mesh().element_2d_type(elNL));
+                        for(size_t q = 0, shift = quad_shift(elNL); q < eNL->qnodes_count(); ++q, ++shift) {
+                            const T influence_weight = p2 * eNL->weight(q) * jacobian(shift) * influence_fun(quad_coord(shift), mesh().node(node));
+                            stress[node][0] += influence_weight * (_D[0] * strains_in_quad[shift][0] + _D[1] * strains_in_quad[shift][1]);
+                            stress[node][1] += influence_weight * (_D[1] * strains_in_quad[shift][0] + _D[0] * strains_in_quad[shift][1]);
+                            stress[node][2] += influence_weight *  _D[2] * strains_in_quad[shift][2];
+                        }
+                    }
                 }
-            }
-    }
-
-    // Ищет соседние элементы относительно узлов сетки.
-    // За соседа принимаем те элементы, центры которых попали в радиус.
-    static std::vector<std::vector<I>> 
-    find_nodes_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
-        std::vector<std::vector<I>> nodes_neighbors(mesh.nodes_count());
-#pragma omp parallel for default(none) shared(mesh, centres, nodes_neighbors)
-        for(size_t node = 0; node < mesh.nodes_count(); ++node) {
-            nodes_neighbors[node].resize(0);
-            nodes_neighbors[node].reserve(mesh.elements_count());
-            for(size_t el = 0; el < mesh.elements_count(); ++el) {
-                if(utils::distance(mesh.node(node), centres[el]) < r)
-                    nodes_neighbors[node].push_back(el);
-            }
-            nodes_neighbors[node].shrink_to_fit();
         }
-        return std::move(nodes_neighbors);
     }
 
 public:
@@ -384,8 +374,6 @@ public:
 
     T calc_energy(const std::vector<std::array<T, 3>>& strain, 
                   const std::vector<std::array<T, 3>>& stress) const;
-
-    void find_neighbors(const T r);
 };
 
 template<class T, class I>
@@ -428,10 +416,10 @@ void structural_solver<T, I>::save_as_vtk(const std::string& path, const Vector&
     fout << "SCALARS mises " << data_type << " 1\n"
          << "LOOKUP_TABLE default\n";
     for(size_t i = 0; i < mesh().nodes_count(); ++i)
-        fout << sqrt(stress[i][_11] * stress[i][_11] + 
-                     stress[i][_22] * stress[i][_22] -
-                     stress[i][_11] * stress[i][_22] + 
-                 3 * stress[i][_12] * stress[i][_12]) << '\n';
+        fout << std::sqrt(stress[i][_11] * stress[i][_11] +
+                          stress[i][_22] * stress[i][_22] -
+                          stress[i][_11] * stress[i][_22] +
+                      3 * stress[i][_12] * stress[i][_12]) << '\n';
 }
 
 template<class T, class I>
@@ -439,7 +427,7 @@ template<class Influence_Function>
 Eigen::Matrix<T, Eigen::Dynamic, 1> structural_solver<T, I>::stationary(
     const std::vector<boundary_condition<T>> &bounds_cond, //const distributed_load<T>& right_part,
     const T r, const T p1, const Influence_Function& influence_fun) {
-    find_neighbors(r);
+    _base::find_neighbors(r);
 
     double time = omp_get_wtime();
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (2*mesh().nodes_count(), 2*mesh().nodes_count()),
@@ -492,14 +480,6 @@ T structural_solver<T, I>::calc_energy(const std::vector<std::array<T, 3>>& stra
                              2 * strain[mesh().node_number(el, i)][_12] * stress[mesh().node_number(el, i)][_12]);
     }
     return 0.5 * integral;
-}
-
-template<class T, class I>
-void structural_solver<T, I>::find_neighbors(const T r)
-{
-    const std::vector<std::array<T, 2>> centres = _base::approx_centres_of_elements(mesh());
-    _base::set_neighbors(_base::find_elements_neighbors(mesh(), centres, r));
-    _nodes_neighbors = find_nodes_neighbors(mesh(), centres, r);
 }
 
 }

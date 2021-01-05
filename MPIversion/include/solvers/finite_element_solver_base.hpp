@@ -1,15 +1,12 @@
 #ifndef FINITE_ELEMENT_ROUTINE_HPP
 #define FINITE_ELEMENT_ROUTINE_HPP
 
-// Базовые операции, которые требуются во всех конечно-элементных решателях.
-
 #include <set>
+#include <numeric>
 #include <unordered_map>
+#include "../../Eigen/Eigen/Sparse"
 #include "mesh.hpp"
 #include "utils.hpp"
-
-#include "../../Eigen/Eigen/Sparse"
-#include <numeric>
 
 namespace nonlocal {
 
@@ -95,6 +92,34 @@ class finite_element_solver_base {
         return std::move(global_to_local_numbering);
     }
 
+    static std::vector<std::array<T, 2>> approx_centres_of_elements(const mesh::mesh_2d<T, I>& mesh) {
+        std::vector<std::array<T, 2>> centres(mesh.elements_count(), std::array<T, 2>{});
+#pragma omp parallel for default(none) shared(mesh, centres)
+        for(size_t el = 0; el < centres.size(); ++el) {
+            const auto& e = mesh.element_2d(el);
+            const T x0 = mesh::is_trinagle(mesh.element_2d_type(el)) ? 1./3. : 0.;
+            for(size_t node = 0; node < e->nodes_count(); ++node) {
+                using namespace utils;
+                centres[el] += mesh.node(mesh.node_number(el, node)) * e->N(node, {x0, x0});
+            }
+        }
+        return std::move(centres);
+    }
+
+    static std::vector<std::vector<I>>
+    find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
+        std::vector<std::vector<I>> elements_neighbors(mesh.elements_count());
+#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors)
+        for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
+            elements_neighbors[elL].reserve(mesh.elements_count());
+            for(size_t elNL = 0; elNL < mesh.elements_count(); ++elNL)
+                if(utils::distance(centres[elL], centres[elNL]) < r)
+                    elements_neighbors[elL].push_back(elNL);
+            elements_neighbors[elL].shrink_to_fit();
+        }
+        return std::move(elements_neighbors);
+    }
+
 protected:
     using Finite_Element_1D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_1D_Ptr;
     using Finite_Element_2D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_2D_Ptr;
@@ -119,34 +144,6 @@ protected:
         _global_to_local_numbering{global_to_local_numbering_init(_mesh)} {}
 
     virtual ~finite_element_solver_base() noexcept = default;
-
-    static std::vector<std::array<T, 2>> approx_centres_of_elements(const mesh::mesh_2d<T, I>& mesh) {
-        std::vector<std::array<T, 2>> centres(mesh.elements_count(), std::array<T, 2>{});
-#pragma omp parallel for default(none) shared(mesh, centres)
-        for(size_t el = 0; el < centres.size(); ++el) {
-            const auto& e = mesh.element_2d(el);
-            const T x0 = mesh::is_trinagle(mesh.element_2d_type(el)) ? 1./3. : 0.;
-            for(size_t node = 0; node < e->nodes_count(); ++node) {
-                using namespace utils;
-                centres[el] += mesh.node(mesh.node_number(el, node)) * e->N(node, {x0, x0});
-            }
-        }
-        return std::move(centres);
-    }
-
-    static std::vector<std::vector<I>> 
-    find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
-        std::vector<std::vector<I>> elements_neighbors(mesh.elements_count());
-#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors)
-        for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
-            elements_neighbors[elL].reserve(mesh.elements_count());
-            for(size_t elNL = 0; elNL < mesh.elements_count(); ++elNL)
-                if(utils::distance(centres[elL], centres[elNL]) < r)
-                    elements_neighbors[elL].push_back(elNL);
-            elements_neighbors[elL].shrink_to_fit();
-        }
-        return std::move(elements_neighbors);
-    }
 
     const mesh::mesh_2d<T, I>& mesh() const { return _mesh; }
     I quad_shift(const size_t element) const { return _quad_shifts[element]; }
