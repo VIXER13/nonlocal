@@ -1,8 +1,8 @@
 #ifndef FINITE_ELEMENT_ROUTINE_HPP
 #define FINITE_ELEMENT_ROUTINE_HPP
 
-#include <set>
 #include <numeric>
+#include <unordered_set>
 #include <unordered_map>
 #include "../../Eigen/Eigen/Sparse"
 #include "mesh.hpp"
@@ -15,6 +15,27 @@ enum class boundary_type : uint8_t {
     SECOND_KIND
 };
 
+template<class T, class B, size_t N>
+struct boundary_condition {
+    static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
+
+    struct boundary_pair {
+        B type = B(boundary_type::SECOND_KIND);
+        std::function<T(const std::array<T, 2>&)> func = [](const std::array<T, 2>&) constexpr noexcept { return 0; };
+    };
+
+    std::array<boundary_pair, N> data;
+
+    static constexpr size_t degrees_of_freedom() { return N; }
+
+    B type(const size_t b) const { return data[b].type; }
+    const std::function<T(const std::array<T, 2>&)>& func(const size_t b) const { return data[b].func; }
+
+    bool contains_condition_second_kind() const {
+        return std::any_of(data.cbegin(), data.cend(), [](const boundary_pair& pair) { return pair.type == B(boundary_type::SECOND_KIND); });
+    }
+};
+
 template<class T, class I>
 class finite_element_solver_base {
     mesh::mesh_2d<T, I>           _mesh;
@@ -23,6 +44,7 @@ class finite_element_solver_base {
     std::vector<std::array<T, 4>> _jacobi_matrices;    // Матрицы Якоби вычисленные в квадратурных узлах
     std::vector<std::vector<I>>   _nodes_elements_map; // Номера элементов, в которых присутствует узел
     std::vector<std::unordered_map<I, uint8_t>> _global_to_local_numbering; // Переход от глобальной нумерации к локальной каждого элемента
+                                                                            // Считаем, что в элементе не более 255 узлов.
     std::vector<std::vector<I>>   _elements_neighbors; // Массив с номерами ближайших соседей
 
     // Квадратурные сдвиги по элементам.
@@ -197,14 +219,12 @@ protected:
             }
     }
 
-    void convert_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const std::vector<std::set<I>>& portrait) const {
-        static constexpr auto accumulator = [](const size_t sum, const std::set<I>& row) { return sum + row.size(); };
+    void convert_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const std::vector<std::unordered_set<I>>& portrait) const {
+        static constexpr auto accumulator = [](const size_t sum, const std::unordered_set<I>& row) { return sum + row.size(); };
         K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
-
         K.outerIndexPtr()[0] = 0;
         for(size_t row = 0; row < portrait.size(); ++row)
             K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row] + portrait[row].size();
-
 #pragma omp parallel for default(none) shared(K, portrait)
         for(size_t row = 0; row < portrait.size(); ++row) {
             I inner_index = K.outerIndexPtr()[row];
@@ -212,6 +232,7 @@ protected:
                 K.valuePtr()[inner_index] = 0;
                 K.innerIndexPtr()[inner_index++] = col;
             }
+            std::sort(&K.innerIndexPtr()[K.outerIndexPtr()[row]], &K.innerIndexPtr()[K.outerIndexPtr()[row+1]]);
         }
     }
 
@@ -254,6 +275,50 @@ protected:
         for(size_t q = 0; q < be->qnodes_count(); ++q)
             integral += be->weight(q) * be->qN(i, q) * boundary_gradient(quad_nodes[q]) * jacobian(jacobi_matrices[q]);
         return integral;
+    }
+
+    template<class B, size_t N>
+    void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T, B, N>>& bounds_cond) const {
+        std::vector<std::array<T, 2>> quad_nodes, jacobi_matrices;
+        for(size_t b = 0; b < bounds_cond.size(); ++b)
+            if (bounds_cond[b].contains_condition_second_kind())
+                for(size_t el = 0; el < mesh().elements_count(b); ++el) {
+                    approx_quad_nodes_on_bound(quad_nodes, b, el);
+                    approx_jacobi_matrices_on_bound(jacobi_matrices, b, el);
+                    const auto& be = mesh().element_1d(b, el);
+                    for(size_t i = 0; i < be->nodes_count(); ++i)
+                        for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
+                            if(boundary_type(bounds_cond[b].type(comp)) == boundary_type::SECOND_KIND)
+                                f[bounds_cond[b].degrees_of_freedom()*mesh().node_number(b, el, i) + comp] +=
+                                    integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func(comp));
+                }
+    }
+
+    template<class B, size_t N>
+    void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T, B, N>>& bounds_cond,
+                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
+        Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
+
+        boundary_nodes_run(
+            [this, &bounds_cond, &x](const size_t b, const size_t el, const size_t i) {
+                for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
+                    if (boundary_type(bounds_cond[b].type(comp)) == boundary_type::FIRST_KIND) {
+                        const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
+                        if (x[node] == 0)
+                            x[node] = bounds_cond[b].func(comp)(mesh().node(node));
+                    }
+            });
+
+        f -= K_bound * x;
+
+        boundary_nodes_run(
+            [this, &bounds_cond, &x, &f](const size_t b, const size_t el, const size_t i) {
+                for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
+                    if (boundary_type(bounds_cond[b].type(comp)) == boundary_type::FIRST_KIND) {
+                        const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
+                        f[node] = x[node];
+                    }
+            });
     }
 
     T jacobian(const size_t quad_shift) const noexcept {

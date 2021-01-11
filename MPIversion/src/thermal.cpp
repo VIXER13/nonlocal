@@ -1,5 +1,6 @@
-#include "solvers/influence_functions.hpp"
-#include "solvers/heat_equation_solver.hpp"
+#include <petsc.h>
+#include "influence_functions.hpp"
+#include "heat_equation_solver.hpp"
 
 namespace {
 
@@ -12,6 +13,8 @@ void save_raw_data(const mesh::mesh_2d<double>& msh, const Eigen::Matrix<double,
 }
 
 int main(int argc, char** argv) {
+    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+
     if(argc < 2) {
         std::cerr << "Input format [program name] <path to mesh>";
         return EXIT_FAILURE;
@@ -25,63 +28,31 @@ int main(int argc, char** argv) {
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};
 
-        const auto& e = msh.element_2d(0);
-        
-        for(size_t q = 0; q < e->qnodes_count(); ++q)
-            std::cout << e->weight(q) << ' ';
-        std::cout << std::endl;
-        std::cout << std::endl;
-        
-        for(size_t i = 0; i < e->nodes_count(); ++i) {
-            for(size_t q = 0; q < e->qnodes_count(); ++q)
-                std::cout << e->qN(i, q) << ' ';
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
-
-        for(size_t i = 0; i < e->nodes_count(); ++i) {
-            for(size_t q = 0; q < e->qnodes_count(); ++q)
-                std::cout << e->qNxi(i, q) << ' ';
-            std::cout << std::endl;
-        }
-
-        std::cout << std::endl;
-
-        for(size_t i = 0; i < e->nodes_count(); ++i) {
-            for(size_t q = 0; q < e->qnodes_count(); ++q)
-                std::cout << e->qNeta(i, q) << ' ';
-            std::cout << std::endl;
-        }
-
-        std::cout << std::endl;
-
-
-
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
 
         const auto T = fem_sol.stationary(
             { // Граничные условия
                 {   // Down
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                        nonlocal::heat::boundary_t::FLOW
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return -1; },
                 },
 
                 {   // Right
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                        nonlocal::heat::boundary_t::FLOW
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 0; },
                 },
 
                 {   // Up
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                        nonlocal::heat::boundary_t::FLOW
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 1; },
                 },
 
                 {   // Left
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                        nonlocal::heat::boundary_t::FLOW
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 0; },
                 }
             }, 
-            [](const std::array<double, 2>&) { return 0; }, // Правая часть
+            [](const std::array<double, 2>&) { return -4; }, // Правая часть
             r,  // Радиус влияния 
             p1, // Вес
             bell // Функция влияния
@@ -89,6 +60,8 @@ int main(int argc, char** argv) {
 
         fem_sol.save_as_vtk("heat.vtk", T);
         save_raw_data(msh, T);
+
+        std::cout << fem_sol.integrate_solution(T) << std::endl;
 
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -98,5 +71,5 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    return EXIT_SUCCESS;
+    return PetscFinalize();
 }

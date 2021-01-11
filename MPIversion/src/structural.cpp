@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        std::cout.precision(2);
+        std::cout.precision(7);
 
         static constexpr double r = 0.2, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
@@ -40,31 +40,31 @@ int main(int argc, char** argv) {
         const auto U = fem_sol.stationary(
             {
                 {  // Down
-                    [](const std::array<double, 2>&) { return 0; },
-                    [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::PRESSURE,
-                    nonlocal::structural::boundary_t::DISPLACEMENT
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {  // Right
-                    [](const std::array<double, 2>&) { return 1; },
-                    [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::PRESSURE,
-                    nonlocal::structural::boundary_t::PRESSURE
+                    [](const std::array<double, 2>&) { return 1; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {  // Up
-                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::PRESSURE,
-                    nonlocal::structural::boundary_t::PRESSURE
+                    [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {  // Left
-                    [](const std::array<double, 2>&) { return 0; },
-                    [](const std::array<double, 2>&) { return 0; },
                     nonlocal::structural::boundary_t::DISPLACEMENT,
-                    nonlocal::structural::boundary_t::PRESSURE
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>&) { return 0; }
                 },
             },
             r, p1, bell

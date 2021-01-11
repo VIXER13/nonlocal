@@ -3,7 +3,6 @@
 
 #include <functional>
 #include <algorithm>
-#include <unordered_set>
 #include <omp.h>
 #include "finite_element_solver_base.hpp"
 #include "../../Eigen/Eigen/Dense"
@@ -19,19 +18,13 @@ enum class boundary_t : uint8_t {
     PRESSURE     = uint8_t(boundary_type::SECOND_KIND)
 };
 
+template<class T>
+using bound_cond = boundary_condition<T, boundary_t, 2>;
+
 template<class Type>
 struct parameters {
     Type nu = 0, // Коэффициент Пуассона
          E  = 0; // Модуль Юнга
-};
-
-template<class T>
-struct boundary_condition {
-    static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
-    std::array<std::function<T(const std::array<T, 2>&)>, 2> 
-        func = { [](const std::array<T, 2>&) noexcept { return 0; },
-                 [](const std::array<T, 2>&) noexcept { return 0; } };
-    std::array<boundary_t, 2> type = { boundary_t::PRESSURE, boundary_t::PRESSURE };
 };
 
 template<class T>
@@ -100,8 +93,8 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                 const T p1, const std::vector<bool>& inner_nodes) const {
-        std::vector<std::set<I>> inner_portrait(2 * mesh().nodes_count()),
-                                 bound_portrait(2 * mesh().nodes_count());
+        std::vector<std::unordered_set<I>> inner_portrait(2 * mesh().nodes_count()),
+                                           bound_portrait(2 * mesh().nodes_count());
 
         const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait](const I row, const I col) {
             if (inner_nodes[row] && inner_nodes[col]) {
@@ -198,11 +191,11 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
     template<class Influence_Function>
     void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                       const std::vector<boundary_condition<T>>& bounds_cond, const T p1, const Influence_Function& influence_fun) {
+                       const std::vector<bound_cond<T>>& bounds_cond, const T p1, const Influence_Function& influence_fun) {
         std::vector<bool> inner_nodes(2*mesh().nodes_count(), true);
         _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
             for(size_t comp = 0; comp < 2; ++comp)
-                if(bounds_cond[b].type[comp] == boundary_t::DISPLACEMENT)
+                if(bounds_cond[b].type(comp) == boundary_t::DISPLACEMENT)
                     inner_nodes[2 * mesh().node_number(b, el, i) + comp] = false;
         });
 
@@ -216,48 +209,6 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
 //        std::cout << Eigen::MatrixXd{K} << std::endl << std::endl;
 //        std::cout << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
-    }
-
-    void integrate_boundary_pressure(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T>>& bounds_cond) const {
-        std::vector<std::array<T, 2>> quad_nodes, jacobi_matrices;
-        for(size_t b = 0; b < bounds_cond.size(); ++b)
-            if(bounds_cond[b].type[0] == boundary_t::PRESSURE || bounds_cond[b].type[1] == boundary_t::PRESSURE)
-                for(size_t el = 0; el < mesh().elements_count(b); ++el) {
-                    _base::approx_quad_nodes_on_bound(quad_nodes, b, el);
-                    _base::approx_jacobi_matrices_on_bound(jacobi_matrices, b, el);
-                    const auto& be = mesh().element_1d(b, el);
-                    for(size_t i = 0; i < be->nodes_count(); ++i) 
-                        for(size_t comp = 0; comp < 2; ++comp)
-                            if(bounds_cond[b].type[comp] == boundary_t::PRESSURE)
-                                f[2*mesh().node_number(b, el, i)+comp] += 
-                                    _base::template integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func[comp]);
-                }
-    }
-
-    void displacement_on_boundary(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T>>& bounds_cond,
-                                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
-        Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
-
-        _base::template boundary_nodes_run(
-            [this, &bounds_cond, &displacement](const size_t b, const size_t el, const size_t i) {
-                for(size_t comp = 0; comp < 2; ++comp)
-                    if (bounds_cond[b].type[comp] == boundary_t::DISPLACEMENT) {
-                        const I node = 2 * mesh().node_number(b, el, i) + comp;
-                        if (displacement[node] == 0)
-                            displacement[node] = bounds_cond[b].func[comp](mesh().node(node));
-                    }
-            });
-
-        f -= K_bound * displacement;
-
-        _base::template boundary_nodes_run(
-            [this, &bounds_cond, &displacement, &f](const size_t b, const size_t el, const size_t i) {
-                for(size_t comp = 0; comp < 2; ++comp)
-                    if (bounds_cond[b].type[comp] == boundary_t::DISPLACEMENT) {
-                        const I node = 2 * mesh().node_number(b, el, i) + comp;
-                        f[node] = displacement[node];
-                    }
-            });
     }
 
     template<class Vector>
@@ -313,6 +264,7 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
     std::vector<std::array<T, 3>> approx_strain_in_quad(const std::vector<std::array<T, 3>>& strain) const {
         std::vector<std::array<T, 3>> strain_in_quad(quad_shift(mesh().elements_count()), std::array<T, 3>{});
+#pragma omp parallel for default(none) shared(strain, strain_in_quad)
         for(size_t el = 0; el < mesh().elements_count(); ++el) {
             const auto& e = mesh().element_2d(el);
             for(size_t q = 0, shift = quad_shift(el); q < e->qnodes_count(); ++q, ++shift)
@@ -333,18 +285,17 @@ class structural_solver : protected finite_element_solver_base<T, I> {
         for(size_t node = 0; node < mesh().nodes_count(); ++node) {
             std::unordered_set<I> neighbors;
             for(const I elL : _base::nodes_elements_map(node))
-                for(const I elNL : _base::neighbors(elL)) {
-                    const auto [it, inserted] = neighbors.insert(elNL);
-                    if (inserted) {
-                        const auto& eNL = mesh().element_2d(mesh().element_2d_type(elNL));
-                        for(size_t q = 0, shift = quad_shift(elNL); q < eNL->qnodes_count(); ++q, ++shift) {
-                            const T influence_weight = p2 * eNL->weight(q) * jacobian(shift) * influence_fun(quad_coord(shift), mesh().node(node));
-                            stress[node][0] += influence_weight * (_D[0] * strains_in_quad[shift][0] + _D[1] * strains_in_quad[shift][1]);
-                            stress[node][1] += influence_weight * (_D[1] * strains_in_quad[shift][0] + _D[0] * strains_in_quad[shift][1]);
-                            stress[node][2] += influence_weight *  _D[2] * strains_in_quad[shift][2];
-                        }
-                    }
+                for(const I elNL : _base::neighbors(elL))
+                    neighbors.insert(elNL);
+            for(const I elNL : neighbors) {
+                const auto& eNL = mesh().element_2d(mesh().element_2d_type(elNL));
+                for(size_t q = 0, shift = quad_shift(elNL); q < eNL->qnodes_count(); ++q, ++shift) {
+                    const T influence_weight = p2 * eNL->weight(q) * jacobian(shift) * influence_fun(quad_coord(shift), mesh().node(node));
+                    stress[node][0] += influence_weight * (_D[0] * strains_in_quad[shift][0] + _D[1] * strains_in_quad[shift][1]);
+                    stress[node][1] += influence_weight * (_D[1] * strains_in_quad[shift][0] + _D[0] * strains_in_quad[shift][1]);
+                    stress[node][2] += influence_weight *  _D[2] * strains_in_quad[shift][2];
                 }
+            }
         }
     }
 
@@ -365,7 +316,7 @@ public:
 
     template<class Influence_Function>
     Eigen::Matrix<T, Eigen::Dynamic, 1> stationary(
-        const std::vector<boundary_condition<T>> &bounds_cond, //const distributed_load<T>& right_part,
+        const std::vector<bound_cond<T>> &bounds_cond, //const distributed_load<T>& right_part,
         const T r, const T p1, const Influence_Function& influence_fun);
 
     template<class Vector, class Influence_Function>
@@ -425,7 +376,7 @@ void structural_solver<T, I>::save_as_vtk(const std::string& path, const Vector&
 template<class T, class I>
 template<class Influence_Function>
 Eigen::Matrix<T, Eigen::Dynamic, 1> structural_solver<T, I>::stationary(
-    const std::vector<boundary_condition<T>> &bounds_cond, //const distributed_load<T>& right_part,
+    const std::vector<bound_cond<T>> &bounds_cond, //const distributed_load<T>& right_part,
     const T r, const T p1, const Influence_Function& influence_fun) {
     _base::find_neighbors(r);
 
@@ -439,8 +390,8 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> structural_solver<T, I>::stationary(
 
     time = omp_get_wtime();
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(2*mesh().nodes_count());
-    integrate_boundary_pressure(f, bounds_cond);
-    displacement_on_boundary(f, bounds_cond, K_bound);
+    _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
+    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();

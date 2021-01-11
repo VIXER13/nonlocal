@@ -19,11 +19,7 @@ enum class boundary_t : uint8_t {
 };
 
 template<class T>
-struct boundary_condition {
-    static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
-    std::function<T(const std::array<T, 2>&)> func = [](const std::array<T, 2>&) noexcept { return 0; };
-    boundary_t type = boundary_t::FLOW;
-};
+using bound_cond = boundary_condition<T, boundary_t, 1>;
 
 template<class T, class I>
 class heat_equation_solver : protected finite_element_solver_base<T, I> {
@@ -96,8 +92,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                 const bool neumann_task, const T p1, const std::vector<bool>& inner_nodes) const {
-        std::vector<std::set<I>> inner_portrait(mesh().nodes_count()),
-                                 bound_portrait(mesh().nodes_count());
+        std::vector<std::unordered_set<I>> inner_portrait(mesh().nodes_count()),
+                                           bound_portrait(mesh().nodes_count());
 
         if (neumann_task) {
 #pragma omp parallel for default(none) shared(K, inner_portrait)
@@ -190,11 +186,11 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     template<class Integrate_Rule, class Influence_Function>
     void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                       const std::vector<boundary_condition<T>>& bounds_cond, const bool neumann_task,
+                       const std::vector<bound_cond<T>>& bounds_cond, const bool neumann_task,
                        const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
         std::vector<bool> inner_nodes(mesh().nodes_count(), true);
         _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
-            if(bounds_cond[b].type == boundary_t::TEMPERATURE)
+            if(bounds_cond[b].type(0) == boundary_t::TEMPERATURE)
                 inner_nodes[mesh().node_number(b, el, i)] = false;
         });
 
@@ -208,43 +204,6 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
 //        std::cout << Eigen::MatrixXd{K} << std::endl << std::endl;
 //        std::cout << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
-    }
-
-    void integrate_boundary_flow(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T>>& bounds_cond) const {
-        std::vector<std::array<T, 2>> quad_nodes, jacobi_matrices;
-        for(size_t b = 0; b < bounds_cond.size(); ++b)
-            if(bounds_cond[b].type == boundary_t::FLOW)
-                for(size_t el = 0; el < mesh().elements_count(b); ++el) {
-                    _base::approx_quad_nodes_on_bound(quad_nodes, b, el);
-                    _base::approx_jacobi_matrices_on_bound(jacobi_matrices, b, el);
-                    const auto& be = mesh().element_1d(b, el);
-                    for(size_t i = 0; i < be->nodes_count(); ++i)
-                        f[mesh().node_number(b, el, i)] += _base::template integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func);
-                }
-    }
-
-    void temperature_on_boundary(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T>>& bounds_cond,
-                                 const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
-        Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
-
-        _base::template boundary_nodes_run(
-            [this, &bounds_cond, &temperature](const size_t b, const size_t el, const size_t i) {
-                if (bounds_cond[b].type == boundary_t::TEMPERATURE) {
-                    const I node = mesh().node_number(b, el, i);
-                    if (temperature[node] == 0)
-                        temperature[node] = bounds_cond[b].func(mesh().node(node));
-                }
-            });
-
-        f -= K_bound * temperature;
-
-        _base::template boundary_nodes_run(
-            [this, &bounds_cond, &temperature, &f](const size_t b, const size_t el, const size_t i) {
-                if (bounds_cond[b].type == boundary_t::TEMPERATURE) {
-                    const I node = mesh().node_number(b, el, i);
-                    f[node] = temperature[node];
-                }
-            });
     }
 
 public:
@@ -267,12 +226,12 @@ public:
     // volume - значение интеграла по области, в случае если поставлена задача Неймана, по умолчанию 0.
     template<class Right_Part, class Influence_Function>
     Eigen::Matrix<T, Eigen::Dynamic, 1>
-    stationary(const std::vector<boundary_condition<T>>& bounds_cond, const Right_Part& right_part, 
+    stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
                const T r, const T p1, const Influence_Function& influence_fun, const T volume = 0);
 
 //    template<class Init_Distribution, class Right_Part, class Influence_Function>
 //    void nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
-//                       const std::vector<boundary_condition<T>>& bounds_cond,
+//                       const std::vector<bound_cond<T>>& bounds_cond,
 //                       const Init_Distribution& init_dist, const Right_Part& right_part,
 //                       const T r, const T p1, const Influence_Function& influence_fun,
 //                       const uintmax_t print_frequency = std::numeric_limits<uintmax_t>::max());
@@ -314,14 +273,14 @@ T heat_equation_solver<T, I>::integrate_solution(const Eigen::Matrix<T, Eigen::D
 template<class T, class I>
 template<class Right_Part, class Influence_Function>
 Eigen::Matrix<T, Eigen::Dynamic, 1> 
-heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>& bounds_cond, const Right_Part& right_part, 
+heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
                                        const T r, const T p1, const Influence_Function& influence_fun, const T volume) {
-    const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(), 
-        [](const boundary_condition<T>& bound) { return bound.type == boundary_t::FLOW; });
+    const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
+        [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
     const size_t matrix_size = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix_size);
-    integrate_boundary_flow(f, bounds_cond);
+    _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
     if(neumann_task) {
         if(std::abs(std::accumulate(f.data(), f.data() + f.size(), T{0}, [](const T sum, const T val) { return sum + val; })) > 1e-5)
             throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
@@ -341,7 +300,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
     );
 
     integrate_right_part(f, right_part);
-    temperature_on_boundary(f, bounds_cond, K_bound);
+    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
     //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
     Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
@@ -355,7 +314,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<boundary_condition<T>>&
 //template<class T, class I>
 //template<class Init_Distribution, class Right_Part, class Influence_Function>
 //void heat_equation_solver<T, I>::nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
-//                                               const std::vector<boundary_condition<T>>& bounds_cond,
+//                                               const std::vector<bound_cond<T>>& bounds_cond,
 //                                               const Init_Distribution& init_dist, const Right_Part& right_part,
 //                                               const T r, const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) {
 //    _base::find_neighbors(r);

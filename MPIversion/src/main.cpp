@@ -80,30 +80,30 @@ int main(int argc, char** argv) {
 
         mesh::mesh_2d<PetscScalar, PetscInt> msh{argv[1]};
 
-        static constexpr double r = 0.2, p1 = 1;
+        static constexpr double r = 0.2, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
 
         const auto T = fem_sol.stationary(
             { // Граничные условия
                 {   // Down
-                        [](const std::array<double, 2>& x) { return 1; },
-                        nonlocal::heat::boundary_t::TEMPERATURE
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return 1; }
                 },
 
                 {   // Right
-                        [](const std::array<double, 2>& x) { return 0; },
-                        nonlocal::heat::boundary_t::FLOW
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 0; }
                 },
 
                 {   // Up
-                        [](const std::array<double, 2>& x) { return -1; },
-                        nonlocal::heat::boundary_t::TEMPERATURE
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return -1; }
                 },
 
                 {   // Left
-                        [](const std::array<double, 2>& x) { return 0; },
-                        nonlocal::heat::boundary_t::FLOW
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 0; }
                 }
             },
             [](const std::array<double, 2>&) { return 0; }, // Правая часть
