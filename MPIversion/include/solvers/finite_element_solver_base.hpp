@@ -4,6 +4,8 @@
 #include <numeric>
 #include <unordered_set>
 #include <unordered_map>
+#include <petsc.h>
+#include <petscsystypes.h>
 #include "../../Eigen/Eigen/Sparse"
 #include "mesh.hpp"
 #include "utils.hpp"
@@ -129,10 +131,10 @@ class finite_element_solver_base {
     }
 
     static std::vector<std::vector<I>>
-    find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
+    find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres,
+                            const std::unordered_set<I>& elements, const T r) {
         std::vector<std::vector<I>> elements_neighbors(mesh.elements_count());
-#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors)
-        for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
+        for(const I elL : elements) {
             elements_neighbors[elL].reserve(mesh.elements_count());
             for(size_t elNL = 0; elNL < mesh.elements_count(); ++elNL)
                 if(utils::distance(centres[elL], centres[elNL]) < r)
@@ -142,6 +144,13 @@ class finite_element_solver_base {
         return std::move(elements_neighbors);
     }
 
+    void init_first_and_last_nodes() {
+        MPI_Comm_size(MPI_COMM_WORLD, &_size);
+        MPI_Comm_rank(MPI_COMM_WORLD, &_rank);
+        _first_node = _mesh.nodes_count() / _size *  _rank;
+        _last_node  = _mesh.nodes_count() / _size * (_rank+1) + (_rank == _size-1) * _mesh.nodes_count() % _size;
+    }
+
 protected:
     using Finite_Element_1D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_1D_Ptr;
     using Finite_Element_2D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_2D_Ptr;
@@ -149,13 +158,28 @@ protected:
     enum component : bool {X, Y};
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
+    PetscMPIInt _size = 0, _rank = 0;
+    size_t _first_node = 0, _last_node = 0;
+
     explicit finite_element_solver_base(const mesh::mesh_2d<T, I>& mesh) :
         _mesh{mesh},
         _quad_shifts{quadrature_shifts_init(_mesh)},
         _quad_coords{approx_all_quad_nodes(_mesh, _quad_shifts)},
         _jacobi_matrices{approx_all_jacobi_matrices(_mesh, _quad_shifts)},
         _nodes_elements_map{node_elements_map_init(_mesh)},
-        _global_to_local_numbering{global_to_local_numbering_init(_mesh)} {}
+        _global_to_local_numbering{global_to_local_numbering_init(_mesh)} {
+        init_first_and_last_nodes();
+
+//        PetscMPIInt rank = -1, size = -1;
+//        MPI_Comm_size(MPI_COMM_WORLD, &size);
+//        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//        for(PetscMPIInt i = 0; i < size; ++i) {
+//            if (i == rank)
+//                std::cout << "_first_node = " << _first_node << std::endl
+//                          << "_last_node  = " << _last_node  << std::endl;
+//            MPI_Barrier(MPI_COMM_WORLD);
+//        }
+    }
 
     explicit finite_element_solver_base(mesh::mesh_2d<T, I>&& mesh) :
         _mesh{std::move(mesh)},
@@ -163,7 +187,9 @@ protected:
         _quad_coords{approx_all_quad_nodes(_mesh, _quad_shifts)},
         _jacobi_matrices{approx_all_jacobi_matrices(_mesh, _quad_shifts)},
         _nodes_elements_map{node_elements_map_init(_mesh)},
-        _global_to_local_numbering{global_to_local_numbering_init(_mesh)} {}
+        _global_to_local_numbering{global_to_local_numbering_init(_mesh)} {
+        init_first_and_last_nodes();
+    }
 
     virtual ~finite_element_solver_base() noexcept = default;
 
@@ -181,7 +207,7 @@ protected:
     template<class Callback>
     void mesh_run_loc(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
+        for(size_t node = _first_node; node < _last_node; ++node) {
             for(const I el : _nodes_elements_map[node]) {
                 const auto& e = _mesh.element_2d(el);
                 const size_t i = _global_to_local_numbering[el].find(node)->second; // Проекционные функции
@@ -197,7 +223,7 @@ protected:
     template<class Callback>
     void mesh_run_nonloc(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t node = 0; node < _mesh.nodes_count(); ++node) {
+        for(size_t node = _first_node; node < _last_node; ++node) {
             for(const I elL : _nodes_elements_map[node]) {
                 const size_t iL =  _global_to_local_numbering[elL].find(node)->second; // Проекционные функции
                 for(const I elNL : _elements_neighbors[elL]) {
@@ -223,8 +249,12 @@ protected:
         static constexpr auto accumulator = [](const size_t sum, const std::unordered_set<I>& row) { return sum + row.size(); };
         K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
         K.outerIndexPtr()[0] = 0;
-        for(size_t row = 0; row < portrait.size(); ++row)
-            K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row] + portrait[row].size();
+        for(size_t row = 0; row < K.rows(); ++row) {
+            K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row];
+            if (row < portrait.size())
+                K.outerIndexPtr()[row+1] += portrait[row].size();
+        }
+
 #pragma omp parallel for default(none) shared(K, portrait)
         for(size_t row = 0; row < portrait.size(); ++row) {
             I inner_index = K.outerIndexPtr()[row];
@@ -288,7 +318,7 @@ protected:
                     const auto& be = mesh().element_1d(b, el);
                     for(size_t i = 0; i < be->nodes_count(); ++i)
                         for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
-                            if(boundary_type(bounds_cond[b].type(comp)) == boundary_type::SECOND_KIND)
+                            if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND))
                                 f[bounds_cond[b].degrees_of_freedom()*mesh().node_number(b, el, i) + comp] +=
                                     integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func(comp));
                 }
@@ -302,7 +332,7 @@ protected:
         boundary_nodes_run(
             [this, &bounds_cond, &x](const size_t b, const size_t el, const size_t i) {
                 for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
-                    if (boundary_type(bounds_cond[b].type(comp)) == boundary_type::FIRST_KIND) {
+                    if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
                         const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
                         if (x[node] == 0)
                             x[node] = bounds_cond[b].func(comp)(mesh().node(node));
@@ -314,7 +344,7 @@ protected:
         boundary_nodes_run(
             [this, &bounds_cond, &x, &f](const size_t b, const size_t el, const size_t i) {
                 for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
-                    if (boundary_type(bounds_cond[b].type(comp)) == boundary_type::FIRST_KIND) {
+                    if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
                         const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
                         f[node] = x[node];
                     }
@@ -348,8 +378,13 @@ protected:
 
 public:
     void find_neighbors(const T r) {
+        std::unordered_set<I> elements;
+        for(size_t node = _first_node; node < _last_node; ++node)
+            for(const I element : _nodes_elements_map[node])
+                elements.insert(element);
+
         const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
-        _elements_neighbors = find_elements_neighbors(_mesh, centres, r);
+        _elements_neighbors = find_elements_neighbors(_mesh, centres, elements, r);
 
         double sum = 0;
         for(size_t i = 0; i < _elements_neighbors.size(); ++i)
