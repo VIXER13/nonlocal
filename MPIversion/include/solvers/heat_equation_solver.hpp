@@ -100,6 +100,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                                            bound_portrait(_last_node - _first_node);
 
         if (neumann_task) {
+            if (_rank == _size -1)
+                inner_portrait.resize(inner_portrait.size() + 1);
 #pragma omp parallel for default(none) shared(K, inner_portrait)
             for(size_t node =  0; node < inner_portrait.size(); ++node)
                 inner_portrait[node].insert(mesh().nodes_count());
@@ -218,8 +220,12 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
         PetscLogDouble start_time = 0;
         PetscTime(&start_time);
-        MatCreateMPIAIJWithArrays(PETSC_COMM_WORLD, K.rows(), K.cols(), PETSC_DETERMINE, PETSC_DETERMINE,
-                                  K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+        std::cout << "Create start" << std::endl;
+        //MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
+        MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+                                    K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+        //MatCreateMPIAIJWithArrays(PETSC_COMM_WORLD, K.rows(), K.cols(), PETSC_DETERMINE, PETSC_DETERMINE,
+        //                          K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
         MatCreateMPIAIJWithArrays(PETSC_COMM_WORLD, K_bound.rows(), K_bound.cols(), PETSC_DETERMINE, PETSC_DETERMINE,
                                   K_bound.outerIndexPtr(), K_bound.innerIndexPtr(), K_bound.valuePtr(), &A_bound);
         PetscLogDouble end_time = 0;
@@ -335,7 +341,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     Vec b;
     VecCreate(PETSC_COMM_WORLD, &b);
     VecSetType(b, VECSTANDARD);
-    VecSetSizes(b, PETSC_DECIDE, f.size());
+    VecSetSizes(b, _last_node - _first_node + (neumann_task && _rank == _size -1), f.size());
     if (_rank == 0)
         for(int i = 0; i < f.size(); ++i)
             VecSetValues(b, 1, &i, &f[i], INSERT_VALUES);
@@ -344,14 +350,31 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     VecAssemblyEnd(b);
 
     for(PetscMPIInt i = 0; i < _size; ++i) {
-        if (i == _rank) {
+        if (i == _rank)
             std::cout << f.transpose() << std::endl << std::endl;
-        }
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
     VecView(b, nullptr);
 
+    Vec x;
+    VecDuplicate(b, &x);
+    VecAssemblyBegin(x);
+    VecAssemblyEnd(x);
+
+    KSP ksp;
+    std::cout << "KSP Create" << std::endl;
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPSetType(ksp, KSPSYMMLQ);
+    std::cout << "KSP Created" << std::endl;
+    KSPSetOperators(ksp, A, A);
+    std::cout << "KSP Set" << std::endl;
+    KSPSolve(ksp, b, x);
+    std::cout << "KSP Solved" << std::endl;
+
+    VecView(x, nullptr);
+
+    KSPDestroy(&ksp);
     MatDestroy(&A);
     MatDestroy(&A_bound);
     VecDestroy(&b);
