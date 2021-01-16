@@ -249,12 +249,8 @@ protected:
         static constexpr auto accumulator = [](const size_t sum, const std::unordered_set<I>& row) { return sum + row.size(); };
         K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
         K.outerIndexPtr()[0] = 0;
-        for(size_t row = 0; row < K.rows(); ++row) {
-            K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row];
-            if (row < portrait.size())
-                K.outerIndexPtr()[row+1] += portrait[row].size();
-        }
-
+        for(size_t row = 0; row < portrait.size(); ++row)
+            K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row] + portrait[row].size();
 #pragma omp parallel for default(none) shared(K, portrait)
         for(size_t row = 0; row < portrait.size(); ++row) {
             I inner_index = K.outerIndexPtr()[row];
@@ -325,7 +321,8 @@ protected:
     }
 
     template<class B, size_t N>
-    void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T, B, N>>& bounds_cond,
+    void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, Vec& petsc_f,
+                                       const std::vector<boundary_condition<T, B, N>>& bounds_cond,
                                        const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
         Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
 
@@ -340,15 +337,24 @@ protected:
             });
 
         f -= K_bound * x;
+        for(PetscInt i = 0; i < f.size(); ++i)
+            VecSetValues(petsc_f, 1, &i, &f[i], ADD_VALUES);
+        VecAssemblyBegin(petsc_f);
+        VecAssemblyEnd(petsc_f);
 
-        boundary_nodes_run(
-            [this, &bounds_cond, &x, &f](const size_t b, const size_t el, const size_t i) {
+        if (_rank == 0) {
+            boundary_nodes_run(
+            [this, &bounds_cond, &x, &f, &petsc_f](const size_t b, const size_t el, const size_t i) {
                 for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
                     if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
                         const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
+                        VecSetValues(petsc_f, 1, &node, &x[node], INSERT_VALUES);
                         f[node] = x[node];
                     }
             });
+        }
+        VecAssemblyBegin(petsc_f);
+        VecAssemblyEnd(petsc_f);
     }
 
     T jacobian(const size_t quad_shift) const noexcept {

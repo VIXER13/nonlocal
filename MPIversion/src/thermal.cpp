@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
         const auto T = fem_sol.stationary(
             { // Граничные условия
                 {   // Down
-                    nonlocal::heat::boundary_t::FLOW,
+                    nonlocal::heat::boundary_t::TEMPERATURE,
                     [](const std::array<double, 2>& x) { return -1; },
                 },
 
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
                 },
 
                 {   // Up
-                    nonlocal::heat::boundary_t::FLOW,
+                    nonlocal::heat::boundary_t::TEMPERATURE,
                     [](const std::array<double, 2>& x) { return 1; },
                 },
 

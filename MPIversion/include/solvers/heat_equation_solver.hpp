@@ -96,12 +96,10 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                 const bool neumann_task, const T p1, const std::vector<bool>& inner_nodes) const {
-        std::vector<std::unordered_set<I>> inner_portrait(_last_node - _first_node),
-                                           bound_portrait(_last_node - _first_node);
+        std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
+                                           bound_portrait(K_bound.rows());
 
         if (neumann_task) {
-            if (_rank == _size -1)
-                inner_portrait.resize(inner_portrait.size() + 1);
 #pragma omp parallel for default(none) shared(K, inner_portrait)
             for(size_t node =  0; node < inner_portrait.size(); ++node)
                 inner_portrait[node].insert(mesh().nodes_count());
@@ -113,7 +111,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                     inner_portrait[row - shift].insert(col);
             } else if (row != col) {
                 if (!inner_nodes[col])
-                    bound_portrait[row - shift].insert(col);
+                    bound_portrait[row].insert(col);
             } else
                 inner_portrait[row - shift].insert(col);
         };
@@ -161,7 +159,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                         K.coeffRef(row - _first_node, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
                 } else if (row != col) {
                     if (!inner_nodes[col])
-                        K_bound.coeffRef(row - _first_node, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                        K_bound.coeffRef(row, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
                 } else
                     K.coeffRef(row - _first_node, col) = 1;
             }
@@ -179,8 +177,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                                                                           mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
                     } else if (row != col)
                         if (!inner_nodes[col])
-                            K_bound.coeffRef(row - _first_node, col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                                              mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                            K_bound.coeffRef(row, col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
+                                                                                mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
                 }
             );
         }
@@ -191,8 +189,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
     // Integrate_Rule - функтор с сигнатурой T(const Finite_Element_2D_Ptr&, const size_t, const size_t, const std::vector<std::array<T, 4>>&, size_t)
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     template<class Integrate_Rule, class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                       Mat& A, Mat& A_bound,
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound, Mat& A,
                        const std::vector<bound_cond<T>>& bounds_cond, const bool neumann_task,
                        const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
         std::vector<bool> inner_nodes(mesh().nodes_count(), true);
@@ -221,18 +218,11 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
         PetscLogDouble start_time = 0;
         PetscTime(&start_time);
         std::cout << "Create start" << std::endl;
-        //MatSetOption(A, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_FALSE);
         MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
                                     K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
-        //MatCreateMPIAIJWithArrays(PETSC_COMM_WORLD, K.rows(), K.cols(), PETSC_DETERMINE, PETSC_DETERMINE,
-        //                          K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
-        MatCreateMPIAIJWithArrays(PETSC_COMM_WORLD, K_bound.rows(), K_bound.cols(), PETSC_DETERMINE, PETSC_DETERMINE,
-                                  K_bound.outerIndexPtr(), K_bound.innerIndexPtr(), K_bound.valuePtr(), &A_bound);
         PetscLogDouble end_time = 0;
         PetscTime(&end_time);
         std::cout << "Assambling time = " << end_time - start_time << std::endl;
-//        MatView(A, nullptr);
-//        MatView(A_bound, nullptr);
     }
 
 public:
@@ -322,32 +312,25 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     if (p1 < _base::MAX_LOCAL_WEIGHT)
         _base::find_neighbors(r);
 
-    Mat A, A_bound;
+    Mat A;
+    Vec b;
+    VecCreate(PETSC_COMM_WORLD, &b);
+    VecSetType(b, VECSTANDARD);
+    VecSetSizes(b, rows, f.size());
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
-                                               K_bound(rows, cols);
+                                               K_bound(cols, cols);
     create_matrix(
-        K, K_bound, A, A_bound, bounds_cond, neumann_task,
+        K, K_bound, A, bounds_cond, neumann_task,
         [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
             return integrate_loc(e, i, j, quad_shift); },
         p1, influence_fun
     );
 
     MatView(A, nullptr);
-    MatView(A_bound, nullptr);
 
     if (_rank == 0)
         integrate_right_part(f, right_part);
-
-    Vec b;
-    VecCreate(PETSC_COMM_WORLD, &b);
-    VecSetType(b, VECSTANDARD);
-    VecSetSizes(b, _last_node - _first_node + (neumann_task && _rank == _size -1), f.size());
-    if (_rank == 0)
-        for(int i = 0; i < f.size(); ++i)
-            VecSetValues(b, 1, &i, &f[i], INSERT_VALUES);
-            //VecSetValue(b, i, f[i], INSERT_VALUES);
-    VecAssemblyBegin(b);
-    VecAssemblyEnd(b);
+    _base::template boundary_condition_first_kind(f, b, bounds_cond, K_bound);
 
     for(PetscMPIInt i = 0; i < _size; ++i) {
         if (i == _rank)
@@ -355,6 +338,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
         MPI_Barrier(MPI_COMM_WORLD);
     }
 
+    std::cout << "b = " << std::endl;
     VecView(b, nullptr);
 
     Vec x;
@@ -363,20 +347,16 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     VecAssemblyEnd(x);
 
     KSP ksp;
-    std::cout << "KSP Create" << std::endl;
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPSetType(ksp, KSPSYMMLQ);
-    std::cout << "KSP Created" << std::endl;
     KSPSetOperators(ksp, A, A);
-    std::cout << "KSP Set" << std::endl;
     KSPSolve(ksp, b, x);
-    std::cout << "KSP Solved" << std::endl;
 
+    std::cout << "x = " << std::endl;
     VecView(x, nullptr);
 
     KSPDestroy(&ksp);
     MatDestroy(&A);
-    MatDestroy(&A_bound);
     VecDestroy(&b);
 //    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 //
