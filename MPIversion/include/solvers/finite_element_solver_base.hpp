@@ -17,7 +17,7 @@ enum class boundary_type : uint8_t {
     SECOND_KIND
 };
 
-template<class T, class B, size_t N>
+template<class T, class B, size_t DoF>
 struct boundary_condition {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
@@ -26,9 +26,9 @@ struct boundary_condition {
         std::function<T(const std::array<T, 2>&)> func = [](const std::array<T, 2>&) constexpr noexcept { return 0; };
     };
 
-    std::array<boundary_pair, N> data;
+    std::array<boundary_pair, DoF> data;
 
-    static constexpr size_t degrees_of_freedom() { return N; }
+    static constexpr size_t degrees_of_freedom() { return DoF; }
 
     B type(const size_t b) const { return data[b].type; }
     const std::function<T(const std::array<T, 2>&)>& func(const size_t b) const { return data[b].func; }
@@ -169,16 +169,6 @@ protected:
         _nodes_elements_map{node_elements_map_init(_mesh)},
         _global_to_local_numbering{global_to_local_numbering_init(_mesh)} {
         init_first_and_last_nodes();
-
-//        PetscMPIInt rank = -1, size = -1;
-//        MPI_Comm_size(MPI_COMM_WORLD, &size);
-//        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//        for(PetscMPIInt i = 0; i < size; ++i) {
-//            if (i == rank)
-//                std::cout << "_first_node = " << _first_node << std::endl
-//                          << "_last_node  = " << _last_node  << std::endl;
-//            MPI_Barrier(MPI_COMM_WORLD);
-//        }
     }
 
     explicit finite_element_solver_base(mesh::mesh_2d<T, I>&& mesh) :
@@ -303,8 +293,9 @@ protected:
         return integral;
     }
 
-    template<class B, size_t N>
-    void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const std::vector<boundary_condition<T, B, N>>& bounds_cond) const {
+    template<class B, size_t DoF>
+    void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                  const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
         std::vector<std::array<T, 2>> quad_nodes, jacobi_matrices;
         for(size_t b = 0; b < bounds_cond.size(); ++b)
             if (bounds_cond[b].contains_condition_second_kind())
@@ -313,48 +304,42 @@ protected:
                     approx_jacobi_matrices_on_bound(jacobi_matrices, b, el);
                     const auto& be = mesh().element_1d(b, el);
                     for(size_t i = 0; i < be->nodes_count(); ++i)
-                        for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
-                            if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND))
-                                f[bounds_cond[b].degrees_of_freedom()*mesh().node_number(b, el, i) + comp] +=
-                                    integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func(comp));
+                        for(size_t comp = 0; comp < DoF; ++comp)
+                            if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND)) {
+                                const I node = DoF * mesh().node_number(b, el, i) + comp;
+                                if (node >= DoF * _first_node && node < DoF * _last_node)
+                                    f[node - DoF * _first_node] += integrate_boundary_gradient(be, i, quad_nodes, jacobi_matrices, bounds_cond[b].func(comp));
+                            }
+
                 }
     }
 
-    template<class B, size_t N>
-    void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, Vec& petsc_f,
-                                       const std::vector<boundary_condition<T, B, N>>& bounds_cond,
+    template<class B, size_t DoF>
+    void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                       const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
                                        const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
-        Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
-
+        Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K_bound.cols());
         boundary_nodes_run(
             [this, &bounds_cond, &x](const size_t b, const size_t el, const size_t i) {
-                for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
+                for(size_t comp = 0; comp < DoF; ++comp)
                     if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
-                        const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
+                        const I node = DoF * mesh().node_number(b, el, i) + comp;
                         if (x[node] == 0)
                             x[node] = bounds_cond[b].func(comp)(mesh().node(node));
                     }
             });
 
         f -= K_bound * x;
-        for(PetscInt i = 0; i < f.size(); ++i)
-            VecSetValues(petsc_f, 1, &i, &f[i], ADD_VALUES);
-        VecAssemblyBegin(petsc_f);
-        VecAssemblyEnd(petsc_f);
 
-        if (_rank == 0) {
-            boundary_nodes_run(
-            [this, &bounds_cond, &x, &f, &petsc_f](const size_t b, const size_t el, const size_t i) {
-                for(size_t comp = 0; comp < bounds_cond[b].degrees_of_freedom(); ++comp)
-                    if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
-                        const I node = bounds_cond[b].degrees_of_freedom() * mesh().node_number(b, el, i) + comp;
-                        VecSetValues(petsc_f, 1, &node, &x[node], INSERT_VALUES);
-                        f[node] = x[node];
-                    }
-            });
-        }
-        VecAssemblyBegin(petsc_f);
-        VecAssemblyEnd(petsc_f);
+        boundary_nodes_run(
+        [this, &bounds_cond, &x, &f](const size_t b, const size_t el, const size_t i) {
+            for(size_t comp = 0; comp < DoF; ++comp)
+                if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
+                    const I node = DoF * mesh().node_number(b, el, i) + comp;
+                    if (node >= DoF * _first_node && node < DoF * _last_node)
+                        f[node - DoF * _first_node] = x[node];
+                }
+        });
     }
 
     T jacobian(const size_t quad_shift) const noexcept {

@@ -87,11 +87,12 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
     template<class Right_Part>
     void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
-        for(size_t el = 0; el < mesh().elements_count(); ++el) {
-            const auto& e = mesh().element_2d(el);
-            for(size_t i = 0; i < e->nodes_count(); ++i)
-                f[mesh().node_number(el, i)] += _base::template integrate_function(e, i, quad_shift(el), right_part);
-        }
+        for(size_t node = _first_node; node < _last_node; ++node)
+            for(const I el : _base::nodes_elements_map(node)) {
+                const size_t i = _base::global_to_local_numbering(el).find(node)->second;
+                f[mesh().node_number(el, i) - _first_node] +=
+                    _base::template integrate_function(mesh().element_2d(el), i, quad_shift(el), right_part);
+            }
     }
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
@@ -111,7 +112,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                     inner_portrait[row - shift].insert(col);
             } else if (row != col) {
                 if (!inner_nodes[col])
-                    bound_portrait[row].insert(col);
+                    bound_portrait[row - shift].insert(col);
             } else
                 inner_portrait[row - shift].insert(col);
         };
@@ -128,10 +129,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                 });
         }
 
-        _base::convert_portrait(K, inner_portrait);
-        inner_portrait.reserve(0);
+        _base::convert_portrait(K,       inner_portrait);
         _base::convert_portrait(K_bound, bound_portrait);
-        bound_portrait.reserve(0);
     }
 
     template<class Integrate_Rule, class Influence_Function>
@@ -159,7 +158,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                         K.coeffRef(row - _first_node, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
                 } else if (row != col) {
                     if (!inner_nodes[col])
-                        K_bound.coeffRef(row, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                        K_bound.coeffRef(row - _first_node, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
                 } else
                     K.coeffRef(row - _first_node, col) = 1;
             }
@@ -177,8 +176,8 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                                                                           mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
                     } else if (row != col)
                         if (!inner_nodes[col])
-                            K_bound.coeffRef(row, col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                                mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                            K_bound.coeffRef(row - _first_node, col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
+                                                                                              mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
                 }
             );
         }
@@ -296,29 +295,26 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
                                        const T r, const T p1, const Influence_Function& influence_fun, const T volume) {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
         [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
-    const size_t rows = _last_node - _first_node + (neumann_task && _rank == _size-1),
-                 cols = neumann_task ? mesh().nodes_count()+1 : mesh().nodes_count();
-
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(cols);
-    if (_rank == 0) {
-        _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
-        if(neumann_task) {
-            if(std::abs(std::accumulate(f.data(), f.data() + f.size(), T{0}, [](const T sum, const T val) { return sum + val; })) > 1e-5)
-                throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
-            f[mesh().nodes_count()] = volume;
-        }
-    }
+    const size_t rows = _last_node - _first_node + (neumann_task && _rank == _size - 1),
+                 cols = mesh().nodes_count() + neumann_task;
+    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
+    _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
+//        if(neumann_task) {
+//            if(std::abs(std::accumulate(f.data(), f.data() + f.size(), T{0}, [](const T sum, const T val) { return sum + val; })) > 1e-5)
+//                throw std::domain_error{"The problem is unsolvable. Contour integral != 0."};
+//            f[mesh().nodes_count()] = volume;
+//        }
 
     if (p1 < _base::MAX_LOCAL_WEIGHT)
         _base::find_neighbors(r);
 
-    Mat A;
-    Vec b;
-    VecCreate(PETSC_COMM_WORLD, &b);
-    VecSetType(b, VECSTANDARD);
-    VecSetSizes(b, rows, f.size());
+    Mat A = nullptr;
+    Vec f_petsc = nullptr;
+    VecCreate(PETSC_COMM_WORLD, &f_petsc);
+    VecSetType(f_petsc, VECSTANDARD);
+    VecSetSizes(f_petsc, rows, cols);
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
-                                               K_bound(cols, cols);
+                                               K_bound(rows, cols);
     create_matrix(
         K, K_bound, A, bounds_cond, neumann_task,
         [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
@@ -328,9 +324,13 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
 
     MatView(A, nullptr);
 
-    if (_rank == 0)
-        integrate_right_part(f, right_part);
-    _base::template boundary_condition_first_kind(f, b, bounds_cond, K_bound);
+    integrate_right_part(f, right_part);
+    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
+
+    for(I i = _first_node; i < _last_node; ++i)
+        VecSetValues(f_petsc, 1, &i, &f[i - _first_node], INSERT_VALUES);
+    VecAssemblyBegin(f_petsc);
+    VecAssemblyEnd(f_petsc);
 
     for(PetscMPIInt i = 0; i < _size; ++i) {
         if (i == _rank)
@@ -339,10 +339,10 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     }
 
     std::cout << "b = " << std::endl;
-    VecView(b, nullptr);
+    VecView(f_petsc, nullptr);
 
     Vec x;
-    VecDuplicate(b, &x);
+    VecDuplicate(f_petsc, &x);
     VecAssemblyBegin(x);
     VecAssemblyEnd(x);
 
@@ -350,14 +350,30 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     KSPCreate(PETSC_COMM_WORLD, &ksp);
     KSPSetType(ksp, KSPSYMMLQ);
     KSPSetOperators(ksp, A, A);
-    KSPSolve(ksp, b, x);
+    KSPSolve(ksp, f_petsc, x);
 
     std::cout << "x = " << std::endl;
     VecView(x, nullptr);
 
+    Vec y = nullptr;
+    VecScatter toall = nullptr;
+    VecScatterCreateToAll(x, &toall, &y);
+    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+
+    f.resize(cols);
+    PetscScalar *data = nullptr;
+    VecGetArray(y, &data);
+    for(I i = 0; i < f.size(); ++i)
+        f[i] = data[i];
+
+    VecScatterDestroy(&toall);
     KSPDestroy(&ksp);
     MatDestroy(&A);
-    VecDestroy(&b);
+    VecDestroy(&f_petsc);
+    VecDestroy(&x);
+    VecDestroy(&y);
+
 //    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 //
 //    //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
@@ -367,7 +383,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
 //    temperature.conservativeResize(mesh().nodes_count());
 //
 //    return std::move(temperature);
-    return {};
+    return f;
 }
 
 //template<class T, class I>
