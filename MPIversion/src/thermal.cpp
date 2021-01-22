@@ -28,6 +28,9 @@ int main(int argc, char** argv) {
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         mesh::mesh_2d<double> msh{argv[1]};
 
+        mesh::mesh_info<double, int> info{std::make_shared<mesh::mesh_2d<double>>(msh)};
+        info.find_neighbours(r);
+
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
 
         const auto T = fem_sol.stationary(

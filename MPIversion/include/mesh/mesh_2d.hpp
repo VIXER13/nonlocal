@@ -41,7 +41,7 @@ enum class vtk_element_number : uintmax_t {
 };
 
 template<class T, class I = int32_t>
-class mesh_2d {
+class mesh_2d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     static_assert(std::is_integral_v<I>, "The I must be integral.");
 
