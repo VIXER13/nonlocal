@@ -4,10 +4,10 @@
 
 namespace {
 
-void save_raw_data(const mesh::mesh_2d<double>& msh, const Eigen::Matrix<double, Eigen::Dynamic, 1>& T) {
+void save_raw_data(const std::shared_ptr<mesh::mesh_2d<double>>& mesh, const Eigen::Matrix<double, Eigen::Dynamic, 1>& T) {
     std::ofstream Tout{"T.csv"};
-    for(size_t i = 0; i < msh.nodes_count(); ++i)
-        Tout << msh.node(i)[0] << ',' << msh.node(i)[1] << ',' << T[i] << '\n';
+    for(size_t i = 0; i < mesh->nodes_count(); ++i)
+        Tout << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << T[i] << '\n';
 }
 
 }
@@ -24,14 +24,13 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
         omp_set_num_threads(1);
 
-        static constexpr double r = 0.2, p1 = 0.5;
+        static constexpr double r = 0.2, p1 = 1;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        mesh::mesh_2d<double> msh{argv[1]};
 
-        mesh::mesh_info<double, int> info{std::make_shared<mesh::mesh_2d<double>>(msh)};
-        info.find_neighbours(r);
-
-        nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
+        auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
+        auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
+        mesh_info->find_neighbours(r);
+        nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_info};
 
         const auto T = fem_sol.stationary(
             { // Граничные условия
@@ -56,16 +55,15 @@ int main(int argc, char** argv) {
                 }
             },
             [](const std::array<double, 2>&) { return -4; }, // Правая часть
-            r,  // Радиус влияния
             p1, // Вес
             bell // Функция влияния
         );
-
+//
         int rank = -1;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) {
             fem_sol.save_as_vtk("heat.vtk", T);
-            save_raw_data(msh, T);
+            save_raw_data(mesh, T);
             std::cout << fem_sol.integrate_solution(T) << std::endl;
         }
     } catch(const std::exception& e) {
