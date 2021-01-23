@@ -2,13 +2,10 @@
 #define FINITE_ELEMENT_ROUTINE_HPP
 
 #include <numeric>
-#include <unordered_set>
-#include <unordered_map>
 #include <petsc.h>
 #include <petscsystypes.h>
 #include "../../Eigen/Eigen/Sparse"
 #include "mesh.hpp"
-#include "utils.hpp"
 
 namespace nonlocal {
 

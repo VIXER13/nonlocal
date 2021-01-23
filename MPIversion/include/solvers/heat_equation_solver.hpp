@@ -205,14 +205,14 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
         calc_matrix(K, K_bound, integrate_rule, neumann_task, p1, influence_fun, inner_nodes);
         std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 
-        for(PetscMPIInt i = 0; i < size(); ++i) {
-            if (i == rank()) {
-                std::cout << "rank = " << rank() << std::endl << std::endl;
-                std::cout << Eigen::MatrixXd{K} << std::endl << std::endl
-                          << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
-            }
-            MPI_Barrier(MPI_COMM_WORLD);
-        }
+//        for(PetscMPIInt i = 0; i < size(); ++i) {
+//            if (i == rank()) {
+//                std::cout << "rank = " << rank() << std::endl << std::endl;
+//                std::cout << Eigen::MatrixXd{K} << std::endl << std::endl
+//                          << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
+//            }
+//            MPI_Barrier(MPI_COMM_WORLD);
+//        }
 
         PetscLogDouble start_time = 0;
         PetscTime(&start_time);
@@ -316,7 +316,7 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
         p1, influence_fun
     );
 
-    MatView(A, nullptr);
+    //MatView(A, nullptr);
 
     integrate_right_part(f, right_part);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
@@ -326,14 +326,14 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     VecAssemblyBegin(f_petsc);
     VecAssemblyEnd(f_petsc);
 
-    for(PetscMPIInt i = 0; i < size(); ++i) {
-        if (i == rank())
-            std::cout << f.transpose() << std::endl << std::endl;
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
+    //for(PetscMPIInt i = 0; i < size(); ++i) {
+    //    if (i == rank())
+    //        std::cout << f.transpose() << std::endl << std::endl;
+    //    MPI_Barrier(MPI_COMM_WORLD);
+    //}
 
-    std::cout << "b = " << std::endl;
-    VecView(f_petsc, nullptr);
+    //std::cout << "b = " << std::endl;
+    //VecView(f_petsc, nullptr);
 
     Vec x;
     VecDuplicate(f_petsc, &x);
@@ -346,8 +346,8 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     KSPSetOperators(ksp, A, A);
     KSPSolve(ksp, f_petsc, x);
 
-    std::cout << "x = " << std::endl;
-    VecView(x, nullptr);
+    //std::cout << "x = " << std::endl;
+    //VecView(x, nullptr);
 
     Vec y = nullptr;
     VecScatter toall = nullptr;
