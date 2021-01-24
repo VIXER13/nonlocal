@@ -199,7 +199,10 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 
         double time = omp_get_wtime();
         create_matrix_portrait(K, K_bound, neumann_task, p1, inner_nodes);
-        std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl;
+        std::cout << "rank = " << rank() << std::endl;
+        std::cout << "K.nonzero() = " << K.nonZeros() << std::endl;
+        std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;
+        std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl << std::endl;
 
         time = omp_get_wtime();
         calc_matrix(K, K_bound, integrate_rule, neumann_task, p1, influence_fun, inner_nodes);

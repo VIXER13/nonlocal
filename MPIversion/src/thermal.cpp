@@ -31,51 +31,50 @@ int main(int argc, char** argv) {
         auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
         mesh_info->find_neighbours(r);
 
-        for(int i = 0; i < mesh_info->size(); ++i) {
-            if (i == mesh_info->rank()) {
-                std::cout << "Rank = " << i << std::endl;
-                const double count = mesh_info->average_neighbours_count();
-                std::cout << "Average neighbours: " << count << std::endl << std::endl;
-            }
-            MPI_Barrier(MPI_COMM_WORLD);
-        }
-
-//        nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_info};
-//
-//        const auto T = fem_sol.stationary(
-//            { // Граничные условия
-//                {   // Down
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                },
-//
-//                {   // Right
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                },
-//
-//                {   // Up
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                },
-//
-//                {   // Left
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                }
-//            },
-//            [](const std::array<double, 2>&) { return -4; }, // Правая часть
-//            p1, // Вес
-//            bell // Функция влияния
-//        );
-//
-//        int rank = -1;
-//        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//        if (rank == 0) {
-//            fem_sol.save_as_vtk("heat.vtk", T);
-//            save_raw_data(mesh, T);
-//            std::cout << fem_sol.integrate_solution(T) << std::endl;
+//        for(int i = 0; i < mesh_info->size(); ++i) {
+//            if (i == mesh_info->rank()) {
+//                std::cout << "Rank = " << i << std::endl;
+//                mesh_info->average_neighbours_count();
+//            }
+//            MPI_Barrier(MPI_COMM_WORLD);
 //        }
+
+        nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_info};
+
+        const auto T = fem_sol.stationary(
+            { // Граничные условия
+                {   // Down
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                },
+
+                {   // Right
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                },
+
+                {   // Up
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                },
+
+                {   // Left
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                }
+            },
+            [](const std::array<double, 2>&) { return -4; }, // Правая часть
+            p1, // Вес
+            bell // Функция влияния
+        );
+
+        int rank = -1;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0) {
+            fem_sol.save_as_vtk("heat.vtk", T);
+            save_raw_data(mesh, T);
+            std::cout << fem_sol.integrate_solution(T) << std::endl;
+        }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
