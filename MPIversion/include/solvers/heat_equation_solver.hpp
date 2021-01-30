@@ -188,7 +188,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
     // Integrate_Rule - функтор с сигнатурой T(const Finite_Element_2D_Ptr&, const size_t, const size_t, const std::vector<std::array<T, 4>>&, size_t)
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     template<class Integrate_Rule, class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound, Mat& A,
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                        const std::vector<bound_cond<T>>& bounds_cond, const bool neumann_task,
                        const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
         std::vector<bool> inner_nodes(mesh().nodes_count(), true);
@@ -216,20 +216,11 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
 //            }
 //            MPI_Barrier(MPI_COMM_WORLD);
 //        }
-
-        PetscLogDouble start_time = 0;
-        PetscTime(&start_time);
-        std::cout << "Create start" << std::endl;
-        MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
-                                    K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
-        PetscLogDouble end_time = 0;
-        PetscTime(&end_time);
-        std::cout << "Assambling time = " << end_time - start_time << std::endl;
     }
 
 public:
-    explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh) :
-        _base{mesh} {}
+    explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh)
+        : _base{mesh} {}
 
     ~heat_equation_solver() override = default;
 
@@ -313,11 +304,20 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
                                                K_bound(rows, cols);
     create_matrix(
-        K, K_bound, A, bounds_cond, neumann_task,
+        K, K_bound, bounds_cond, neumann_task,
         [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
             return integrate_loc(e, i, j, quad_shift); },
         p1, influence_fun
     );
+
+    PetscLogDouble start_time = 0;
+    PetscTime(&start_time);
+    std::cout << "Create start" << std::endl;
+    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+    PetscLogDouble end_time = 0;
+    PetscTime(&end_time);
+    std::cout << "Assambling time = " << end_time - start_time << std::endl;
 
     //MatView(A, nullptr);
 

@@ -215,9 +215,12 @@ protected:
         });
     }
 
-    T jacobian(const size_t quad_shift) const noexcept {
-        const std::array<T, 4>& J = jacobi_matrix(quad_shift);
+    static T jacobian(const std::array<T, 4>& J) noexcept {
         return std::abs(J[0] * J[3] - J[1] * J[2]);
+    }
+
+    T jacobian(const size_t quad_shift) const noexcept {
+        return jacobian(jacobi_matrix(quad_shift));
     }
 
     static T jacobian(const std::array<T, 2>& jacobi_matrix) noexcept {

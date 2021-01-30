@@ -46,6 +46,8 @@ class structural_solver : protected finite_element_solver_base<T, I> {
     using _base::quad_shift;
     using _base::quad_coord;
     using _base::jacobian;
+    using _base::first_node;
+    using _base::last_node;
 
     std::array<T, 3> _D;
     //std::vector<std::vector<I>> _nodes_neighbors;
@@ -93,18 +95,18 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                 const T p1, const std::vector<bool>& inner_nodes) const {
-        std::vector<std::unordered_set<I>> inner_portrait(2 * mesh().nodes_count()),
-                                           bound_portrait(2 * mesh().nodes_count());
+        std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
+                                           bound_portrait(K_bound.rows());
 
-        const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait](const I row, const I col) {
+        const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = 2 * first_node()](const I row, const I col) {
             if (inner_nodes[row] && inner_nodes[col]) {
                 if (row <= col)
-                    inner_portrait[row].insert(col);
+                    inner_portrait[row - shift].insert(col);
             } else if (row != col) {
                 if (!inner_nodes[col])
-                    bound_portrait[row].insert(col);
+                    bound_portrait[row - shift].insert(col);
             } else
-                inner_portrait[row].insert(col);
+                inner_portrait[row - shift].insert(col);
         };
 
         const auto structural_indexator = [&indexator](const I row, const I col) {
@@ -127,27 +129,25 @@ class structural_solver : protected finite_element_solver_base<T, I> {
         }
 
         _base::convert_portrait(K, inner_portrait);
-        inner_portrait.reserve(0);
         _base::convert_portrait(K_bound, bound_portrait);
-        bound_portrait.reserve(0);
     }
 
     template<class Influence_Function>
     void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                      const T p1, const Influence_Function& influence_fun, const std::vector<bool>& inner_nodes) const {
         const auto filler_loc =
-            [this, &K, &K_bound, &inner_nodes, p1]
+            [this, &K, &K_bound, &inner_nodes, p1, shift = 2 * first_node()]
             (const size_t el, const size_t i, const size_t j, const component proj, const component approx, const auto& integrate_rule) {
                 const I row = 2 * mesh().node_number(el, i) + I(proj),
                         col = 2 * mesh().node_number(el, j) + I(approx);
                 if (inner_nodes[row] && inner_nodes[col]) {
                     if (row <= col)
-                        K.coeffRef(row, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                        K.coeffRef(row - shift, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
                 } else if (row != col) {
                     if (!inner_nodes[col])
-                        K_bound.coeffRef(row, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                        K_bound.coeffRef(row - shift, col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
                 } else
-                    K.coeffRef(row, col) = 1;
+                    K.coeffRef(row - shift, col) = 1;
             };
 
         _base::template mesh_run_loc(
@@ -162,18 +162,18 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
         if (p1 < _base::MAX_LOCAL_WEIGHT) {
             const auto filler_nonloc =
-                [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
+                [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1, shift = 2 * first_node()]
                 (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL, const component proj, const component approx, const auto& integrate_rule) {
                     const I row = 2 * mesh().node_number(elL,  iL ) + I(proj),
                             col = 2 * mesh().node_number(elNL, jNL) + I(approx);
                     if (inner_nodes[row] && inner_nodes[col]) {
                         if (row <= col)
-                            K.coeffRef(row, col) += p2 * integrate_rule(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                        mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                            K.coeffRef(row - shift, col) += p2 * integrate_rule(mesh().element_2d(elL ), iL,  quad_shift(elL ),
+                                                                                mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
                     } else if (row != col)
                         if (!inner_nodes[col])
-                            K_bound.coeffRef(row, col) += p2 * integrate_rule(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                              mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                            K_bound.coeffRef(row - shift, col) += p2 * integrate_rule(mesh().element_2d(elL ), iL,  quad_shift(elL ),
+                                                                                      mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
                 };
 
             _base::template mesh_run_nonloc(
@@ -213,14 +213,11 @@ class structural_solver : protected finite_element_solver_base<T, I> {
 
     template<class Vector>
     std::array<std::vector<std::array<T, 3>>, 2> strains_and_stress_loc(const Vector& displacement) const {
-        std::vector<uint8_t> repeating(mesh().nodes_count(), 0); // Подсчёт повторений узла.
-                                                                 // Будем надеяться, что один узел может принадлежать не более 255 элементам
         std::vector<std::array<T, 3>> strain(mesh().nodes_count(), std::array<T, 3>{}),
                                       stress(mesh().nodes_count(), std::array<T, 3>{});
         for(size_t el = 0; el < mesh().elements_count(); ++el) {
             const auto& e = mesh().element_2d(el);
             for(size_t i = 0; i < e->nodes_count(); ++i) {
-                ++repeating[mesh().node_number(el, i)];
                 std::array<T, 4> jacobi_matrix = {};
                 for(size_t j = 0; j < e->nodes_count(); ++j) {
                     const std::array<T, 2>& node = mesh().node(mesh().node_number(el, j));
@@ -251,12 +248,13 @@ class structural_solver : protected finite_element_solver_base<T, I> {
         }
 
         for(size_t i = 0; i < mesh().nodes_count(); ++i) {
-            strain[i][_11] /=   repeating[i];
-            strain[i][_22] /=   repeating[i];
-            strain[i][_12] /= 2*repeating[i];
-            stress[i][_11] /=   repeating[i];
-            stress[i][_22] /=   repeating[i];
-            stress[i][_12] /= 2*repeating[i];
+            const size_t repeating_count = _base::nodes_elements_map(i).size();
+            strain[i][_11] /=     repeating_count;
+            strain[i][_22] /=     repeating_count;
+            strain[i][_12] /= 2 * repeating_count;
+            stress[i][_11] /=     repeating_count;
+            stress[i][_22] /=     repeating_count;
+            stress[i][_12] /= 2 * repeating_count;
         }
 
         return {std::move(strain), std::move(stress)};
@@ -300,13 +298,9 @@ class structural_solver : protected finite_element_solver_base<T, I> {
     }
 
 public:
-    explicit structural_solver(const mesh::mesh_2d<T, I>& mesh, const parameters<T>& params) :
-        _base{mesh},
-        _D{hooke_matrix(params)} {}
-
-    explicit structural_solver(mesh::mesh_2d<T, I>&& mesh, const parameters<T>& params) :
-        _base{std::move(mesh)},
-        _D{hooke_matrix(params)} {}
+    explicit structural_solver(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh, const parameters<T>& params)
+        : _base{mesh}
+        , _D{hooke_matrix(params)} {}
 
     ~structural_solver() override = default;
 
@@ -317,7 +311,7 @@ public:
     template<class Influence_Function>
     Eigen::Matrix<T, Eigen::Dynamic, 1> stationary(
         const std::vector<bound_cond<T>> &bounds_cond, //const distributed_load<T>& right_part,
-        const T r, const T p1, const Influence_Function& influence_fun);
+        const T p1, const Influence_Function& influence_fun);
 
     template<class Vector, class Influence_Function>
     std::array<std::vector<std::array<T, 3>>, 2> strains_and_stress(
@@ -377,30 +371,76 @@ template<class T, class I>
 template<class Influence_Function>
 Eigen::Matrix<T, Eigen::Dynamic, 1> structural_solver<T, I>::stationary(
     const std::vector<bound_cond<T>> &bounds_cond, //const distributed_load<T>& right_part,
-    const T r, const T p1, const Influence_Function& influence_fun) {
-    _base::find_neighbors(r);
-
+    const T p1, const Influence_Function& influence_fun) {
     double time = omp_get_wtime();
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (2*mesh().nodes_count(), 2*mesh().nodes_count()),
-                                               K_bound(2*mesh().nodes_count(), 2*mesh().nodes_count());
+    const size_t rows = 2 * (last_node() - first_node()),
+                 cols = 2*mesh().nodes_count();
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
+                                               K_bound(rows, cols);
     create_matrix(K, K_bound, bounds_cond, p1, influence_fun);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
-    //integrate_right_part(mesh, right_part, f);
+    Mat A = nullptr;
+    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
 
     time = omp_get_wtime();
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(2*mesh().nodes_count());
+    Vec f_petsc = nullptr;
+    VecCreate(PETSC_COMM_WORLD, &f_petsc);
+    VecSetType(f_petsc, VECSTANDARD);
+    VecSetSizes(f_petsc, rows, cols);
+    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
     _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
+    //integrate_right_part(mesh, right_part, f);
+    for(I i = first_node(); i < last_node(); ++i)
+        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
+    VecAssemblyBegin(f_petsc);
+    VecAssemblyEnd(f_petsc);
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
-    time = omp_get_wtime();
-    //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver{K};
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
-    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
-    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
-    
-    return std::move(u);
+
+    Vec x;
+    VecDuplicate(f_petsc, &x);
+    VecAssemblyBegin(x);
+    VecAssemblyEnd(x);
+
+    KSP ksp;
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPSetType(ksp, KSPSYMMLQ);
+    KSPSetOperators(ksp, A, A);
+    KSPSolve(ksp, f_petsc, x);
+
+    //std::cout << "x = " << std::endl;
+    //VecView(x, nullptr);
+
+    Vec y = nullptr;
+    VecScatter toall = nullptr;
+    VecScatterCreateToAll(x, &toall, &y);
+    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+
+    f.resize(cols);
+    PetscScalar *data = nullptr;
+    VecGetArray(y, &data);
+    for(I i = 0; i < f.size(); ++i)
+        f[i] = data[i];
+
+    VecScatterDestroy(&toall);
+    KSPDestroy(&ksp);
+    MatDestroy(&A);
+    VecDestroy(&f_petsc);
+    VecDestroy(&x);
+    VecDestroy(&y);
+//
+//    time = omp_get_wtime();
+//    //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver{K};
+//    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+//    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
+//
+//    return std::move(u);
+    return f;
 }
 
 template<class T, class I>

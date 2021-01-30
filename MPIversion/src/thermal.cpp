@@ -22,9 +22,9 @@ int main(int argc, char** argv) {
 
     try {
         std::cout.precision(7);
-        omp_set_num_threads(1);
+        omp_set_num_threads(4);
 
-        static constexpr double r = 0.2, p1 = 0.5;
+        static constexpr double r = 0.1, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
 
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);

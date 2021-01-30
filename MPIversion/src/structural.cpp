@@ -30,12 +30,14 @@ int main(int argc, char** argv) {
     try {
         std::cout.precision(7);
 
-        static constexpr double r = 0.2, p1 = 0.5;
+        static constexpr double r = 0.1, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        mesh::mesh_2d<double> msh{argv[1]};
+        auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
+        auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
+        mesh_info->find_neighbours(r);
 
         const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 21};
-        nonlocal::structural::structural_solver<double, int> fem_sol{msh, params};
+        nonlocal::structural::structural_solver<double, int> fem_sol{mesh_info, params};
 
         const auto U = fem_sol.stationary(
             {
@@ -67,7 +69,7 @@ int main(int argc, char** argv) {
                     [](const std::array<double, 2>&) { return 0; }
                 },
             },
-            r, p1, bell
+            p1, bell
         );
 
 //        const auto U = fem_sol.stationary(
@@ -117,11 +119,14 @@ int main(int argc, char** argv) {
 //            r, p1, bell
 //        );
 
-        const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);
-        std::cout << "Energy U = " << fem_sol.calc_energy(strain, stress) << std::endl;
+        if (mesh_info->rank() == 0)
+        {
+            const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);
+            std::cout << "Energy U = " << fem_sol.calc_energy(strain, stress) << std::endl;
 
-        save_raw_data(msh, strain, stress);
-        fem_sol.save_as_vtk("structural.vtk", U, strain, stress);
+            //save_raw_data(mesh, strain, stress);
+            fem_sol.save_as_vtk("structural.vtk", U, strain, stress);
+        }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
