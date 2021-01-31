@@ -236,6 +236,52 @@ protected:
             return -e->qNxi(i, q) * J[1] + e->qNeta(i, q) * J[0];
     }
 
+    void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                      const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+        Mat A = nullptr;
+        MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+                                    K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+
+        Vec f_petsc = nullptr;
+        VecCreate(PETSC_COMM_WORLD, &f_petsc);
+        VecSetType(f_petsc, VECSTANDARD);
+        VecSetSizes(f_petsc, K.rows(), K.cols());
+        for(I i = first_node(); i < last_node(); ++i)
+            VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
+        VecAssemblyBegin(f_petsc);
+        VecAssemblyEnd(f_petsc);
+
+        Vec x = nullptr;
+        VecDuplicate(f_petsc, &x);
+        VecAssemblyBegin(x);
+        VecAssemblyEnd(x);
+
+        KSP ksp = nullptr;
+        KSPCreate(PETSC_COMM_WORLD, &ksp);
+        KSPSetType(ksp, KSPSYMMLQ);
+        KSPSetOperators(ksp, A, A);
+        KSPSolve(ksp, f_petsc, x);
+
+        Vec y = nullptr;
+        VecScatter toall = nullptr;
+        VecScatterCreateToAll(x, &toall, &y);
+        VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+        VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+
+        f.resize(K.cols());
+        PetscScalar* data = nullptr;
+        VecGetArray(y, &data);
+        for(I i = 0; i < f.size(); ++i)
+            f[i] = data[i];
+
+        VecScatterDestroy(&toall);
+        KSPDestroy(&ksp);
+        MatDestroy(&A);
+        VecDestroy(&f_petsc);
+        VecDestroy(&x);
+        VecDestroy(&y);
+    }
+
 public:
     void set_mesh(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh) {
         _mesh = mesh;

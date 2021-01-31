@@ -296,11 +296,6 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
 //            f[mesh().nodes_count()] = volume;
 //        }
 
-    Mat A = nullptr;
-    Vec f_petsc = nullptr;
-    VecCreate(PETSC_COMM_WORLD, &f_petsc);
-    VecSetType(f_petsc, VECSTANDARD);
-    VecSetSizes(f_petsc, rows, cols);
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
                                                K_bound(rows, cols);
     create_matrix(
@@ -310,66 +305,10 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
         p1, influence_fun
     );
 
-    PetscLogDouble start_time = 0;
-    PetscTime(&start_time);
-    std::cout << "Create start" << std::endl;
-    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
-                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
-    PetscLogDouble end_time = 0;
-    PetscTime(&end_time);
-    std::cout << "Assambling time = " << end_time - start_time << std::endl;
-
-    //MatView(A, nullptr);
-
     integrate_right_part(f, right_part);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
-    for(I i = first_node(); i < last_node(); ++i)
-        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
-    VecAssemblyBegin(f_petsc);
-    VecAssemblyEnd(f_petsc);
-
-    //for(PetscMPIInt i = 0; i < size(); ++i) {
-    //    if (i == rank())
-    //        std::cout << f.transpose() << std::endl << std::endl;
-    //    MPI_Barrier(MPI_COMM_WORLD);
-    //}
-
-    //std::cout << "b = " << std::endl;
-    //VecView(f_petsc, nullptr);
-
-    Vec x;
-    VecDuplicate(f_petsc, &x);
-    VecAssemblyBegin(x);
-    VecAssemblyEnd(x);
-
-    KSP ksp;
-    KSPCreate(PETSC_COMM_WORLD, &ksp);
-    KSPSetType(ksp, KSPSYMMLQ);
-    KSPSetOperators(ksp, A, A);
-    KSPSolve(ksp, f_petsc, x);
-
-    //std::cout << "x = " << std::endl;
-    //VecView(x, nullptr);
-
-    Vec y = nullptr;
-    VecScatter toall = nullptr;
-    VecScatterCreateToAll(x, &toall, &y);
-    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
-    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
-
-    f.resize(cols);
-    PetscScalar *data = nullptr;
-    VecGetArray(y, &data);
-    for(I i = 0; i < f.size(); ++i)
-        f[i] = data[i];
-
-    VecScatterDestroy(&toall);
-    KSPDestroy(&ksp);
-    MatDestroy(&A);
-    VecDestroy(&f_petsc);
-    VecDestroy(&x);
-    VecDestroy(&y);
+    _base::PETSc_solver(f, K);
 
 //    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 //
