@@ -9,6 +9,8 @@
 
 namespace mesh {
 
+enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
+
 template<class T, class I>
 class mesh_info final {
     std::shared_ptr<mesh_2d<T, I>>              _mesh;
@@ -183,6 +185,21 @@ public:
         set_mesh(mesh);
     }
 
+    const mesh_2d<T, I>&                  mesh                     ()                     const { return *_mesh; }
+    int                                   rank                     ()                     const { return _rank; }
+    int                                   size                     ()                     const { return _size; }
+    size_t                                first_node               ()                     const { return _first_node; }
+    size_t                                last_node                ()                     const { return _last_node; }
+    I                                     quad_shift               (const size_t element) const { return _quad_shifts[element]; }
+    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _quad_coords[quad]; }
+    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _jacobi_matrices[quad]; }
+    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _nodes_elements_map[node]; }
+    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _global_to_local_numbering[element]; }
+    const std::vector<I>&                 neighbors                (const size_t element) const { return _elements_neighbors[element]; }
+    I                                     quad_shift               (const size_t bound, const size_t element) const { return _quad_shifts_bound[bound][element]; }
+    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _quad_coords_bound[bound][quad]; }
+    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _jacobi_matrices_bound[bound][quad]; }
+
     void set_mesh(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
         if (mesh == nullptr)
             throw std::invalid_argument{"mesh can't nullptr"};
@@ -201,161 +218,63 @@ public:
         _last_node  = _mesh->nodes_count() / _size * (_rank+1) + (_rank == _size-1) * _mesh->nodes_count() % _size;
     }
 
-    // even speed
-    void find_neighbours(const T r) {
+    void find_neighbours(const T r, const balancing_t balancing) {
         const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
         std::unordered_set<I> elements;
         for(size_t e = 0; e < mesh().elements_count(); ++e)
             elements.insert(e);
         _elements_neighbors = find_elements_neighbors(_mesh, centres, elements, r);
 
-        std::vector<std::array<size_t, 2>> first_last(_size);
-        for(int i = 0; i < _size; ++i) {
-            first_last[i].front() = _mesh->nodes_count() / _size *  i;
-            first_last[i].back()  = _mesh->nodes_count() / _size * (i+1) + (i == _size-1) * _mesh->nodes_count() % _size;
-        }
+        if (balancing != balancing_t::NO) {
+            std::vector<int> data_count_per_nodes(mesh().nodes_count(), 0);
+            switch(balancing) {
+                case balancing_t::MEMORY:
+                    elements.clear();
+                    for(size_t node = first_node(); node < last_node(); ++node)
+                        for(const I e : nodes_elements_map(node)) {
+                            const auto [it, inserted] = elements.insert(e);
+                            if (inserted)
+                                data_count_per_nodes[node] += neighbors(e).size();
+                        }
+                break;
 
-        std::vector<size_t> sums(_size, 0);
-        for(size_t proc_count = 0; proc_count < first_last.size(); ++proc_count) {
-            for(size_t node = first_last[proc_count].front(); node < first_last[proc_count].back(); ++node) {
-                for(const I eL : nodes_elements_map(node)) {
-                    for(const I eNL : neighbors(eL)) {
-                        const auto& el = mesh().element_2d(eNL);
-                        for(size_t j = 0; j < el->nodes_count(); ++j)
-                            if (node <= mesh().node_number(eNL, j))
-                                ++sums[proc_count];
-                    }
+                case balancing_t::SPEED:
+                    for(size_t node = first_node(); node < last_node(); ++node)
+                        for(const I eL : nodes_elements_map(node))
+                            for(const I eNL : neighbors(eL))
+                                for(size_t i = 0; i < mesh().element_2d(eNL)->nodes_count(); ++i)
+                                    if (node <= mesh().node_number(eNL, i))
+                                        ++data_count_per_nodes[node];
+                break;
+            }
+
+            const std::vector<int> sendcounts(size(), last_node() - first_node()), sdispls(size(), first_node());
+            std::vector<int> recvcounts(size()), rdispls(size());
+            std::vector<std::array<size_t, 2>> first_last(_size);
+            for(int i = 0; i < _size; ++i) {
+                first_last[i].front() = _mesh->nodes_count() / _size *  i;
+                first_last[i].back()  = _mesh->nodes_count() / _size * (i+1) + (i == _size-1) * _mesh->nodes_count() % _size;
+                recvcounts[i] = first_last[i].back() - first_last[i].front();
+                rdispls[i]    = first_last[i].front();
+            }
+            MPI_Alltoallv(data_count_per_nodes.data(), sendcounts.data(), sdispls.data(), MPI_INT,
+                          data_count_per_nodes.data(), recvcounts.data(), rdispls.data(), MPI_INT, MPI_COMM_WORLD);
+
+            const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / size();
+            size_t sum = 0, curr_rank = 0;
+            for(size_t node = 0; node < data_count_per_nodes.size(); ++node) {
+                sum += data_count_per_nodes[node];
+                if (sum > mean) {
+                    first_last[curr_rank].back() = node;
+                    first_last[curr_rank+1].front() = node;
+                    sum = 0;
                 }
             }
-        }
 
-        size_t mean = 0;
-        for(size_t i = 0; i < _size; ++i)
-            mean += sums[i];
-        mean /= _size;
-
-        int combo = 0;
-        for(size_t i = 0; i < sums.size(); ++i)
-            sums[i] = 0;
-        for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-            for(const I eL : nodes_elements_map(node)) {
-                for(const I eNL : neighbors(eL)) {
-                    const auto& el = mesh().element_2d(eNL);
-                    for(size_t j = 0; j < el->nodes_count(); ++j)
-                        if (node <= mesh().node_number(eNL, j))
-                            ++sums[combo];
-                }
-            }
-
-            if (sums[combo] > mean && combo < _size - 1) {
-                first_last[combo].back() = node;
-                first_last[combo+1].front() = node;
-                ++combo;
-            }
-        }
-
-        _first_node = first_last[_rank].front();
-        _last_node  = first_last[_rank].back();
-
-        for(int i = 0; i < _size; ++i) {
-            if (i == _rank) {
-                std::cout << "rank = " << _rank << std::endl
-                          << "_first_node = " << _first_node << " _last_node = " << _last_node << std::endl;
-                for(size_t i = 0; i < _size; ++i)
-                    std::cout << sums[i] << ' ';
-                std::cout << std::endl;
-                std::cout << "mean = " << mean << std::endl << std::endl;
-            }
-            MPI_Barrier(MPI_COMM_WORLD);
+            _first_node = first_last[_rank].front();
+            _last_node  = first_last[_rank].back();
         }
     }
-//
-//    void find_neighbours(const T r) {
-//        const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
-//        std::unordered_set<I> elements;
-//        for(size_t e = 0; e < mesh().elements_count(); ++e)
-//            elements.insert(e);
-//        _elements_neighbors = find_elements_neighbors(_mesh, centres, elements, r);
-//
-//        std::vector<std::array<size_t, 2>> first_last(_size);
-//        for(int i = 0; i < _size; ++i) {
-//            first_last[i].front() = _mesh->nodes_count() / _size *  i;
-//            first_last[i].back()  = _mesh->nodes_count() / _size * (i+1) + (i == _size-1) * _mesh->nodes_count() % _size;
-//        }
-//
-//        std::vector<size_t> sums(_size, 0);
-//        for(size_t proc_count = 0; proc_count < first_last.size(); ++proc_count) {
-//            elements.clear();
-//            for(size_t node = first_last[proc_count].front(); node < first_last[proc_count].back(); ++node) {
-//                for(const I e : nodes_elements_map(node))
-//                    const auto [it, inserted] = elements.insert(e);
-//            }
-//            for(const I e : elements)
-//                sums[proc_count] += neighbors(e).size();
-//        }
-//
-//        size_t mean = 0;
-//        for(size_t i = 0; i < _size; ++i)
-//            mean += sums[i];
-//        mean /= _size;
-//
-//        int combo = 0;
-//        for(size_t i = 0; i < sums.size(); ++i)
-//            sums[i] = 0;
-//        elements.clear();
-//        for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-//            for(const I e : nodes_elements_map(node)) {
-//                const auto [it, inserted] = elements.insert(e);
-//                if (inserted)
-//                    sums[combo] += neighbors(e).size();
-//            }
-//
-//            if (sums[combo] > mean && combo < _size-1) {
-//                first_last[combo].back() = node;
-//                elements.clear();
-//                first_last[combo+1].front() = node;
-//                ++combo;
-//            }
-//        }
-//
-//        _first_node = first_last[_rank].front();
-//        _last_node  = first_last[_rank].back();
-//
-//        for(int i = 0; i < _size; ++i) {
-//            if (i == _rank) {
-//                std::cout << "rank = " << _rank << std::endl
-//                          << "_first_node = " << _first_node << " _last_node = " << _last_node << std::endl;
-//                for(size_t i = 0; i < _size; ++i)
-//                    std::cout << sums[i] << ' ';
-//                std::cout << std::endl;
-//                std::cout << "mean = " << mean << std::endl << std::endl;
-//            }
-//            MPI_Barrier(MPI_COMM_WORLD);
-//        }
-//    }
-
-//    void find_neighbours(const T r) {
-//        const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
-//        std::unordered_set<I> elements;
-//        for(size_t e = 0; e < mesh().elements_count(); ++e)
-//            elements.insert(e);
-//        _elements_neighbors = find_elements_neighbors(_mesh, centres, elements, r);
-//    }
-
-    const mesh_2d<T, I>&                  mesh                     ()                     const { return *_mesh; }
-    int                                   rank                     ()                     const { return _rank; }
-    int                                   size                     ()                     const { return _size; }
-    size_t                                first_node               ()                     const { return _first_node; }
-    size_t                                last_node                ()                     const { return _last_node; }
-    I                                     quad_shift               (const size_t element) const { return _quad_shifts[element]; }
-    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _quad_coords[quad]; }
-    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _jacobi_matrices[quad]; }
-    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _nodes_elements_map[node]; }
-    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _global_to_local_numbering[element]; }
-    const std::vector<I>&                 neighbors                (const size_t element) const { return _elements_neighbors[element]; }
-    I                                     quad_shift               (const size_t bound, const size_t element) const { return _quad_shifts_bound[bound][element]; }
-    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _quad_coords_bound[bound][quad]; }
-    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _jacobi_matrices_bound[bound][quad]; }
 };
 
 }
