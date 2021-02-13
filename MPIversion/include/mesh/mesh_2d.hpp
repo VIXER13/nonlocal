@@ -130,6 +130,7 @@ public:
 
     size_t elements_count() const noexcept;
     I node_number(const size_t element, const size_t node) const noexcept;
+    size_t nodes_count(const size_t element) const noexcept;
 
     size_t boundary_groups_count() const noexcept;
     size_t elements_count(const size_t boundary) const noexcept;
@@ -221,6 +222,11 @@ size_t mesh_2d<T, I>::elements_count() const noexcept {
 template<class T, class I>
 I mesh_2d<T, I>::node_number(const size_t element, const size_t node) const noexcept {
     return _elements[element][node];
+}
+
+template<class T, class I>
+size_t mesh_2d<T, I>::nodes_count(const size_t element) const noexcept {
+    return _elements[element].size();
 }
 
 template<class T, class I>
