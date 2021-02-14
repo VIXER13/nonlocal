@@ -165,19 +165,19 @@ class mesh_info final {
         return std::move(centres);
     }
 
-    static std::vector<std::vector<I>>
-    find_elements_neighbors(const std::shared_ptr<mesh_2d<T, I>>& mesh,
-                            const std::vector<std::array<T, 2>>& centres,
-                            const std::unordered_set<I>& elements, const T r) {
-        std::vector<std::vector<I>> elements_neighbors(mesh->elements_count());
-        for(const I elL : elements) {
-            elements_neighbors[elL].reserve(mesh->elements_count());
-            for(size_t elNL = 0; elNL < mesh->elements_count(); ++elNL)
-                if(utils::distance(centres[elL], centres[elNL]) < r)
-                    elements_neighbors[elL].push_back(elNL);
-            elements_neighbors[elL].shrink_to_fit();
-        }
-        return std::move(elements_neighbors);
+    static void find_elements_neighbors(std::vector<std::vector<I>>& elements_neighbors,
+                                        const std::shared_ptr<mesh_2d<T, I>>& mesh,
+                                        const std::vector<std::array<T, 2>>& centres,
+                                        const std::unordered_set<I>& elements, const T r) {
+        elements_neighbors.resize(mesh->elements_count());
+        for(const I elL : elements)
+            if (elements_neighbors[elL].empty()) {
+                elements_neighbors[elL].reserve(mesh->elements_count());
+                for(size_t elNL = 0; elNL < mesh->elements_count(); ++elNL)
+                    if(utils::distance(centres[elL], centres[elNL]) < r)
+                        elements_neighbors[elL].push_back(elNL);
+                elements_neighbors[elL].shrink_to_fit();
+            }
     }
 
 public:
@@ -219,17 +219,20 @@ public:
     }
 
     void find_neighbours(const T r, const balancing_t balancing) {
+        _elements_neighbors.clear();
         const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
         std::unordered_set<I> elements;
-        for(size_t e = 0; e < mesh().elements_count(); ++e)
-            elements.insert(e);
-        _elements_neighbors = find_elements_neighbors(_mesh, centres, elements, r);
+        for(size_t node = first_node(); node < last_node(); ++node)
+            for(const I e : nodes_elements_map(node))
+                elements.insert(e);
+        find_elements_neighbors(_elements_neighbors, _mesh, centres, elements, r);
 
-        if (balancing != balancing_t::NO) {
+        if (size() > 1 && balancing != balancing_t::NO) {
             std::vector<int> data_count_per_nodes(mesh().nodes_count(), 0);
             switch(balancing) {
                 case balancing_t::MEMORY:
                     elements.clear();
+#pragma omp parallel for default(none) shared(data_count_per_nodes) private(elements)
                     for(size_t node = first_node(); node < last_node(); ++node)
                         for(const I e : nodes_elements_map(node)) {
                             const auto [it, inserted] = elements.insert(e);
@@ -239,6 +242,7 @@ public:
                 break;
 
                 case balancing_t::SPEED:
+#pragma omp parallel for default(none) shared(data_count_per_nodes)
                     for(size_t node = first_node(); node < last_node(); ++node)
                         for(const I eL : nodes_elements_map(node))
                             for(const I eNL : neighbors(eL))
@@ -250,29 +254,40 @@ public:
 
             const std::vector<int> sendcounts(size(), last_node() - first_node()), sdispls(size(), first_node());
             std::vector<int> recvcounts(size()), rdispls(size());
-            std::vector<std::array<size_t, 2>> first_last(_size);
-            for(int i = 0; i < _size; ++i) {
-                first_last[i].front() = _mesh->nodes_count() / _size *  i;
-                first_last[i].back()  = _mesh->nodes_count() / _size * (i+1) + (i == _size-1) * _mesh->nodes_count() % _size;
+            std::vector<std::array<size_t, 2>> first_last(size());
+            for(int i = 0; i < size(); ++i) {
+                first_last[i].front() = mesh().nodes_count() / size() *  i;
+                first_last[i].back()  = mesh().nodes_count() / size() * (i+1) + (i == size()-1) * mesh().nodes_count() % size();
                 recvcounts[i] = first_last[i].back() - first_last[i].front();
                 rdispls[i]    = first_last[i].front();
             }
             MPI_Alltoallv(data_count_per_nodes.data(), sendcounts.data(), sdispls.data(), MPI_INT,
                           data_count_per_nodes.data(), recvcounts.data(), rdispls.data(), MPI_INT, MPI_COMM_WORLD);
 
-            const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / size();
             size_t sum = 0, curr_rank = 0;
+            const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / size();
             for(size_t node = 0; node < data_count_per_nodes.size(); ++node) {
                 sum += data_count_per_nodes[node];
                 if (sum > mean) {
                     first_last[curr_rank].back() = node;
                     first_last[curr_rank+1].front() = node;
+                    ++curr_rank;
                     sum = 0;
                 }
             }
+            _first_node = first_last[rank()].front();
+            _last_node  = first_last[rank()].back();
 
-            _first_node = first_last[_rank].front();
-            _last_node  = first_last[_rank].back();
+            elements.clear();
+            for(size_t node = first_node(); node < last_node(); ++node)
+                for(const I e : nodes_elements_map(node))
+                    elements.insert(e);
+            find_elements_neighbors(_elements_neighbors, _mesh, centres, elements, r);
+            for(size_t e = 0; e < _elements_neighbors.size(); ++e)
+                if (elements.find(e) == elements.cend()) {
+                    _elements_neighbors[e].clear();
+                    _elements_neighbors[e].shrink_to_fit();
+                }
         }
     }
 };
