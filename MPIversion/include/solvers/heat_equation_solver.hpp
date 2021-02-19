@@ -232,9 +232,8 @@ public:
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     // volume - значение интеграла по области, в случае если поставлена задача Неймана, по умолчанию 0.
     template<class Right_Part, class Influence_Function>
-    Eigen::Matrix<T, Eigen::Dynamic, 1>
-    stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
-               const T p1, const Influence_Function& influence_fun, const T volume = 0);
+    std::vector<T> stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+                              const T p1, const Influence_Function& influence_fun, const T volume = 0);
 
 //    template<class Init_Distribution, class Right_Part, class Influence_Function>
 //    void nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
@@ -264,11 +263,10 @@ void heat_equation_solver<T, I>::save_as_vtk(const std::string& path, const Vect
 
 template<class T, class I>
 template<class Right_Part, class Influence_Function>
-Eigen::Matrix<T, Eigen::Dynamic, 1> 
-heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
-                                       const T p1, const Influence_Function& influence_fun, const T volume) {
+std::vector<T> heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+                                                      const T p1, const Influence_Function& influence_fun, const T volume) {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
-        [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
+                                          [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
     const size_t rows = last_node() - first_node() + (neumann_task && rank() == size() - 1),
                  cols = mesh().nodes_count() + neumann_task;
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
@@ -302,7 +300,11 @@ heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_
 //    temperature.conservativeResize(mesh().nodes_count());
 //
 //    return std::move(temperature);
-    return f;
+
+    std::vector<T> sol(mesh().nodes_count());
+    for(size_t i = 0; i < sol.size(); ++i)
+        sol[i] = f[i];
+    return std::move(sol);
 }
 
 //template<class T, class I>

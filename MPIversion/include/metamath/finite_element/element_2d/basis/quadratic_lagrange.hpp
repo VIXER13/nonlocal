@@ -29,7 +29,6 @@ protected:
                                                                T{-1}, T{ 0},
                                                                T{ 0}, T{ 0} };
 
-    // Базисные функции в локальной системе координат имеют вид: N_i = 0.25 (1 + xi_i x)(1 + eta_i eta), xi_i =+-1, eta_i = +-1, i = 0..3
     static constexpr auto basis = std::make_tuple(
         T{ 0.25} * xi  * eta * (xi    - T{1}) * (eta     - T{1}),
         T{-0.50} *       eta * (xi*xi - T{1}) * (eta     - T{1}),

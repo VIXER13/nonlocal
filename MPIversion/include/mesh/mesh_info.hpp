@@ -292,8 +292,7 @@ public:
         }
     }
 
-    template<class Vector>
-    T integrate_solution(const Vector& sol) const {
+    T integrate_solution(const std::vector<T>& sol) const {
         if(mesh().nodes_count() != size_t(sol.size()))
             throw std::logic_error{"mesh.nodes_count() != T.size()"};
 
@@ -307,43 +306,49 @@ public:
         return integral;
     }
 
-    template<class Vector>
-    std::array<Vector, 2> calc_gradient(const Vector& sol) const {
-        if(mesh().nodes_count() != size_t(sol.size()))
-            throw std::logic_error{"mesh.nodes_count() != T.size()"};
+    std::array<std::vector<T>, 2> calc_gradient(const std::vector<T>& sol) const {
+        if(mesh().nodes_count() != sol.size())
+            throw std::logic_error{"mesh.nodes_count() != sol.size()"};
 
-        Vector x(sol.size()), y(sol.size());
-        for(size_t i = 0; i < sol.size(); ++i)
-            x[i] = y[i] = 0;
-
-        for(size_t el = 0; el < mesh().elements_count(); ++el) {
-            const auto& e = mesh().element_2d(el);
-            for(size_t i = 0; i < e->nodes_count(); ++i) {
-                std::array<T, 4> jacobi_matrix = {};
-                for(size_t j = 0; j < e->nodes_count(); ++j) {
-                    const std::array<T, 2>& node = mesh().node(mesh().node_number(el, j));
-                    jacobi_matrix[0] += node[0] * e->Nxi (j, e->node(i));
-                    jacobi_matrix[1] += node[0] * e->Neta(j, e->node(i));
-                    jacobi_matrix[2] += node[1] * e->Nxi (j, e->node(i));
-                    jacobi_matrix[3] += node[1] * e->Neta(j, e->node(i));
-                }
-
-                for(size_t j = 0; j < e->nodes_count(); ++j) {
-                    const T jac = jacobian(jacobi_matrix),
-                            dx1 = ( jacobi_matrix[3] * e->Nxi(j, e->node(i)) - jacobi_matrix[2] * e->Neta(j, e->node(i))) / jac,
-                            dx2 = (-jacobi_matrix[1] * e->Nxi(j, e->node(i)) + jacobi_matrix[0] * e->Neta(j, e->node(i))) / jac;
-                    x[mesh().node_number(el, i)] += dx1 * sol[mesh().node_number(el, j)];
-                    y[mesh().node_number(el, i)] += dx2 * sol[mesh().node_number(el, j)];
+        std::vector<std::array<T, 4>> jacobi_matrices(mesh().nodes_count(), std::array<T, 4>{});
+#pragma omp parallel for default(none) shared(jacobi_matrices)
+        for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+            for(const I e : nodes_elements_map(node)) {
+                const auto& el = mesh().element_2d(e);
+                for(size_t i = 0; i < el->nodes_count(); ++i) {
+                    for(size_t j = 0; j < el->nodes_count(); ++j) {
+                        const std::array<T, 2>& mesh_node = mesh().node(mesh().node_number(e, j));
+                        const T Nxi  = el->Nxi (j, el->node(i)),
+                                Neta = el->Neta(j, el->node(i));
+                        jacobi_matrices[node][0] += mesh_node[0] * Nxi;
+                        jacobi_matrices[node][1] += mesh_node[0] * Neta;
+                        jacobi_matrices[node][2] += mesh_node[1] * Nxi;
+                        jacobi_matrices[node][3] += mesh_node[1] * Neta;
+                    }
                 }
             }
+            for(size_t i = 0; i < 4; ++i)
+                jacobi_matrices[node][i] /= nodes_elements_map(node).size();
         }
 
+        std::vector<T> x(sol.size(), 0), y(sol.size(), 0);
+#pragma omp parallel for default(none) shared(jacobi_matrices, x, y, sol)
         for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-            const size_t repeating_count = nodes_elements_map(node).size();
-            x[node] /= repeating_count;
-            y[node] /= repeating_count;
+            T dx = 0, dy = 0;
+            const T jac = jacobian(jacobi_matrices[node]);
+            for(const I e : nodes_elements_map(node)) {
+                const auto& el = mesh().element_2d(e);
+                for(size_t i = 0; i < el->nodes_count(); ++i)
+                    for(size_t j = 0; j < el->nodes_count(); ++j) {
+                        const T Nxi  = el->Nxi (j, el->node(i)) * sol[mesh().node_number(e, j)] / jac,
+                                Neta = el->Neta(j, el->node(i)) * sol[mesh().node_number(e, j)] / jac;
+                        dx +=  jacobi_matrices[node][3] * Nxi - jacobi_matrices[node][2] * Neta;
+                        dy += -jacobi_matrices[node][1] * Nxi + jacobi_matrices[node][0] * Neta;
+                    }
+            }
+            x[node] += dx / nodes_elements_map(node).size();
+            y[node] += dy / nodes_elements_map(node).size();
         }
-
         return {std::move(x), std::move(y)};
     }
 };
