@@ -181,24 +181,7 @@ class mesh_info final {
     }
 
 public:
-    explicit mesh_info(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
-        set_mesh(mesh);
-    }
-
-    const mesh_2d<T, I>&                  mesh                     ()                     const { return *_mesh; }
-    int                                   rank                     ()                     const { return _rank; }
-    int                                   size                     ()                     const { return _size; }
-    size_t                                first_node               ()                     const { return _first_node; }
-    size_t                                last_node                ()                     const { return _last_node; }
-    I                                     quad_shift               (const size_t element) const { return _quad_shifts[element]; }
-    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _quad_coords[quad]; }
-    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _jacobi_matrices[quad]; }
-    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _nodes_elements_map[node]; }
-    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _global_to_local_numbering[element]; }
-    const std::vector<I>&                 neighbors                (const size_t element) const { return _elements_neighbors[element]; }
-    I                                     quad_shift               (const size_t bound, const size_t element) const { return _quad_shifts_bound[bound][element]; }
-    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _quad_coords_bound[bound][quad]; }
-    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _jacobi_matrices_bound[bound][quad]; }
+    explicit mesh_info(const std::shared_ptr<mesh_2d<T, I>>& mesh) { set_mesh(mesh); }
 
     void set_mesh(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
         if (mesh == nullptr)
@@ -217,6 +200,24 @@ public:
         _first_node = _mesh->nodes_count() / _size *  _rank;
         _last_node  = _mesh->nodes_count() / _size * (_rank+1) + (_rank == _size-1) * _mesh->nodes_count() % _size;
     }
+
+    const mesh_2d<T, I>&                  mesh                     ()                     const { return *_mesh; }
+    int                                   rank                     ()                     const { return _rank; }
+    int                                   size                     ()                     const { return _size; }
+    size_t                                first_node               ()                     const { return _first_node; }
+    size_t                                last_node                ()                     const { return _last_node; }
+    I                                     quad_shift               (const size_t element) const { return _quad_shifts[element]; }
+    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _quad_coords[quad]; }
+    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _jacobi_matrices[quad]; }
+    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _nodes_elements_map[node]; }
+    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _global_to_local_numbering[element]; }
+    const std::vector<I>&                 neighbors                (const size_t element) const { return _elements_neighbors[element]; }
+    I                                     quad_shift               (const size_t bound, const size_t element) const { return _quad_shifts_bound[bound][element]; }
+    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _quad_coords_bound[bound][quad]; }
+    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _jacobi_matrices_bound[bound][quad]; }
+
+    static T jacobian(const std::array<T, 4>& J) noexcept { return std::abs(J[0] * J[3] - J[1] * J[2]); }
+           T jacobian(const size_t quad)         const    { return jacobian(jacobi_matrix(quad)); }
 
     void find_neighbours(const T r, const balancing_t balancing) {
         _elements_neighbors.clear();
@@ -289,6 +290,61 @@ public:
                     _elements_neighbors[e].shrink_to_fit();
                 }
         }
+    }
+
+    template<class Vector>
+    T integrate_solution(const Vector& sol) const {
+        if(mesh().nodes_count() != size_t(sol.size()))
+            throw std::logic_error{"mesh.nodes_count() != T.size()"};
+
+        T integral = 0;
+        for(size_t el = 0; el < mesh().elements_count(); ++el) {
+            const auto& e = mesh().element_2d(el);
+            for(size_t i = 0; i < e->nodes_count(); ++i)
+                for(size_t q = 0, shift = quad_shift(el); q < e->qnodes_count(); ++q, ++shift)
+                    integral += e->weight(q) * e->qN(i, q) * sol[mesh().node_number(el, i)] * jacobian(shift);
+        }
+        return integral;
+    }
+
+    template<class Vector>
+    std::array<Vector, 2> calc_gradient(const Vector& sol) const {
+        if(mesh().nodes_count() != size_t(sol.size()))
+            throw std::logic_error{"mesh.nodes_count() != T.size()"};
+
+        Vector x(sol.size()), y(sol.size());
+        for(size_t i = 0; i < sol.size(); ++i)
+            x[i] = y[i] = 0;
+
+        for(size_t el = 0; el < mesh().elements_count(); ++el) {
+            const auto& e = mesh().element_2d(el);
+            for(size_t i = 0; i < e->nodes_count(); ++i) {
+                std::array<T, 4> jacobi_matrix = {};
+                for(size_t j = 0; j < e->nodes_count(); ++j) {
+                    const std::array<T, 2>& node = mesh().node(mesh().node_number(el, j));
+                    jacobi_matrix[0] += node[0] * e->Nxi (j, e->node(i));
+                    jacobi_matrix[1] += node[0] * e->Neta(j, e->node(i));
+                    jacobi_matrix[2] += node[1] * e->Nxi (j, e->node(i));
+                    jacobi_matrix[3] += node[1] * e->Neta(j, e->node(i));
+                }
+
+                for(size_t j = 0; j < e->nodes_count(); ++j) {
+                    const T jac = jacobian(jacobi_matrix),
+                            dx1 = ( jacobi_matrix[3] * e->Nxi(j, e->node(i)) - jacobi_matrix[2] * e->Neta(j, e->node(i))) / jac,
+                            dx2 = (-jacobi_matrix[1] * e->Nxi(j, e->node(i)) + jacobi_matrix[0] * e->Neta(j, e->node(i))) / jac;
+                    x[mesh().node_number(el, i)] += dx1 * sol[mesh().node_number(el, j)];
+                    y[mesh().node_number(el, i)] += dx2 * sol[mesh().node_number(el, j)];
+                }
+            }
+        }
+
+        for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+            const size_t repeating_count = nodes_elements_map(node).size();
+            x[node] /= repeating_count;
+            y[node] /= repeating_count;
+        }
+
+        return {std::move(x), std::move(y)};
     }
 };
 

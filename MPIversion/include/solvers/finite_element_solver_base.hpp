@@ -46,10 +46,7 @@ protected:
     enum component : bool {X, Y};
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
-    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh) {
-        set_mesh(mesh);
-    }
-
+    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh) { set_mesh(mesh); }
     virtual ~finite_element_solver_base() noexcept = default;
 
     const mesh::mesh_2d<T, I>&            mesh                     ()                     const { return _mesh_info->mesh(); }
@@ -66,6 +63,19 @@ protected:
     I                                     quad_shift               (const size_t bound, const size_t element) const { return _mesh_info->quad_shift(bound, element); }
     const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _mesh_info->quad_coord(bound, quad); }
     const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _mesh_info->jacobi_matrix(bound, quad); }
+
+    static T jacobian(const std::array<T, 4>& J) noexcept { return mesh::mesh_info<T, I>::jacobian(J);   }
+           T jacobian(const size_t quad_shift)   const    { return _mesh_info->jacobian(quad_shift);     }
+    static T jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
+
+    template<bool Component>
+    T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q, const size_t quad_shift) const {
+        const std::array<T, 4>& J = jacobi_matrix(quad_shift);
+        if constexpr (Component == component::X)
+            return  e->qNxi(i, q) * J[3] - e->qNeta(i, q) * J[2];
+        if constexpr (Component == component::Y)
+            return -e->qNxi(i, q) * J[1] + e->qNeta(i, q) * J[0];
+    }
 
     // Функция обхода сетки в локальных постановках.
     // Нужна для предварительного подсчёта количества элементов  и интегрирования системы.
@@ -191,27 +201,6 @@ protected:
             });
     }
 
-    static T jacobian(const std::array<T, 4>& J) noexcept {
-        return std::abs(J[0] * J[3] - J[1] * J[2]);
-    }
-
-    T jacobian(const size_t quad_shift) const noexcept {
-        return jacobian(jacobi_matrix(quad_shift));
-    }
-
-    static T jacobian(const std::array<T, 2>& jacobi_matrix) noexcept {
-        return sqrt(jacobi_matrix[0] * jacobi_matrix[0] + jacobi_matrix[1] * jacobi_matrix[1]);
-    }
-
-    template<bool Component>
-    T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q, const size_t quad_shift) const {
-        const std::array<T, 4>& J = jacobi_matrix(quad_shift);
-        if constexpr (Component == component::X)
-            return  e->qNxi(i, q) * J[3] - e->qNeta(i, q) * J[2];
-        if constexpr (Component == component::Y)
-            return -e->qNxi(i, q) * J[1] + e->qNeta(i, q) * J[0];
-    }
-
     void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
         Mat A = nullptr;
@@ -259,9 +248,7 @@ protected:
     }
 
 public:
-    void set_mesh(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh_info) {
-        _mesh_info = mesh_info;
-    }
+    void set_mesh(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh_info) { _mesh_info = mesh_info; }
 };
 
 }

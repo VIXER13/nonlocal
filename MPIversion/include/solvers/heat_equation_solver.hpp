@@ -227,8 +227,6 @@ public:
     template<class Vector>
     void save_as_vtk(const std::string& path, const Vector& temperature) const;
 
-    T integrate_solution(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature) const;
-
     // Функция, решающая стационарное уравнение теплопроводности в нелокальной постановке.
     // Right_Part - функтор с сигнатурой T(std::array<T, 2>&),
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
@@ -262,21 +260,6 @@ void heat_equation_solver<T, I>::save_as_vtk(const std::string& path, const Vect
          << "LOOKUP_TABLE default" << '\n';
     for(size_t i = 0; i < mesh().nodes_count(); ++i)
         fout << temperature[i] << '\n';
-}
-
-template<class T, class I>
-T heat_equation_solver<T, I>::integrate_solution(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature) const {
-    if(mesh().nodes_count() != size_t(temperature.size()))
-        throw std::logic_error{"mesh.nodes_count() != T.size()"};
-
-    T integral = 0;
-    for(size_t el = 0; el < mesh().elements_count(); ++el) {
-        const auto& e = mesh().element_2d(el);
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            for(size_t q = 0, shift = quad_shift(el); q < e->qnodes_count(); ++q, ++shift)
-                integral += e->weight(q) * e->qN(i, q) * temperature[mesh().node_number(el, i)] * jacobian(shift);
-    }
-    return integral;
 }
 
 template<class T, class I>

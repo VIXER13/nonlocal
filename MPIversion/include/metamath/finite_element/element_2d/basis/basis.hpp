@@ -9,5 +9,6 @@
 #include "quadratic_serendipity.hpp"
 #include "qubic_serendipity.hpp"
 #include "quartic_serendipity.hpp"
+#include "quintic_serendipity.hpp"
 
 #endif
