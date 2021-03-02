@@ -56,45 +56,29 @@ public:
 
 template<class T, class I>
 void solution<T, I>::strain_and_stress_loc() {
-    for(size_t el = 0; el < _mesh_info->mesh().elements_count(); ++el) {
-        const auto& e = _mesh_info->mesh().element_2d(el);
-        for(size_t i = 0; i < e->nodes_count(); ++i) {
-            std::array<T, 4> jacobi_matrix = {};
-            for(size_t j = 0; j < e->nodes_count(); ++j) {
-                const std::array<T, 2>& node = _mesh_info->mesh().node(_mesh_info->mesh().node_number(el, j));
-                jacobi_matrix[0] += node[0] * e->Nxi (j, e->node(i));
-                jacobi_matrix[1] += node[0] * e->Neta(j, e->node(i));
-                jacobi_matrix[2] += node[1] * e->Nxi (j, e->node(i));
-                jacobi_matrix[3] += node[1] * e->Neta(j, e->node(i));
+#pragma omp parallel for default(none)
+    for(size_t node = 0; node < _mesh_info->mesh().nodes_count(); ++node) {
+        for(const I e : _mesh_info->nodes_elements_map(node)) {
+            const auto& el = _mesh_info->mesh().element_2d(e);
+            const size_t i = _mesh_info->global_to_local_numbering(e).find(node)->second;
+            const std::array<T, 4>& J = _mesh_info->jacobi_matrix_node(node);
+            const T jac = _mesh_info->jacobian(J);
+            for(size_t j = 0; j < el->nodes_count(); ++j) {
+                const T Nxi = el->Nxi(j, el->node(i)), Neta = el->Neta(j, el->node(i));
+                const std::array<T, 2> dx = {( J[3] * Nxi - J[2] * Neta) / jac,
+                                             (-J[1] * Nxi + J[0] * Neta) / jac};
+                _strain[0][node] += dx[0] * _u[0][_mesh_info->mesh().node_number(e, j)];
+                _strain[1][node] += dx[1] * _u[1][_mesh_info->mesh().node_number(e, j)];
+                _strain[2][node] += dx[0] * _u[1][_mesh_info->mesh().node_number(e, j)] +
+                                    dx[1] * _u[0][_mesh_info->mesh().node_number(e, j)];
             }
-
-            std::array<T, 3> strain_loc = {};
-            for(size_t j = 0; j < e->nodes_count(); ++j) {
-                const T jac = _mesh_info->jacobian(jacobi_matrix),
-                        dx1 = ( jacobi_matrix[3] * e->Nxi(j, e->node(i)) - jacobi_matrix[2] * e->Neta(j, e->node(i))) / jac,
-                        dx2 = (-jacobi_matrix[1] * e->Nxi(j, e->node(i)) + jacobi_matrix[0] * e->Neta(j, e->node(i))) / jac;
-                strain_loc[0] += dx1 * _u[0][_mesh_info->mesh().node_number(el, j)];
-                strain_loc[1] += dx2 * _u[1][_mesh_info->mesh().node_number(el, j)];
-                strain_loc[2] += dx1 * _u[1][_mesh_info->mesh().node_number(el, j)] +
-                                 dx2 * _u[0][_mesh_info->mesh().node_number(el, j)];
-            }
-
-            _stress[0][_mesh_info->mesh().node_number(el, i)] += _D[0] * strain_loc[0] + _D[1] * strain_loc[1];
-            _stress[1][_mesh_info->mesh().node_number(el, i)] += _D[1] * strain_loc[0] + _D[0] * strain_loc[1];
-            _stress[2][_mesh_info->mesh().node_number(el, i)] += _D[2] * strain_loc[2];
-            for(size_t j = 0; j < 3; ++j)
-                _strain[j][_mesh_info->mesh().node_number(el, i)] += strain_loc[j];
         }
-    }
-
-    for(size_t i = 0; i < _mesh_info->mesh().nodes_count(); ++i) {
-        const size_t repeating_count = _mesh_info->nodes_elements_map(i).size();
-        _strain[0][i] /=     repeating_count;
-        _strain[1][i] /=     repeating_count;
-        _strain[2][i] /= 2 * repeating_count;
-        _stress[0][i] /=     repeating_count;
-        _stress[1][i] /=     repeating_count;
-        _stress[2][i] /= 2 * repeating_count;
+        _strain[0][node] /=     _mesh_info->nodes_elements_map(node).size();
+        _strain[1][node] /=     _mesh_info->nodes_elements_map(node).size();
+        _strain[2][node] /= 2 * _mesh_info->nodes_elements_map(node).size();
+        _stress[0][node] += _D[0] * _strain[0][node] + _D[1] * _strain[1][node];
+        _stress[1][node] += _D[1] * _strain[0][node] + _D[0] * _strain[1][node];
+        _stress[2][node] += _D[2] * _strain[2][node];
     }
 }
 
@@ -107,21 +91,23 @@ void solution<T, I>::stress_nonloc() {
         _mesh_info->approx_in_quad(_strain[2])
     };
 
-#pragma omp parallel for default(none)
+    std::vector<bool> neighbors(_mesh_info->mesh().elements_count(), false);
+#pragma omp parallel for default(none) firstprivate(neighbors)
     for(size_t node = 0; node < _mesh_info->mesh().nodes_count(); ++node) {
-        std::unordered_set<I> neighbors;
+        std::fill(neighbors.begin(), neighbors.end(), false);
         for(const I elL : _mesh_info->nodes_elements_map(node))
             for(const I elNL : _mesh_info->neighbors(elL))
-                neighbors.insert(elNL);
-        for(const I elNL : neighbors) {
-            const auto& eNL = _mesh_info->mesh().element_2d(_mesh_info->mesh().element_2d_type(elNL));
-            for(size_t q = 0, shift = _mesh_info->quad_shift(elNL); q < eNL->qnodes_count(); ++q, ++shift) {
-                const T influence_weight = p2 * eNL->weight(q) * _mesh_info->jacobian(shift) * _influence_fun(_mesh_info->quad_coord(shift), _mesh_info->mesh().node(node));
-                _stress[0][node] += influence_weight * (_D[0] * strains_in_quads[0][shift] + _D[1] * strains_in_quads[1][shift]);
-                _stress[1][node] += influence_weight * (_D[1] * strains_in_quads[0][shift] + _D[0] * strains_in_quads[1][shift]);
-                _stress[2][node] += influence_weight *  _D[2] * strains_in_quads[2][shift];
+                neighbors[elNL] = true;
+        for(size_t e = 0; e < _mesh_info->mesh().elements_count(); ++e)
+            if (neighbors[e]) {
+                const auto& eNL = _mesh_info->mesh().element_2d(e);
+                for(size_t q = 0, shift = _mesh_info->quad_shift(e); q < eNL->qnodes_count(); ++q, ++shift) {
+                    const T influence_weight = p2 * eNL->weight(q) * _mesh_info->jacobian(shift) * _influence_fun(_mesh_info->quad_coord(shift), _mesh_info->mesh().node(node));
+                    _stress[0][node] += influence_weight * (_D[0] * strains_in_quads[0][shift] + _D[1] * strains_in_quads[1][shift]);
+                    _stress[1][node] += influence_weight * (_D[1] * strains_in_quads[0][shift] + _D[0] * strains_in_quads[1][shift]);
+                    _stress[2][node] += influence_weight *  _D[2] * strains_in_quads[2][shift];
+                }
             }
-        }
     }
 }
 
@@ -131,7 +117,6 @@ void solution<T, I>::calc_strain_and_stress() {
         _strain[comp].resize(_mesh_info->mesh().nodes_count());
         _stress[comp].resize(_mesh_info->mesh().nodes_count());
     }
-
     strain_and_stress_loc();
     if(_p1 < 0.999) { // Нелокальная задача
         for(size_t comp = 0; comp < _stress.size(); ++comp)

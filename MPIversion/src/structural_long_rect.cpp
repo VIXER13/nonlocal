@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     try {
         std::cout.precision(7);
 
-        static constexpr double r = 0.1, p1 = 0.5;
+        static constexpr double r = 0.1, p1 = 1;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
             {
                 {  // Right
                     nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return f1(x); },
+                    [](const std::array<double, 2>& x) { return f2(x); },
                     nonlocal::structural::boundary_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
                 },
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 
                 { // Left
                         nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>& x) { return -f1(x); },
+                        [](const std::array<double, 2>& x) { return -f2(x); },
                         nonlocal::structural::boundary_t::PRESSURE,
                         [](const std::array<double, 2>&) { return 0; }
                 },
@@ -92,7 +92,6 @@ int main(int argc, char** argv) {
         {
             sol.calc_strain_and_stress();
             sol.save_as_vtk("structural.vtk");
-            //fem_sol.save_as_vtk("structural.vtk", sol);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
