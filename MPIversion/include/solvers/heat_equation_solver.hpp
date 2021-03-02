@@ -225,7 +225,8 @@ public:
     ~heat_equation_solver() override = default;
 
     template<class Vector>
-    void save_as_vtk(const std::string& path, const Vector& temperature) const;
+    void save_as_vtk(const std::string& path, const Vector& temperature,
+                     const std::array<std::vector<double>, 2>& gradient) const;
 
     // Функция, решающая стационарное уравнение теплопроводности в нелокальной постановке.
     // Right_Part - функтор с сигнатурой T(std::array<T, 2>&),
@@ -245,7 +246,8 @@ public:
 
 template<class T, class I>
 template<class Vector>
-void heat_equation_solver<T, I>::save_as_vtk(const std::string& path, const Vector& temperature) const {
+void heat_equation_solver<T, I>::save_as_vtk(const std::string& path, const Vector& temperature,
+                                             const std::array<std::vector<double>, 2>& gradient) const {
     static constexpr std::string_view data_type = std::is_same_v<T, float> ? "float" : "double";
 
     if(mesh().nodes_count() != size_t(temperature.size()))
@@ -259,6 +261,10 @@ void heat_equation_solver<T, I>::save_as_vtk(const std::string& path, const Vect
          << "LOOKUP_TABLE default" << '\n';
     for(size_t i = 0; i < mesh().nodes_count(); ++i)
         fout << temperature[i] << '\n';
+
+    fout << "VECTORS gradient " << data_type << '\n';
+    for(size_t i = 0; i < mesh().nodes_count(); ++i)
+        fout << gradient[0][i] << ' ' << gradient[1][i] << " 0\n";
 }
 
 template<class T, class I>
@@ -289,7 +295,9 @@ std::vector<T> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
     integrate_right_part(f, right_part);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
+    double time = omp_get_wtime();
     _base::PETSc_solver(f, K);
+    std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
 //    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 //

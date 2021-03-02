@@ -10,10 +10,18 @@ void save_raw_data(const mesh::mesh_2d<T>& msh,
                    const std::vector<std::array<T, 3>>& strain,
                    const std::vector<std::array<T, 3>>& stress) {
     std::ofstream eps11{"eps11.csv"},
-            sigma11{"sigma11.csv"};
+                  eps22{"eps22.csv"},
+                  eps12{"eps12.csv"},
+                  sigma11{"sigma11.csv"},
+                  sigma22{"sigma22.csv"},
+                  sigma12{"sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
         eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][0] << std::endl;
+        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][1] << std::endl;
+        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][2] << std::endl;
         sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][0] << std::endl;
+        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][1] << std::endl;
+        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][2] << std::endl;
     }
 }
 
@@ -22,6 +30,7 @@ double f2(const std::array<double, 2>& x) { return x[1] < 0.5 ? x[1] : 1 - x[1];
 double f3(const std::array<double, 2>& x) { return f2(x) - 0.25; }
 double f4(const std::array<double, 2>& x) { return 0.5 - f2(x); }
 double f5(const std::array<double, 2>& x) { return 0.25 - f2(x); }
+double f6(const std::array<double, 2>& x) { return x[1] < 0.5 ? 0.5 - x[1] : x[1] - 0.5; }
 
 }
 
@@ -36,23 +45,23 @@ int main(int argc, char** argv) {
     try {
         std::cout.precision(7);
 
-        static constexpr double r = 0.2, p1 = 2./3.;
+        static constexpr double r = 0.1, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
         if (p1 < 0.999)
-            mesh_info->find_neighbours(r);
+            mesh_info->find_neighbours(1.5 * r, mesh::balancing_t::SPEED);
 
         const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 21};
         nonlocal::structural::structural_solver<double, int> fem_sol{mesh_info, params};
 
-        const auto U = fem_sol.stationary(
+        auto sol = fem_sol.stationary(
             {
                 {  // Right
-                        nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>& x) { return f5(x); },
-                        nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>&) { return 0; }
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return f1(x); },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {   // Horizontal
@@ -64,16 +73,16 @@ int main(int argc, char** argv) {
 
                 { // Left
                         nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>& x) { return -f5(x); },
+                        [](const std::array<double, 2>& x) { return -f1(x); },
                         nonlocal::structural::boundary_t::PRESSURE,
                         [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {   // Vertical
-                        nonlocal::structural::boundary_t::DISPLACEMENT,
-                        [](const std::array<double, 2>&) { return 0; },
-                        nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>&) { return 0; }
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>&) { return 0; }
                 }
             },
             p1, bell
@@ -81,11 +90,9 @@ int main(int argc, char** argv) {
 
         if (mesh_info->rank() == 0)
         {
-            const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);
-            std::cout << "Energy U = " << fem_sol.calc_energy(strain, stress) << std::endl;
-
-            //save_raw_data(mesh, strain, stress);
-            fem_sol.save_as_vtk("structural.vtk", U, strain, stress);
+            sol.calc_strain_and_stress();
+            sol.save_as_vtk("structural.vtk");
+            //fem_sol.save_as_vtk("structural.vtk", sol);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

@@ -9,13 +9,10 @@
 
 namespace nonlocal {
 
-enum class boundary_type : uint8_t {
-    FIRST_KIND,
-    SECOND_KIND
-};
+enum class boundary_type : uint8_t { FIRST_KIND, SECOND_KIND };
 
 template<class T, class B, size_t DoF>
-struct boundary_condition {
+struct boundary_condition final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
     struct boundary_pair {
@@ -57,6 +54,7 @@ protected:
     I                                     quad_shift               (const size_t element) const { return _mesh_info->quad_shift(element); }
     const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _mesh_info->quad_coord(quad); }
     const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _mesh_info->jacobi_matrix(quad); }
+    const std::array<T, 4>&               jacobi_matrix_node       (const size_t quad)    const { return _mesh_info->jacobi_matrix_node(quad); }
     const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _mesh_info->nodes_elements_map(node); }
     const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _mesh_info->global_to_local_numbering(element); }
     const std::vector<I>&                 neighbors                (const size_t element) const { return _mesh_info->neighbors(element); }
@@ -249,6 +247,7 @@ protected:
 
 public:
     void set_mesh(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh_info) { _mesh_info = mesh_info; }
+    const std::shared_ptr<mesh::mesh_info<T, I>>& get_mesh_info() const { return _mesh_info; }
 };
 
 }
