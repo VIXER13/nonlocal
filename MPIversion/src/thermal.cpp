@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
                     [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                 }
             },
-            [](const std::array<double, 2>&) { return -4; }, // Правая часть
+            {[](const std::array<double, 2>&) { return -4; }}, // Правая часть
             p1, // Вес
             bell // Функция влияния
         );

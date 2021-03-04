@@ -22,6 +22,9 @@ enum class boundary_t : uint8_t {
 template<class T>
 using bound_cond = boundary_condition<T, boundary_t, 1>;
 
+template<class T>
+using right_part = right_partition<T, 1>;
+
 template<class T, class I>
 class heat_equation_solver : protected finite_element_solver_base<T, I> {
     using _base = finite_element_solver_base<T, I>;
@@ -45,9 +48,6 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
     T integrate_nonloc(const Finite_Element_2D_Ptr& eL,  const size_t iL,  size_t shiftL,
                        const Finite_Element_2D_Ptr& eNL, const size_t jNL, size_t shiftNL,
                        const Influence_Function& influence_function) const;
-
-    template<class Right_Part>
-    void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const;
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
                                 Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
@@ -82,8 +82,8 @@ public:
     // Right_Part - функтор с сигнатурой T(std::array<T, 2>&),
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     // volume - значение интеграла по области, в случае если поставлена задача Неймана, по умолчанию 0.
-    template<class Right_Part, class Influence_Function>
-    solution<T, I> stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+    template<class Influence_Function>
+    solution<T, I> stationary(const std::vector<bound_cond<T>>& bounds_cond, const right_part<T>& right_part,
                               const T p1, const Influence_Function& influence_fun, const T volume = 0);
 
 //    template<class Init_Distribution, class Right_Part, class Influence_Function>
@@ -138,17 +138,6 @@ T heat_equation_solver<T, I>::integrate_nonloc(const Finite_Element_2D_Ptr& eL, 
                                       inner_int_y * _base::template dNd<Y>(eL, iL, qL, shiftL));
     }
     return integral;
-}
-
-template<class T, class I>
-template<class Right_Part>
-void heat_equation_solver<T, I>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
-    for(size_t node = first_node(); node < last_node(); ++node)
-        for(const I el : _base::nodes_elements_map(node)) {
-            const size_t i = _base::global_to_local_numbering(el).find(node)->second;
-            f[mesh().node_number(el, i) - first_node()] +=
-                _base::template integrate_function(mesh().element_2d(el), i, quad_shift(el), right_part);
-        }
 }
 
 template<class T, class I>
@@ -270,8 +259,8 @@ void heat_equation_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::Row
 }
 
 template<class T, class I>
-template<class Right_Part, class Influence_Function>
-solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+template<class Influence_Function>
+solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const right_part<T>& right_part,
                                                       const T p1, const Influence_Function& influence_fun, const T volume) {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
                                           [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
@@ -294,7 +283,7 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
         p1, influence_fun
     );
 
-    integrate_right_part(f, right_part);
+    _base::template integrate_right_part(f, right_part);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
     double time = omp_get_wtime();

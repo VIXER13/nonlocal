@@ -1,5 +1,5 @@
-#ifndef NONLOCAL_SOLVERS_RIGHT_PART_HPP
-#define NONLOCAL_SOLVERS_RIGHT_PART_HPP
+#ifndef NONLOCAL_SOLVERS_RIGHT_PARTITION_HPP
+#define NONLOCAL_SOLVERS_RIGHT_PARTITION_HPP
 
 #include <array>
 #include <functional>
@@ -7,7 +7,7 @@
 namespace nonlocal {
 
 template<class T, size_t DoF>
-struct right_part final {
+struct right_partition final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
     struct function final {

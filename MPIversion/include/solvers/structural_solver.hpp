@@ -21,12 +21,7 @@ template<class T>
 using bound_cond = boundary_condition<T, boundary_t, 2>;
 
 template<class T>
-struct distributed_load final {
-    static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
-    std::array<std::function<T(const std::array<T, 2>&)>, 2> 
-        func = { [](const std::array<T, 2>&) noexcept { return 0; },
-                 [](const std::array<T, 2>&) noexcept { return 0; } };
-};
+using right_part = right_partition<T, 2>;
 
 template<class T, class I>
 class structural_solver : public finite_element_solver_base<T, I> {
@@ -76,7 +71,7 @@ public:
     ~structural_solver() override = default;
 
     template<class Influence_Function>
-    solution<T, I> stationary(const std::vector<bound_cond<T>> &bounds_cond,
+    solution<T, I> stationary(const std::vector<bound_cond<T>> &bounds_cond, const right_part<T>& right_part,
                               const T p1, const Influence_Function& influence_fun);
 };
 
@@ -238,7 +233,7 @@ void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMaj
 
 template<class T, class I>
 template<class Influence_Function>
-solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<T>> &bounds_cond,
+solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<T>> &bounds_cond, const right_part<T>& right_part,
                                                    const T p1, const Influence_Function& influence_fun) {
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
@@ -250,9 +245,9 @@ solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<
 
     time = omp_get_wtime();
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
+    _base::template integrate_right_part(f, right_part);
     _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
-    //integrate_right_part(mesh, right_part, f);
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();

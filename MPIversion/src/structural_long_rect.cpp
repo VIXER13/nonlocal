@@ -85,6 +85,7 @@ int main(int argc, char** argv) {
                     [](const std::array<double, 2>&) { return 0; }
                 }
             },
+            {}, // Правая часть
             p1, bell
         );
 
