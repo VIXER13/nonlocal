@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <omp.h>
 #include "finite_element_solver_base.hpp"
+#include "heat_equation_solution.hpp"
 #include "../../Eigen/Eigen/Dense"
 #include "../../Eigen/Eigen/Sparse"
 #include "../../Eigen/Eigen/Eigen"
@@ -36,187 +37,40 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
     using _base::quad_coord;
     using _base::jacobian;
 
-    // Интегрирование базисной функции i по элементу e.
-    // Для использования, предварительно должны быть проинициализированы jacobi_matrices текущего элемента.
-    // Квадратурный сдвиг quad_shift нужен в случае если матрицы Якоби текуще элемента хранятся со сдвигом.
-    T integrate_basic(const Finite_Element_2D_Ptr& e, const size_t i, size_t quad_shift) const {
-        T integral = 0;
-        for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
-            integral += e->weight(q) * e->qN(i, q) * jacobian(quad_shift);
-        return integral;
-    }
+    T integrate_basic(const Finite_Element_2D_Ptr& e, const size_t i, size_t quad_shift) const;
+    T integrate_basic_pair(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const;
+    T integrate_loc(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const;
 
-    // Интегрирование произведения базисных функций i и j элемента e.
-    T integrate_basic_pair(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const {
-        T integral = 0;
-        for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
-            integral += e->weight(q) * e->qN(i, q) * e->qN(j, q) * jacobian(quad_shift);
-        return integral;
-    }
-
-    // Интегрирование произведения пар градиентов функций i и j элемента e.
-    T integrate_loc(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const {
-        T integral = 0;
-        for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
-            integral += e->weight(q) / jacobian(quad_shift) *
-                        (_base::template dNd<X>(e, i, q, quad_shift) * _base::template dNd<X>(e, j, q, quad_shift) +
-                         _base::template dNd<Y>(e, i, q, quad_shift) * _base::template dNd<Y>(e, j, q, quad_shift));
-        return integral;
-    }
-
-    // Интегрирование произведения пары градиентов функции iL элемента eL и функции jNL элемента eNL.
-    // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     template<class Influence_Function>
     T integrate_nonloc(const Finite_Element_2D_Ptr& eL,  const size_t iL,  size_t shiftL,
                        const Finite_Element_2D_Ptr& eNL, const size_t jNL, size_t shiftNL,
-                       const Influence_Function& influence_function) const {
-        T integral = 0;
-        const size_t sub_shift = shiftNL;
-        for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL) {
-            T inner_int_x = 0, inner_int_y = 0;
-            for(size_t qNL = 0, shiftNL = sub_shift; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL) {
-                const T influence_weight = eNL->weight(qNL) * influence_function(quad_coord(shiftL), quad_coord(shiftNL));
-                inner_int_x += influence_weight * _base::template dNd<X>(eNL, jNL, qNL, shiftNL);
-                inner_int_y += influence_weight * _base::template dNd<Y>(eNL, jNL, qNL, shiftNL);
-            }
-            integral += eL->weight(qL) * (inner_int_x * _base::template dNd<X>(eL, iL, qL, shiftL) + 
-                                          inner_int_y * _base::template dNd<Y>(eL, iL, qL, shiftL));
-        }
-        return integral;
-    }
+                       const Influence_Function& influence_function) const;
 
     template<class Right_Part>
-    void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
-        for(size_t node = first_node(); node < last_node(); ++node)
-            for(const I el : _base::nodes_elements_map(node)) {
-                const size_t i = _base::global_to_local_numbering(el).find(node)->second;
-                f[mesh().node_number(el, i) - first_node()] +=
-                    _base::template integrate_function(mesh().element_2d(el), i, quad_shift(el), right_part);
-            }
-    }
+    void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const;
 
-    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                const bool neumann_task, const T p1, const std::vector<bool>& inner_nodes) const {
-        std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
-                                           bound_portrait(K_bound.rows());
-
-        if (neumann_task) {
-#pragma omp parallel for default(none) shared(K, inner_portrait)
-            for(size_t node =  0; node < inner_portrait.size(); ++node)
-                inner_portrait[node].insert(mesh().nodes_count());
-        }
-
-        const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = first_node()](const I row, const I col) {
-            if (inner_nodes[row] && inner_nodes[col]) {
-                if (row <= col)
-                    inner_portrait[row - shift].insert(col);
-            } else if (row != col) {
-                if (!inner_nodes[col])
-                    bound_portrait[row - shift].insert(col);
-            } else
-                inner_portrait[row - shift].insert(col);
-        };
-
-        if (p1 > _base::MAX_LOCAL_WEIGHT) {
-            _base::template mesh_run_loc(
-                [this, &indexator] (const size_t el, const size_t i, const size_t j) {
-                    indexator(mesh().node_number(el, i), mesh().node_number(el, j));
-                });
-        } else {
-            _base::template mesh_run_nonloc(
-                [this, &indexator](const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
-                    indexator(mesh().node_number(elL, iL), mesh().node_number(elNL, jNL));
-                });
-        }
-
-        _base::convert_portrait(K,       inner_portrait);
-        _base::convert_portrait(K_bound, bound_portrait);
-    }
+    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                                Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                                const bool neumann_task, const T p1,
+                                const std::vector<bool>& inner_nodes) const;
 
     template<class Integrate_Rule, class Influence_Function>
-    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                      const Integrate_Rule& integrate_rule, const bool neumann_task,
-                     const T p1, const Influence_Function& influence_fun, const std::vector<bool>& inner_nodes) const {
-        if (neumann_task) {
-#pragma omp parallel for default(none) shared(K)
-            for(size_t node = first_node(); node < last_node(); ++node) {
-                T& val = K.coeffRef(node - first_node(), mesh().nodes_count());
-                for(const I el : _base::nodes_elements_map(node)) {
-                    const auto& e = mesh().element_2d(el);
-                    const size_t i = _base::global_to_local_numbering(el).find(node)->second;
-                    val += integrate_basic(e, i, quad_shift(el));
-                }
-            }
-        }
-
-        _base::template mesh_run_loc(
-            [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t el, const size_t i, const size_t j) {
-                const I row = mesh().node_number(el, i),
-                        col = mesh().node_number(el, j);
-                if (inner_nodes[row] && inner_nodes[col]) {
-                    if (row <= col)
-                        K.coeffRef(row - first_node(), col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
-                } else if (row != col) {
-                    if (!inner_nodes[col])
-                        K_bound.coeffRef(row - first_node(), col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
-                } else
-                    K.coeffRef(row - first_node(), col) = 1;
-            }
-        );
-
-        if (p1 < _base::MAX_LOCAL_WEIGHT) {
-            _base::template mesh_run_nonloc(
-                [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
-                (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
-                    const I row = mesh().node_number(elL,  iL ),
-                            col = mesh().node_number(elNL, jNL);
-                    if (inner_nodes[row] && inner_nodes[col]) {
-                        if (row <= col)
-                            K.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                                         mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
-                    } else if (row != col)
-                        if (!inner_nodes[col])
-                            K_bound.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                                               mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
-                }
-            );
-        }
-    }
+                     const T p1, const Influence_Function& influence_fun,
+                     const std::vector<bool>& inner_nodes) const;
 
     // Вычисление марицы теплопроводности (теплоёмкости в случае когда integrate_rule == integrate_basic_pair).
     // На выходе получаем расщеплённую матрицу, где K будет участвовать в решение СЛАУ, а K_bound уйдёт в правую часть.
     // Integrate_Rule - функтор с сигнатурой T(const Finite_Element_2D_Ptr&, const size_t, const size_t, const std::vector<std::array<T, 4>>&, size_t)
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     template<class Integrate_Rule, class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                       const std::vector<bound_cond<T>>& bounds_cond, const bool neumann_task,
-                       const Integrate_Rule& integrate_rule, const T p1, const Influence_Function& influence_fun) const {
-        std::vector<bool> inner_nodes(mesh().nodes_count(), true);
-        _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
-            if(bounds_cond[b].type(0) == boundary_t::TEMPERATURE)
-                inner_nodes[mesh().node_number(b, el, i)] = false;
-        });
-
-        double time = omp_get_wtime();
-        create_matrix_portrait(K, K_bound, neumann_task, p1, inner_nodes);
-        std::cout << "rank = " << rank() << std::endl;
-        std::cout << "K.nonzero() = " << K.nonZeros() << std::endl;
-        std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;
-        std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl << std::endl;
-
-        time = omp_get_wtime();
-        calc_matrix(K, K_bound, integrate_rule, neumann_task, p1, influence_fun, inner_nodes);
-        std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
-
-//        for(PetscMPIInt i = 0; i < size(); ++i) {
-//            if (i == rank()) {
-//                std::cout << "rank = " << rank() << std::endl << std::endl;
-//                std::cout << Eigen::MatrixXd{K} << std::endl << std::endl
-//                          << Eigen::MatrixXd{K_bound} << std::endl << std::endl;
-//            }
-//            MPI_Barrier(MPI_COMM_WORLD);
-//        }
-    }
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                       Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                       const std::vector<bound_cond<T>>& bounds_cond,
+                       const bool neumann_task, const Integrate_Rule& integrate_rule,
+                       const T p1, const Influence_Function& influence_fun) const;
 
 public:
     explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh)
@@ -224,16 +78,12 @@ public:
 
     ~heat_equation_solver() override = default;
 
-    template<class Vector>
-    void save_as_vtk(const std::string& path, const Vector& temperature,
-                     const std::array<std::vector<double>, 2>& gradient) const;
-
     // Функция, решающая стационарное уравнение теплопроводности в нелокальной постановке.
     // Right_Part - функтор с сигнатурой T(std::array<T, 2>&),
     // Influence_Function - функтор с сигнатурой T(std::array<T, 2>&, std::array<T, 2>&)
     // volume - значение интеграла по области, в случае если поставлена задача Неймана, по умолчанию 0.
     template<class Right_Part, class Influence_Function>
-    std::vector<T> stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+    solution<T, I> stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
                               const T p1, const Influence_Function& influence_fun, const T volume = 0);
 
 //    template<class Init_Distribution, class Right_Part, class Influence_Function>
@@ -245,31 +95,183 @@ public:
 };
 
 template<class T, class I>
-template<class Vector>
-void heat_equation_solver<T, I>::save_as_vtk(const std::string& path, const Vector& temperature,
-                                             const std::array<std::vector<double>, 2>& gradient) const {
-    static constexpr std::string_view data_type = std::is_same_v<T, float> ? "float" : "double";
+T heat_equation_solver<T, I>::integrate_basic(const Finite_Element_2D_Ptr& e, const size_t i, size_t quad_shift) const {
+    T integral = 0;
+    for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
+        integral += e->weight(q) * e->qN(i, q) * jacobian(quad_shift);
+    return integral;
+}
 
-    if(mesh().nodes_count() != size_t(temperature.size()))
-        throw std::domain_error{"mesh().nodes_count() != T.size()."};
+template<class T, class I>
+T heat_equation_solver<T, I>::integrate_basic_pair(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const {
+    T integral = 0;
+    for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
+        integral += e->weight(q) * e->qN(i, q) * e->qN(j, q) * jacobian(quad_shift);
+    return integral;
+}
 
-    std::ofstream fout{path};
-    fout.precision(20);
-    mesh().save_as_vtk(fout);
-    fout << "POINT_DATA " << mesh().nodes_count() << '\n';
-    fout << "SCALARS Temperature " << data_type << " 1" << '\n'
-         << "LOOKUP_TABLE default" << '\n';
-    for(size_t i = 0; i < mesh().nodes_count(); ++i)
-        fout << temperature[i] << '\n';
+template<class T, class I>
+T heat_equation_solver<T, I>::integrate_loc(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const {
+    T integral = 0;
+    for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
+        integral += e->weight(q) / jacobian(quad_shift) *
+                    (_base::template dNd<X>(e, i, q, quad_shift) * _base::template dNd<X>(e, j, q, quad_shift) +
+                     _base::template dNd<Y>(e, i, q, quad_shift) * _base::template dNd<Y>(e, j, q, quad_shift));
+    return integral;
+}
 
-    fout << "VECTORS gradient " << data_type << '\n';
-    for(size_t i = 0; i < mesh().nodes_count(); ++i)
-        fout << gradient[0][i] << ' ' << gradient[1][i] << " 0\n";
+template<class T, class I>
+template<class Influence_Function>
+T heat_equation_solver<T, I>::integrate_nonloc(const Finite_Element_2D_Ptr& eL,  const size_t iL,  size_t shiftL,
+                                               const Finite_Element_2D_Ptr& eNL, const size_t jNL, size_t shiftNL,
+                                               const Influence_Function& influence_function) const {
+    T integral = 0;
+    const size_t sub_shift = shiftNL;
+    for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL) {
+        T inner_int_x = 0, inner_int_y = 0;
+        for(size_t qNL = 0, shiftNL = sub_shift; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL) {
+            const T influence_weight = eNL->weight(qNL) * influence_function(quad_coord(shiftL), quad_coord(shiftNL));
+            inner_int_x += influence_weight * _base::template dNd<X>(eNL, jNL, qNL, shiftNL);
+            inner_int_y += influence_weight * _base::template dNd<Y>(eNL, jNL, qNL, shiftNL);
+        }
+        integral += eL->weight(qL) * (inner_int_x * _base::template dNd<X>(eL, iL, qL, shiftL) +
+                                      inner_int_y * _base::template dNd<Y>(eL, iL, qL, shiftL));
+    }
+    return integral;
+}
+
+template<class T, class I>
+template<class Right_Part>
+void heat_equation_solver<T, I>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
+    for(size_t node = first_node(); node < last_node(); ++node)
+        for(const I el : _base::nodes_elements_map(node)) {
+            const size_t i = _base::global_to_local_numbering(el).find(node)->second;
+            f[mesh().node_number(el, i) - first_node()] +=
+                _base::template integrate_function(mesh().element_2d(el), i, quad_shift(el), right_part);
+        }
+}
+
+template<class T, class I>
+void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                                                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                                                        const bool neumann_task, const T p1,
+                                                        const std::vector<bool>& inner_nodes) const {
+    std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
+                                       bound_portrait(K_bound.rows());
+    if (neumann_task) {
+#pragma omp parallel for default(none) shared(K, inner_portrait)
+        for(size_t node =  0; node < inner_portrait.size(); ++node)
+            inner_portrait[node].insert(mesh().nodes_count());
+    }
+
+    const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = first_node()](const I row, const I col) {
+        if (inner_nodes[row] && inner_nodes[col]) {
+            if (row <= col)
+                inner_portrait[row - shift].insert(col);
+        } else if (row != col) {
+            if (!inner_nodes[col])
+                bound_portrait[row - shift].insert(col);
+        } else
+            inner_portrait[row - shift].insert(col);
+    };
+
+    if (p1 > _base::MAX_LOCAL_WEIGHT) {
+        _base::template mesh_run_loc(
+            [this, &indexator] (const size_t el, const size_t i, const size_t j) {
+                indexator(mesh().node_number(el, i), mesh().node_number(el, j));
+            });
+    } else {
+        _base::template mesh_run_nonloc(
+            [this, &indexator](const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
+                indexator(mesh().node_number(elL, iL), mesh().node_number(elNL, jNL));
+            });
+    }
+
+    _base::convert_portrait(K,       inner_portrait);
+    _base::convert_portrait(K_bound, bound_portrait);
+}
+
+template<class T, class I>
+template<class Integrate_Rule, class Influence_Function>
+void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                                             Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                                             const Integrate_Rule& integrate_rule, const bool neumann_task,
+                                             const T p1, const Influence_Function& influence_fun,
+                                             const std::vector<bool>& inner_nodes) const {
+    if (neumann_task) {
+#pragma omp parallel for default(none) shared(K)
+        for(size_t node = first_node(); node < last_node(); ++node) {
+            T& val = K.coeffRef(node - first_node(), mesh().nodes_count());
+            for(const I el : _base::nodes_elements_map(node)) {
+                const auto& e = mesh().element_2d(el);
+                const size_t i = _base::global_to_local_numbering(el).find(node)->second;
+                val += integrate_basic(e, i, quad_shift(el));
+            }
+        }
+    }
+
+    _base::template mesh_run_loc(
+        [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t el, const size_t i, const size_t j) {
+            const I row = mesh().node_number(el, i),
+                    col = mesh().node_number(el, j);
+            if (inner_nodes[row] && inner_nodes[col]) {
+                if (row <= col)
+                    K.coeffRef(row - first_node(), col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+            } else if (row != col) {
+                if (!inner_nodes[col])
+                    K_bound.coeffRef(row - first_node(), col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+            } else
+                K.coeffRef(row - first_node(), col) = 1;
+        }
+    );
+
+    if (p1 < _base::MAX_LOCAL_WEIGHT) {
+        _base::template mesh_run_nonloc(
+            [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
+                    (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
+                const I row = mesh().node_number(elL,  iL ),
+                        col = mesh().node_number(elNL, jNL);
+                if (inner_nodes[row] && inner_nodes[col]) {
+                    if (row <= col)
+                        K.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
+                                                                                     mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                } else if (row != col)
+                    if (!inner_nodes[col])
+                        K_bound.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
+                                                                                           mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+            }
+        );
+    }
+}
+
+template<class T, class I>
+template<class Integrate_Rule, class Influence_Function>
+void heat_equation_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                                               Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                                               const std::vector<bound_cond<T>>& bounds_cond,
+                                               const bool neumann_task, const Integrate_Rule& integrate_rule,
+                                               const T p1, const Influence_Function& influence_fun) const {
+    std::vector<bool> inner_nodes(mesh().nodes_count(), true);
+    _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
+        if(bounds_cond[b].type(0) == boundary_t::TEMPERATURE)
+            inner_nodes[mesh().node_number(b, el, i)] = false;
+    });
+
+    double time = omp_get_wtime();
+    create_matrix_portrait(K, K_bound, neumann_task, p1, inner_nodes);
+    std::cout << "rank = " << rank() << std::endl;
+    std::cout << "K.nonzero() = " << K.nonZeros() << std::endl;
+    std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;
+    std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl << std::endl;
+
+    time = omp_get_wtime();
+    calc_matrix(K, K_bound, integrate_rule, neumann_task, p1, influence_fun, inner_nodes);
+    std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 }
 
 template<class T, class I>
 template<class Right_Part, class Influence_Function>
-std::vector<T> heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
                                                       const T p1, const Influence_Function& influence_fun, const T volume) {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
                                           [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
@@ -306,13 +308,9 @@ std::vector<T> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
 //    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
 //    //std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
 //    temperature.conservativeResize(mesh().nodes_count());
-//
 //    return std::move(temperature);
 
-    std::vector<T> sol(mesh().nodes_count());
-    for(size_t i = 0; i < sol.size(); ++i)
-        sol[i] = f[i];
-    return std::move(sol);
+    return solution<T, I>{_base::get_mesh_info(), f};
 }
 
 //template<class T, class I>

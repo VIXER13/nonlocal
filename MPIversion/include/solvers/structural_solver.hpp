@@ -29,7 +29,7 @@ struct distributed_load final {
 };
 
 template<class T, class I>
-class structural_solver : protected finite_element_solver_base<T, I> {
+class structural_solver : public finite_element_solver_base<T, I> {
     using _base = finite_element_solver_base<T, I>;
     using typename _base::Finite_Element_2D_Ptr;
     using typename _base::component;
@@ -41,7 +41,6 @@ class structural_solver : protected finite_element_solver_base<T, I> {
     using _base::jacobian;
     using _base::first_node;
     using _base::last_node;
-    using _base::get_mesh_info;
 
     std::array<T, 3> _D;
 

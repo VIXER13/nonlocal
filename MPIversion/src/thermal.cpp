@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
 
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_info};
 
-        const auto T = fem_sol.stationary(
+        auto T = fem_sol.stationary(
             { // Граничные условия
                 {   // Down
                     nonlocal::heat::boundary_t::TEMPERATURE,
@@ -69,10 +69,8 @@ int main(int argc, char** argv) {
         int rank = -1;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) {
-            //fem_sol.save_as_vtk("heat.vtk", T);
-            save_raw_data(mesh, T, mesh_info->calc_gradient(T));
-            std::cout << mesh_info->integrate_solution(T) << std::endl;
-            //std::cout << fem_sol.integrate_solution(T) << std::endl;
+            std::cout << "Energy = " << T.calc_energy() << std::endl;
+            T.save_as_vtk("heat.vtk");
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

@@ -1,5 +1,5 @@
-#ifndef STRUCTURAL_SOLUTION_HPP
-#define STRUCTURAL_SOLUTION_HPP
+#ifndef NONLOCAL_STRUCTURAL_SOLUTION_HPP
+#define NONLOCAL_STRUCTURAL_SOLUTION_HPP
 
 #include "mesh_info.hpp"
 
@@ -23,7 +23,7 @@ std::array<T, 3> hooke_matrix(const parameters<T>& params) noexcept {
 }
 
 template<class T, class I>
-struct solution final {
+class solution final {
     std::shared_ptr<mesh::mesh_info<T, I>> _mesh_info;
     std::array<T, 3> _D;
     T _p1 = 1;

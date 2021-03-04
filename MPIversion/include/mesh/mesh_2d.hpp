@@ -153,12 +153,12 @@ mesh_2d<T, I>::mesh_2d(const std::string& path) {
 }
 
 template<class T, class I>
-mesh_2d<T, I>::mesh_2d(const mesh_2d& other) :
-    _nodes{other._nodes},
-    _elements{other._elements},
-    _boundaries{other._boundaries},
-    _elements_1d_type{other._elements_1d_type},
-    _elements_2d_type{other._elements_2d_type} {}
+mesh_2d<T, I>::mesh_2d(const mesh_2d& other)
+    : _nodes{other._nodes}
+    , _elements{other._elements}
+    , _boundaries{other._boundaries}
+    , _elements_1d_type{other._elements_1d_type}
+    , _elements_2d_type{other._elements_2d_type} {}
 
 template<class T, class I>
 void mesh_2d<T, I>::read_from_file(const std::string& path) {
