@@ -49,6 +49,10 @@ public:
                 _u[comp][i] = u[2*i+comp];
     }
 
+    const std::array<std::vector<T>, 2>& get_displacement() const { return _u; }
+    const std::array<std::vector<T>, 3>& get_strains() const { return _strain; }
+    const std::array<std::vector<T>, 3>& get_stress () const { return _stress; }
+
     void calc_strain_and_stress();
     T calc_energy() const;
     void save_as_vtk(const std::string& path) const;

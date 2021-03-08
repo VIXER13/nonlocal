@@ -7,8 +7,7 @@ namespace {
 
 template<class T>
 void save_raw_data(const mesh::mesh_2d<T>& msh,
-                   const std::vector<std::array<T, 3>>& strain,
-                   const std::vector<std::array<T, 3>>& stress) {
+                   const nonlocal::structural::solution<T, int>& sol) {
     std::ofstream eps11{"eps11.csv"},
                   eps22{"eps22.csv"},
                   eps12{"eps12.csv"},
@@ -16,12 +15,12 @@ void save_raw_data(const mesh::mesh_2d<T>& msh,
                   sigma22{"sigma22.csv"},
                   sigma12{"sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
-        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][0] << std::endl;
-        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][1] << std::endl;
-        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][2] << std::endl;
-        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][0] << std::endl;
-        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][1] << std::endl;
-        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][2] << std::endl;
+        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_strains()[0][i] << std::endl;
+        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_strains()[1][i] << std::endl;
+        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_strains()[2][i] << std::endl;
+        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_stress() [0][i] << std::endl;
+        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_stress() [1][i] << std::endl;
+        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_stress() [2][i] << std::endl;
     }
 }
 
@@ -31,6 +30,7 @@ double f3(const std::array<double, 2>& x) { return f2(x) - 0.25; }
 double f4(const std::array<double, 2>& x) { return 0.5 - f2(x); }
 double f5(const std::array<double, 2>& x) { return 0.25 - f2(x); }
 double f6(const std::array<double, 2>& x) { return x[1] < 0.5 ? 0.5 - x[1] : x[1] - 0.5; }
+double f7(const std::array<double, 2>& x) { return x[1] < 0.45 || x[1] > 0.55 ? 0 : 10; }
 
 }
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
         if (p1 < 0.999)
-            mesh_info->find_neighbours(1.5 * r, mesh::balancing_t::SPEED);
+            mesh_info->find_neighbours(1.3 * r, mesh::balancing_t::SPEED);
 
         const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 21};
         nonlocal::structural::structural_solver<double, int> fem_sol{mesh_info, params};
@@ -59,23 +59,23 @@ int main(int argc, char** argv) {
             {
                 {  // Right
                     nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return f2(x); },
+                    [](const std::array<double, 2>& x) { return f7(x); },
                     nonlocal::structural::boundary_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {   // Horizontal
-                        nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>&) { return 0; },
-                        nonlocal::structural::boundary_t::DISPLACEMENT,
-                        [](const std::array<double, 2>&) { return 0; }
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>&) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    [](const std::array<double, 2>&) { return 0; }
                 },
 
                 { // Left
-                        nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>& x) { return -f2(x); },
-                        nonlocal::structural::boundary_t::PRESSURE,
-                        [](const std::array<double, 2>&) { return 0; }
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return -f7(x); },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>&) { return 0; }
                 },
 
                 {   // Vertical
@@ -93,6 +93,7 @@ int main(int argc, char** argv) {
         {
             sol.calc_strain_and_stress();
             sol.save_as_vtk("structural.vtk");
+            save_raw_data(*mesh, sol);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

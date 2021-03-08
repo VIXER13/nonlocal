@@ -37,6 +37,7 @@ class structural_solver : public finite_element_solver_base<T, I> {
     using _base::first_node;
     using _base::last_node;
 
+    parameters<T> _params;
     std::array<T, 3> _D;
 
     template<bool Proj, bool Approx>
@@ -63,15 +64,28 @@ class structural_solver : public finite_element_solver_base<T, I> {
                        const std::vector<bound_cond<T>>& bounds_cond,
                        const T p1, const Influence_Function& influence_fun);
 
+    template<class Influence_Function>
+    void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                               const T alpha, const std::vector<T>& temperature,
+                               const T p1, const Influence_Function& influence_fun);
+
 public:
     explicit structural_solver(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh, const parameters<T>& params)
         : _base{mesh}
+        , _params{params}
         , _D{hooke_matrix(params)} {}
 
     ~structural_solver() override = default;
 
     template<class Influence_Function>
-    solution<T, I> stationary(const std::vector<bound_cond<T>> &bounds_cond, const right_part<T>& right_part,
+    solution<T, I> stationary(const std::vector<bound_cond<T>> &bounds_cond,
+                              const right_part<T>& right_part,
+                              const T p1, const Influence_Function& influence_fun);
+
+    template<class Influence_Function>
+    solution<T, I> stationary(const std::vector<bound_cond<T>> &bounds_cond,
+                              const right_part<T>& right_part,
+                              const T alpha, const std::vector<T>& temperature,
                               const T p1, const Influence_Function& influence_fun);
 };
 
@@ -233,7 +247,8 @@ void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMaj
 
 template<class T, class I>
 template<class Influence_Function>
-solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<T>> &bounds_cond, const right_part<T>& right_part,
+solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<T>> &bounds_cond,
+                                                   const right_part<T>& right_part,
                                                    const T p1, const Influence_Function& influence_fun) {
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
@@ -268,6 +283,90 @@ solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<
 //    std::cout << "Matrix solve: " << omp_get_wtime() - time << std::endl;
 //
 //    return std::move(u);
+}
+
+template<class T, class I>
+template<class Influence_Function>
+void structural_solver<T, I>::temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                    const T alpha, const std::vector<T>& temperature,
+                                                    const T p1, const Influence_Function& influence_fun) {
+    const T c = alpha * _params.E / (1 - 2 * _params.nu);
+    const auto [Tx, Ty] = _base::get_mesh_info()->calc_gradient(temperature);
+    const std::vector<T> qTx = _base::get_mesh_info()->approx_in_quad(Tx),
+                         qTy = _base::get_mesh_info()->approx_in_quad(Ty);
+
+#pragma omp parallel for default(none) shared(f)
+    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+        T int_x = 0, int_y = 0;
+        for(const I e : _base::nodes_elements_map(node)) {
+            const auto& el = mesh().element_2d(e);
+            const size_t i = _base::global_to_local_numbering(e).find(node)->second;
+            for(size_t q = 0, shift = quad_shift(e); q < el->qnodes_count(); ++q, ++shift) {
+                const T jac = el->weight(q) * jacobian(shift) * el->qN(i, q);
+                int_x += qTx[shift] * jac;
+                int_y += qTy[shift] * jac;
+            }
+        }
+        f[2 * node]   += p1 * c * int_x;
+        f[2 * node+1] += p1 * c * int_y;
+    }
+
+    if(p1 < _base::MAX_LOCAL_WEIGHT) {
+        const T p2 = 1 - p1;
+        for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+            T int_x = 0, int_y = 0;
+            for(const I eL : _base::nodes_elements_map(node)) {
+                const auto& elL = mesh().element_2d(eL);
+                const size_t i = _base::global_to_local_numbering(eL).find(node)->second;
+                for(const I eNL : _base::neighbors(eL)) {
+                    const auto& elNL = mesh().element_2d(eNL);
+                    for(size_t qL = 0, shiftL = quad_shift(eL); qL < elL->qnodes_count(); ++qL) {
+                        T inner_int_x = 0, inner_int_y = 0;
+                        for(size_t qNL = 0, shiftNL = quad_shift(eNL); qNL < elNL->qnodes_count(); ++qNL, ++shiftNL) {
+                            const T influence_weight = elNL->weight(qNL) * jacobian(shiftNL) * influence_fun(quad_coord(shiftL), quad_coord(shiftNL));
+                            inner_int_x += influence_weight * qTx[shiftNL];
+                            inner_int_y += influence_weight * qTy[shiftNL];
+                        }
+                        const T jac = elL->weight(qL) * elL->qN(i, qL) * jacobian(shiftL);
+                        int_x += jac * inner_int_x;
+                        int_y += jac * inner_int_y;
+                    }
+                }
+            }
+            f[2 * node]   += p2 * c * int_x;
+            f[2 * node+1] += p2 * c * int_y;
+        }
+    }
+}
+
+template<class T, class I>
+template<class Influence_Function>
+solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<T>> &bounds_cond,
+                                                   const right_part<T>& right_part,
+                                                   const T alpha, const std::vector<T>& temperature,
+                                                   const T p1, const Influence_Function& influence_fun) {
+    double time = omp_get_wtime();
+    const size_t rows = 2 * (last_node() - first_node()),
+                 cols = 2 * mesh().nodes_count();
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
+                                               K_bound(rows, cols);
+    create_matrix(K, K_bound, bounds_cond, p1, influence_fun);
+    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
+    _base::template integrate_right_part(f, right_part);
+    _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
+    temperature_condition(f, alpha, temperature, p1, influence_fun);
+    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
+    std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+    std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
+
+    return solution<T, I>{_base::get_mesh_info(), _D, u, p1, influence_fun};
 }
 
 }
