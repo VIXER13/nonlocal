@@ -255,6 +255,7 @@ void heat_equation_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::Row
 
     time = omp_get_wtime();
     calc_matrix(K, K_bound, integrate_rule, neumann_task, p1, influence_fun, inner_nodes);
+    std::cout << "rank = " << rank() << std::endl;
     std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 }
 

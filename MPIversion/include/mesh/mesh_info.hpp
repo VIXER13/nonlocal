@@ -289,8 +289,10 @@ public:
                 recvcounts[i] = first_last[i].back() - first_last[i].front();
                 rdispls[i]    = first_last[i].front();
             }
+            std::vector<int> recvbuf(mesh().nodes_count(), 0); // for old version mpich, when strict sendbuf and recvbuf don't support
             MPI_Alltoallv(data_count_per_nodes.data(), sendcounts.data(), sdispls.data(), MPI_INT,
-                          data_count_per_nodes.data(), recvcounts.data(), rdispls.data(), MPI_INT, MPI_COMM_WORLD);
+                          recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_INT, MPI_COMM_WORLD);
+            data_count_per_nodes = recvbuf;
 
             size_t sum = 0, curr_rank = 0;
             const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / size();
@@ -317,6 +319,13 @@ public:
                     _elements_neighbors[e].shrink_to_fit();
                 }
         }
+
+        size_t neighbours_count = 0;
+        for(const I e : elements) {
+            neighbours_count += _elements_neighbors[e].size();
+        }
+        std::cout << "rank = " << _rank << '\n'
+                  << "Average neighbours = " << neighbours_count / elements.size() << std::endl;
     }
 
     T integrate_solution(const std::vector<T>& sol) const {

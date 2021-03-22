@@ -297,44 +297,45 @@ void structural_solver<T, I>::temperature_condition(Eigen::Matrix<T, Eigen::Dyna
 
 #pragma omp parallel for default(none) shared(f)
     for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        T int_x = 0, int_y = 0;
         for(const I e : _base::nodes_elements_map(node)) {
             const auto& el = mesh().element_2d(e);
             const size_t i = _base::global_to_local_numbering(e).find(node)->second;
+            T int_x = 0, int_y = 0;
             for(size_t q = 0, shift = quad_shift(e); q < el->qnodes_count(); ++q, ++shift) {
                 const T jac = el->weight(q) * jacobian(shift) * el->qN(i, q);
                 int_x += qTx[shift] * jac;
                 int_y += qTy[shift] * jac;
             }
+            f[2 * node]   += p1 * c * int_x;
+            f[2 * node+1] += p1 * c * int_y;
         }
-        f[2 * node]   += p1 * c * int_x;
-        f[2 * node+1] += p1 * c * int_y;
     }
 
     if(p1 < _base::MAX_LOCAL_WEIGHT) {
         const T p2 = 1 - p1;
+#pragma omp parallel for default(none) shared(f) firstprivate(influence_fun)
         for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-            T int_x = 0, int_y = 0;
             for(const I eL : _base::nodes_elements_map(node)) {
                 const auto& elL = mesh().element_2d(eL);
-                const size_t i = _base::global_to_local_numbering(eL).find(node)->second;
-                for(const I eNL : _base::neighbors(eL)) {
-                    const auto& elNL = mesh().element_2d(eNL);
-                    for(size_t qL = 0, shiftL = quad_shift(eL); qL < elL->qnodes_count(); ++qL) {
-                        T inner_int_x = 0, inner_int_y = 0;
+                const size_t iL = _base::global_to_local_numbering(eL).find(node)->second;
+                T int_x = 0, int_y = 0;
+                for(size_t qL = 0, shiftL = quad_shift(eL); qL < elL->qnodes_count(); ++qL, ++shiftL) {
+                    const T jac = elL->weight(qL) * jacobian(shiftL) * elL->qN(iL, qL);
+                    T inner_int_x = 0, inner_int_y = 0;
+                    for(const I eNL : _base::neighbors(eL)) {
+                        const auto& elNL = mesh().element_2d(eNL);
                         for(size_t qNL = 0, shiftNL = quad_shift(eNL); qNL < elNL->qnodes_count(); ++qNL, ++shiftNL) {
                             const T influence_weight = elNL->weight(qNL) * jacobian(shiftNL) * influence_fun(quad_coord(shiftL), quad_coord(shiftNL));
                             inner_int_x += influence_weight * qTx[shiftNL];
                             inner_int_y += influence_weight * qTy[shiftNL];
                         }
-                        const T jac = elL->weight(qL) * elL->qN(i, qL) * jacobian(shiftL);
-                        int_x += jac * inner_int_x;
-                        int_y += jac * inner_int_y;
                     }
+                    int_x += inner_int_x * jac;
+                    int_y += inner_int_y * jac;
                 }
+                f[2 * node]   += p1 * c * int_x;
+                f[2 * node+1] += p1 * c * int_y;
             }
-            f[2 * node]   += p2 * c * int_x;
-            f[2 * node+1] += p2 * c * int_y;
         }
     }
 }
@@ -353,11 +354,19 @@ solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<
     create_matrix(K, K_bound, bounds_cond, p1, influence_fun);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
-    time = omp_get_wtime();
+
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
+
+    time = omp_get_wtime();
     _base::template integrate_right_part(f, right_part);
-    _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
+    std::cout << "f: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
     temperature_condition(f, alpha, temperature, p1, influence_fun);
+    std::cout << "temp cond: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+    _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 

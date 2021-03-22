@@ -25,6 +25,6 @@ add_compile_options(-O2)
 
 message(STATUS $ENV{PETSc_LIBRARIES})
 
-add_executable(nonlocal src/structural_long_rect_with_T.cpp)
+add_executable(nonlocal src/thermal.cpp)
 target_include_directories(nonlocal PUBLIC ${MPI_C_INCLUDE_DIRS})
 target_link_libraries(nonlocal ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES} ${PETSc_LIBRARIES} metamath_lib mesh_lib finite_element_solvers_lib)

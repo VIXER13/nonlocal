@@ -5,6 +5,7 @@
 #include <petsc.h>
 #include <petscsystypes.h>
 #include "../../Eigen/Eigen/Sparse"
+#undef I // for new version GCC, when use I macros
 #include "mesh.hpp"
 #include "right_partition.hpp"
 #include "boundary_condition.hpp"
@@ -274,7 +275,7 @@ void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dyna
 
     KSP ksp = nullptr;
     KSPCreate(PETSC_COMM_WORLD, &ksp);
-    KSPSetType(ksp, KSPSYMMLQ);
+    KSPSetType(ksp, KSPCG);
     KSPSetOperators(ksp, A, A);
     KSPSolve(ksp, f_petsc, x);
 
