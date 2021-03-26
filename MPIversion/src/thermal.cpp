@@ -31,14 +31,14 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
 
         omp_set_num_threads(std::stoi(argv[2]));
-        const double r = std::stod(argv[3]), p1 = std::stod(argv[3]);
+        const double r = std::stod(argv[3]), p1 = std::stod(argv[4]);
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
 
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
-        mesh_info->find_neighbours(r, mesh::balancing_t::NO);
+        auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
+        mesh_proxy->find_neighbours(r, mesh::balancing_t::NO);
 
-        nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_info};
+        nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_proxy};
 
         auto T = fem_sol.stationary(
             { // Граничные условия
@@ -71,6 +71,7 @@ int main(int argc, char** argv) {
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         if (rank == 0) {
             std::cout << "Energy = " << T.calc_energy() << std::endl;
+            save_raw_data(mesh, T.get_temperature(), mesh_proxy->calc_gradient(T.get_temperature()));
             T.save_as_vtk("heat.vtk");
         }
     } catch(const std::exception& e) {

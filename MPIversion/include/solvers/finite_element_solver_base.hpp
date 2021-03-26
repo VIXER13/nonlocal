@@ -14,7 +14,7 @@ namespace nonlocal {
 
 template<class T, class I>
 class finite_element_solver_base {
-    std::shared_ptr<mesh::mesh_info<T, I>> _mesh_info;
+    std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
 
 protected:
     using Finite_Element_1D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_1D_Ptr;
@@ -23,27 +23,27 @@ protected:
     enum component : bool {X, Y};
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
-    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh) { set_mesh(mesh); }
+    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh) { set_mesh(mesh); }
     virtual ~finite_element_solver_base() noexcept = default;
 
-    const mesh::mesh_2d<T, I>&            mesh                     ()                     const { return _mesh_info->mesh(); }
-    int                                   rank                     ()                     const { return _mesh_info->rank(); }
-    int                                   size                     ()                     const { return _mesh_info->size(); }
-    size_t                                first_node               ()                     const { return _mesh_info->first_node(); }
-    size_t                                last_node                ()                     const { return _mesh_info->last_node(); }
-    I                                     quad_shift               (const size_t element) const { return _mesh_info->quad_shift(element); }
-    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _mesh_info->quad_coord(quad); }
-    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _mesh_info->jacobi_matrix(quad); }
-    const std::array<T, 4>&               jacobi_matrix_node       (const size_t quad)    const { return _mesh_info->jacobi_matrix_node(quad); }
-    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _mesh_info->nodes_elements_map(node); }
-    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _mesh_info->global_to_local_numbering(element); }
-    const std::vector<I>&                 neighbors                (const size_t element) const { return _mesh_info->neighbors(element); }
-    I                                     quad_shift               (const size_t bound, const size_t element) const { return _mesh_info->quad_shift(bound, element); }
-    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _mesh_info->quad_coord(bound, quad); }
-    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _mesh_info->jacobi_matrix(bound, quad); }
+    const mesh::mesh_2d<T, I>&            mesh                     ()                     const { return _mesh_proxy->mesh(); }
+    int                                   rank                     ()                     const { return _mesh_proxy->rank(); }
+    int                                   size                     ()                     const { return _mesh_proxy->size(); }
+    size_t                                first_node               ()                     const { return _mesh_proxy->first_node(); }
+    size_t                                last_node                ()                     const { return _mesh_proxy->last_node(); }
+    I                                     quad_shift               (const size_t element) const { return _mesh_proxy->quad_shift(element); }
+    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _mesh_proxy->quad_coord(quad); }
+    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _mesh_proxy->jacobi_matrix(quad); }
+    const std::array<T, 4>&               jacobi_matrix_node       (const size_t quad)    const { return _mesh_proxy->jacobi_matrix_node(quad); }
+    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _mesh_proxy->nodes_elements_map(node); }
+    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _mesh_proxy->global_to_local_numbering(element); }
+    const std::vector<I>&                 neighbors                (const size_t element) const { return _mesh_proxy->neighbors(element); }
+    I                                     quad_shift               (const size_t bound, const size_t element) const { return _mesh_proxy->quad_shift(bound, element); }
+    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _mesh_proxy->quad_coord(bound, quad); }
+    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _mesh_proxy->jacobi_matrix(bound, quad); }
 
-    static T jacobian(const std::array<T, 4>& J) noexcept { return mesh::mesh_info<T, I>::jacobian(J);   }
-           T jacobian(const size_t quad_shift)   const    { return _mesh_info->jacobian(quad_shift);     }
+    static T jacobian(const std::array<T, 4>& J) noexcept { return mesh::mesh_proxy<T, I>::jacobian(J);   }
+           T jacobian(const size_t quad_shift)   const    { return _mesh_proxy->jacobian(quad_shift);     }
     static T jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
     template<bool Component>
@@ -98,8 +98,8 @@ protected:
                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
 public:
-    void set_mesh(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh_info) { _mesh_info = mesh_info; }
-    const std::shared_ptr<mesh::mesh_info<T, I>>& get_mesh_info() const { return _mesh_info; }
+    void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) { _mesh_proxy = mesh_proxy; }
+    const std::shared_ptr<mesh::mesh_proxy<T, I>>& get_mesh_proxy() const { return _mesh_proxy; }
 };
 
 template<class T, class I>
@@ -115,7 +115,7 @@ T finite_element_solver_base<T, I>::dNd(const Finite_Element_2D_Ptr& e, const si
 template<class T, class I>
 template<class Callback>
 void finite_element_solver_base<T, I>::mesh_run_loc(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback)
+#pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = first_node(); node < last_node(); ++node) {
         for(const I el : nodes_elements_map(node)) {
             const size_t i = global_to_local_numbering(el).find(node)->second; // Проекционные функции

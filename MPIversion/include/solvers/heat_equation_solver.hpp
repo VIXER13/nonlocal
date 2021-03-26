@@ -40,13 +40,12 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
     using _base::quad_coord;
     using _base::jacobian;
 
-    T integrate_basic(const Finite_Element_2D_Ptr& e, const size_t i, size_t quad_shift) const;
-    T integrate_basic_pair(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const;
-    T integrate_loc(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const;
-
+    T integrate_basic(const size_t e, const size_t i) const;
+    T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
+    T integrate_loc(const size_t e, const size_t i, const size_t j) const;
     template<class Influence_Function>
-    T integrate_nonloc(const Finite_Element_2D_Ptr& eL,  const size_t iL,  size_t shiftL,
-                       const Finite_Element_2D_Ptr& eNL, const size_t jNL, size_t shiftNL,
+    T integrate_nonloc(const size_t eL, const size_t eNL,
+                       const size_t iL, const size_t jNL,
                        const Influence_Function& influence_function) const;
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
@@ -73,7 +72,7 @@ class heat_equation_solver : protected finite_element_solver_base<T, I> {
                        const T p1, const Influence_Function& influence_fun) const;
 
 public:
-    explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_info<T, I>>& mesh)
+    explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh)
         : _base{mesh} {}
 
     ~heat_equation_solver() override = default;
@@ -95,47 +94,53 @@ public:
 };
 
 template<class T, class I>
-T heat_equation_solver<T, I>::integrate_basic(const Finite_Element_2D_Ptr& e, const size_t i, size_t quad_shift) const {
+T heat_equation_solver<T, I>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
-    for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
-        integral += e->weight(q) * e->qN(i, q) * jacobian(quad_shift);
+    const auto& el = mesh().element_2d(e);
+    for(size_t q = 0, qshift = quad_shift(e); q < el->nodes_count(); ++q, ++qshift)
+        integral += el->weight(q) * el->qN(i, q) * jacobian(qshift);
     return integral;
 }
 
 template<class T, class I>
-T heat_equation_solver<T, I>::integrate_basic_pair(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const {
+T heat_equation_solver<T, I>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
-    for(size_t q = 0; q < e->nodes_count(); ++q, ++quad_shift)
-        integral += e->weight(q) * e->qN(i, q) * e->qN(j, q) * jacobian(quad_shift);
+    const auto& el = mesh().element_2d(e);
+    for(size_t q = 0, qshift = quad_shift(e); q < el->nodes_count(); ++q, ++qshift)
+        integral += el->weight(q) * el->qN(i, q) * el->qN(j, q) * jacobian(qshift);
     return integral;
 }
 
 template<class T, class I>
-T heat_equation_solver<T, I>::integrate_loc(const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) const {
+T heat_equation_solver<T, I>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
-    for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
-        integral += e->weight(q) / jacobian(quad_shift) *
-                    (_base::template dNd<X>(e, i, q, quad_shift) * _base::template dNd<X>(e, j, q, quad_shift) +
-                     _base::template dNd<Y>(e, i, q, quad_shift) * _base::template dNd<Y>(e, j, q, quad_shift));
+    const auto& el = mesh().element_2d(e);
+    auto dNdi = _base::get_mesh_proxy()->dNd(e, i),
+         dNdj = _base::get_mesh_proxy()->dNd(e, j);
+    for(size_t q = 0, qshift = quad_shift(e); q < el->qnodes_count(); ++q, ++qshift, ++dNdi, ++dNdj)
+        integral += el->weight(q) * ((*dNdi)[0] * (*dNdj)[0] + (*dNdi)[1] * (*dNdj)[1]) / jacobian(qshift);
     return integral;
 }
 
 template<class T, class I>
 template<class Influence_Function>
-T heat_equation_solver<T, I>::integrate_nonloc(const Finite_Element_2D_Ptr& eL,  const size_t iL,  size_t shiftL,
-                                               const Finite_Element_2D_Ptr& eNL, const size_t jNL, size_t shiftNL,
+T heat_equation_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL,
+                                               const size_t iL, const size_t jNL,
                                                const Influence_Function& influence_function) const {
     T integral = 0;
-    const size_t sub_shift = shiftNL;
-    for(size_t qL = 0; qL < eL->qnodes_count(); ++qL, ++shiftL) {
-        T inner_int_x = 0, inner_int_y = 0;
-        for(size_t qNL = 0, shiftNL = sub_shift; qNL < eNL->qnodes_count(); ++qNL, ++shiftNL) {
-            const T influence_weight = eNL->weight(qNL) * influence_function(quad_coord(shiftL), quad_coord(shiftNL));
-            inner_int_x += influence_weight * _base::template dNd<X>(eNL, jNL, qNL, shiftNL);
-            inner_int_y += influence_weight * _base::template dNd<Y>(eNL, jNL, qNL, shiftNL);
+    const auto& elL  = mesh().element_2d(eL );
+    const auto& elNL = mesh().element_2d(eNL);
+    auto dNdL      = _base::get_mesh_proxy()->dNd(eL,  iL );
+    auto sub_dNdNL = _base::get_mesh_proxy()->dNd(eNL, jNL);
+    for(size_t qL = 0, shiftL = quad_shift(eL); qL < elL->qnodes_count(); ++qL, ++shiftL, ++dNdL) {
+        std::array<T, 2> inner_int = {};
+        auto dNdNL = sub_dNdNL;
+        for(size_t qNL = 0, shiftNL = quad_shift(eNL); qNL < elNL->qnodes_count(); ++qNL, ++shiftNL, ++dNdNL) {
+            const T influence_weight = elNL->weight(qNL) * influence_function(quad_coord(shiftL), quad_coord(shiftNL));
+            inner_int[0] += influence_weight * (*dNdNL)[0];
+            inner_int[1] += influence_weight * (*dNdNL)[1];
         }
-        integral += eL->weight(qL) * (inner_int_x * _base::template dNd<X>(eL, iL, qL, shiftL) +
-                                      inner_int_y * _base::template dNd<Y>(eL, iL, qL, shiftL));
+        integral += elL->weight(qL) * (inner_int[0] * (*dNdL)[0] + inner_int[1] * (*dNdL)[1]);
     }
     return integral;
 }
@@ -191,24 +196,21 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
 #pragma omp parallel for default(none) shared(K)
         for(size_t node = first_node(); node < last_node(); ++node) {
             T& val = K.coeffRef(node - first_node(), mesh().nodes_count());
-            for(const I el : _base::nodes_elements_map(node)) {
-                const auto& e = mesh().element_2d(el);
-                const size_t i = _base::global_to_local_numbering(el).find(node)->second;
-                val += integrate_basic(e, i, quad_shift(el));
-            }
+            for(const I e : _base::nodes_elements_map(node))
+                val += integrate_basic(e, _base::global_to_local_numbering(e).find(node)->second);
         }
     }
 
     _base::template mesh_run_loc(
-        [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t el, const size_t i, const size_t j) {
-            const I row = mesh().node_number(el, i),
-                    col = mesh().node_number(el, j);
+        [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t e, const size_t i, const size_t j) {
+            const I row = mesh().node_number(e, i),
+                    col = mesh().node_number(e, j);
             if (inner_nodes[row] && inner_nodes[col]) {
                 if (row <= col)
-                    K.coeffRef(row - first_node(), col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                    K.coeffRef(row - first_node(), col) += p1 * integrate_rule(e, i, j);
             } else if (row != col) {
                 if (!inner_nodes[col])
-                    K_bound.coeffRef(row - first_node(), col) += p1 * integrate_rule(mesh().element_2d(el), i, j, quad_shift(el));
+                    K_bound.coeffRef(row - first_node(), col) += p1 * integrate_rule(e, i, j);
             } else
                 K.coeffRef(row - first_node(), col) = 1;
         }
@@ -217,17 +219,15 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
         _base::template mesh_run_nonloc(
             [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
-                    (const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
-                const I row = mesh().node_number(elL,  iL ),
-                        col = mesh().node_number(elNL, jNL);
+                    (const size_t eL, const size_t iL, const size_t eNL, const size_t jNL) {
+                const I row = mesh().node_number(eL,  iL ),
+                        col = mesh().node_number(eNL, jNL);
                 if (inner_nodes[row] && inner_nodes[col]) {
                     if (row <= col)
-                        K.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                                     mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                        K.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(eL, eNL, iL, jNL,influence_fun);
                 } else if (row != col)
                     if (!inner_nodes[col])
-                        K_bound.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(mesh().element_2d(elL ), iL,  quad_shift(elL ),
-                                                                                           mesh().element_2d(elNL), jNL, quad_shift(elNL), influence_fun);
+                        K_bound.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(eL, eNL, iL, jNL, influence_fun);
             }
         );
     }
@@ -279,8 +279,7 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
                                                K_bound(rows, cols);
     create_matrix(
         K, K_bound, bounds_cond, neumann_task,
-        [this](const Finite_Element_2D_Ptr& e, const size_t i, const size_t j, size_t quad_shift) {
-            return integrate_loc(e, i, j, quad_shift); },
+        [this](const size_t e, const size_t i, const size_t j) { return integrate_loc(e, i, j); },
         p1, influence_fun
     );
 
@@ -300,7 +299,7 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
 //    temperature.conservativeResize(mesh().nodes_count());
 //    return std::move(temperature);
 
-    return solution<T, I>{_base::get_mesh_info(), f};
+    return solution<T, I>{_base::get_mesh_proxy(), f};
 }
 
 //template<class T, class I>

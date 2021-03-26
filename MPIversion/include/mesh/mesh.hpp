@@ -3,6 +3,6 @@
 
 #include "su2_parser.hpp"
 #include "save_results.hpp"
-#include "mesh_info.hpp"
+#include "mesh_proxy.hpp"
 
 #endif
