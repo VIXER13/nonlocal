@@ -17,9 +17,6 @@ class finite_element_solver_base {
     std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
 
 protected:
-    using Finite_Element_1D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_1D_Ptr;
-    using Finite_Element_2D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_2D_Ptr;
-
     enum component : bool {X, Y};
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
@@ -31,23 +28,13 @@ protected:
     int                                   size                     ()                     const { return _mesh_proxy->size(); }
     size_t                                first_node               ()                     const { return _mesh_proxy->first_node(); }
     size_t                                last_node                ()                     const { return _mesh_proxy->last_node(); }
-    I                                     quad_shift               (const size_t element) const { return _mesh_proxy->quad_shift(element); }
-    const std::array<T, 2>&               quad_coord               (const size_t quad)    const { return _mesh_proxy->quad_coord(quad); }
-    const std::array<T, 4>&               jacobi_matrix            (const size_t quad)    const { return _mesh_proxy->jacobi_matrix(quad); }
     const std::array<T, 4>&               jacobi_matrix_node       (const size_t quad)    const { return _mesh_proxy->jacobi_matrix_node(quad); }
     const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _mesh_proxy->nodes_elements_map(node); }
     const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _mesh_proxy->global_to_local_numbering(element); }
     const std::vector<I>&                 neighbors                (const size_t element) const { return _mesh_proxy->neighbors(element); }
-    I                                     quad_shift               (const size_t bound, const size_t element) const { return _mesh_proxy->quad_shift(bound, element); }
-    const std::array<T, 2>&               quad_coord               (const size_t bound, const size_t quad)    const { return _mesh_proxy->quad_coord(bound, quad); }
-    const std::array<T, 2>&               jacobi_matrix            (const size_t bound, const size_t quad)    const { return _mesh_proxy->jacobi_matrix(bound, quad); }
 
-    static T jacobian(const std::array<T, 4>& J) noexcept { return mesh::mesh_proxy<T, I>::jacobian(J);   }
-           T jacobian(const size_t quad_shift)   const    { return _mesh_proxy->jacobian(quad_shift);     }
+    static T jacobian(const std::array<T, 4>& J) noexcept { return std::abs (J[0] * J[3] - J[1] * J[2]); }
     static T jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
-
-    template<bool Component>
-    T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q, const size_t quad_shift) const;
 
     // Функция обхода сетки в локальных постановках.
     // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
@@ -71,9 +58,7 @@ protected:
 
     // Function - функтор с сигнатурой T(std::array<T, 2>&)
     template<class Function>
-    T integrate_function(const Finite_Element_2D_Ptr& e,
-                         const size_t i, size_t quad_shift,
-                         const Function& func) const;
+    T integrate_function(const size_t e, const size_t i, const Function& func) const;
 
     template<size_t DoF>
     void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
@@ -81,8 +66,7 @@ protected:
 
     // Boundary_Gradient - функтор с сигнатурой T(std::array<T, 2>&)
     template<class Boundary_Gradient>
-    T integrate_boundary_gradient(const Finite_Element_1D_Ptr& be,
-                                  const size_t b, const size_t i, size_t quad_shift,
+    T integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
                                   const Boundary_Gradient& boundary_gradient) const;
 
     template<class B, size_t DoF>
@@ -99,18 +83,8 @@ protected:
 
 public:
     void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) { _mesh_proxy = mesh_proxy; }
-    const std::shared_ptr<mesh::mesh_proxy<T, I>>& get_mesh_proxy() const { return _mesh_proxy; }
+    const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const { return _mesh_proxy; }
 };
-
-template<class T, class I>
-template<bool Component>
-T finite_element_solver_base<T, I>::dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q, const size_t quad_shift) const {
-    const std::array<T, 4>& J = jacobi_matrix(quad_shift);
-    if constexpr (Component == component::X)
-        return  e->qNxi(i, q) * J[3] - e->qNeta(i, q) * J[2];
-    if constexpr (Component == component::Y)
-        return -e->qNxi(i, q) * J[1] + e->qNeta(i, q) * J[0];
-}
 
 template<class T, class I>
 template<class Callback>
@@ -172,12 +146,13 @@ void finite_element_solver_base<T, I>::convert_portrait(Eigen::SparseMatrix<T, E
 
 template<class T, class I>
 template<class Function>
-T finite_element_solver_base<T, I>::integrate_function(const Finite_Element_2D_Ptr& e,
-                                                       const size_t i, size_t quad_shift,
-                                                       const Function& func) const {
+T finite_element_solver_base<T, I>::integrate_function(const size_t e, const size_t i, const Function& func) const {
     T integral = 0;
-    for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
-        integral += e->weight(q) * e->qN(i, q) * func(quad_coord(quad_shift)) * jacobian(quad_shift);
+    const auto& el = mesh().element_2d(e);
+    auto J = mesh_proxy()->jacobi_matrix(e);
+    auto qcoord = mesh_proxy()->quad_coord(e);
+    for(size_t q = 0; q < el->qnodes_count(); ++q, ++J)
+        integral += el->weight(q) * el->qN(i, q) * func(*qcoord) * jacobian(*J);
     return integral;
 }
 
@@ -187,21 +162,23 @@ void finite_element_solver_base<T, I>::integrate_right_part(Eigen::Matrix<T, Eig
                                                             const right_partition<T, DoF>& right_part) const {
 #pragma omp parallel for default(none) shared(f, right_part)
     for(size_t node = first_node(); node < last_node(); ++node)
-        for(const I el : nodes_elements_map(node)) {
-            const size_t i = global_to_local_numbering(el).find(node)->second;
+        for(const I e : nodes_elements_map(node)) {
+            const size_t i = global_to_local_numbering(e).find(node)->second;
             for(size_t comp = 0; comp < DoF; ++comp)
-                f[DoF * (node - first_node()) + comp] += integrate_function(mesh().element_2d(el), i, quad_shift(el), right_part[comp]);
+                f[DoF * (node - first_node()) + comp] += integrate_function(e, i, right_part[comp]);
         }
 }
 
 template<class T, class I>
 template<class Boundary_Gradient>
-T finite_element_solver_base<T, I>::integrate_boundary_gradient(const Finite_Element_1D_Ptr& be,
-                                                                const size_t b, const size_t i, size_t quad_shift,
+T finite_element_solver_base<T, I>::integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
                                                                 const Boundary_Gradient& boundary_gradient) const {
     T integral = 0;
-    for(size_t q = 0; q < be->qnodes_count(); ++q, ++quad_shift)
-        integral += be->weight(q) * be->qN(i, q) * boundary_gradient(quad_coord(b, quad_shift)) * jacobian(jacobi_matrix(b, quad_shift));
+    const auto& be = mesh().element_1d(b, e);
+    auto qcoord = mesh_proxy()->quad_coord(b, e);
+    auto J      = mesh_proxy()->jacobi_matrix(b, e);
+    for(size_t q = 0; q < be->qnodes_count(); ++q, ++qcoord, ++J)
+        integral += be->weight(q) * be->qN(i, q) * boundary_gradient(*qcoord) * jacobian(*J);
     return integral;
 }
 
@@ -241,12 +218,12 @@ void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(
     for(size_t b = 0; b < bounds_cond.size(); ++b)
         for(size_t comp = 0; comp < DoF; ++comp)
             if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND)) {
-                for(size_t el = 0; el < mesh().elements_count(b); ++el) {
-                    const auto& be = mesh().element_1d(b, el);
+                for(size_t e = 0; e < mesh().elements_count(b); ++e) {
+                    const auto& be = mesh().element_1d(b, e);
                     for(size_t i = 0; i < be->nodes_count(); ++i) {
-                        const I node = DoF * mesh().node_number(b, el, i) + comp;
+                        const I node = DoF * mesh().node_number(b, e, i) + comp;
                         if(node >= DoF * first_node() && node < DoF * last_node())
-                            f[node - DoF * first_node()] += integrate_boundary_gradient(be, b, i, quad_shift(b, el), bounds_cond[b].func(comp));
+                            f[node - DoF * first_node()] += integrate_boundary_gradient(b, e, i, bounds_cond[b].func(comp));
                     }
                 }
             }
