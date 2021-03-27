@@ -34,7 +34,7 @@ std::array<T, 3> hooke_matrix(const calculation_parameters<T>& parameters) noexc
 template<class T, class I>
 class solution final {
     std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
-    std::array<T, 3> _D;
+    calculation_parameters<T> _parameters;
     T _p1 = 1;
     std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)> _influence_fun;
 
@@ -46,21 +46,13 @@ class solution final {
 
 public:
     template<class Vector>
-    explicit solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const std::array<T, 3>& D, const Vector& u,
-                      const T p1, const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun)
-            : _mesh_proxy{mesh_proxy}
-            , _D{D}
-            , _p1{p1}
-            , _influence_fun{influence_fun}
-            , _u{std::vector<T>(mesh_proxy->mesh().nodes_count()), std::vector<T>(mesh_proxy->mesh().nodes_count())} {
-        for(size_t comp = 0; comp < _u.size(); ++comp)
-            for(size_t i = 0; i < _mesh_proxy->mesh().nodes_count(); ++i)
-                _u[comp][i] = u[2*i+comp];
-    }
+    explicit solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const calculation_parameters<T>& parameters,
+                      const T p1, const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun,
+                      const Vector& u);
 
-    const std::array<std::vector<T>, 2>& get_displacement() const { return _u; }
-    const std::array<std::vector<T>, 3>& get_strains() const { return _strain; }
-    const std::array<std::vector<T>, 3>& get_stress () const { return _stress; }
+    const std::array<std::vector<T>, 2>& displacement() const;
+    const std::array<std::vector<T>, 3>& strains     () const;
+    const std::array<std::vector<T>, 3>& stress      () const;
 
     void calc_strain_and_stress();
     T calc_energy() const;
@@ -68,7 +60,33 @@ public:
 };
 
 template<class T, class I>
+template<class Vector>
+solution<T, I>::solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const calculation_parameters<T>& parameters,
+                  const T p1, const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun,
+                  const Vector& u)
+    : _mesh_proxy{mesh_proxy}
+    , _parameters{parameters}
+    , _p1{p1}
+    , _influence_fun{influence_fun} {
+    for(size_t comp = 0; comp < _u.size(); ++comp) {
+        _u[comp].resize(_mesh_proxy->mesh().nodes_count());
+        for(size_t i = 0; i < _mesh_proxy->mesh().nodes_count(); ++i)
+            _u[comp][i] = u[2*i+comp];
+    }
+}
+
+template<class T, class I>
+const std::array<std::vector<T>, 2>& solution<T, I>::displacement() const { return _u; }
+
+template<class T, class I>
+const std::array<std::vector<T>, 3>& solution<T, I>::strains() const { return _strain; }
+
+template<class T, class I>
+const std::array<std::vector<T>, 3>& solution<T, I>::stress() const { return _stress; }
+
+template<class T, class I>
 void solution<T, I>::strain_and_stress_loc() {
+    const std::array<T, 3> D = hooke_matrix(_parameters);
 #pragma omp parallel for default(none)
     for(size_t node = 0; node < _mesh_proxy->mesh().nodes_count(); ++node) {
         for(const I e : _mesh_proxy->nodes_elements_map(node)) {
@@ -89,9 +107,9 @@ void solution<T, I>::strain_and_stress_loc() {
         _strain[0][node] /=     _mesh_proxy->nodes_elements_map(node).size();
         _strain[1][node] /=     _mesh_proxy->nodes_elements_map(node).size();
         _strain[2][node] /= 2 * _mesh_proxy->nodes_elements_map(node).size();
-        _stress[0][node] += _D[0] * _strain[0][node] + _D[1] * _strain[1][node];
-        _stress[1][node] += _D[1] * _strain[0][node] + _D[0] * _strain[1][node];
-        _stress[2][node] += _D[2] * _strain[2][node];
+        _stress[0][node] += D[0] * _strain[0][node] + D[1] * _strain[1][node];
+        _stress[1][node] += D[1] * _strain[0][node] + D[0] * _strain[1][node];
+        _stress[2][node] += D[2] * _strain[2][node];
     }
 }
 
@@ -104,6 +122,7 @@ void solution<T, I>::stress_nonloc() {
         _mesh_proxy->approx_in_quad(_strain[2])
     };
 
+    const std::array<T, 3> D = hooke_matrix(_parameters);
     std::vector<bool> neighbors(_mesh_proxy->mesh().elements_count(), false);
 #pragma omp parallel for default(none) firstprivate(neighbors)
     for(size_t node = 0; node < _mesh_proxy->mesh().nodes_count(); ++node) {
@@ -119,9 +138,9 @@ void solution<T, I>::stress_nonloc() {
                 auto J          = _mesh_proxy->jacobi_matrix(e);
                 for(size_t q = 0; q < eNL->qnodes_count(); ++q, ++qshift, ++qcoord, ++J) {
                     const T influence_weight = p2 * eNL->weight(q) * _mesh_proxy->jacobian(*J) * _influence_fun(*qcoord, _mesh_proxy->mesh().node(node));
-                    _stress[0][node] += influence_weight * (_D[0] * strains_in_quads[0][qshift] + _D[1] * strains_in_quads[1][qshift]);
-                    _stress[1][node] += influence_weight * (_D[1] * strains_in_quads[0][qshift] + _D[0] * strains_in_quads[1][qshift]);
-                    _stress[2][node] += influence_weight *  _D[2] * strains_in_quads[2][qshift];
+                    _stress[0][node] += influence_weight * (D[0] * strains_in_quads[0][qshift] + D[1] * strains_in_quads[1][qshift]);
+                    _stress[1][node] += influence_weight * (D[1] * strains_in_quads[0][qshift] + D[0] * strains_in_quads[1][qshift]);
+                    _stress[2][node] += influence_weight *  D[2] * strains_in_quads[2][qshift];
                 }
             }
     }

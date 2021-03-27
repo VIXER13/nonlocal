@@ -15,12 +15,12 @@ void save_raw_data(const mesh::mesh_2d<T>& msh,
                   sigma22{"sigma22.csv"},
                   sigma12{"sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
-        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_strains()[0][i] << std::endl;
-        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_strains()[1][i] << std::endl;
-        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_strains()[2][i] << std::endl;
-        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_stress() [0][i] << std::endl;
-        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_stress() [1][i] << std::endl;
-        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.get_stress() [2][i] << std::endl;
+        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[0][i] << std::endl;
+        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[1][i] << std::endl;
+        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[2][i] << std::endl;
+        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [0][i] << std::endl;
+        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [1][i] << std::endl;
+        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [2][i] << std::endl;
     }
 }
 

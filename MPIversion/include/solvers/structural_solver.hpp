@@ -34,7 +34,6 @@ class structural_solver : public finite_element_solver_base<T, I> {
     using _base::first_node;
     using _base::last_node;
 
-    calculation_parameters<T> _params;
     std::array<T, 3> _D;
 
     template<bool Proj, bool Approx>
@@ -252,13 +251,11 @@ void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMaj
 
 template<class T, class I>
 template<class Influence_Function>
-solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<T>& params,
+solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<T>& parameters,
                                                    const std::vector<bound_cond<T>> &bounds_cond,
                                                    const right_part<T>& right_part,
                                                    const T p1, const Influence_Function& influence_fun) {
-    _params = params;
-    _D = hooke_matrix(_params);
-
+    _D = hooke_matrix(parameters);
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
                  cols = 2 * mesh().nodes_count();
@@ -281,7 +278,7 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
     Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
-    return solution<T, I>{_base::mesh_proxy(), _D, u, p1, influence_fun};
+    return solution<T, I>{_base::mesh_proxy(), parameters, p1, influence_fun, u};
 }
 
 //template<class T, class I>
