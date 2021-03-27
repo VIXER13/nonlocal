@@ -26,7 +26,7 @@ template<class T>
 using right_part = right_partition<T, 1>;
 
 template<class T, class I>
-class heat_equation_solver : protected finite_element_solver_base<T, I> {
+class heat_equation_solver : public finite_element_solver_base<T, I> {
     using _base = finite_element_solver_base<T, I>;
     using _base::size;
     using _base::rank;
@@ -85,8 +85,8 @@ public:
 template<class T, class I>
 T heat_equation_solver<T, I>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
-    const auto& el = mesh().element_2d(e);
-    auto J = _base::mesh_proxy()->jacobi_matrix(e);
+    const auto& el = _base::mesh().element_2d(e);
+          auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
     for(size_t q = 0; q < el->nodes_count(); ++q, ++J)
         integral += el->weight(q) * el->qN(i, q) * jacobian(*J);
     return integral;
@@ -95,8 +95,8 @@ T heat_equation_solver<T, I>::integrate_basic(const size_t e, const size_t i) co
 template<class T, class I>
 T heat_equation_solver<T, I>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
-    const auto& el = mesh().element_2d(e);
-    auto J = _base::mesh_proxy()->jacobi_matrix(e);
+    const auto& el = _base::mesh().element_2d(e);
+          auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
     for(size_t q = 0; q < el->nodes_count(); ++q, ++J)
         integral += el->weight(q) * el->qN(i, q) * el->qN(j, q) * jacobian(*J);
     return integral;
@@ -105,10 +105,10 @@ T heat_equation_solver<T, I>::integrate_basic_pair(const size_t e, const size_t 
 template<class T, class I>
 T heat_equation_solver<T, I>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
-    const auto& el = mesh().element_2d(e);
-    auto J         = _base::mesh_proxy()->jacobi_matrix(e);
-    auto dNdi      = _base::mesh_proxy()->dNdX(e, i),
-         dNdj      = _base::mesh_proxy()->dNdX(e, j);
+    const auto& el   = _base::mesh().element_2d(e);
+          auto  J    = _base::mesh_proxy()->jacobi_matrix(e);
+          auto  dNdi = _base::mesh_proxy()->dNdX(e, i),
+                dNdj = _base::mesh_proxy()->dNdX(e, j);
     for(size_t q = 0; q < el->qnodes_count(); ++q, ++J, ++dNdi, ++dNdj)
         integral += el->weight(q) * ((*dNdi)[X] * (*dNdj)[X] + (*dNdi)[Y] * (*dNdj)[Y]) / jacobian(*J);
     return integral;
@@ -120,17 +120,17 @@ T heat_equation_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL
                                                const size_t iL, const size_t jNL,
                                                const Influence_Function& influence_function) const {
     T integral = 0;
-    const auto& elL   = mesh().element_2d(eL ),
-              & elNL  = mesh().element_2d(eNL);
-    auto dNdL         = _base::mesh_proxy()->dNdX(eL,  iL ),
-         sub_dNdNL    = _base::mesh_proxy()->dNdX(eNL, jNL);
-    auto qcoordL      = _base::mesh_proxy()->quad_coord(eL),
-         sub_qcoordNL = _base::mesh_proxy()->quad_coord(eNL);
-    for(size_t qL = 0; qL < elL->qnodes_count(); ++qL, ++dNdL, ++qcoordL) {
-        auto dNdNL = sub_dNdNL;
-        auto qcoordNL = sub_qcoordNL;
+    const auto& elL            = _base::mesh().element_2d(eL ),
+              & elNL           = _base::mesh().element_2d(eNL);
+          auto  qcoordL        = _base::mesh_proxy()->quad_coord(eL);
+          auto  dNdL           = _base::mesh_proxy()->dNdX(eL, iL);
+    const auto  qcoordNL_start = _base::mesh_proxy()->quad_coord(eNL);
+    const auto  dNdNL_start    = _base::mesh_proxy()->dNdX(eNL, jNL);
+    for(size_t qL = 0; qL < elL->qnodes_count(); ++qL, ++qcoordL, ++dNdL) {
         std::array<T, 2> inner_int = {};
-        for(size_t qNL = 0; qNL < elNL->qnodes_count(); ++qNL, ++dNdNL, ++qcoordNL) {
+        auto qcoordNL = qcoordNL_start;
+        auto dNdNL    = dNdNL_start;
+        for(size_t qNL = 0; qNL < elNL->qnodes_count(); ++qNL, ++qcoordNL, ++dNdNL) {
             const T influence_weight = elNL->weight(qNL) * influence_function(*qcoordL, *qcoordNL);
             inner_int[X] += influence_weight * (*dNdNL)[X];
             inner_int[Y] += influence_weight * (*dNdNL)[Y];
@@ -166,13 +166,13 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
 
     if (p1 > _base::MAX_LOCAL_WEIGHT) {
         _base::template mesh_run_loc(
-            [this, &indexator] (const size_t el, const size_t i, const size_t j) {
-                indexator(mesh().node_number(el, i), mesh().node_number(el, j));
+            [this, &indexator] (const size_t e, const size_t i, const size_t j) {
+                indexator(mesh().node_number(e, i), mesh().node_number(e, j));
             });
     } else {
         _base::template mesh_run_nonloc(
-            [this, &indexator](const size_t elL, const size_t iL, const size_t elNL, const size_t jNL) {
-                indexator(mesh().node_number(elL, iL), mesh().node_number(elNL, jNL));
+            [this, &indexator](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+                indexator(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL));
             });
     }
 
@@ -191,8 +191,8 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
 #pragma omp parallel for default(none) shared(K)
         for(size_t node = first_node(); node < last_node(); ++node) {
             T& val = K.coeffRef(node - first_node(), mesh().nodes_count());
-            for(const I e : _base::nodes_elements_map(node))
-                val += integrate_basic(e, _base::global_to_local_numbering(e).find(node)->second);
+            for(const I e : _base::mesh_proxy().nodes_elements_map(node))
+                val += integrate_basic(e, _base::mesh_proxy().global_to_local_numbering(e).find(node)->second);
         }
     }
 
@@ -214,12 +214,12 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
         _base::template mesh_run_nonloc(
             [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
-                    (const size_t eL, const size_t iL, const size_t eNL, const size_t jNL) {
+            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
                 const I row = mesh().node_number(eL,  iL ),
                         col = mesh().node_number(eNL, jNL);
                 if (inner_nodes[row] && inner_nodes[col]) {
                     if (row <= col)
-                        K.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(eL, eNL, iL, jNL,influence_fun);
+                        K.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(eL, eNL, iL, jNL, influence_fun);
                 } else if (row != col)
                     if (!inner_nodes[col])
                         K_bound.coeffRef(row - first_node(), col) += p2 * integrate_nonloc(eL, eNL, iL, jNL, influence_fun);
@@ -303,8 +303,6 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
 //                                               const std::vector<bound_cond<T>>& bounds_cond,
 //                                               const Init_Distribution& init_dist, const Right_Part& right_part,
 //                                               const T r, const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) {
-//    _base::find_neighbors(r);
-//
 //    static constexpr bool NOT_NEUMANN_TASK = false;
 //    Eigen::SparseMatrix<T, Eigen::ColMajor, I> K      (mesh().nodes_count(), mesh().nodes_count()),
 //                                               K_bound(mesh().nodes_count(), mesh().nodes_count());

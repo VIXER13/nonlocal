@@ -45,21 +45,24 @@ int main(int argc, char** argv) {
     try {
         std::cout.precision(7);
 
-        static constexpr double r = 0.1, p1 = 1;
+        static constexpr double r = 0.1, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
+        auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
+        nonlocal::structural::structural_solver<double, int> fem_sol{mesh_proxy};
         if (p1 < 0.999)
-            mesh_info->find_neighbours(1.3 * r, mesh::balancing_t::SPEED);
+            mesh_proxy->find_neighbours(1.3 * r, mesh::balancing_t::SPEED);
 
-        const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 21};
-        nonlocal::structural::structural_solver<double, int> fem_sol{mesh_info, params};
+        nonlocal::structural::calculation_parameters<double> params;
+        params.nu = 0.3;
+        params.E  = 21;
 
         auto sol = fem_sol.stationary(
+            params,
             {
                 {  // Right
                     nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return f7(x); },
+                    [](const std::array<double, 2>& x) { return f1(x); },
                     nonlocal::structural::boundary_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
                 },
@@ -73,7 +76,7 @@ int main(int argc, char** argv) {
 
                 { // Left
                     nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return -f7(x); },
+                    [](const std::array<double, 2>& x) { return -f1(x); },
                     nonlocal::structural::boundary_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
                 },
@@ -89,9 +92,10 @@ int main(int argc, char** argv) {
             p1, bell
         );
 
-        if (mesh_info->rank() == 0)
+        if (mesh_proxy->rank() == 0)
         {
             sol.calc_strain_and_stress();
+            std::cout << "Energy = " << sol.calc_energy() << std::endl;
             sol.save_as_vtk("structural.vtk");
             save_raw_data(*mesh, sol);
         }

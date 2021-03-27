@@ -20,7 +20,7 @@ protected:
     enum component : bool {X, Y};
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
-    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh) { set_mesh(mesh); }
+    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh);
     virtual ~finite_element_solver_base() noexcept = default;
 
     const mesh::mesh_2d<T, I>&            mesh                     ()                     const { return _mesh_proxy->mesh(); }
@@ -28,13 +28,9 @@ protected:
     int                                   size                     ()                     const { return _mesh_proxy->size(); }
     size_t                                first_node               ()                     const { return _mesh_proxy->first_node(); }
     size_t                                last_node                ()                     const { return _mesh_proxy->last_node(); }
-    const std::array<T, 4>&               jacobi_matrix_node       (const size_t quad)    const { return _mesh_proxy->jacobi_matrix_node(quad); }
-    const std::vector<I>&                 nodes_elements_map       (const size_t node)    const { return _mesh_proxy->nodes_elements_map(node); }
-    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element) const { return _mesh_proxy->global_to_local_numbering(element); }
-    const std::vector<I>&                 neighbors                (const size_t element) const { return _mesh_proxy->neighbors(element); }
 
-    static T jacobian(const std::array<T, 4>& J) noexcept { return std::abs (J[0] * J[3] - J[1] * J[2]); }
-    static T jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
+    static T jacobian(const std::array<T, 4>& J) noexcept;
+    static T jacobian(const std::array<T, 2>& J) noexcept;
 
     // Функция обхода сетки в локальных постановках.
     // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
@@ -82,17 +78,36 @@ protected:
                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
 public:
-    void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) { _mesh_proxy = mesh_proxy; }
-    const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const { return _mesh_proxy; }
+    void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
+    const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const;
 };
+
+template<class T, class I>
+finite_element_solver_base<T, I>::finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh) { set_mesh(mesh); }
+
+template<class T, class I>
+void finite_element_solver_base<T, I>::set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) {
+    if (mesh_proxy == nullptr)
+        throw std::invalid_argument{"mesh_proxy can't nullptr"};
+    _mesh_proxy = mesh_proxy;
+}
+
+template<class T, class I>
+const std::shared_ptr<mesh::mesh_proxy<T, I>>& finite_element_solver_base<T, I>::mesh_proxy() const { return _mesh_proxy; }
+
+template<class T, class I>
+T finite_element_solver_base<T, I>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs (J[0] * J[3] - J[1] * J[2]); }
+
+template<class T, class I>
+T finite_element_solver_base<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
 template<class T, class I>
 template<class Callback>
 void finite_element_solver_base<T, I>::mesh_run_loc(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = first_node(); node < last_node(); ++node) {
-        for(const I el : nodes_elements_map(node)) {
-            const size_t i = global_to_local_numbering(el).find(node)->second; // Проекционные функции
+        for(const I el : mesh_proxy()->nodes_elements_map(node)) {
+            const size_t i = mesh_proxy()->global_to_local_numbering(el).find(node)->second; // Проекционные функции
             for(size_t j = 0; j < mesh().nodes_count(el); ++j) // Аппроксимационные функции
                 callback(el, i, j);
         }
@@ -104,11 +119,11 @@ template<class Callback>
 void finite_element_solver_base<T, I>::mesh_run_nonloc(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = first_node(); node < last_node(); ++node) {
-        for(const I elL : nodes_elements_map(node)) {
-            const size_t iL = global_to_local_numbering(elL).find(node)->second; // Проекционные функции
-            for(const I elNL : neighbors(elL)) {
+        for(const I elL : mesh_proxy()->nodes_elements_map(node)) {
+            const size_t iL = mesh_proxy()->global_to_local_numbering(elL).find(node)->second; // Проекционные функции
+            for(const I elNL : mesh_proxy()->neighbors(elL)) {
                 for(size_t jNL = 0; jNL < mesh().nodes_count(elNL); ++jNL) // Аппроксимационные функции
-                    callback(elL, iL, elNL, jNL);
+                    callback(elL, elNL, iL, jNL);
             }
         }
     }
@@ -162,8 +177,8 @@ void finite_element_solver_base<T, I>::integrate_right_part(Eigen::Matrix<T, Eig
                                                             const right_partition<T, DoF>& right_part) const {
 #pragma omp parallel for default(none) shared(f, right_part)
     for(size_t node = first_node(); node < last_node(); ++node)
-        for(const I e : nodes_elements_map(node)) {
-            const size_t i = global_to_local_numbering(e).find(node)->second;
+        for(const I e : mesh_proxy()->nodes_elements_map(node)) {
+            const size_t i = mesh_proxy()->global_to_local_numbering(e).find(node)->second;
             for(size_t comp = 0; comp < DoF; ++comp)
                 f[DoF * (node - first_node()) + comp] += integrate_function(e, i, right_part[comp]);
         }
