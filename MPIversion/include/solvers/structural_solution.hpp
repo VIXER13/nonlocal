@@ -22,13 +22,13 @@ struct calculation_parameters final {
 // arr[1] arr[0]   0
 //   0      0    arr[2]
 template<class T>
-std::array<T, 3> hooke_matrix(const calculation_parameters<T>& parameters) noexcept {
-    const bool plane_stress = parameters.type == calc_type::PLANE_STRESS;
-    const T nu = plane_stress ? parameters.nu : parameters.nu / (1 - parameters.nu),
-            E  = plane_stress ? parameters.E  : parameters.E  / (1 - parameters.nu * parameters.nu);
-    return {       E / (1 - nu*nu),
-              nu * E / (1 - nu*nu),
-             0.5 * E / (1 + nu) };
+std::array<T, 3> hooke_matrix(const T nu, const T E, const calc_type type) noexcept {
+    const bool plane_stress = type == calc_type::PLANE_STRESS;
+    const T _nu = type == calc_type::PLANE_STRESS ? nu : nu / (1 - nu),
+            _E  = type == calc_type::PLANE_STRESS ? E  : E  / (1 - nu * nu);
+    return {       _E / (1 - _nu*_nu),
+             _nu * _E / (1 - _nu*_nu),
+             0.5 * _E / (1 + _nu) };
 }
 
 template<class T, class I>
@@ -41,6 +41,7 @@ class solution final {
     std::array<std::vector<T>, 2> _u;
     std::array<std::vector<T>, 3> _strain, _stress;
 
+    void collect_solution(const bool with_stress);
     void strain_and_stress_loc();
     void stress_nonloc();
 
@@ -85,10 +86,19 @@ template<class T, class I>
 const std::array<std::vector<T>, 3>& solution<T, I>::stress() const { return _stress; }
 
 template<class T, class I>
+void solution<T, I>::collect_solution(const bool with_stress) {
+    for(size_t comp = 0; comp < _strain.size(); ++comp) {
+        _strain[comp] = _mesh_proxy->all_to_all(_strain[comp]);
+        if (with_stress)
+            _stress[comp] = _mesh_proxy->all_to_all(_stress[comp]);
+    }
+}
+
+template<class T, class I>
 void solution<T, I>::strain_and_stress_loc() {
-    const std::array<T, 3> D = hooke_matrix(_parameters);
+    const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
 #pragma omp parallel for default(none)
-    for(size_t node = 0; node < _mesh_proxy->mesh().nodes_count(); ++node) {
+    for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {
         for(const I e : _mesh_proxy->nodes_elements_map(node)) {
             const auto& el = _mesh_proxy->mesh().element_2d(e);
             const size_t i = _mesh_proxy->global_to_local_numbering(e).find(node)->second;
@@ -122,10 +132,10 @@ void solution<T, I>::stress_nonloc() {
         _mesh_proxy->approx_in_quad(_strain[2])
     };
 
-    const std::array<T, 3> D = hooke_matrix(_parameters);
+    const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
     std::vector<bool> neighbors(_mesh_proxy->mesh().elements_count(), false);
 #pragma omp parallel for default(none) firstprivate(neighbors)
-    for(size_t node = 0; node < _mesh_proxy->mesh().nodes_count(); ++node) {
+    for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {
         std::fill(neighbors.begin(), neighbors.end(), false);
         for(const I elL : _mesh_proxy->nodes_elements_map(node))
             for(const I elNL : _mesh_proxy->neighbors(elL))
@@ -155,10 +165,12 @@ void solution<T, I>::calc_strain_and_stress() {
     strain_and_stress_loc();
     if(_p1 < 0.999) { // Нелокальная задача
         for(size_t comp = 0; comp < _stress.size(); ++comp)
-            for(size_t node = 0; node < _mesh_proxy->mesh().nodes_count(); ++node)
+            for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node)
                 _stress[comp][node] *= _p1;
+        collect_solution(false);
         stress_nonloc();
     }
+    collect_solution(true);
 }
 
 template<class T, class I>

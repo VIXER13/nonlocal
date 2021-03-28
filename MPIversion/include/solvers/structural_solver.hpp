@@ -255,7 +255,7 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
                                                    const std::vector<bound_cond<T>> &bounds_cond,
                                                    const right_part<T>& right_part,
                                                    const T p1, const Influence_Function& influence_fun) {
-    _D = hooke_matrix(parameters);
+    _D = hooke_matrix(parameters.nu, parameters.E, parameters.type);
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
                  cols = 2 * mesh().nodes_count();

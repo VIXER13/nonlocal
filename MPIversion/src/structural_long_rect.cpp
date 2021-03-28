@@ -92,9 +92,10 @@ int main(int argc, char** argv) {
             p1, bell
         );
 
+        sol.calc_strain_and_stress();
+
         if (mesh_proxy->rank() == 0)
         {
-            sol.calc_strain_and_stress();
             std::cout << "Energy = " << sol.calc_energy() << std::endl;
             sol.save_as_vtk("structural.vtk");
             save_raw_data(*mesh, sol);
