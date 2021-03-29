@@ -37,6 +37,8 @@ class heat_equation_solver : public finite_element_solver_base<T, I> {
     using _base::mesh;
     using _base::jacobian;
 
+    static constexpr size_t DoF = 1;
+
     T integrate_basic(const size_t e, const size_t i) const;
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
     T integrate_loc(const size_t e, const size_t i, const size_t j) const;
@@ -47,7 +49,7 @@ class heat_equation_solver : public finite_element_solver_base<T, I> {
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
                                 Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                const bool neumann_task, const T p1,
+                                const bool neumann_task, const bool nonlocal_task,
                                 const std::vector<bool>& inner_nodes) const;
 
     template<class Integrate_Rule, class Influence_Function>
@@ -141,162 +143,97 @@ T heat_equation_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL
 }
 
 template<class T, class I>
-void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                                        const bool neumann_task, const T p1,
+                                                        const bool neumann_task, const bool nonlocal_task,
                                                         const std::vector<bool>& inner_nodes) const {
-//    std::vector<bool> inner(K.cols(), false),
-//                      bound(K.cols(), false);
-//    if (neumann_task)
-//        inner.back() = true;
-//
-//    size_t inner_count = 0,
-//           bound_count = 0;
-//
-//    const auto indexator = [&inner_nodes, &inner, &bound](const I row, const I col) {
-//        if (inner_nodes[row] && inner_nodes[col]) {
-//            if (row <= col)
-//                inner[col] = true;
-//        } else if (row != col) {
-//            if (!inner_nodes[col])
-//                bound[col] = true;
-//        } else
-//            inner[col] = true;
-//    };
-//
-//    const size_t shift = first_node();
-//
-//    if (p1 > _base::MAX_LOCAL_WEIGHT) {
-//        for(size_t node = first_node(); node < last_node(); ++node) {
-//            std::fill(bound.begin(), bound.end(), false);
-//            std::fill(std::next(inner.begin(), node), std::prev(inner.end(), neumann_task), false);
-//            for(const I e : _base::mesh_proxy()->nodes_elements_map(node)) {
-//                const size_t i = _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second;
-//                for(size_t j = 0; j < mesh().nodes_count(e); ++j)
-//                    indexator(mesh().node_number(e, i), mesh().node_number(e, j));
-//            }
-//        }
-//    } else {
-//#pragma omp parallel for default(none) shared(K, K_bound, inner_nodes) firstprivate(inner, bound) schedule(dynamic)
-//        for(size_t node = first_node(); node < last_node(); ++node) {
-//            std::fill(bound.begin(), bound.end(), false);
-//            std::fill(std::next(inner.begin(), node), std::prev(inner.end(), neumann_task), false);
-//            for(const I eL : _base::mesh_proxy()->nodes_elements_map(node)) {
-//                const size_t iL = _base::mesh_proxy()->global_to_local_numbering(eL).find(node)->second;
-//                for(const I eNL : _base::mesh_proxy()->neighbors(eL))
-//                    for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL) {
-//                        const size_t row = mesh().node_number(eL, iL),
-//                                     col = mesh().node_number(eNL, jNL);
-//                        if (inner_nodes[row] && inner_nodes[col]) {
-//                            if (row <= col)
-//                                inner[col] = true;
-//                        } else if (row != col) {
-//                            if (!inner_nodes[col])
-//                                bound[col] = true;
-//                        } else
-//                            inner[col] = true;
-//                    }
-//            }
-//            K_bound.outerIndexPtr()[node - shift+1] = std::accumulate(bound.cbegin(), bound.cend(), size_t{0});
-//            K.outerIndexPtr()[node - shift+1]       = std::accumulate(std::next(inner.cbegin(), node), inner.cend(), size_t{0});
-//        }
-//    }
-//
-//    for(size_t i = 0; i < K.rows(); ++i) {
-//        K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
-//        K_bound.outerIndexPtr()[i+1] += K_bound.outerIndexPtr()[i];
-//    }
-//    K.data().resize(K.outerIndexPtr()[K.rows()]);
-//    K_bound.data().resize(K_bound.outerIndexPtr()[K_bound.rows()]);
-//
-//    std::cout << "K.nonzero = " << K.outerIndexPtr()[K.rows()] << std::endl;
-//    std::cout << "K_b.nonzero = " << K_bound.outerIndexPtr()[K_bound.rows()] << std::endl;
-//    std::cout << std::flush << std::endl << std::endl << std::endl;
-//
-//    if (p1 > _base::MAX_LOCAL_WEIGHT) {
-//        for(size_t node = first_node(); node < last_node(); ++node) {
-//            std::fill(bound.begin(), bound.end(), false);
-//            std::fill(std::next(inner.begin(), node), std::prev(inner.end(), neumann_task), false);
-//            for(const I e : _base::mesh_proxy()->nodes_elements_map(node)) {
-//                const size_t i = _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second;
-//                for(size_t j = 0; j < mesh().nodes_count(e); ++j)
-//                    indexator(mesh().node_number(e, i), mesh().node_number(e, j));
-//            }
-//        }
-//    } else {
-//#pragma omp parallel for default(none) shared(K, K_bound, inner_nodes) firstprivate(inner, bound) schedule(dynamic)
-//        for(size_t node = first_node(); node < last_node(); ++node) {
-//            std::fill(bound.begin(), bound.end(), false);
-//            std::fill(std::next(inner.begin(), node), std::prev(inner.end(), neumann_task), false);
-//            for(const I eL : _base::mesh_proxy()->nodes_elements_map(node)) {
-//                const size_t iL = _base::mesh_proxy()->global_to_local_numbering(eL).find(node)->second;
-//                for(const I eNL : _base::mesh_proxy()->neighbors(eL))
-//                    for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)  {
-//                        const size_t row = mesh().node_number(eL, iL),
-//                                     col = mesh().node_number(eNL, jNL);
-//                        if (inner_nodes[row] && inner_nodes[col]) {
-//                            if (row <= col)
-//                                inner[col] = true;
-//                        } else if (row != col) {
-//                            if (!inner_nodes[col])
-//                                bound[col] = true;
-//                        } else
-//                            inner[col] = true;
-//                    }
-//            }
-//            size_t inner_curr = K.outerIndexPtr()[node];
-//            size_t bound_curr = K_bound.outerIndexPtr()[node];
-//            for(size_t k = node; k < inner.size(); ++k) {
-//                if (inner[k]) {
-//                    K.valuePtr()[inner_curr] = 0;
-//                    K.innerIndexPtr()[inner_curr++] = k;
-//                }
-//            }
-//
-//            for(size_t k = 0; k < bound.size(); ++k) {
-//                if (bound[k]) {
-//                    K_bound.valuePtr()[bound_curr] = 0;
-//                    K_bound.innerIndexPtr()[bound_curr++] = k;
-//                }
-//            }
-//        }
-//    }
+    const auto outer_index_filler =
+        [&K_inner, &K_bound, neumann_task, shift = I(first_node())-1]
+        (const size_t node, const std::vector<bool>& inner, const std::vector<bool>& bound) {
+            K_inner.outerIndexPtr()[node - shift] = std::accumulate(std::next(inner.cbegin(), node), inner.cend(), size_t{0}) + neumann_task;
+            K_bound.outerIndexPtr()[node - shift] = std::accumulate(bound.cbegin(), bound.cend(), size_t{0});
+        };
 
+    if (nonlocal_task)
+        _base::template mesh_index<DoF, _base::task_type::NONLOCAL>(inner_nodes, outer_index_filler);
+    else
+        _base::template mesh_index<DoF, _base::task_type::LOCAL>(inner_nodes, outer_index_filler);
 
-    std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
-                                       bound_portrait(K_bound.rows());
-    if (neumann_task) {
-#pragma omp parallel for default(none) shared(K, inner_portrait)
-        for(size_t node =  0; node < inner_portrait.size(); ++node)
-            inner_portrait[node].insert(mesh().nodes_count());
-    }
+    for(size_t i = 0; i < K_inner.rows(); ++i)
+        K_inner.outerIndexPtr()[i+1] += K_inner.outerIndexPtr()[i];
+    K_inner.data().resize(K_inner.outerIndexPtr()[K_inner.rows()]);
 
-    const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = first_node()](const I row, const I col) {
-        if (inner_nodes[row] && inner_nodes[col]) {
-            if (row <= col)
-                inner_portrait[row - shift].insert(col);
-        } else if (row != col) {
-            if (!inner_nodes[col])
-                bound_portrait[row - shift].insert(col);
-        } else
-            inner_portrait[row - shift].insert(col);
-    };
+    for(size_t i = 0; i < K_bound.rows(); ++i)
+        K_bound.outerIndexPtr()[i+1] += K_bound.outerIndexPtr()[i];
+    K_bound.data().resize(K_bound.outerIndexPtr()[K_bound.rows()]);
 
-    if (p1 > _base::MAX_LOCAL_WEIGHT) {
-        _base::template mesh_run_loc(
-            [this, &indexator] (const size_t e, const size_t i, const size_t j) {
-                indexator(mesh().node_number(e, i), mesh().node_number(e, j));
-            });
-    } else {
-        _base::template mesh_run_nonloc(
-            [this, &indexator](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                indexator(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL));
-            });
-    }
+    const auto inner_index_filler =
+        [&K_inner, &K_bound, neumann_task, shift = first_node()]
+        (const size_t node, const std::vector<bool>& inner, const std::vector<bool>& bound) {
+            size_t inner_curr = K_inner.outerIndexPtr()[node - shift];
+            for(size_t k = node; k < inner.size(); ++k)
+                if (inner[k]) {
+                    K_inner.valuePtr()[inner_curr] = 0;
+                    K_inner.innerIndexPtr()[inner_curr++] = k;
+                }
 
-    _base::convert_portrait(K,       inner_portrait);
-    _base::convert_portrait(K_bound, bound_portrait);
+            if (neumann_task) {
+                K_inner.valuePtr()[inner_curr] = 0;
+                K_inner.innerIndexPtr()[inner_curr] = inner.size();
+            }
+
+            for(size_t k = 0, bound_curr = K_bound.outerIndexPtr()[node - shift]; k < bound.size(); ++k)
+                if (bound[k]) {
+                    K_bound.valuePtr()[bound_curr] = 0;
+                    K_bound.innerIndexPtr()[bound_curr++] = k;
+                }
+        };
+
+    if (nonlocal_task)
+        _base::template mesh_index<DoF, _base::task_type::NONLOCAL>(inner_nodes, inner_index_filler);
+    else
+        _base::template mesh_index<DoF, _base::task_type::LOCAL>(inner_nodes, inner_index_filler);
 }
+
+//    template<class T, class I>
+//    void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+//                                                            Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+//                                                            const bool neumann_task, const T p1,
+//                                                            const std::vector<bool>& inner_nodes) const {
+//        std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
+//                                           bound_portrait(K_bound.rows());
+//        if (neumann_task) {
+//#pragma omp parallel for default(none) shared(K, inner_portrait)
+//            for(size_t node =  0; node < inner_portrait.size(); ++node)
+//                inner_portrait[node].insert(mesh().nodes_count());
+//        }
+//
+//        const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = first_node()](const I row, const I col) {
+//            if (inner_nodes[row] && inner_nodes[col]) {
+//                if (row <= col)
+//                    inner_portrait[row - shift].insert(col);
+//            } else if (row != col) {
+//                if (!inner_nodes[col])
+//                    bound_portrait[row - shift].insert(col);
+//            } else
+//                inner_portrait[row - shift].insert(col);
+//        };
+//
+//        if (p1 > _base::MAX_LOCAL_WEIGHT) {
+//            _base::template mesh_run_loc(
+//                    [this, &indexator] (const size_t e, const size_t i, const size_t j) {
+//                        indexator(mesh().node_number(e, i), mesh().node_number(e, j));
+//                    });
+//        } else {
+//            _base::template mesh_run_nonloc(
+//                    [this, &indexator](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+//                        indexator(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL));
+//                    });
+//        }
+//
+//        _base::convert_portrait(K,       inner_portrait);
+//        _base::convert_portrait(K_bound, bound_portrait);
+//    }
 
 template<class T, class I>
 template<class Integrate_Rule, class Influence_Function>
@@ -360,7 +297,7 @@ void heat_equation_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::Row
     });
 
     double time = omp_get_wtime();
-    create_matrix_portrait(K, K_bound, neumann_task, p1, inner_nodes);
+    create_matrix_portrait(K, K_bound, neumann_task, p1 < _base::MAX_LOCAL_WEIGHT, inner_nodes);
     std::cout << "rank = " << rank() << std::endl;
     std::cout << "K.nonzero() = " << K.nonZeros() << std::endl;
     std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;

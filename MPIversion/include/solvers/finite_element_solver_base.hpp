@@ -17,7 +17,64 @@ class finite_element_solver_base {
     std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
 
 protected:
-    enum component : bool {X, Y};
+    enum component : bool { X, Y };
+    enum task_type : bool { LOCAL, NONLOCAL };
+
+    template<size_t DoF>
+    class indexator {
+        const std::vector<bool>& _inner_nodes;
+        std::vector<bool> _inner, _bound;
+
+    public:
+        explicit indexator(const std::vector<bool>& inner_nodes)
+            : _inner_nodes{inner_nodes}
+            , _inner(_inner_nodes.size())
+            , _bound(_inner_nodes.size()) {}
+
+        const std::vector<bool>& inner() const { return _inner; }
+        const std::vector<bool>& bound() const { return _bound; }
+
+        void fill(const size_t node) {
+            std::fill(_bound.begin(), _bound.end(), false);
+            std::fill(std::next(_inner.begin(), DoF * node), _inner.end(), false);
+        }
+
+        void index(const size_t row, const size_t col) {
+            for(size_t comp_row = 0; comp_row < DoF; ++comp_row)
+                for(size_t comp_col = 0; comp_col < DoF; ++comp_col) {
+                    const size_t curr_row = row + comp_row,
+                                 curr_col = col + comp_col;
+                    if (_inner_nodes[curr_row] && _inner_nodes[curr_col]) {
+                        if (curr_row <= curr_col)
+                            _inner[curr_col] = true;
+                    } else if (curr_row != curr_col) {
+                        if (!_inner_nodes[curr_col])
+                            _bound[curr_col] = true;
+                    } else
+                        _inner[curr_col] = true;
+                }
+        }
+    };
+
+    template<size_t DoF, task_type Type, class Callback>
+    void mesh_index(const std::vector<bool>& inner_nodes, const Callback& callback) const {
+        indexator<DoF> ind{inner_nodes};
+#pragma omp parallel for default(none) firstprivate(ind, callback) schedule(dynamic)
+        for(size_t node = first_node(); node < last_node(); ++node) {
+            ind.fill(node);
+            for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
+                if constexpr (Type == task_type::LOCAL)
+                    for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
+                        ind.index(node, mesh().node_number(eL, jL));
+                if constexpr (Type == task_type::NONLOCAL)
+                    for(const I eNL : mesh_proxy()->neighbors(eL))
+                        for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)
+                            ind.index(node, mesh().node_number(eNL, jNL));
+            }
+            callback(node, ind.inner(), ind.bound());
+        }
+    }
+
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
     explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh);

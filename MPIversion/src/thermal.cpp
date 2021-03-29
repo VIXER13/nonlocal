@@ -36,7 +36,8 @@ int main(int argc, char** argv) {
 
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
-        mesh_proxy->find_neighbours(r, mesh::balancing_t::NO);
+        if (p1 < 0.999)
+            mesh_proxy->find_neighbours(r, mesh::balancing_t::NO);
 
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_proxy};
 
