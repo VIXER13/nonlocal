@@ -23,55 +23,98 @@ protected:
     template<size_t DoF>
     class indexator {
         const std::vector<bool>& _inner_nodes;
+        Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _K_inner,
+                                                  & _K_bound;
         std::vector<bool> _inner, _bound;
+        size_t _inner_index = 0, _bound_index = 0;
 
     public:
-        explicit indexator(const std::vector<bool>& inner_nodes)
+        explicit indexator(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
+                           Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                           const std::vector<bool>& inner_nodes)
             : _inner_nodes{inner_nodes}
+            , _K_inner{K_inner}
+            , _K_bound{K_bound}
             , _inner(_inner_nodes.size())
             , _bound(_inner_nodes.size()) {}
 
-        const std::vector<bool>& inner() const { return _inner; }
-        const std::vector<bool>& bound() const { return _bound; }
-
         void fill(const size_t node) {
+            _inner_index = _K_inner.outerIndexPtr()[node];
+            _bound_index = _K_bound.outerIndexPtr()[node];;
             std::fill(_bound.begin(), _bound.end(), false);
             std::fill(std::next(_inner.begin(), DoF * node), _inner.end(), false);
         }
 
+        template<size_t AAA>
         void index(const size_t row, const size_t col) {
-            for(size_t comp_row = 0; comp_row < DoF; ++comp_row)
-                for(size_t comp_col = 0; comp_col < DoF; ++comp_col) {
-                    const size_t curr_row = row + comp_row,
-                                 curr_col = col + comp_col;
-                    if (_inner_nodes[curr_row] && _inner_nodes[curr_col]) {
-                        if (curr_row <= curr_col)
-                            _inner[curr_col] = true;
-                    } else if (curr_row != curr_col) {
-                        if (!_inner_nodes[curr_col])
-                            _bound[curr_col] = true;
-                    } else
-                        _inner[curr_col] = true;
+            if constexpr (AAA == 0) {
+                if (_inner_nodes[row] && _inner_nodes[col]) {
+                    if (row <= col) {
+                        if (!_inner[col]) {
+                            ++_K_inner.outerIndexPtr()[row+1];
+                            _inner[col] = true;
+                        }
+                    }
+                } else if (row != col) {
+                    if (!_inner_nodes[col]) {
+                        if (!_bound[col]) {
+                            ++_K_bound.outerIndexPtr()[row+1];
+                            _bound[col] = true;
+                        }
+                    }
+                } else {
+                    if (!_inner[col]) {
+                        ++_K_inner.outerIndexPtr()[row+1];
+                        _inner[col] = true;
+                    }
                 }
+            }
+
+            if constexpr (AAA == 1) {
+                if (_inner_nodes[row] && _inner_nodes[col]) {
+                    if (row <= col) {
+                        if (!_inner[col]) {
+                            _K_inner.valuePtr()[_inner_index] = 0;
+                            _K_inner.innerIndexPtr()[_inner_index++] = col;
+                            _inner[col] = true;
+                        }
+                    }
+                } else if (row != col) {
+                    if (!_inner_nodes[col]) {
+                        if (!_bound[col]) {
+                            _K_bound.valuePtr()[_bound_index] = 0;
+                            _K_bound.innerIndexPtr()[_bound_index++] = col;
+                            _bound[col] = true;
+                        }
+                    }
+                } else {
+                    if (!_inner[col]) {
+                        _K_inner.valuePtr()[_inner_index] = 0;
+                        _K_inner.innerIndexPtr()[_inner_index++] = col;
+                        _inner[col] = true;
+                    }
+                }
+            }
         }
     };
 
-    template<size_t DoF, task_type Type, class Callback>
-    void mesh_index(const std::vector<bool>& inner_nodes, const Callback& callback) const {
-        indexator<DoF> ind{inner_nodes};
-#pragma omp parallel for default(none) firstprivate(ind, callback) schedule(dynamic)
+    template<size_t DoF, size_t AAA, task_type Type>
+    void mesh_index(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
+                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                    const std::vector<bool>& inner_nodes) const {
+        indexator<DoF> ind{K_inner, K_bound, inner_nodes};
+#pragma omp parallel for default(none) firstprivate(ind) schedule(dynamic)
         for(size_t node = first_node(); node < last_node(); ++node) {
             ind.fill(node);
             for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
                 if constexpr (Type == task_type::LOCAL)
                     for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
-                        ind.index(node, mesh().node_number(eL, jL));
+                        ind.template index<AAA>(node, mesh().node_number(eL, jL));
                 if constexpr (Type == task_type::NONLOCAL)
                     for(const I eNL : mesh_proxy()->neighbors(eL))
                         for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)
-                            ind.index(node, mesh().node_number(eNL, jNL));
+                            ind.template index<AAA>(node, mesh().node_number(eNL, jNL));
             }
-            callback(node, ind.inner(), ind.bound());
         }
     }
 
@@ -89,17 +132,8 @@ protected:
     static T jacobian(const std::array<T, 4>& J) noexcept;
     static T jacobian(const std::array<T, 2>& J) noexcept;
 
-    // Функция обхода сетки в локальных постановках.
-    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
-    // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
-    template<class Callback>
-    void mesh_run_loc(const Callback& callback) const;
-
-    // Функция обхода сетки в нелокальных постановках.
-    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
-    // Callback - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
-    template<class Callback>
-    void mesh_run_nonloc(const Callback& callback) const;
+    template<task_type Type, class Callback>
+    void mesh_run(const Callback& callback) const;
 
     // Функция обхода групп граничных элементов.
     // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
@@ -159,29 +193,19 @@ template<class T, class I>
 T finite_element_solver_base<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
 template<class T, class I>
-template<class Callback>
-void finite_element_solver_base<T, I>::mesh_run_loc(const Callback& callback) const {
+template<typename finite_element_solver_base<T, I>::task_type Type, class Callback>
+void finite_element_solver_base<T, I>::mesh_run(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = first_node(); node < last_node(); ++node) {
-        for(const I el : mesh_proxy()->nodes_elements_map(node)) {
-            const size_t i = mesh_proxy()->global_to_local_numbering(el).find(node)->second; // Проекционные функции
-            for(size_t j = 0; j < mesh().nodes_count(el); ++j) // Аппроксимационные функции
-                callback(el, i, j);
-        }
-    }
-}
-
-template<class T, class I>
-template<class Callback>
-void finite_element_solver_base<T, I>::mesh_run_nonloc(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
-    for(size_t node = first_node(); node < last_node(); ++node) {
-        for(const I elL : mesh_proxy()->nodes_elements_map(node)) {
-            const size_t iL = mesh_proxy()->global_to_local_numbering(elL).find(node)->second; // Проекционные функции
-            for(const I elNL : mesh_proxy()->neighbors(elL)) {
-                for(size_t jNL = 0; jNL < mesh().nodes_count(elNL); ++jNL) // Аппроксимационные функции
-                    callback(elL, elNL, iL, jNL);
-            }
+        for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
+            const size_t iL = mesh_proxy()->global_to_local_numbering(eL).find(node)->second; // Проекционные функции
+            if constexpr (Type == task_type::LOCAL)
+                for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL) // Аппроксимационные функции
+                    callback(eL, iL, jL);
+            if constexpr (Type == task_type::NONLOCAL)
+                for(const I eNL : mesh_proxy()->neighbors(eL))
+                    for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL) // Аппроксимационные функции
+                        callback(eL, eNL, iL, jNL);
         }
     }
 }

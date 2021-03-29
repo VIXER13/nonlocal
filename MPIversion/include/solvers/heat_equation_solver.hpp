@@ -147,17 +147,13 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                                         const bool neumann_task, const bool nonlocal_task,
                                                         const std::vector<bool>& inner_nodes) const {
-    const auto outer_index_filler =
-        [&K_inner, &K_bound, neumann_task, shift = I(first_node())-1]
-        (const size_t node, const std::vector<bool>& inner, const std::vector<bool>& bound) {
-            K_inner.outerIndexPtr()[node - shift] = std::accumulate(std::next(inner.cbegin(), node), inner.cend(), size_t{0}) + neumann_task;
-            K_bound.outerIndexPtr()[node - shift] = std::accumulate(bound.cbegin(), bound.cend(), size_t{0});
-        };
+    for(size_t i = 0; i < K_inner.rows(); ++i)
+        K_inner.outerIndexPtr()[i+1] = neumann_task;
 
     if (nonlocal_task)
-        _base::template mesh_index<DoF, _base::task_type::NONLOCAL>(inner_nodes, outer_index_filler);
+        _base::template mesh_index<DoF, 0, _base::task_type::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else
-        _base::template mesh_index<DoF, _base::task_type::LOCAL>(inner_nodes, outer_index_filler);
+        _base::template mesh_index<DoF, 0, _base::task_type::LOCAL>(K_inner, K_bound, inner_nodes);
 
     for(size_t i = 0; i < K_inner.rows(); ++i)
         K_inner.outerIndexPtr()[i+1] += K_inner.outerIndexPtr()[i];
@@ -167,73 +163,19 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
         K_bound.outerIndexPtr()[i+1] += K_bound.outerIndexPtr()[i];
     K_bound.data().resize(K_bound.outerIndexPtr()[K_bound.rows()]);
 
-    const auto inner_index_filler =
-        [&K_inner, &K_bound, neumann_task, shift = first_node()]
-        (const size_t node, const std::vector<bool>& inner, const std::vector<bool>& bound) {
-            size_t inner_curr = K_inner.outerIndexPtr()[node - shift];
-            for(size_t k = node; k < inner.size(); ++k)
-                if (inner[k]) {
-                    K_inner.valuePtr()[inner_curr] = 0;
-                    K_inner.innerIndexPtr()[inner_curr++] = k;
-                }
-
-            if (neumann_task) {
-                K_inner.valuePtr()[inner_curr] = 0;
-                K_inner.innerIndexPtr()[inner_curr] = inner.size();
-            }
-
-            for(size_t k = 0, bound_curr = K_bound.outerIndexPtr()[node - shift]; k < bound.size(); ++k)
-                if (bound[k]) {
-                    K_bound.valuePtr()[bound_curr] = 0;
-                    K_bound.innerIndexPtr()[bound_curr++] = k;
-                }
-        };
-
     if (nonlocal_task)
-        _base::template mesh_index<DoF, _base::task_type::NONLOCAL>(inner_nodes, inner_index_filler);
+        _base::template mesh_index<DoF, 1, _base::task_type::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else
-        _base::template mesh_index<DoF, _base::task_type::LOCAL>(inner_nodes, inner_index_filler);
-}
+        _base::template mesh_index<DoF, 1, _base::task_type::LOCAL>(K_inner, K_bound, inner_nodes);
 
-//    template<class T, class I>
-//    void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
-//                                                            Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-//                                                            const bool neumann_task, const T p1,
-//                                                            const std::vector<bool>& inner_nodes) const {
-//        std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
-//                                           bound_portrait(K_bound.rows());
-//        if (neumann_task) {
-//#pragma omp parallel for default(none) shared(K, inner_portrait)
-//            for(size_t node =  0; node < inner_portrait.size(); ++node)
-//                inner_portrait[node].insert(mesh().nodes_count());
-//        }
-//
-//        const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = first_node()](const I row, const I col) {
-//            if (inner_nodes[row] && inner_nodes[col]) {
-//                if (row <= col)
-//                    inner_portrait[row - shift].insert(col);
-//            } else if (row != col) {
-//                if (!inner_nodes[col])
-//                    bound_portrait[row - shift].insert(col);
-//            } else
-//                inner_portrait[row - shift].insert(col);
-//        };
-//
-//        if (p1 > _base::MAX_LOCAL_WEIGHT) {
-//            _base::template mesh_run_loc(
-//                    [this, &indexator] (const size_t e, const size_t i, const size_t j) {
-//                        indexator(mesh().node_number(e, i), mesh().node_number(e, j));
-//                    });
-//        } else {
-//            _base::template mesh_run_nonloc(
-//                    [this, &indexator](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-//                        indexator(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL));
-//                    });
-//        }
-//
-//        _base::convert_portrait(K,       inner_portrait);
-//        _base::convert_portrait(K_bound, bound_portrait);
-//    }
+#pragma omp parallel for schedule(dynamic)
+    for(size_t i = 0; i < K_inner.rows(); ++i)
+        std::sort(&K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i]], &K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i+1]]);
+
+#pragma omp parallel for schedule(dynamic)
+    for(size_t i = 0; i < K_inner.rows(); ++i)
+        std::sort(&K_bound.innerIndexPtr()[K_bound.outerIndexPtr()[i]], &K_bound.innerIndexPtr()[K_bound.outerIndexPtr()[i+1]]);
+}
 
 template<class T, class I>
 template<class Integrate_Rule, class Influence_Function>
@@ -251,7 +193,7 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
         }
     }
 
-    _base::template mesh_run_loc(
+    _base::template mesh_run<_base::task_type::LOCAL>(
         [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t e, const size_t i, const size_t j) {
             const I row = mesh().node_number(e, i),
                     col = mesh().node_number(e, j);
@@ -267,7 +209,7 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
     );
 
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
-        _base::template mesh_run_nonloc(
+        _base::template mesh_run<_base::task_type::NONLOCAL>(
             [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
                 const I row = mesh().node_number(eL,  iL ),
