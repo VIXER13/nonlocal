@@ -348,7 +348,7 @@ void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dyna
 
     KSP ksp = nullptr;
     KSPCreate(PETSC_COMM_WORLD, &ksp);
-    KSPSetType(ksp, KSPCG);
+    KSPSetType(ksp, KSPSYMMLQ);
     KSPSetOperators(ksp, A, A);
     KSPSolve(ksp, f_petsc, x);
 

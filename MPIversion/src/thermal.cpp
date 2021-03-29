@@ -42,31 +42,58 @@ int main(int argc, char** argv) {
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_proxy};
 
         auto T = fem_sol.stationary(
-            { // Граничные условия
-                {   // Down
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                },
+                { // Граничные условия
+                        {   // Down
+                                nonlocal::heat::boundary_t::FLOW,
+                                [](const std::array<double, 2>& x) { return -1; },
+                        },
 
-                {   // Right
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                },
+                        {   // Right
+                                nonlocal::heat::boundary_t::FLOW,
+                                [](const std::array<double, 2>& x) { return 0; },
+                        },
 
-                {   // Up
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                },
+                        {   // Up
+                                nonlocal::heat::boundary_t::FLOW,
+                                [](const std::array<double, 2>& x) { return 1; },
+                        },
 
-                {   // Left
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                }
-            },
-            {[](const std::array<double, 2>&) { return -4; }}, // Правая часть
-            p1, // Вес
-            bell // Функция влияния
+                        {   // Left
+                                nonlocal::heat::boundary_t::FLOW,
+                                [](const std::array<double, 2>& x) { return 0; },
+                        }
+                },
+                {[](const std::array<double, 2>&) { return 0; }}, // Правая часть
+                p1, // Вес
+                bell // Функция влияния
         );
+
+//        auto T = fem_sol.stationary(
+//            { // Граничные условия
+//                {   // Down
+//                    nonlocal::heat::boundary_t::TEMPERATURE,
+//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+//                },
+//
+//                {   // Right
+//                    nonlocal::heat::boundary_t::TEMPERATURE,
+//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+//                },
+//
+//                {   // Up
+//                    nonlocal::heat::boundary_t::TEMPERATURE,
+//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+//                },
+//
+//                {   // Left
+//                    nonlocal::heat::boundary_t::TEMPERATURE,
+//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+//                }
+//            },
+//            {[](const std::array<double, 2>&) { return -4; }}, // Правая часть
+//            p1, // Вес
+//            bell // Функция влияния
+//        );
 
         int rank = -1;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);

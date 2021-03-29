@@ -147,8 +147,9 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                                         const bool neumann_task, const bool nonlocal_task,
                                                         const std::vector<bool>& inner_nodes) const {
-    for(size_t i = 0; i < K_inner.rows(); ++i)
-        K_inner.outerIndexPtr()[i+1] = neumann_task;
+    if (neumann_task)
+        for(size_t i = 0; i < K_inner.rows(); ++i)
+            K_inner.outerIndexPtr()[i+1] = neumann_task;
 
     if (nonlocal_task)
         _base::template mesh_index<DoF, 0, _base::task_type::NONLOCAL>(K_inner, K_bound, inner_nodes);
@@ -167,6 +168,10 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
         _base::template mesh_index<DoF, 1, _base::task_type::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else
         _base::template mesh_index<DoF, 1, _base::task_type::LOCAL>(K_inner, K_bound, inner_nodes);
+
+    if (neumann_task)
+        for(size_t i = 0; i < K_inner.rows(); ++i)
+            K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i+1]-1] = mesh().nodes_count();
 
 #pragma omp parallel for schedule(dynamic)
     for(size_t i = 0; i < K_inner.rows(); ++i)
@@ -280,16 +285,10 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
 
     double time = omp_get_wtime();
     _base::PETSc_solver(f, K);
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+    //Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    //f = temperature;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
-
-//    _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
-//
-//    //Eigen::PardisoLDLT<Eigen::SparseMatrix<T, Eigen::ColMajor, I>, Eigen::Lower> solver;
-//    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
-//    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
-//    //std::cout << "System solving: " << omp_get_wtime() - time << std::endl;
-//    temperature.conservativeResize(mesh().nodes_count());
-//    return std::move(temperature);
 
     return solution<T, I>{_base::mesh_proxy(), f};
 }
