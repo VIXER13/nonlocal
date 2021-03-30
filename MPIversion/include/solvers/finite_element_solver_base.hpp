@@ -23,6 +23,7 @@ protected:
     template<size_t DoF>
     class indexator {
         const std::vector<bool>& _inner_nodes;
+        const size_t _shift;
         Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _K_inner,
                                                   & _K_bound;
         std::vector<bool> _inner, _bound;
@@ -31,16 +32,17 @@ protected:
     public:
         explicit indexator(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                            Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                           const std::vector<bool>& inner_nodes)
+                           const std::vector<bool>& inner_nodes, const size_t shift)
             : _inner_nodes{inner_nodes}
+            , _shift{shift}
             , _K_inner{K_inner}
             , _K_bound{K_bound}
             , _inner(_inner_nodes.size())
             , _bound(_inner_nodes.size()) {}
 
         void fill(const size_t node) {
-            _inner_index = _K_inner.outerIndexPtr()[node];
-            _bound_index = _K_bound.outerIndexPtr()[node];;
+            _inner_index = _K_inner.outerIndexPtr()[node - _shift];
+            _bound_index = _K_bound.outerIndexPtr()[node - _shift];
             std::fill(_bound.begin(), _bound.end(), false);
             std::fill(std::next(_inner.begin(), DoF * node), _inner.end(), false);
         }
@@ -51,20 +53,20 @@ protected:
                 if (_inner_nodes[row] && _inner_nodes[col]) {
                     if (row <= col) {
                         if (!_inner[col]) {
-                            ++_K_inner.outerIndexPtr()[row+1];
+                            ++_K_inner.outerIndexPtr()[row - _shift+1];
                             _inner[col] = true;
                         }
                     }
                 } else if (row != col) {
                     if (!_inner_nodes[col]) {
                         if (!_bound[col]) {
-                            ++_K_bound.outerIndexPtr()[row+1];
+                            ++_K_bound.outerIndexPtr()[row - _shift+1];
                             _bound[col] = true;
                         }
                     }
                 } else {
                     if (!_inner[col]) {
-                        ++_K_inner.outerIndexPtr()[row+1];
+                        ++_K_inner.outerIndexPtr()[row - _shift+1];
                         _inner[col] = true;
                     }
                 }
@@ -102,7 +104,7 @@ protected:
     void mesh_index(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                     const std::vector<bool>& inner_nodes) const {
-        indexator<DoF> ind{K_inner, K_bound, inner_nodes};
+        indexator<DoF> ind{K_inner, K_bound, inner_nodes, DoF * first_node()};
 #pragma omp parallel for default(none) firstprivate(ind) schedule(dynamic)
         for(size_t node = first_node(); node < last_node(); ++node) {
             ind.fill(node);
