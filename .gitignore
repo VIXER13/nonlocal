@@ -1,13 +1,16 @@
+**.vscode
+**.idea
 **Makefile
 **CMakeFiles
 **CMakeCache.txt
 **cmake_install.cmake
-
-.vscode
+**cmake-build-debug
+**build
+**.vtk
+**Eigen
 
 a.out
-Eigen
 mesh
-**.vtk
+
 
 results

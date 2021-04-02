@@ -5,7 +5,9 @@
 #include <string>
 #include <fstream>
 #include <exception>
-#include "metamath/metamath.hpp"
+#include <sstream>
+#include <mpi.h>
+#include "metamath.hpp"
 
 namespace mesh {
 
@@ -39,7 +41,7 @@ enum class vtk_element_number : uintmax_t {
 };
 
 template<class T, class I = int32_t>
-class mesh_2d {
+class mesh_2d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     static_assert(std::is_integral_v<I>, "The I must be integral.");
 
@@ -53,7 +55,7 @@ class mesh_2d {
     std::vector<element_2d_t>                _elements_2d_type;   // Массив с индексами двумерных элементов.
 
     template<class U, template<class> class Quadrature_Type>
-    using quadrature = metamath::finite_element::quadrature<U, Quadrature_Type>;
+    using quadrature = metamath::finite_element::quadrature_1d<U, Quadrature_Type>;
     template<class U>
     using gauss1 = metamath::finite_element::gauss1<U>;
     template<class U>
@@ -81,11 +83,12 @@ class mesh_2d {
     template<class U>
     using quadratic_lagrange = metamath::finite_element::quadratic_lagrange<U>;
 
-    template<size_t... K>
-    void read_element(std::ifstream& mesh_file, std::vector<I>& element);
-    void read_su2(const std::string& path);
+    template<size_t... K, class Stream>
+    void read_element(Stream& mesh_file, std::vector<I>& element);
+    template<class Stream>
+    void read_su2(Stream& mesh_file);
 
-    template<size_t Ind, size_t... K>
+    template<size_t K0, size_t... K>
     void write_element(std::ofstream& mesh_file, const std::vector<I>& element) const;
 
 public:
@@ -127,6 +130,7 @@ public:
 
     size_t elements_count() const noexcept;
     I node_number(const size_t element, const size_t node) const noexcept;
+    size_t nodes_count(const size_t element) const noexcept;
 
     size_t boundary_groups_count() const noexcept;
     size_t elements_count(const size_t boundary) const noexcept;
@@ -149,17 +153,34 @@ mesh_2d<T, I>::mesh_2d(const std::string& path) {
 }
 
 template<class T, class I>
-mesh_2d<T, I>::mesh_2d(const mesh_2d& other) :
-    _nodes{other._nodes},
-    _elements{other._elements},
-    _boundaries{other._boundaries},
-    _elements_1d_type{other._elements_1d_type},
-    _elements_2d_type{other._elements_2d_type} {}
+mesh_2d<T, I>::mesh_2d(const mesh_2d& other)
+    : _nodes{other._nodes}
+    , _elements{other._elements}
+    , _boundaries{other._boundaries}
+    , _elements_1d_type{other._elements_1d_type}
+    , _elements_2d_type{other._elements_2d_type} {}
 
 template<class T, class I>
 void mesh_2d<T, I>::read_from_file(const std::string& path) {
+    int rank = -1;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (path.substr(path.size()-4) == ".su2") {
-        read_su2(path);
+        std::stringstream mesh_file;
+        std::string buffer;
+        if (rank == 0) {
+            std::ifstream file{path};
+            file.seekg(0, std::ios::end);
+            const size_t file_size = file.tellg();
+            buffer.resize(file_size);
+            file.seekg(0);
+            file.read(buffer.data(), file_size);
+        }
+        int buffer_size = buffer.size();
+        MPI_Bcast(&buffer_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        buffer.resize(buffer_size);
+        MPI_Bcast(buffer.data(), buffer.size(), MPI_CHAR, 0, MPI_COMM_WORLD);
+        mesh_file << buffer;
+        read_su2(mesh_file);
     } else {
         throw std::domain_error{"Read format is not .su2."};
     }
@@ -201,6 +222,11 @@ size_t mesh_2d<T, I>::elements_count() const noexcept {
 template<class T, class I>
 I mesh_2d<T, I>::node_number(const size_t element, const size_t node) const noexcept {
     return _elements[element][node];
+}
+
+template<class T, class I>
+size_t mesh_2d<T, I>::nodes_count(const size_t element) const noexcept {
+    return _elements[element].size();
 }
 
 template<class T, class I>

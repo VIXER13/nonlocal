@@ -1,62 +1,119 @@
-#include "solvers/influence_functions.hpp"
-#include "solvers/structural_solver.hpp"
+#include <iostream>
+#include <petsc.h>
+#include "heat_equation_solver.hpp"
+#include "influence_functions.hpp"
 
-template<class Type, class Index, class Vector>
-static void raw_output(const std::string& path, const mesh::mesh_2d<Type, Index>& mesh, const Vector& T) {
-    std::ofstream fout(path + std::string{"T.csv"});
-    fout.precision(20);
-    for(size_t i = 0; i < mesh.nodes_count(); ++i)
-        fout << mesh.node(i)[0] << "," << mesh.node(i)[1] << "," << T[i] << std::endl;
+void print_mesh(const mesh::mesh_2d<double>& msh) {
+    std::cout << "nodes:\n";
+    for(size_t n = 0; n < msh.nodes_count(); ++n)
+        std::cout << msh.node(n)[0] << ' ' << msh.node(n)[1] << '\n';
+    std::cout << std::endl;
+
+    std::cout << "elements:\n";
+    for(size_t el = 0; el < msh.elements_count(); ++el) {
+        const auto& e = msh.element_2d(el);
+        for(size_t i = 0; i < e->nodes_count(); ++i)
+            std::cout << msh.node_number(el, i) << ' ';
+        std::cout << '\n';
+    }
+    std::cout << std::endl;
+
+    std::cout << "boundary:\n";
+    for(size_t b = 0; b < msh.boundary_groups_count(); ++b) {
+        std::cout << "group" << b << ":\n";
+        for(size_t el = 0; el < msh.elements_count(b); ++el) {
+            const auto& e = msh.element_1d(b, el);
+            for(size_t i = 0; i < e->nodes_count(); ++i)
+                std::cout << msh.node_number(b, el, i) << ' ';
+            std::cout << '\n';
+        }
+    }
+}
+
+//void print_solver_data(const nonlocal::finite_element_solver_base<double, int>& solver) {
+//    std::cout << "quad shifts:\n";
+//    for(size_t i = 0; i < solver._quad_shifts.size(); ++i)
+//        std::cout << solver._quad_shifts[i] << ' ';
+//    std::cout << std::endl;
+//
+//    std::cout << "quad coords:\n";
+//    for(size_t i = 0; i < solver._quad_coords.size(); ++i)
+//        std::cout << solver._quad_coords[i][0] << ' ' << solver._quad_coords[i][1] << '\n';
+//    std::cout << std::endl;
+//
+//    std::cout << "jacobi matrices:\n";
+//    for(size_t i = 0; i < solver._jacobi_matrices.size(); ++i)
+//        std::cout << solver._jacobi_matrices[i][0] << ' ' << solver._jacobi_matrices[i][1] << ' '
+//                  << solver._jacobi_matrices[i][2] << ' ' << solver._jacobi_matrices[i][3] << '\n';
+//    std::cout << std::endl;
+//
+//    std::cout << "Neighbours:\n";
+//    for(size_t i = 0; i < solver._elements_neighbors.size(); ++i) {
+//        std::cout << i << " : ";
+//        for(size_t j = 0; j < solver._elements_neighbors[i].size(); ++j)
+//            std::cout << solver._elements_neighbors[i][j] << ' ';
+//        std::cout << std::endl;
+//    }
+//}
+
+namespace {
+
+void save_raw_data(const mesh::mesh_2d<double>& msh, const Eigen::Matrix<double, Eigen::Dynamic, 1>& T) {
+    std::ofstream Tout{"T.csv"};
+    for(size_t i = 0; i < msh.nodes_count(); ++i)
+        Tout << msh.node(i)[0] << ',' << msh.node(i)[1] << ',' << T[i] << '\n';
+}
+
 }
 
 int main(int argc, char** argv) {
-    std::cout << "test" << std::endl;
-    if(argc < 2) {
-        std::cerr << "Input format [program name] <path to mesh>";
-        return EXIT_FAILURE;
-    }
-
-    std::cout << "test" << std::endl;
+    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
 
     try {
-        std::cout.precision(16);
-        omp_set_num_threads(4);
+        std::cout.precision(7);
+        PetscMPIInt size = -1, rank = -1;
+        MPI_Comm_size(MPI_COMM_WORLD, &size);
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-        static constexpr double r = 0.05, p1 = 0.5;
+        const int maxthr = omp_get_max_threads() / size;
+        omp_set_num_threads(maxthr ? maxthr : 1);
+
+        mesh::mesh_2d<PetscScalar, PetscInt> msh{argv[1]};
+
+        static constexpr double r = 0.2, p1 = 0.5;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        mesh::mesh_2d<double> msh{argv[1]};
+        nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
 
-        std::cout << "test" << std::endl;
-        const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 42};
-        nonlocal::structural::structural_solver<double, int> fem_sol{msh, params};
-
-        const auto U = fem_sol.stationary(
-            {
-                {},
-
-                {
-                    [](const std::array<double, 2>&) { return 1; },
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    nonlocal::structural::boundary_t::PRESSURE
+        const auto T = fem_sol.stationary(
+            { // Граничные условия
+                {   // Down
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return 1; }
                 },
 
-                {},
-
-                {
-                    [](const std::array<double, 2>&) { return 0; },
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
-                    nonlocal::structural::boundary_t::DISPLACEMENT
+                {   // Right
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 0; }
                 },
 
-                {}, {}
+                {   // Up
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return -1; }
+                },
+
+                {   // Left
+                    nonlocal::heat::boundary_t::FLOW,
+                    [](const std::array<double, 2>& x) { return 0; }
+                }
             },
-            r, p1, bell
+            [](const std::array<double, 2>&) { return 0; }, // Правая часть
+            r,  // Радиус влияния
+            p1, // Вес
+            bell // Функция влияния
         );
 
-        const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);
-        std::cout << "Energy U = " << fem_sol.calc_energy(strain, stress) << std::endl;
+        fem_sol.save_as_vtk("heat.vtk", T);
+        save_raw_data(msh, T);
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
@@ -65,5 +122,130 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    return EXIT_SUCCESS;
+    return PetscFinalize();
 }
+
+
+//static char help[] = "Testing MatCreateMPIAIJSumSeqAIJ().\n\n";
+//
+//#include <petscmat.h>
+//#include "../Eigen/Eigen/Sparse"
+//#include <iostream>
+//#include <vector>
+//#include <cstdlib>
+//
+//int main(int argc,char **argv)
+//{
+//    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, help); if (ierr) return ierr;
+//
+//    PetscMPIInt size = 0, rank = 0;
+//    ierr = MPI_Comm_size(PETSC_COMM_WORLD, &size);CHKERRQ(ierr);
+//    ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr);
+//
+//    const size_t glob_size = 16000000,
+//                 loc_size  = glob_size / size;
+//    Eigen::SparseMatrix<double, Eigen::RowMajor> C(glob_size, glob_size);
+//
+//    const size_t all_count = 160000;
+//    const size_t count = all_count / size;
+//    std::vector<Eigen::Triplet<double>> triplets(count);
+//
+//    for(int i = 0; i < size; ++i) {
+//        if (i == rank)
+//            std::cout << rank * loc_size << ' ' << (rank+1) * loc_size << std::endl;
+//        MPI_Barrier(MPI_COMM_WORLD);
+//    }
+//
+//    for(size_t i = 0; i < count; ++i)
+//        //triplets[i] = Eigen::Triplet<double>{i % loc_size + rank * loc_size, i % glob_size, 5.2};
+//        //triplets[i] = Eigen::Triplet<double>{std::rand() % glob_size, std::rand() % glob_size, 5.2};
+//        triplets[i] = Eigen::Triplet<double>{std::rand() % loc_size + rank * loc_size, std::rand() % glob_size, 5.2};
+//
+//    C.setFromTriplets(triplets.cbegin(), triplets.cend());
+//
+//    PetscLogDouble start_time = 0;
+//    PetscTime(&start_time);
+//
+//    Mat A, B;
+//    ierr = MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, C.rows(), C.cols(), C.outerIndexPtr(), C.innerIndexPtr(), C.valuePtr(), &A);CHKERRQ(ierr);
+//    ierr = MatCreateMPIAIJSumSeqAIJ(PETSC_COMM_WORLD, A, PETSC_DECIDE, PETSC_DECIDE, MAT_INITIAL_MATRIX, &B);CHKERRQ(ierr);
+//
+//    PetscLogDouble end_time = 0;
+//    PetscTime(&end_time);
+//
+//    if (rank == 0)
+//        std::cout << end_time - start_time << std::endl;
+//
+//    PetscInt first = 0, last = 0;
+//    ierr = MatGetOwnershipRange(B, &first, &last);CHKERRQ(ierr);
+//
+////    for(int i = 0; i < size; ++i) {
+////        if (i == rank)
+////            std::cout << first << ' ' << last << std::endl;
+////        MPI_Barrier(MPI_COMM_WORLD);
+////    }
+//    //ierr = MatView(B, PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
+//    ierr = MatDestroy(&B);CHKERRQ(ierr);
+//    ierr = MatDestroy(&A);CHKERRQ(ierr);
+//    return PetscFinalize();
+//}
+
+
+
+
+
+
+
+//static char help[] ="Tests MatPtAP() \n";
+//
+//#include <petscmat.h>
+//#include <cstdlib>
+//#include <iostream>
+//#include "../Eigen/Eigen/Sparse"
+//
+//int main(int argc,char **argv)
+//{
+//    PetscErrorCode ierr;
+//    Mat            A;
+//    PetscInt       i1[] = {0, 3, 5}, i2[] = {0,0,0};//i2[] = {0,2,5};
+//    PetscInt       j1[] = {0, 1, 3, 1, 2}, j2[] = {0, 0, 0, 0, 0};//j2[] = {0, 2, 1, 2, 3};
+//    PetscScalar    a1[] = {1, 2, 4, 1, 2}, a2[] = {0, 0, 0, 0, 0};//a2[] = {2, 4, 1, 2, 1};
+//    //PetscInt       pi1[] = {0,1,3}, pi2[] = {0,1,2};
+//    //PetscInt       pj1[] = {0, 0, 1}, pj2[] = {1,0};
+//    //PetscScalar    pa1[] = {1, 0.3, 0.5}, pa2[] = {0.8, 0.9};
+//    MPI_Comm       comm;
+//    PetscMPIInt    rank,size;
+//
+//
+//
+//
+//    //C.outerIndexPtr(), C.innerIndexPtr()
+//
+//
+//    ierr = PetscInitialize(&argc,&argv,NULL,help);if (ierr) return ierr;
+//    comm = PETSC_COMM_WORLD;
+//    ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
+//    ierr = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
+//
+//    int glob_size = 80000, loc_size = glob_size / size;
+//    Eigen::SparseMatrix<double, Eigen::RowMajor> C{loc_size, glob_size};
+//    int triplets_count = 16000000;
+//    std::vector<Eigen::Triplet<double>> triplets(triplets_count / size);
+//
+//    for(size_t i = 0; i < triplets.size(); ++i)
+//        triplets[i] = Eigen::Triplet<double>{std::rand() % loc_size, std::rand() % glob_size, 1.};
+//
+//    //if (size != 2)
+//    //    SETERRQ(comm,PETSC_ERR_ARG_INCOMP,"You have to use two processor cores to run this example \n");
+//    PetscLogDouble start_time = 0;
+//    PetscTime(&start_time);
+//    ierr = MatCreateMPIAIJWithArrays(comm, C.rows(), C.cols(), PETSC_DETERMINE, PETSC_DETERMINE, C.outerIndexPtr(), C.innerIndexPtr(), C.valuePtr(), &A);CHKERRQ(ierr);
+//    PetscLogDouble end_time = 0;
+//    PetscTime(&end_time);
+//
+//    std::cout << end_time - start_time << std::endl;
+//    //ierr = MatView(A,NULL);CHKERRQ(ierr);
+//    ierr = MatDestroy(&A);CHKERRQ(ierr);
+//    ierr = PetscFinalize();
+//    return ierr;
+//}

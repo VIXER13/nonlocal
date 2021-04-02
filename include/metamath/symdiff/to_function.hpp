@@ -13,7 +13,7 @@ std::function<T(const std::array<T, N>&)> to_function(const E& e) {
 }
 
 class _to_array_of_functions {
-    explicit _to_array_of_functions() noexcept = default;
+    constexpr explicit _to_array_of_functions() noexcept = default;
 
     template<class T, size_t N, class Tuple, size_t... I>
     static std::array<std::function<T(const std::array<T, N>&)>, sizeof...(I)>

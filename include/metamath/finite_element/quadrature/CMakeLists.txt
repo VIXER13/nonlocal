@@ -1,0 +1,9 @@
+cmake_minimum_required(VERSION 3.17)
+project(finite_element_quadrature)
+
+set(FINITE_ELEMENT_QUADRATURE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_library(finite_element_quadrature_lib INTERFACE)
+target_sources(finite_element_quadrature_lib INTERFACE quadrature.hpp)
+target_include_directories(finite_element_quadrature_lib INTERFACE ${FINITE_ELEMENT_QUADRATURE_LIB_DIR})
+target_link_libraries(finite_element_quadrature_lib INTERFACE finite_element_geometry_lib)

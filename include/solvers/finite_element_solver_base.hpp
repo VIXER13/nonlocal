@@ -1,243 +1,356 @@
 #ifndef FINITE_ELEMENT_ROUTINE_HPP
 #define FINITE_ELEMENT_ROUTINE_HPP
 
-// Базовые операции, которые требуются во всех конечно-элементных решателях.
-
-#include "mesh/mesh.hpp"
-#include "utils.hpp"
+#include <numeric>
+#include <petsc.h>
+#include <petscsystypes.h>
+#include "../../Eigen/Eigen/Sparse"
+#undef I // for new version GCC, when use I macros
+#include "mesh.hpp"
+#include "right_partition.hpp"
+#include "boundary_condition.hpp"
 
 namespace nonlocal {
 
-enum class boundary_type : uint8_t {
-    FIRST_KIND,
-    SECOND_KIND
-};
-
 template<class T, class I>
 class finite_element_solver_base {
-    mesh::mesh_2d<T, I>           _mesh;
-    std::vector<I>                _quad_shifts;        // Квадратурные сдвиги
-    std::vector<std::array<T, 2>> _quad_coords;        // Координаты квадратурных узлов сетки
-    std::vector<std::array<T, 4>> _jacobi_matrices;    // Матрицы Якоби вычисленные в квадратурных узлах
-    std::vector<std::vector<I>>   _elements_neighbors;
-
-    // Квадратурные сдвиги по элементам.
-    static std::vector<I> quadrature_shifts_init(const mesh::mesh_2d<T, I>& mesh) {
-        std::vector<I> quad_shifts(mesh.elements_count()+1);
-        quad_shifts[0] = 0;
-        for(size_t el = 0; el < mesh.elements_count(); ++el)
-            quad_shifts[el+1] = quad_shifts[el] + mesh.element_2d(mesh.element_2d_type(el))->qnodes_count();
-        return std::move(quad_shifts);
-    }
-
-    // Аппроксимация глобальных координат всех квадратурных узлов сетки.
-    // Перед вызовом обязательно должны быть проинициализированы квадратурные сдвиги
-    static std::vector<std::array<T, 2>> approx_all_quad_nodes(const mesh::mesh_2d<T, I>& mesh, const std::vector<I>& quad_shifts) {
-        if(mesh.elements_count()+1 != quad_shifts.size())
-            throw std::logic_error{"Quadrature shifts are incorrect."};
-        std::vector<std::array<T, 2>> quad_coords(quad_shifts.back(), std::array<T, 2>{});
-#pragma omp parallel for default(none) shared(mesh, quad_shifts, quad_coords)
-        for(size_t el = 0; el < mesh.elements_count(); ++el) {
-            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
-            for(size_t q = 0; q < e->qnodes_count(); ++q)
-                for(size_t i = 0; i < e->nodes_count(); ++i)
-                    for(size_t comp = 0; comp < 2; ++comp)
-                        quad_coords[quad_shifts[el]+q][comp] += mesh.node(mesh.node_number(el, i))[comp] * e->qN(i, q);
-        }
-        return std::move(quad_coords);
-    }
-
-    // Аппроксимация матриц Якоби во всех квадратурных узлах сетки.
-    // Перед вызовом обязательно должны быть проинициализированы квадратурные сдвиги
-    static std::vector<std::array<T, 4>> approx_all_jacobi_matrices(const mesh::mesh_2d<T, I>& mesh, const std::vector<I>& quad_shifts) {
-        if(mesh.elements_count()+1 != quad_shifts.size())
-            throw std::logic_error{"Quadrature shifts are incorrect."};
-        std::vector<std::array<T, 4>> jacobi_matrices(quad_shifts.back(), std::array<T, 4>{});
-#pragma omp parallel for default(none) shared(mesh, quad_shifts, jacobi_matrices)
-        for(size_t el = 0; el < mesh.elements_count(); ++el) {
-            const auto& e = mesh.element_2d(mesh.element_2d_type(el));
-            for(size_t q = 0; q < e->qnodes_count(); ++q)
-                for(size_t i = 0; i < e->nodes_count(); ++i) {
-                    jacobi_matrices[quad_shifts[el]+q][0] += mesh.node(mesh.node_number(el, i))[0] * e->qNxi (i, q);
-                    jacobi_matrices[quad_shifts[el]+q][1] += mesh.node(mesh.node_number(el, i))[0] * e->qNeta(i, q);
-                    jacobi_matrices[quad_shifts[el]+q][2] += mesh.node(mesh.node_number(el, i))[1] * e->qNxi (i, q);
-                    jacobi_matrices[quad_shifts[el]+q][3] += mesh.node(mesh.node_number(el, i))[1] * e->qNeta(i, q);
-                }
-        }
-        return std::move(jacobi_matrices);
-    }
+    std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
 
 protected:
-    using Finite_Element_1D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_1D_Ptr;
-    using Finite_Element_2D_Ptr = typename mesh::mesh_2d<T, I>::Finite_Element_2D_Ptr;
-
     enum component : bool { X, Y };
+    enum theory : bool { LOCAL, NONLOCAL };
+    enum index_stage : bool { SHIFTS, NONZERO };
+
+    template<size_t DoF>
+    class indexator {
+        const std::vector<bool>& _inner_nodes;
+        const size_t _node_shift;
+        Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _K_inner,
+                                                  & _K_bound;
+        std::array<std::vector<bool>, DoF> _inner, _bound;
+        std::array<size_t, DoF> _inner_index = {}, _bound_index = {};
+
+    public:
+        explicit indexator(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
+                           Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                           const std::vector<bool>& inner_nodes, const size_t node_shift)
+            : _inner_nodes{inner_nodes}
+            , _node_shift{node_shift}
+            , _K_inner{K_inner}
+            , _K_bound{K_bound} {
+            for(size_t i = 0; i < DoF; ++i) {
+                _inner[i].resize(_inner_nodes.size());
+                _bound[i].resize(_inner_nodes.size());
+            }
+        }
+
+        void fill(const size_t node) {
+            for(size_t i = 0; i < DoF; ++i) {
+                _inner_index[i] = _K_inner.outerIndexPtr()[DoF * (node - _node_shift) + i];
+                _bound_index[i] = _K_bound.outerIndexPtr()[DoF * (node - _node_shift) + i];
+                std::fill(_bound[i].begin(), _bound[i].end(), false);
+                std::fill(std::next(_inner[i].begin(), DoF * node), _inner[i].end(), false);
+            }
+        }
+
+        template<index_stage Stage>
+        void stage(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                   std::array<std::vector<bool>, DoF>& inner,
+                   std::array<size_t, DoF>& inner_index,
+                   const size_t row, const size_t col) {
+            const size_t i = row % DoF;
+            if (!inner[i][col]) {
+                if constexpr (Stage == index_stage::SHIFTS)
+                    ++K.outerIndexPtr()[row - DoF * _node_shift + 1];
+                if constexpr (Stage == index_stage::NONZERO) {
+                    K.valuePtr()[inner_index[i]] = 0;
+                    K.innerIndexPtr()[inner_index[i]++] = col;
+                }
+                inner[i][col] = true;
+            }
+        }
+
+        template<index_stage Stage>
+        void index(const size_t block_row, const size_t block_col) {
+            for(size_t comp_row = 0; comp_row < DoF; ++comp_row)
+                for(size_t comp_col = 0; comp_col < DoF; ++comp_col) {
+                    const size_t row = DoF * block_row + comp_row,
+                                 col = DoF * block_col + comp_col;
+                    if (_inner_nodes[row] && _inner_nodes[col]) {
+                        if (row <= col)
+                            stage<Stage>(_K_inner, _inner, _inner_index, row, col);
+                    } else if (row != col) {
+                        if (!_inner_nodes[col])
+                            stage<Stage>(_K_bound, _bound, _bound_index, row, col);
+                    } else
+                        stage<Stage>(_K_inner, _inner, _inner_index, row, col);
+                }
+        }
+    };
+
+    template<size_t DoF, index_stage Stage, theory Theory>
+    void mesh_index(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
+                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+                    const std::vector<bool>& inner_nodes) const {
+        indexator<DoF> ind{K_inner, K_bound, inner_nodes, first_node()};
+#pragma omp parallel for default(none) firstprivate(ind) schedule(dynamic)
+        for(size_t node = first_node(); node < last_node(); ++node) {
+            ind.fill(node);
+            for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
+                if constexpr (Theory == theory::LOCAL)
+                    for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
+                        ind.template index<Stage>(node, mesh().node_number(eL, jL));
+                if constexpr (Theory == theory::NONLOCAL)
+                    for(const I eNL : mesh_proxy()->neighbors(eL))
+                        for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)
+                            ind.template index<Stage>(node, mesh().node_number(eNL, jNL));
+            }
+        }
+    }
+
+    static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+        for(size_t i = 0; i < K.rows(); ++i)
+            K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
+        K.data().resize(K.outerIndexPtr()[K.rows()]);
+    }
+
+    static void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+#pragma omp parallel for default(none) shared(K) schedule(dynamic)
+        for(size_t i = 0; i < K.rows(); ++i)
+            std::sort(&K.innerIndexPtr()[K.outerIndexPtr()[i]], &K.innerIndexPtr()[K.outerIndexPtr()[i+1]]);
+    }
+
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
 
-    explicit finite_element_solver_base(const mesh::mesh_2d<T, I>& mesh) :
-        _mesh{mesh},
-        _quad_shifts{quadrature_shifts_init(_mesh)},
-        _quad_coords{approx_all_quad_nodes(_mesh, _quad_shifts)},
-        _jacobi_matrices{approx_all_jacobi_matrices(_mesh, _quad_shifts)} {}
-
-    explicit finite_element_solver_base(mesh::mesh_2d<T, I>&& mesh) :
-        _mesh{std::move(mesh)},
-        _quad_shifts{quadrature_shifts_init(_mesh)},
-        _quad_coords{approx_all_quad_nodes(_mesh, _quad_shifts)},
-        _jacobi_matrices{approx_all_jacobi_matrices(_mesh, _quad_shifts)} {}
-
+    explicit finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh);
     virtual ~finite_element_solver_base() noexcept = default;
 
-    static std::vector<std::array<T, 2>> approx_centres_of_elements(const mesh::mesh_2d<T, I>& mesh) {
-        std::vector<std::array<T, 2>> centres(mesh.elements_count(), std::array<T, 2>{});
-#pragma omp parallel for default(none) shared(mesh, centres)
-        for(size_t el = 0; el < centres.size(); ++el) {
-            const auto& e = mesh.element_2d(el);
-            const T x0 = mesh::is_trinagle(mesh.element_2d_type(el)) ? 1./3. : 0.;
-            for(size_t node = 0; node < e->nodes_count(); ++node) {
-                using namespace utils;
-                centres[el] += mesh.node(mesh.node_number(el, node)) * e->N(node, {x0, x0});
-            }
-        }
-        return std::move(centres);
-    }
+    const mesh::mesh_2d<T, I>&            mesh                     ()                     const { return _mesh_proxy->mesh(); }
+    int                                   rank                     ()                     const { return _mesh_proxy->rank(); }
+    int                                   size                     ()                     const { return _mesh_proxy->size(); }
+    size_t                                first_node               ()                     const { return _mesh_proxy->first_node(); }
+    size_t                                last_node                ()                     const { return _mesh_proxy->last_node(); }
 
-    static std::vector<std::vector<I>> 
-    find_elements_neighbors(const mesh::mesh_2d<T, I>& mesh, const std::vector<std::array<T, 2>>& centres, const T r) {
-        std::vector<std::vector<I>> elements_neighbors(mesh.elements_count());
-#pragma omp parallel for default(none) shared(mesh, centres, elements_neighbors)
-        for(size_t elL = 0; elL < mesh.elements_count(); ++elL) {
-            elements_neighbors[elL].reserve(mesh.elements_count());
-            for(size_t elNL = 0; elNL < mesh.elements_count(); ++elNL)
-                if(utils::distance(centres[elL], centres[elNL]) < r)
-                    elements_neighbors[elL].push_back(elNL);
-            elements_neighbors[elL].shrink_to_fit();
-        }
-        return std::move(elements_neighbors);
-    }
+    static T jacobian(const std::array<T, 4>& J) noexcept;
+    static T jacobian(const std::array<T, 2>& J) noexcept;
 
-    const mesh::mesh_2d<T, I>& mesh() const { return _mesh; }
-    I quad_shift(const size_t element) const { return _quad_shifts[element]; }
-    const std::array<T, 2>& quad_coord(const size_t global_quad_node) const { return _quad_coords[global_quad_node]; }
-    const std::array<T, 4>& jacobi_matrix(const size_t global_quad_node) const { return _jacobi_matrices[global_quad_node]; }
+    template<theory Type, class Callback>
+    void mesh_run(const Callback& callback) const;
 
-    // Функция обхода сетки в локальных постановках.
-    // Нужна для предварительного подсчёта количества элементов  и интегрирования системы.
+    // Функция обхода групп граничных элементов.
     // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
     template<class Callback>
-    void mesh_run_loc(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t el = 0; el < _mesh.elements_count(); ++el) {
-            const auto& e = _mesh.element_2d(el);
-            for(size_t i = 0; i < e->nodes_count(); ++i)     // Проекционные функции
-                for(size_t j = 0; j < e->nodes_count(); ++j) // Функции формы
-                    callback(el, i, j);
-        }
-    }
-
-    // Функция обхода сетки в нелокальных постановках.
-    // Нужна для предварительного подсчёта количества элементов и интегрирования системы.
-    // Callback - функтор с сигнатурой void(size_t, size_t, size_t, size_t)
-    template<class Callback>
-    void mesh_run_nonloc(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback)
-        for(size_t elL = 0; elL < _mesh.elements_count(); ++elL) {
-            const auto& eL = _mesh.element_2d(elL);
-            for(const I elNL : _elements_neighbors[elL]) {
-                const auto& eNL = _mesh.element_2d(elNL);
-                for(size_t iL = 0; iL < eL->nodes_count(); ++iL)         // Проекционные функции
-                    for(size_t jNL = 0; jNL < eNL->nodes_count(); ++jNL) // Функции формы
-                        callback(elL, iL, elNL, jNL);
-            }
-        }
-    }
-
-    template<class Callback>
-    void boundary_nodes_run(const Callback& callback) const {
-        for(size_t b = 0; b < _mesh.boundary_groups_count(); ++b)
-            for(size_t el = 0; el < _mesh.elements_count(b); ++el) {
-                const auto& be = _mesh.element_1d(b, el);
-                for(size_t i = 0; i < be->nodes_count(); ++i)
-                    callback(b, el, i);
-            }
-    }
-
-    void approx_quad_nodes_on_bound(std::vector<std::array<T, 2>>& quad_nodes, const size_t b, const size_t el) const {
-        const auto& be = _mesh.element_1d(b, el);
-        quad_nodes.clear();
-        quad_nodes.resize(be->qnodes_count(), {});
-        for(size_t q = 0; q < be->qnodes_count(); ++q)
-            for(size_t i = 0; i < be->nodes_count(); ++i)
-                for(size_t comp = 0; comp < 2; ++comp)
-                    quad_nodes[q][comp] += _mesh.node(_mesh.node_number(b, el, i))[comp] * be->qN(i, q);
-    }
-
-    void approx_jacobi_matrices_on_bound(std::vector<std::array<T, 2>>& jacobi_matrices, const size_t b, const size_t el) const {
-        const auto& be = _mesh.element_1d(b, el);
-        jacobi_matrices.clear();
-        jacobi_matrices.resize(be->qnodes_count(), {});
-        for(size_t q = 0; q < be->qnodes_count(); ++q)
-            for(size_t i = 0; i < be->nodes_count(); ++i)
-                for(size_t comp = 0; comp < 2; ++comp)
-                    jacobi_matrices[q][comp] += _mesh.node(_mesh.node_number(b, el, i))[comp] * be->qNxi(i, q);
-    }
+    void boundary_nodes_run(const Callback& callback) const;
 
     // Function - функтор с сигнатурой T(std::array<T, 2>&)
-    template<class Finite_Element_2D_Ptr, class Function>
-    T integrate_function(const Finite_Element_2D_Ptr& e, const size_t i, size_t quad_shift, const Function& func) const {
-        T integral = 0;
-        for(size_t q = 0; q < e->qnodes_count(); ++q, ++quad_shift)
-            integral += e->weight(q) * e->qN(i, q) * func(_quad_coords[quad_shift]) * jacobian(_jacobi_matrices[quad_shift]);
-        return integral;
-    }
+    template<class Function>
+    T integrate_function(const size_t e, const size_t i, const Function& func) const;
+
+    template<size_t DoF>
+    void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                              const right_partition<T, DoF>& right_part) const;
 
     // Boundary_Gradient - функтор с сигнатурой T(std::array<T, 2>&)
     template<class Boundary_Gradient>
-    T integrate_boundary_gradient(const Finite_Element_1D_Ptr& be, const size_t i,
-                                  const std::vector<std::array<T, 2>>& quad_nodes, 
-                                  const std::vector<std::array<T, 2>>& jacobi_matrices, 
-                                  const Boundary_Gradient& boundary_gradient) const {
-        T integral = 0;
-        for(size_t q = 0; q < be->qnodes_count(); ++q)
-            integral += be->weight(q) * be->qN(i, q) * boundary_gradient(quad_nodes[q]) * jacobian(jacobi_matrices[q]);
-        return integral;
-    }
+    T integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
+                                  const Boundary_Gradient& boundary_gradient) const;
 
-    T jacobian(const size_t quad_shift) const noexcept {
-        return jacobian(_jacobi_matrices[quad_shift]);
-    }
+    template<class B, size_t DoF>
+    void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                       const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
+                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const;
 
-    static T jacobian(const std::array<T, 4>& jacobi_matrix) noexcept {
-        return std::abs(jacobi_matrix[0] * jacobi_matrix[3] - jacobi_matrix[1] * jacobi_matrix[2]);
-    }
+    template<class B, size_t DoF>
+    void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                  const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
 
-    static T jacobian(const std::array<T, 2>& jacobi_matrix) noexcept {
-        return sqrt(jacobi_matrix[0] * jacobi_matrix[0] + jacobi_matrix[1] * jacobi_matrix[1]);
-    }
-
-    template<bool Component>
-    T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q, const size_t quad_shift) const {
-        return dNd<Component>(e, i, q, _jacobi_matrices[quad_shift]); 
-    }
-
-    template<bool Component>
-    static T dNd(const Finite_Element_2D_Ptr& e, const size_t i, const size_t q, const std::array<T, 4>& jacobi_matrix) {
-        if constexpr (Component == component::X)
-            return  e->qNxi(i, q) * jacobi_matrix[3] - e->qNeta(i, q) * jacobi_matrix[2];
-        if constexpr (Component == component::Y)
-            return -e->qNxi(i, q) * jacobi_matrix[1] + e->qNeta(i, q) * jacobi_matrix[0];
-    }
+    void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                      const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
 public:
-    void find_neighbors(const T r) {
-        const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(_mesh);
-        _elements_neighbors = find_elements_neighbors(_mesh, centres, r);
-    }
-
-    void set_neighbors(std::vector<std::vector<I>>&& neighbors) {
-        _elements_neighbors = std::move(neighbors);
-    }
+    void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
+    const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const;
 };
+
+template<class T, class I>
+finite_element_solver_base<T, I>::finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh) { set_mesh(mesh); }
+
+template<class T, class I>
+void finite_element_solver_base<T, I>::set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) {
+    if (mesh_proxy == nullptr)
+        throw std::invalid_argument{"mesh_proxy can't nullptr"};
+    _mesh_proxy = mesh_proxy;
+}
+
+template<class T, class I>
+const std::shared_ptr<mesh::mesh_proxy<T, I>>& finite_element_solver_base<T, I>::mesh_proxy() const { return _mesh_proxy; }
+
+template<class T, class I>
+T finite_element_solver_base<T, I>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs (J[0] * J[3] - J[1] * J[2]); }
+
+template<class T, class I>
+T finite_element_solver_base<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
+
+template<class T, class I>
+template<typename finite_element_solver_base<T, I>::theory Theory, class Callback>
+void finite_element_solver_base<T, I>::mesh_run(const Callback& callback) const {
+#pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
+    for(size_t node = first_node(); node < last_node(); ++node) {
+        for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
+            const size_t iL = mesh_proxy()->global_to_local_numbering(eL).find(node)->second; // Проекционные функции
+            if constexpr (Theory == theory::LOCAL)
+                for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL) // Аппроксимационные функции
+                    callback(eL, iL, jL);
+            if constexpr (Theory == theory::NONLOCAL)
+                for(const I eNL : mesh_proxy()->neighbors(eL))
+                    for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL) // Аппроксимационные функции
+                        callback(eL, eNL, iL, jNL);
+        }
+    }
+}
+
+template<class T, class I>
+template<class Callback>
+void finite_element_solver_base<T, I>::boundary_nodes_run(const Callback& callback) const {
+    for(size_t b = 0; b < mesh().boundary_groups_count(); ++b)
+        for(size_t el = 0; el < mesh().elements_count(b); ++el) {
+            const auto& be = mesh().element_1d(b, el);
+            for(size_t i = 0; i < be->nodes_count(); ++i)
+                callback(b, el, i);
+        }
+}
+
+template<class T, class I>
+template<class Function>
+T finite_element_solver_base<T, I>::integrate_function(const size_t e, const size_t i, const Function& func) const {
+    T integral = 0;
+    const auto& el = mesh().element_2d(e);
+    auto J = mesh_proxy()->jacobi_matrix(e);
+    auto qcoord = mesh_proxy()->quad_coord(e);
+    for(size_t q = 0; q < el->qnodes_count(); ++q, ++J)
+        integral += el->weight(q) * el->qN(i, q) * func(*qcoord) * jacobian(*J);
+    return integral;
+}
+
+template<class T, class I>
+template<size_t DoF>
+void finite_element_solver_base<T, I>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                            const right_partition<T, DoF>& right_part) const {
+#pragma omp parallel for default(none) shared(f, right_part)
+    for(size_t node = first_node(); node < last_node(); ++node)
+        for(const I e : mesh_proxy()->nodes_elements_map(node)) {
+            const size_t i = mesh_proxy()->global_to_local_numbering(e).find(node)->second;
+            for(size_t comp = 0; comp < DoF; ++comp)
+                f[DoF * (node - first_node()) + comp] += integrate_function(e, i, right_part[comp]);
+        }
+}
+
+template<class T, class I>
+template<class Boundary_Gradient>
+T finite_element_solver_base<T, I>::integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
+                                                                const Boundary_Gradient& boundary_gradient) const {
+    T integral = 0;
+    const auto& be = mesh().element_1d(b, e);
+    auto qcoord = mesh_proxy()->quad_coord(b, e);
+    auto J      = mesh_proxy()->jacobi_matrix(b, e);
+    for(size_t q = 0; q < be->qnodes_count(); ++q, ++qcoord, ++J)
+        integral += be->weight(q) * be->qN(i, q) * boundary_gradient(*qcoord) * jacobian(*J);
+    return integral;
+}
+
+template<class T, class I>
+template<class B, size_t DoF>
+void finite_element_solver_base<T, I>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                     const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
+                                                                     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
+    Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K_bound.cols());
+    boundary_nodes_run(
+        [this, &bounds_cond, &x](const size_t b, const size_t el, const size_t i) {
+            for(size_t comp = 0; comp < DoF; ++comp)
+                if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
+                    const I node = DoF * mesh().node_number(b, el, i) + comp;
+                    if (x[node] == 0)
+                        x[node] = bounds_cond[b].func(comp)(mesh().node(node));
+                }
+        });
+
+    f -= K_bound * x;
+
+    boundary_nodes_run(
+        [this, &bounds_cond, &x, &f](const size_t b, const size_t el, const size_t i) {
+            for(size_t comp = 0; comp < DoF; ++comp)
+                if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
+                    const I node = DoF * mesh().node_number(b, el, i) + comp;
+                    if (node >= DoF * first_node() && node < DoF * last_node())
+                        f[node - DoF * first_node()] = x[node];
+                }
+        });
+}
+
+template<class T, class I>
+template<class B, size_t DoF>
+void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                                const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
+    for(size_t b = 0; b < bounds_cond.size(); ++b)
+        for(size_t comp = 0; comp < DoF; ++comp)
+            if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND)) {
+                for(size_t e = 0; e < mesh().elements_count(b); ++e) {
+                    const auto& be = mesh().element_1d(b, e);
+                    for(size_t i = 0; i < be->nodes_count(); ++i) {
+                        const I node = DoF * mesh().node_number(b, e, i) + comp;
+                        if(node >= DoF * first_node() && node < DoF * last_node())
+                            f[node - DoF * first_node()] += integrate_boundary_gradient(b, e, i, bounds_cond[b].func(comp));
+                    }
+                }
+            }
+}
+
+template<class T, class I>
+void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+    Mat A = nullptr;
+    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+
+    Vec f_petsc = nullptr;
+    VecCreate(PETSC_COMM_WORLD, &f_petsc);
+    VecSetType(f_petsc, VECSTANDARD);
+    VecSetSizes(f_petsc, K.rows(), K.cols());
+    for(I i = first_node(); i < last_node(); ++i)
+        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
+    VecAssemblyBegin(f_petsc);
+    VecAssemblyEnd(f_petsc);
+
+    Vec x = nullptr;
+    VecDuplicate(f_petsc, &x);
+    VecAssemblyBegin(x);
+    VecAssemblyEnd(x);
+
+    KSP ksp = nullptr;
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPSetType(ksp, KSPSYMMLQ);
+    KSPSetOperators(ksp, A, A);
+    KSPSolve(ksp, f_petsc, x);
+
+    Vec y = nullptr;
+    VecScatter toall = nullptr;
+    VecScatterCreateToAll(x, &toall, &y);
+    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+
+    f.resize(K.cols());
+    PetscScalar* data = nullptr;
+    VecGetArray(y, &data);
+    for(I i = 0; i < f.size(); ++i)
+        f[i] = data[i];
+
+    VecScatterDestroy(&toall);
+    KSPDestroy(&ksp);
+    MatDestroy(&A);
+    VecDestroy(&f_petsc);
+    VecDestroy(&x);
+    VecDestroy(&y);
+}
 
 }
 

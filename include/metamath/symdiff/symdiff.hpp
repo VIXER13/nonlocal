@@ -1,10 +1,8 @@
 #ifndef SYMDIFF_HPP
 #define SYMDIFF_HPP
 
-// Модуль подключающий всю библиотеку символьных вычислений.
-
-#include "variable.hpp"
-#include "divides.hpp"
+#include "base/symdiff_base.hpp"
+#include "functions/symdiff_functions.hpp"
 #include "derivative.hpp"
 #include "to_function.hpp"
 
