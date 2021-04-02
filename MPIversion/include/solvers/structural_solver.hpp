@@ -44,18 +44,19 @@ class structural_solver : public finite_element_solver_base<T, I> {
                        const size_t iL, const size_t jNL,
                        const Influence_Function& influence_function) const;
 
-    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                                 Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                const T p1, const std::vector<bool>& inner_nodes) const;
+                                const std::vector<bool>& inner_nodes,
+                                const bool nonlocal_task) const;
 
     template<class Influence_Function>
-    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                      Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                      const T p1, const Influence_Function& influence_fun,
                      const std::vector<bool>& inner_nodes) const;
 
     template<class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                        const std::vector<bound_cond<T>>& bounds_cond,
                        const T p1, const Influence_Function& influence_fun);
@@ -129,44 +130,25 @@ T structural_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL,
 }
 
 template<class T, class I>
-void structural_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+void structural_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                                                      Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                                     const T p1, const std::vector<bool>& inner_nodes) const {
-    std::vector<std::unordered_set<I>> inner_portrait(K.rows()),
-                                       bound_portrait(K_bound.rows());
+                                                     const std::vector<bool>& inner_nodes,
+                                                     const bool nonlocal_task) const {
+    if (nonlocal_task)
+        _base::template mesh_index<2, _base::index_stage::SHIFTS, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
+    else
+        _base::template mesh_index<2, _base::index_stage::SHIFTS, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
 
-    const auto indexator = [&inner_nodes, &inner_portrait, &bound_portrait, shift = 2 * first_node()](const I row, const I col) {
-        if (inner_nodes[row] && inner_nodes[col]) {
-            if (row <= col)
-                inner_portrait[row - shift].insert(col);
-        } else if (row != col) {
-            if (!inner_nodes[col])
-                bound_portrait[row - shift].insert(col);
-        } else
-            inner_portrait[row - shift].insert(col);
-    };
+    _base::prepare_memory(K_inner);
+    _base::prepare_memory(K_bound);
 
-    const auto structural_indexator = [&indexator](const I row, const I col) {
-        indexator(row + X, col + X);
-        indexator(row + X, col + Y);
-        indexator(row + Y, col + X);
-        indexator(row + Y, col + Y);
-    };
+    if (nonlocal_task)
+        _base::template mesh_index<2, _base::index_stage::NONZERO, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
+    else
+        _base::template mesh_index<2, _base::index_stage::NONZERO, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
 
-    if (p1 > _base::MAX_LOCAL_WEIGHT) {
-        _base::template mesh_run_loc(
-            [this, &structural_indexator] (const size_t e, const size_t i, const size_t j) {
-                structural_indexator(2 * mesh().node_number(e, i), 2 * mesh().node_number(e, j));
-            });
-    } else {
-        _base::template mesh_run_nonloc(
-            [this, &structural_indexator](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                structural_indexator(2 * mesh().node_number(eL, iL), 2 * mesh().node_number(eNL, jNL));
-            });
-    }
-
-    _base::convert_portrait(K, inner_portrait);
-    _base::convert_portrait(K_bound, bound_portrait);
+    _base::sort_indices(K_inner);
+    _base::sort_indices(K_bound);
 }
 
 template<class T, class I>
@@ -190,7 +172,7 @@ void structural_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor
                 K.coeffRef(row - shift, col) = 1;
         };
 
-    _base::template mesh_run_loc(
+    _base::template mesh_run<_base::theory::LOCAL>(
         [this, &filler_loc](const size_t e, const size_t i, const size_t j) {
             filler_loc(e, i, j, X, X, [this](const size_t e, const size_t i, const size_t j) { return integrate_loc<X, X>(e, i, j); });
             filler_loc(e, i, j, X, Y, [this](const size_t e, const size_t i, const size_t j) { return integrate_loc<X, Y>(e, i, j); });
@@ -212,7 +194,7 @@ void structural_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor
                         K_bound.coeffRef(row - shift, col) += p2 * integrate_rule(eL, eNL, iL, jNL, influence_fun);
             };
 
-        _base::template mesh_run_nonloc(
+        _base::template mesh_run<_base::theory::NONLOCAL>(
             [this, &filler_nonloc](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
 #define INTEGRATE_NONLOC(X, Y) filler_nonloc(eL, eNL, iL, jNL, X, Y, \
                                [this](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) \
@@ -241,7 +223,7 @@ void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMaj
         });
 
     double time = omp_get_wtime();
-    create_matrix_portrait(K, K_bound, p1, inner_nodes);
+    create_matrix_portrait(K, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
     std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();

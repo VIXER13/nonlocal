@@ -37,8 +37,6 @@ class heat_equation_solver : public finite_element_solver_base<T, I> {
     using _base::mesh;
     using _base::jacobian;
 
-    static constexpr size_t DoF = 1;
-
     T integrate_basic(const size_t e, const size_t i) const;
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
     T integrate_loc(const size_t e, const size_t i, const size_t j) const;
@@ -152,34 +150,24 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
             K_inner.outerIndexPtr()[i+1] = neumann_task;
 
     if (nonlocal_task)
-        _base::template mesh_index<DoF, 0, _base::task_type::NONLOCAL>(K_inner, K_bound, inner_nodes);
+        _base::template mesh_index<1, _base::index_stage::SHIFTS, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else
-        _base::template mesh_index<DoF, 0, _base::task_type::LOCAL>(K_inner, K_bound, inner_nodes);
+        _base::template mesh_index<1, _base::index_stage::SHIFTS, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
 
-    for(size_t i = 0; i < K_inner.rows(); ++i)
-        K_inner.outerIndexPtr()[i+1] += K_inner.outerIndexPtr()[i];
-    K_inner.data().resize(K_inner.outerIndexPtr()[K_inner.rows()]);
-
-    for(size_t i = 0; i < K_bound.rows(); ++i)
-        K_bound.outerIndexPtr()[i+1] += K_bound.outerIndexPtr()[i];
-    K_bound.data().resize(K_bound.outerIndexPtr()[K_bound.rows()]);
+    _base::prepare_memory(K_inner);
+    _base::prepare_memory(K_bound);
 
     if (nonlocal_task)
-        _base::template mesh_index<DoF, 1, _base::task_type::NONLOCAL>(K_inner, K_bound, inner_nodes);
+        _base::template mesh_index<1, _base::index_stage::NONZERO, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else
-        _base::template mesh_index<DoF, 1, _base::task_type::LOCAL>(K_inner, K_bound, inner_nodes);
+        _base::template mesh_index<1, _base::index_stage::NONZERO, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
 
     if (neumann_task)
         for(size_t i = 0; i < K_inner.rows(); ++i)
             K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i+1]-1] = mesh().nodes_count();
 
-#pragma omp parallel for schedule(dynamic)
-    for(size_t i = 0; i < K_inner.rows(); ++i)
-        std::sort(&K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i]], &K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i+1]]);
-
-#pragma omp parallel for schedule(dynamic)
-    for(size_t i = 0; i < K_inner.rows(); ++i)
-        std::sort(&K_bound.innerIndexPtr()[K_bound.outerIndexPtr()[i]], &K_bound.innerIndexPtr()[K_bound.outerIndexPtr()[i+1]]);
+    _base::sort_indices(K_inner);
+    _base::sort_indices(K_bound);
 }
 
 template<class T, class I>
@@ -198,7 +186,7 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
         }
     }
 
-    _base::template mesh_run<_base::task_type::LOCAL>(
+    _base::template mesh_run<_base::theory::LOCAL>(
         [this, &K, &K_bound, &inner_nodes, &integrate_rule, p1](const size_t e, const size_t i, const size_t j) {
             const I row = mesh().node_number(e, i),
                     col = mesh().node_number(e, j);
@@ -214,7 +202,7 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
     );
 
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
-        _base::template mesh_run<_base::task_type::NONLOCAL>(
+        _base::template mesh_run<_base::theory::NONLOCAL>(
             [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
                 const I row = mesh().node_number(eL,  iL ),

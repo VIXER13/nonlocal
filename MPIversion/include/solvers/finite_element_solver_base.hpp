@@ -18,106 +18,106 @@ class finite_element_solver_base {
 
 protected:
     enum component : bool { X, Y };
-    enum task_type : bool { LOCAL, NONLOCAL };
+    enum theory : bool { LOCAL, NONLOCAL };
+    enum index_stage : bool { SHIFTS, NONZERO };
 
     template<size_t DoF>
     class indexator {
         const std::vector<bool>& _inner_nodes;
-        const size_t _shift;
+        const size_t _node_shift;
         Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _K_inner,
                                                   & _K_bound;
-        std::vector<bool> _inner, _bound;
-        size_t _inner_index = 0, _bound_index = 0;
+        std::array<std::vector<bool>, DoF> _inner, _bound;
+        std::array<size_t, DoF> _inner_index = {}, _bound_index = {};
 
     public:
         explicit indexator(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                            Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                           const std::vector<bool>& inner_nodes, const size_t shift)
+                           const std::vector<bool>& inner_nodes, const size_t node_shift)
             : _inner_nodes{inner_nodes}
-            , _shift{shift}
+            , _node_shift{node_shift}
             , _K_inner{K_inner}
-            , _K_bound{K_bound}
-            , _inner(_inner_nodes.size())
-            , _bound(_inner_nodes.size()) {}
-
-        void fill(const size_t node) {
-            _inner_index = _K_inner.outerIndexPtr()[node - _shift];
-            _bound_index = _K_bound.outerIndexPtr()[node - _shift];
-            std::fill(_bound.begin(), _bound.end(), false);
-            std::fill(std::next(_inner.begin(), DoF * node), _inner.end(), false);
+            , _K_bound{K_bound} {
+            for(size_t i = 0; i < DoF; ++i) {
+                _inner[i].resize(_inner_nodes.size());
+                _bound[i].resize(_inner_nodes.size());
+            }
         }
 
-        template<size_t AAA>
-        void index(const size_t row, const size_t col) {
-            if constexpr (AAA == 0) {
-                if (_inner_nodes[row] && _inner_nodes[col]) {
-                    if (row <= col) {
-                        if (!_inner[col]) {
-                            ++_K_inner.outerIndexPtr()[row - _shift+1];
-                            _inner[col] = true;
-                        }
-                    }
-                } else if (row != col) {
-                    if (!_inner_nodes[col]) {
-                        if (!_bound[col]) {
-                            ++_K_bound.outerIndexPtr()[row - _shift+1];
-                            _bound[col] = true;
-                        }
-                    }
-                } else {
-                    if (!_inner[col]) {
-                        ++_K_inner.outerIndexPtr()[row - _shift+1];
-                        _inner[col] = true;
-                    }
-                }
+        void fill(const size_t node) {
+            for(size_t i = 0; i < DoF; ++i) {
+                _inner_index[i] = _K_inner.outerIndexPtr()[DoF * (node - _node_shift) + i];
+                _bound_index[i] = _K_bound.outerIndexPtr()[DoF * (node - _node_shift) + i];
+                std::fill(_bound[i].begin(), _bound[i].end(), false);
+                std::fill(std::next(_inner[i].begin(), DoF * node), _inner[i].end(), false);
             }
+        }
 
-            if constexpr (AAA == 1) {
-                if (_inner_nodes[row] && _inner_nodes[col]) {
-                    if (row <= col) {
-                        if (!_inner[col]) {
-                            _K_inner.valuePtr()[_inner_index] = 0;
-                            _K_inner.innerIndexPtr()[_inner_index++] = col;
-                            _inner[col] = true;
-                        }
-                    }
-                } else if (row != col) {
-                    if (!_inner_nodes[col]) {
-                        if (!_bound[col]) {
-                            _K_bound.valuePtr()[_bound_index] = 0;
-                            _K_bound.innerIndexPtr()[_bound_index++] = col;
-                            _bound[col] = true;
-                        }
-                    }
-                } else {
-                    if (!_inner[col]) {
-                        _K_inner.valuePtr()[_inner_index] = 0;
-                        _K_inner.innerIndexPtr()[_inner_index++] = col;
-                        _inner[col] = true;
-                    }
+        template<index_stage Stage>
+        void stage(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+                   std::array<std::vector<bool>, DoF>& inner,
+                   std::array<size_t, DoF>& inner_index,
+                   const size_t row, const size_t col) {
+            const size_t i = row % DoF;
+            if (!inner[i][col]) {
+                if constexpr (Stage == index_stage::SHIFTS)
+                    ++K.outerIndexPtr()[row - DoF * _node_shift + 1];
+                if constexpr (Stage == index_stage::NONZERO) {
+                    K.valuePtr()[inner_index[i]] = 0;
+                    K.innerIndexPtr()[inner_index[i]++] = col;
                 }
+                inner[i][col] = true;
             }
+        }
+
+        template<index_stage Stage>
+        void index(const size_t block_row, const size_t block_col) {
+            for(size_t comp_row = 0; comp_row < DoF; ++comp_row)
+                for(size_t comp_col = 0; comp_col < DoF; ++comp_col) {
+                    const size_t row = DoF * block_row + comp_row,
+                                 col = DoF * block_col + comp_col;
+                    if (_inner_nodes[row] && _inner_nodes[col]) {
+                        if (row <= col)
+                            stage<Stage>(_K_inner, _inner, _inner_index, row, col);
+                    } else if (row != col) {
+                        if (!_inner_nodes[col])
+                            stage<Stage>(_K_bound, _bound, _bound_index, row, col);
+                    } else
+                        stage<Stage>(_K_inner, _inner, _inner_index, row, col);
+                }
         }
     };
 
-    template<size_t DoF, size_t AAA, task_type Type>
+    template<size_t DoF, index_stage Stage, theory Theory>
     void mesh_index(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                     const std::vector<bool>& inner_nodes) const {
-        indexator<DoF> ind{K_inner, K_bound, inner_nodes, DoF * first_node()};
+        indexator<DoF> ind{K_inner, K_bound, inner_nodes, first_node()};
 #pragma omp parallel for default(none) firstprivate(ind) schedule(dynamic)
         for(size_t node = first_node(); node < last_node(); ++node) {
             ind.fill(node);
             for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
-                if constexpr (Type == task_type::LOCAL)
+                if constexpr (Theory == theory::LOCAL)
                     for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
-                        ind.template index<AAA>(node, mesh().node_number(eL, jL));
-                if constexpr (Type == task_type::NONLOCAL)
+                        ind.template index<Stage>(node, mesh().node_number(eL, jL));
+                if constexpr (Theory == theory::NONLOCAL)
                     for(const I eNL : mesh_proxy()->neighbors(eL))
                         for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)
-                            ind.template index<AAA>(node, mesh().node_number(eNL, jNL));
+                            ind.template index<Stage>(node, mesh().node_number(eNL, jNL));
             }
         }
+    }
+
+    static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+        for(size_t i = 0; i < K.rows(); ++i)
+            K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
+        K.data().resize(K.outerIndexPtr()[K.rows()]);
+    }
+
+    static void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+#pragma omp parallel for default(none) shared(K) schedule(dynamic)
+        for(size_t i = 0; i < K.rows(); ++i)
+            std::sort(&K.innerIndexPtr()[K.outerIndexPtr()[i]], &K.innerIndexPtr()[K.outerIndexPtr()[i+1]]);
     }
 
     static constexpr T MAX_LOCAL_WEIGHT = 0.999;
@@ -134,16 +134,13 @@ protected:
     static T jacobian(const std::array<T, 4>& J) noexcept;
     static T jacobian(const std::array<T, 2>& J) noexcept;
 
-    template<task_type Type, class Callback>
+    template<theory Type, class Callback>
     void mesh_run(const Callback& callback) const;
 
     // Функция обхода групп граничных элементов.
     // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
     template<class Callback>
     void boundary_nodes_run(const Callback& callback) const;
-
-    void convert_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
-                          const std::vector<std::unordered_set<I>>& portrait) const;
 
     // Function - функтор с сигнатурой T(std::array<T, 2>&)
     template<class Function>
@@ -195,16 +192,16 @@ template<class T, class I>
 T finite_element_solver_base<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
 template<class T, class I>
-template<typename finite_element_solver_base<T, I>::task_type Type, class Callback>
+template<typename finite_element_solver_base<T, I>::theory Theory, class Callback>
 void finite_element_solver_base<T, I>::mesh_run(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = first_node(); node < last_node(); ++node) {
         for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
             const size_t iL = mesh_proxy()->global_to_local_numbering(eL).find(node)->second; // Проекционные функции
-            if constexpr (Type == task_type::LOCAL)
+            if constexpr (Theory == theory::LOCAL)
                 for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL) // Аппроксимационные функции
                     callback(eL, iL, jL);
-            if constexpr (Type == task_type::NONLOCAL)
+            if constexpr (Theory == theory::NONLOCAL)
                 for(const I eNL : mesh_proxy()->neighbors(eL))
                     for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL) // Аппроксимационные функции
                         callback(eL, eNL, iL, jNL);
@@ -221,25 +218,6 @@ void finite_element_solver_base<T, I>::boundary_nodes_run(const Callback& callba
             for(size_t i = 0; i < be->nodes_count(); ++i)
                 callback(b, el, i);
         }
-}
-
-template<class T, class I>
-void finite_element_solver_base<T, I>::convert_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
-                                                        const std::vector<std::unordered_set<I>>& portrait) const {
-    static constexpr auto accumulator = [](const size_t sum, const std::unordered_set<I>& row) { return sum + row.size(); };
-    K.data().resize(std::accumulate(portrait.cbegin(), portrait.cend(), size_t{0}, accumulator));
-    K.outerIndexPtr()[0] = 0;
-    for(size_t row = 0; row < portrait.size(); ++row)
-        K.outerIndexPtr()[row+1] = K.outerIndexPtr()[row] + portrait[row].size();
-#pragma omp parallel for default(none) shared(K, portrait)
-    for(size_t row = 0; row < portrait.size(); ++row) {
-        I inner_index = K.outerIndexPtr()[row];
-        for(const I col : portrait[row]) {
-            K.valuePtr()[inner_index] = 0;
-            K.innerIndexPtr()[inner_index++] = col;
-        }
-        std::sort(&K.innerIndexPtr()[K.outerIndexPtr()[row]], &K.innerIndexPtr()[K.outerIndexPtr()[row+1]]);
-    }
 }
 
 template<class T, class I>
