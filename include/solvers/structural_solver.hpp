@@ -183,7 +183,7 @@ void structural_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
         const auto filler_nonloc =
             [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1, shift = 2 * first_node()]
-                    (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const component proj, const component approx, const auto& integrate_rule) {
+            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const component proj, const component approx, const auto& integrate_rule) {
                 const I row = 2 * mesh().node_number(eL,  iL ) + proj,
                         col = 2 * mesh().node_number(eNL, jNL) + approx;
                 if (inner_nodes[row] && inner_nodes[col]) {
