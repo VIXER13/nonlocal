@@ -6,7 +6,6 @@
 #include <fstream>
 #include <exception>
 #include <sstream>
-#include <mpi.h>
 #include "metamath.hpp"
 
 namespace mesh {
@@ -165,22 +164,8 @@ void mesh_2d<T, I>::read_from_file(const std::string& path) {
     int rank = -1;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (path.substr(path.size()-4) == ".su2") {
-        std::stringstream mesh_file;
-        std::string buffer;
-        if (rank == 0) {
-            std::ifstream file{path};
-            file.seekg(0, std::ios::end);
-            const size_t file_size = file.tellg();
-            buffer.resize(file_size);
-            file.seekg(0);
-            file.read(buffer.data(), file_size);
-        }
-        int buffer_size = buffer.size();
-        MPI_Bcast(&buffer_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
-        buffer.resize(buffer_size);
-        MPI_Bcast(buffer.data(), buffer.size(), MPI_CHAR, 0, MPI_COMM_WORLD);
-        mesh_file << buffer;
-        read_su2(mesh_file);
+        std::ifstream file{path};
+        read_su2(file);
     } else {
         throw std::domain_error{"Read format is not .su2."};
     }
