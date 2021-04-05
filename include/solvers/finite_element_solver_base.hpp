@@ -167,6 +167,9 @@ protected:
     void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
+    void MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
+
 public:
     void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
     const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const;
@@ -312,6 +315,8 @@ void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dyna
     MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
                                 K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
 
+    MatConvert(A, MATAIJ, MAT_INITIAL_MATRIX, &A);
+
     Vec f_petsc = nullptr;
     VecCreate(PETSC_COMM_WORLD, &f_petsc);
     VecSetType(f_petsc, VECSTANDARD);
@@ -331,6 +336,9 @@ void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dyna
     KSPSetType(ksp, KSPSYMMLQ);
     KSPSetOperators(ksp, A, A);
     KSPSolve(ksp, f_petsc, x);
+    int its = 0;
+    KSPGetIterationNumber(ksp, &its);
+    std::cout << "Iterations = " << its << std::endl;
 
     Vec y = nullptr;
     VecScatter toall = nullptr;
@@ -350,6 +358,79 @@ void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dyna
     VecDestroy(&f_petsc);
     VecDestroy(&x);
     VecDestroy(&y);
+}
+
+#include "mkl_cluster_sparse_solver.h"
+
+template<class T, class I>
+void finite_element_solver_base<T, I>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+    // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver.html
+
+    void *pt[64] = {};
+    int maxfct = 1; /* Maximum number of numerical factorizations. */
+    int mnum   = 1; /* Which factorization to use. */
+    int msglvl = 1; /* Print statistical information in file */
+    int error  = 0; /* Initialize error flag */
+    int mtype = 2,  // real and symmetric positive definite
+    phase = 13,     // Analysis, numerical factorization, solve, iterative refinement
+    n = K.cols(),
+    idum = 0, // ignored
+    nrhs = 1;
+
+    const int
+    *ia = K.outerIndexPtr(),
+    *ja = K.innerIndexPtr();
+
+    const double *a = K.valuePtr();
+
+    // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver-iparm-parameter.html#cluster-sparse-solver-iparm-parameter
+    std::array<int, 64> iparm = {};
+    iparm[ 0] =  1; /* Solver default parameters overriden with provided by iparm */
+    //iparm[ 1] = 2; /* Use MPI reordering */
+//    iparm[ 5] =  0; /* Write solution into x */
+//    iparm[ 7] =  2; /* Max number of iterative refinement steps */
+//    iparm[ 9] = 13; /* Perturb the pivot elements with 1E-13 */
+//    iparm[10] =  0; /* Don't use nonsymmetric permutation and scaling MPS */
+//    iparm[12] =  1; /* Switch on Maximum Weighted Matching algorithm (default for non-symmetric) */
+//    iparm[17] = -1; /* Output: Number of nonzeros in the factor LU */
+//    iparm[18] = -1; /* Output: Mflops for LU factorization */
+//    iparm[26] =  1; /* Check input data for correctness */
+//    iparm[27] =  1;
+//    iparm[34] =  1; /* Cluster Sparse Solver use C-style indexing for ia and ja arrays */
+    iparm[39] =  3; /* Input: matrix/rhs/solution are distributed between MPI processes  */
+    iparm[40] = first_node();
+    iparm[41] = last_node()-1;
+
+    std::vector<double> x(K.cols(), 0), b(K.cols(), 0);
+    for(size_t i = 0; i < f.size(); ++i)
+        b[i] = f[i];
+
+    MPI_Fint comm = MPI_Comm_c2f(MPI_COMM_WORLD);
+    cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, a, ia, ja, &idum, &nrhs,
+                          iparm.data(), &msglvl, b.data(), x.data(), &error, &comm);
+
+    static constexpr std::array<std::string_view, 12> errors = {
+        "no error",
+        "input inconsistent",
+        "not enough memory",
+        "reordering problem",
+        "Zero pivot, numerical factorization or iterative refinement problem. If the error appears during the solution phase, try to change the pivoting perturbation (iparm[9]) and also increase the number of iterative refinement steps. If it does not help, consider changing the scaling, matching and pivoting options (iparm[10], iparm[12], iparm[20])",
+        "unclassified (internal) error",
+        "reordering failed (matrix types 11 and 13 only)",
+        "diagonal matrix is singular",
+        "32-bit integer overflow problem",
+        "not enough memory for OOC",
+        "error opening OOC files",
+        "read/write error with OOC files"
+    };
+    error = std::abs(error);
+    if (error < 13)
+        std::cout << errors[error] << std::endl;
+
+    f.resize(x.size());
+    for(size_t i = 0; i < f.size(); ++i)
+        f[i] = x[i];
 }
 
 }
