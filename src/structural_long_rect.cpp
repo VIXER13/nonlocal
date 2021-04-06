@@ -1,5 +1,5 @@
 #include <iostream>
-#include <petsc.h>
+//#include <petsc.h>
 #include "influence_functions.hpp"
 #include "structural_solver.hpp"
 
@@ -35,7 +35,8 @@ double f7(const std::array<double, 2>& x) { return x[1] < 0.45 || x[1] > 0.55 ? 
 }
 
 int main(int argc, char** argv) {
-    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+    //PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+    MPI_Init(&argc, &argv);
 
     if(argc < 2) {
         std::cerr << "Input format [program name] <path to mesh>";
@@ -51,7 +52,7 @@ int main(int argc, char** argv) {
         auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
         nonlocal::structural::structural_solver<double, int> fem_sol{mesh_proxy};
         if (p1 < 0.999)
-            mesh_proxy->find_neighbours(1.3 * r, mesh::balancing_t::SPEED);
+            mesh_proxy->find_neighbours(1.3 * r, mesh::balancing_t::MEMORY);
 
         nonlocal::structural::calculation_parameters<double> params;
         params.nu = 0.3;
@@ -108,5 +109,7 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    return PetscFinalize();
+    //return PetscFinalize();
+    MPI_Finalize();
+    return 0;
 }

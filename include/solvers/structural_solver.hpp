@@ -261,12 +261,12 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
 
     time = omp_get_wtime();
 
-    _base::MKL_solver(f, K, 2);
+    //_base::MKL_solver(f, K, 2);
     //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
-    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
-    //Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
     //_base::PETSc_solver(f, K);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
+    //Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), parameters, p1, influence_fun, u};

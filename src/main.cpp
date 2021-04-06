@@ -1,251 +1,305 @@
-#include <iostream>
-#include <petsc.h>
-#include "heat_equation_solver.hpp"
-#include "influence_functions.hpp"
+/*******************************************************************************
+* Copyright 2004-2020 Intel Corporation.
+*
+* This software and the related documents are Intel copyrighted  materials,  and
+* your use of  them is  governed by the  express license  under which  they were
+* provided to you (License).  Unless the License provides otherwise, you may not
+* use, modify, copy, publish, distribute,  disclose or transmit this software or
+* the related documents without Intel's prior written permission.
+*
+* This software and the related documents  are provided as  is,  with no express
+* or implied  warranties,  other  than those  that are  expressly stated  in the
+* License.
+*******************************************************************************/
 
-void print_mesh(const mesh::mesh_2d<double>& msh) {
-    std::cout << "nodes:\n";
-    for(size_t n = 0; n < msh.nodes_count(); ++n)
-        std::cout << msh.node(n)[0] << ' ' << msh.node(n)[1] << '\n';
-    std::cout << std::endl;
+/*
+*
+*   Intel(R) MKL Cluster Sparse Solver example demonstrating the case when initial data (matrix
+*   and rhs) distributed between several MPI processes, final solution is
+*   distributed between MPI processes in the same way as they hold initial data.
+*
+********************************************************************************
+*/
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include "mpi.h"
+#include "mkl.h"
+#include "mkl_cluster_sparse_solver.h"
 
-    std::cout << "elements:\n";
-    for(size_t el = 0; el < msh.elements_count(); ++el) {
-        const auto& e = msh.element_2d(el);
-        for(size_t i = 0; i < e->nodes_count(); ++i)
-            std::cout << msh.node_number(el, i) << ' ';
-        std::cout << '\n';
+#ifdef MKL_ILP64
+#define MPI_DT MPI_LONG
+#else
+#define MPI_DT MPI_INT
+#endif
+#define MPI_REDUCE_AND_BCAST \
+        MPI_Reduce(&err_mem, &error, 1, MPI_DT, MPI_SUM, 0, MPI_COMM_WORLD); \
+        MPI_Bcast(&error, 1, MPI_DT, 0, MPI_COMM_WORLD);
+int main(void)
+{
+    /* Matrix data. */
+    MKL_INT n = 5;
+
+    MKL_INT mtype = 11; /* Real unsymmetric matrix */
+    MKL_INT *ia = NULL;
+    MKL_INT *ja = NULL;
+    double  *a = NULL;
+    /* RHS and solution vectors. */
+    double  *b = NULL;
+    double  *x = NULL;
+
+    MKL_INT nrhs = 1; /* Number of right hand sides. */
+    /* Internal solver memory pointer pt, */
+    /* 32-bit: int pt[64]; 64-bit: long int pt[64] */
+    /* or void *pt[64] should be OK on both architectures */
+    void *pt[64] = { 0 };
+    /* Cluster Sparse Solver control parameters. */
+    MKL_INT iparm[64] = { 0 };
+    MKL_INT maxfct, mnum, phase, msglvl, error, err_mem;;
+
+    /* Auxiliary variables. */
+    double  ddum; /* Double dummy   */
+    MKL_INT idum; /* Integer dummy. */
+    MKL_INT j;
+    int     mpi_stat = 0;
+    int     argc = 0;
+    int     comm, rank, size;
+    char**  argv;
+
+    /* -------------------------------------------------------------------- */
+    /* .. Init MPI.                                                         */
+    /* -------------------------------------------------------------------- */
+    mpi_stat = MPI_Init( &argc, &argv );
+    mpi_stat = MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    mpi_stat = MPI_Comm_size( MPI_COMM_WORLD, &size );
+    comm =  MPI_Comm_c2f( MPI_COMM_WORLD );
+
+    if( size < 2 )
+    {
+        printf("\nERROR: this example doesn't work on number of MPI less than 2");
+        error = 1;
+        goto final;
     }
-    std::cout << std::endl;
 
-    std::cout << "boundary:\n";
-    for(size_t b = 0; b < msh.boundary_groups_count(); ++b) {
-        std::cout << "group" << b << ":\n";
-        for(size_t el = 0; el < msh.elements_count(b); ++el) {
-            const auto& e = msh.element_1d(b, el);
-            for(size_t i = 0; i < e->nodes_count(); ++i)
-                std::cout << msh.node_number(b, el, i) << ' ';
-            std::cout << '\n';
+    /* -------------------------------------------------------------------- */
+    /* .. Setup Cluster Sparse Solver control parameters.                                 */
+    /* -------------------------------------------------------------------- */
+    iparm[ 0] =  1; /* Solver default parameters overriden with provided by iparm */
+    iparm[ 1] =  2; /* Use METIS for fill-in reordering */
+    iparm[ 5] =  0; /* Write solution into x */
+    iparm[ 7] =  2; /* Max number of iterative refinement steps */
+    iparm[ 9] = 13; /* Perturb the pivot elements with 1E-13 */
+    iparm[10] =  1; /* Use nonsymmetric permutation and scaling MPS */
+    iparm[12] =  1; /* Switch on Maximum Weighted Matching algorithm (default for non-symmetric) */
+    iparm[17] = -1; /* Output: Number of nonzeros in the factor LU */
+    iparm[18] = -1; /* Output: Mflops for LU factorization */
+    iparm[26] =  1; /* Check input data for correctness */
+    iparm[39] =  2; /* Input: matrix/rhs/solution are distributed between MPI processes  */
+    /* If iparm[39]=2, the matrix is provided in distributed assembled matrix input          
+       format. In this case, each MPI process stores only a part (or domain) of the matrix A 
+       data. The bounds of the domain should be set via iparm(41) and iparm(42). Solution    
+       vector is distributed between process in same manner with rhs. */
+
+    maxfct = 1; /* Maximum number of numerical factorizations. */
+    mnum   = 1; /* Which factorization to use. */
+    msglvl = 1; /* Print statistical information in file */
+    error  = 0; /* Initialize error flag */
+    err_mem = 0; /* Initialize error flag for memory allocation */
+
+    /* Initialize matrix and rhs components on each process:
+       In this example initial matrix is distributed between 2 processes
+       so for MPI processes with rank > 1 input domains are empty */
+    if ( rank == 0 )
+    {
+        iparm[40] = 1; /* The number of row in global matrix, rhs element and solution vector
+                          that begins the input domain belonging to this MPI process */
+        iparm[41] = 3; /* The number of row in global matrix, rhs element and solution vector
+                          that ends the input domain belonging to this MPI process   */
+        ia = (MKL_INT*) MKL_malloc (sizeof (MKL_INT) * 4, 64);
+        ja = (MKL_INT*) MKL_malloc (sizeof (MKL_INT) * 6, 64);
+        a = (double*) MKL_malloc (sizeof (double ) * 6, 64);
+        x = (double*) MKL_malloc (sizeof (double) * 3, 64);
+        b = (double*) MKL_malloc (sizeof (double) * 3, 64);
+        if ( ia == NULL || ja == NULL || a == NULL || x == NULL || b == NULL )
+        {
+            printf ("\nERROR during memory allocation on 0 rank");
+            err_mem = 1;
+        }
+        MPI_REDUCE_AND_BCAST;
+        if (error) goto final;
+        ia[0] = 1;
+        ia[1] = 4;
+        ia[2] = 6;
+        ia[3] = 7;
+
+        ja[0] = 1;
+        ja[1] = 2;
+        ja[2] = 3;
+        ja[3] = 1;
+        ja[4] = 2;
+        ja[5] = 4;
+
+        a[0] = 1.;
+        a[1] = -1.;
+        a[2] = -3.;
+        a[3] = -2.;
+        a[4] = 5.;
+        a[5] = 6.;
+
+        b[0] = 1.;
+        b[1] = 1.;
+        b[2] = 0.25;
+    }
+    else
+    {
+        if ( rank == 1 )
+        {
+            iparm[40] = 3; /* The number of row in global matrix, rhs element and solution vector
+                              that begins the input domain belonging to this MPI process*/
+            iparm[41] = 5; /* The number of row in global matrix, rhs element and solution vector
+                              that ends the input domain belonging to this MPI process*/
+            ia = (MKL_INT*) MKL_malloc (sizeof (MKL_INT) * 4, 64);
+            ja = (MKL_INT*) MKL_malloc (sizeof (MKL_INT) * 7, 64);
+            a = (double*) MKL_malloc (sizeof (double ) * 7, 64);
+            x = (double*) MKL_malloc (sizeof (double) * 3, 64);
+            b = (double*) MKL_malloc (sizeof (double) * 3, 64);
+            if ( ia == NULL || ja == NULL || a == NULL || x == NULL || b == NULL )
+            {
+                err_mem = 1;
+                printf ("\nERROR during memory allocation on 1 rank");
+            }
+            MPI_REDUCE_AND_BCAST;
+            if (error) goto final;
+            ia[0] = 1;
+            ia[1] = 3;
+            ia[2] = 6;
+            ia[3] = 8;
+
+            ja[0] = 3;
+            ja[1] = 5;
+            ja[2] = 1;
+            ja[3] = 2;
+            ja[4] = 4;
+            ja[5] = 2;
+            ja[6] = 5;
+
+            a[0] = 4.;
+            a[1] = 4.;
+            a[2] = -4.;
+            a[3] = 2.;
+            a[4] = 7.;
+            a[5] = 8.;
+            a[6] = -5.;
+
+            b[0] = 0.75;
+            b[1] = 1.;
+            b[2] = 1.;
+        }
+        else
+        {
+            MPI_REDUCE_AND_BCAST;
+            /* In this example MPI processes with rank > 1 doesn't have input domain
+               so iparm[40] need to be greater then iparm[41] */
+            iparm[40] = 2;
+            iparm[41] = 1;
         }
     }
-}
 
-//void print_solver_data(const nonlocal::finite_element_solver_base<double, int>& solver) {
-//    std::cout << "quad shifts:\n";
-//    for(size_t i = 0; i < solver._quad_shifts.size(); ++i)
-//        std::cout << solver._quad_shifts[i] << ' ';
-//    std::cout << std::endl;
-//
-//    std::cout << "quad coords:\n";
-//    for(size_t i = 0; i < solver._quad_coords.size(); ++i)
-//        std::cout << solver._quad_coords[i][0] << ' ' << solver._quad_coords[i][1] << '\n';
-//    std::cout << std::endl;
-//
-//    std::cout << "jacobi matrices:\n";
-//    for(size_t i = 0; i < solver._jacobi_matrices.size(); ++i)
-//        std::cout << solver._jacobi_matrices[i][0] << ' ' << solver._jacobi_matrices[i][1] << ' '
-//                  << solver._jacobi_matrices[i][2] << ' ' << solver._jacobi_matrices[i][3] << '\n';
-//    std::cout << std::endl;
-//
-//    std::cout << "Neighbours:\n";
-//    for(size_t i = 0; i < solver._elements_neighbors.size(); ++i) {
-//        std::cout << i << " : ";
-//        for(size_t j = 0; j < solver._elements_neighbors[i].size(); ++j)
-//            std::cout << solver._elements_neighbors[i][j] << ' ';
-//        std::cout << std::endl;
-//    }
-//}
-
-namespace {
-
-void save_raw_data(const mesh::mesh_2d<double>& msh, const Eigen::Matrix<double, Eigen::Dynamic, 1>& T) {
-    std::ofstream Tout{"T.csv"};
-    for(size_t i = 0; i < msh.nodes_count(); ++i)
-        Tout << msh.node(i)[0] << ',' << msh.node(i)[1] << ',' << T[i] << '\n';
-}
-
-}
-
-int main(int argc, char** argv) {
-    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
-
-    try {
-        std::cout.precision(7);
-        PetscMPIInt size = -1, rank = -1;
-        MPI_Comm_size(MPI_COMM_WORLD, &size);
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-        const int maxthr = omp_get_max_threads() / size;
-        omp_set_num_threads(maxthr ? maxthr : 1);
-
-        mesh::mesh_2d<PetscScalar, PetscInt> msh{argv[1]};
-
-        static constexpr double r = 0.2, p1 = 0.5;
-        static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        nonlocal::heat::heat_equation_solver<double, int> fem_sol{msh};
-
-        const auto T = fem_sol.stationary(
-            { // Граничные условия
-                {   // Down
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return 1; }
-                },
-
-                {   // Right
-                    nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return 0; }
-                },
-
-                {   // Up
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return -1; }
-                },
-
-                {   // Left
-                    nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return 0; }
-                }
-            },
-            [](const std::array<double, 2>&) { return 0; }, // Правая часть
-            r,  // Радиус влияния
-            p1, // Вес
-            bell // Функция влияния
-        );
-
-        fem_sol.save_as_vtk("heat.vtk", T);
-        save_raw_data(msh, T);
-    } catch(const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
-    } catch(...) {
-        std::cerr << "Unknown error." << std::endl;
-        return EXIT_FAILURE;
+    /* -------------------------------------------------------------------- */
+    /* .. Reordering and Symbolic Factorization. This step also allocates   */
+    /* all memory that is necessary for the factorization.                  */
+    /* -------------------------------------------------------------------- */
+    phase = 11;
+    cluster_sparse_solver ( pt, &maxfct, &mnum, &mtype, &phase,
+                            &n, a, ia, ja, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &comm, &error );
+    if ( error != 0 )
+    {
+        if ( rank == 0 ) printf ("\nERROR during symbolic factorization: %lli", (long long int)error);
+        goto final;
     }
 
-    return PetscFinalize();
+    if ( rank == 0 ) printf ("\nReordering completed ... ");
+
+    /* -------------------------------------------------------------------- */
+    /* .. Numerical factorization.                                          */
+    /* -------------------------------------------------------------------- */
+    phase = 22;
+    cluster_sparse_solver ( pt, &maxfct, &mnum, &mtype, &phase,
+                            &n, a, ia, ja, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &comm, &error );
+    if ( error != 0 )
+    {
+        if ( rank == 0 ) printf ("\nERROR during numerical factorization: %lli", (long long int)error);
+        goto final;
+    }
+    if ( rank == 0 ) printf ("\nFactorization completed ... ");
+
+    /* -------------------------------------------------------------------- */
+    /* .. Back substitution and iterative refinement.                       */
+    /* -------------------------------------------------------------------- */
+    phase = 33;
+
+    if ( rank == 0 ) printf ("\nSolving system...");
+    cluster_sparse_solver ( pt, &maxfct, &mnum, &mtype, &phase,
+                            &n, a, ia, ja, &idum, &nrhs, iparm, &msglvl, b, x, &comm, &error );
+    if ( error != 0 )
+    {
+        if ( rank == 0 ) printf ("\nERROR during solution: %lli", (long long int)error);
+        goto final;
+    }
+    /* The solution of the system is distributed between MPI processes like as input matrix
+       so MPI processes with rank 0 and 1 keep only part of solution */
+    if ( rank == 0 )
+    {
+        printf ("\nThe solution of the system is: ");
+        for ( j = 0; j < 3; j++ )
+        {
+            printf ("\n on zero process x [%lli] = % f", (long long int)j, x[j]);
+        }
+        printf ("\n");
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    if ( rank == 1 )
+    {
+        printf ("\nThe solution of the system is: ");
+        for ( j = 0; j < 3; j++ )
+        {
+            printf ("\n on first process x [%lli] = % f", (long long int)j, x[j]);
+        }
+        printf ("\n");
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    /* -------------------------------------------------------------------- */
+    /* .. Termination and release of memory. */
+    /* -------------------------------------------------------------------- */
+    phase = -1; /* Release internal memory. */
+    cluster_sparse_solver ( pt, &maxfct, &mnum, &mtype, &phase,
+                            &n, &ddum, ia, ja, &idum, &nrhs, iparm, &msglvl, &ddum, &ddum, &comm, &error );
+    if ( error != 0 )
+    {
+        if ( rank == 0 ) printf ("\nERROR during release memory: %lli", (long long int)error);
+        goto final;
+    }
+    final:
+    MPI_Barrier(MPI_COMM_WORLD);
+    if ( rank < 2 )
+    {
+        MKL_free(ia);
+        MKL_free(ja);
+        MKL_free(a);
+        MKL_free(x);
+        MKL_free(b);
+    }
+    mpi_stat = MPI_Finalize();
+    if ( rank == 0 )
+    {
+        if ( error != 0 )
+        {
+            printf("\n TEST FAILED\n");
+        } else {
+            printf("\n TEST PASSED\n");
+        }
+    }
+    return error;
 }
-
-
-//static char help[] = "Testing MatCreateMPIAIJSumSeqAIJ().\n\n";
-//
-//#include <petscmat.h>
-//#include "../Eigen/Eigen/Sparse"
-//#include <iostream>
-//#include <vector>
-//#include <cstdlib>
-//
-//int main(int argc,char **argv)
-//{
-//    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, help); if (ierr) return ierr;
-//
-//    PetscMPIInt size = 0, rank = 0;
-//    ierr = MPI_Comm_size(PETSC_COMM_WORLD, &size);CHKERRQ(ierr);
-//    ierr = MPI_Comm_rank(PETSC_COMM_WORLD, &rank);CHKERRQ(ierr);
-//
-//    const size_t glob_size = 16000000,
-//                 loc_size  = glob_size / size;
-//    Eigen::SparseMatrix<double, Eigen::RowMajor> C(glob_size, glob_size);
-//
-//    const size_t all_count = 160000;
-//    const size_t count = all_count / size;
-//    std::vector<Eigen::Triplet<double>> triplets(count);
-//
-//    for(int i = 0; i < size; ++i) {
-//        if (i == rank)
-//            std::cout << rank * loc_size << ' ' << (rank+1) * loc_size << std::endl;
-//        MPI_Barrier(MPI_COMM_WORLD);
-//    }
-//
-//    for(size_t i = 0; i < count; ++i)
-//        //triplets[i] = Eigen::Triplet<double>{i % loc_size + rank * loc_size, i % glob_size, 5.2};
-//        //triplets[i] = Eigen::Triplet<double>{std::rand() % glob_size, std::rand() % glob_size, 5.2};
-//        triplets[i] = Eigen::Triplet<double>{std::rand() % loc_size + rank * loc_size, std::rand() % glob_size, 5.2};
-//
-//    C.setFromTriplets(triplets.cbegin(), triplets.cend());
-//
-//    PetscLogDouble start_time = 0;
-//    PetscTime(&start_time);
-//
-//    Mat A, B;
-//    ierr = MatCreateSeqAIJWithArrays(PETSC_COMM_SELF, C.rows(), C.cols(), C.outerIndexPtr(), C.innerIndexPtr(), C.valuePtr(), &A);CHKERRQ(ierr);
-//    ierr = MatCreateMPIAIJSumSeqAIJ(PETSC_COMM_WORLD, A, PETSC_DECIDE, PETSC_DECIDE, MAT_INITIAL_MATRIX, &B);CHKERRQ(ierr);
-//
-//    PetscLogDouble end_time = 0;
-//    PetscTime(&end_time);
-//
-//    if (rank == 0)
-//        std::cout << end_time - start_time << std::endl;
-//
-//    PetscInt first = 0, last = 0;
-//    ierr = MatGetOwnershipRange(B, &first, &last);CHKERRQ(ierr);
-//
-////    for(int i = 0; i < size; ++i) {
-////        if (i == rank)
-////            std::cout << first << ' ' << last << std::endl;
-////        MPI_Barrier(MPI_COMM_WORLD);
-////    }
-//    //ierr = MatView(B, PETSC_VIEWER_STDOUT_WORLD);CHKERRQ(ierr);
-//    ierr = MatDestroy(&B);CHKERRQ(ierr);
-//    ierr = MatDestroy(&A);CHKERRQ(ierr);
-//    return PetscFinalize();
-//}
-
-
-
-
-
-
-
-//static char help[] ="Tests MatPtAP() \n";
-//
-//#include <petscmat.h>
-//#include <cstdlib>
-//#include <iostream>
-//#include "../Eigen/Eigen/Sparse"
-//
-//int main(int argc,char **argv)
-//{
-//    PetscErrorCode ierr;
-//    Mat            A;
-//    PetscInt       i1[] = {0, 3, 5}, i2[] = {0,0,0};//i2[] = {0,2,5};
-//    PetscInt       j1[] = {0, 1, 3, 1, 2}, j2[] = {0, 0, 0, 0, 0};//j2[] = {0, 2, 1, 2, 3};
-//    PetscScalar    a1[] = {1, 2, 4, 1, 2}, a2[] = {0, 0, 0, 0, 0};//a2[] = {2, 4, 1, 2, 1};
-//    //PetscInt       pi1[] = {0,1,3}, pi2[] = {0,1,2};
-//    //PetscInt       pj1[] = {0, 0, 1}, pj2[] = {1,0};
-//    //PetscScalar    pa1[] = {1, 0.3, 0.5}, pa2[] = {0.8, 0.9};
-//    MPI_Comm       comm;
-//    PetscMPIInt    rank,size;
-//
-//
-//
-//
-//    //C.outerIndexPtr(), C.innerIndexPtr()
-//
-//
-//    ierr = PetscInitialize(&argc,&argv,NULL,help);if (ierr) return ierr;
-//    comm = PETSC_COMM_WORLD;
-//    ierr = MPI_Comm_rank(comm,&rank);CHKERRQ(ierr);
-//    ierr = MPI_Comm_size(comm,&size);CHKERRQ(ierr);
-//
-//    int glob_size = 80000, loc_size = glob_size / size;
-//    Eigen::SparseMatrix<double, Eigen::RowMajor> C{loc_size, glob_size};
-//    int triplets_count = 16000000;
-//    std::vector<Eigen::Triplet<double>> triplets(triplets_count / size);
-//
-//    for(size_t i = 0; i < triplets.size(); ++i)
-//        triplets[i] = Eigen::Triplet<double>{std::rand() % loc_size, std::rand() % glob_size, 1.};
-//
-//    //if (size != 2)
-//    //    SETERRQ(comm,PETSC_ERR_ARG_INCOMP,"You have to use two processor cores to run this example \n");
-//    PetscLogDouble start_time = 0;
-//    PetscTime(&start_time);
-//    ierr = MatCreateMPIAIJWithArrays(comm, C.rows(), C.cols(), PETSC_DETERMINE, PETSC_DETERMINE, C.outerIndexPtr(), C.innerIndexPtr(), C.valuePtr(), &A);CHKERRQ(ierr);
-//    PetscLogDouble end_time = 0;
-//    PetscTime(&end_time);
-//
-//    std::cout << end_time - start_time << std::endl;
-//    //ierr = MatView(A,NULL);CHKERRQ(ierr);
-//    ierr = MatDestroy(&A);CHKERRQ(ierr);
-//    ierr = PetscFinalize();
-//    return ierr;
-//}

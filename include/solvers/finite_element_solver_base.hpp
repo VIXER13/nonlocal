@@ -4,8 +4,8 @@
 #include <numeric>
 #include <mkl.h>
 #include <mkl_cluster_sparse_solver.h>
-//#include <petsc.h>
-//#include <petscsystypes.h>
+#include <petsc.h>
+#include <petscsystypes.h>
 #include "../../Eigen/Eigen/Sparse"
 #undef I // for new version GCC, when use I macros
 #include "mesh.hpp"
@@ -166,8 +166,8 @@ protected:
     void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                                   const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
 
-    //void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-    //                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
+    void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                      const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
     void MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const int DoF = 1);
@@ -310,57 +310,55 @@ void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(
             }
 }
 
-//template<class T, class I>
-//void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-//                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
-//    Mat A = nullptr;
-//    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
-//                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
-//
-//    MatConvert(A, MATAIJ, MAT_INITIAL_MATRIX, &A);
-//
-//    Vec f_petsc = nullptr;
-//    VecCreate(PETSC_COMM_WORLD, &f_petsc);
-//    VecSetType(f_petsc, VECSTANDARD);
-//    VecSetSizes(f_petsc, K.rows(), K.cols());
-//    for(I i = first_node(); i < last_node(); ++i)
-//        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
-//    VecAssemblyBegin(f_petsc);
-//    VecAssemblyEnd(f_petsc);
-//
-//    Vec x = nullptr;
-//    VecDuplicate(f_petsc, &x);
-//    VecAssemblyBegin(x);
-//    VecAssemblyEnd(x);
-//
-//    KSP ksp = nullptr;
-//    KSPCreate(PETSC_COMM_WORLD, &ksp);
-//    KSPSetType(ksp, KSPSYMMLQ);
-//    KSPSetOperators(ksp, A, A);
-//    KSPSolve(ksp, f_petsc, x);
-//    int its = 0;
-//    KSPGetIterationNumber(ksp, &its);
-//    std::cout << "Iterations = " << its << std::endl;
-//
-//    Vec y = nullptr;
-//    VecScatter toall = nullptr;
-//    VecScatterCreateToAll(x, &toall, &y);
-//    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
-//    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
-//
-//    f.resize(K.cols());
-//    PetscScalar* data = nullptr;
-//    VecGetArray(y, &data);
-//    for(I i = 0; i < f.size(); ++i)
-//        f[i] = data[i];
-//
-//    VecScatterDestroy(&toall);
-//    KSPDestroy(&ksp);
-//    MatDestroy(&A);
-//    VecDestroy(&f_petsc);
-//    VecDestroy(&x);
-//    VecDestroy(&y);
-//}
+template<class T, class I>
+void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+    Mat A = nullptr;
+    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+
+    Vec f_petsc = nullptr;
+    VecCreate(PETSC_COMM_WORLD, &f_petsc);
+    VecSetType(f_petsc, VECSTANDARD);
+    VecSetSizes(f_petsc, K.rows(), K.cols());
+    for(I i = first_node(); i < last_node(); ++i)
+        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
+    VecAssemblyBegin(f_petsc);
+    VecAssemblyEnd(f_petsc);
+
+    Vec x = nullptr;
+    VecDuplicate(f_petsc, &x);
+    VecAssemblyBegin(x);
+    VecAssemblyEnd(x);
+
+    KSP ksp = nullptr;
+    KSPCreate(PETSC_COMM_WORLD, &ksp);
+    KSPSetType(ksp, KSPSYMMLQ);
+    KSPSetOperators(ksp, A, A);
+    KSPSolve(ksp, f_petsc, x);
+    int its = 0;
+    KSPGetIterationNumber(ksp, &its);
+    std::cout << "Iterations = " << its << std::endl;
+
+    Vec y = nullptr;
+    VecScatter toall = nullptr;
+    VecScatterCreateToAll(x, &toall, &y);
+    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+
+    f.resize(K.cols());
+    PetscScalar* data = nullptr;
+    VecGetArray(y, &data);
+    for(I i = 0; i < f.size(); ++i)
+        f[i] = data[i];
+
+    VecScatterDestroy(&toall);
+    KSPDestroy(&ksp);
+    MatDestroy(&A);
+    VecDestroy(&f_petsc);
+    VecDestroy(&x);
+    VecDestroy(&y);
+}
 
 template<class T, class I>
 void finite_element_solver_base<T, I>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
