@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
 
         omp_set_num_threads(std::stoi(argv[2]));
-        mkl_set_num_threads(std::stoi(argv[2]));
+        //mkl_set_num_threads(std::stoi(argv[2]));
 
         const double r = std::stod(argv[3]), p1 = std::stod(argv[4]);
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);

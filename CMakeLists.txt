@@ -6,6 +6,7 @@ set(LINKS)
 
 find_package(MPI)
 if(MPI_FOUND)
+    add_definitions(-DMPI_USE=1)
     set(INCLUDES "${MPI_C_INCLUDE_DIRS};${INCLUDES}")
 #    set(LINKS "${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES};${LINKS}")
 
@@ -45,7 +46,7 @@ endif()
 
 add_compile_options(-O2)
 
-add_executable(nonlocal src/structural.cpp)
+add_executable(nonlocal src/thermal.cpp)
 target_include_directories(nonlocal PUBLIC ${INCLUDES})
 target_link_libraries(
     nonlocal

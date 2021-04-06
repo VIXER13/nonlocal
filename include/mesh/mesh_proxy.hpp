@@ -5,7 +5,9 @@
 #include "utils.hpp"
 #include <unordered_set>
 #include <unordered_map>
+#ifdef MPI_USE
 #include <mpi.h>
+#endif
 
 namespace mesh {
 
@@ -388,8 +390,10 @@ std::vector<std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_jacobi_m
 
 template<class T, class I>
 void mesh_proxy<T, I>::first_last_node_init() {
+#ifdef MPI_USE
     MPI_Comm_size(MPI_COMM_WORLD, &_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &_rank);
+#endif
     _first_last_node.resize(size());
     for(int i = 0; i < size(); ++i) {
         _first_last_node[i].front() = mesh().nodes_count() / size() *  i;
@@ -438,8 +442,10 @@ std::vector<U> mesh_proxy<T, I>::all_to_all(const std::vector<U>& sendbuf) {
         rdispls[i]    = sizeof(U) *  _first_last_node[i].front();
     }
     std::vector<U> recvbuf(mesh().nodes_count()); // for old version mpich, when strict sendbuf and recvbuf don't support
+#ifdef MPI_USE
     MPI_Alltoallv(const_cast<void*>(static_cast<const void*>(sendbuf.data())), sendcounts.data(), sdispls.data(), MPI_BYTE,
                   recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_BYTE, MPI_COMM_WORLD);
+#endif
     return std::move(recvbuf);
 }
 

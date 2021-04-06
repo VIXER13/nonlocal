@@ -2,10 +2,12 @@
 #define FINITE_ELEMENT_ROUTINE_HPP
 
 #include <numeric>
+#ifdef MPI_USE
 #include <mkl.h>
 #include <mkl_cluster_sparse_solver.h>
 #include <petsc.h>
 #include <petscsystypes.h>
+#endif
 #include "../../Eigen/Eigen/Sparse"
 #undef I // for new version GCC, when use I macros
 #include "mesh.hpp"
@@ -166,11 +168,13 @@ protected:
     void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                                   const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
 
+#ifdef MPI_USE
     void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
     void MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const int DoF = 1);
+#endif
 
 public:
     void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
@@ -310,6 +314,7 @@ void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(
             }
 }
 
+#ifdef MPI_USE
 template<class T, class I>
 void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                                     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
@@ -418,6 +423,7 @@ void finite_element_solver_base<T, I>::MKL_solver(Eigen::Matrix<T, Eigen::Dynami
     for(size_t i = 0; i < f.size(); ++i)
         f[i] = x[i];
 }
+#endif
 
 }
 
