@@ -6,9 +6,11 @@
 #include <omp.h>
 #include "finite_element_solver_base.hpp"
 #include "structural_solution.hpp"
+
+#define EIGEN_USE_MKL_ALL
 #include "../../Eigen/Eigen/Dense"
 #include "../../Eigen/Eigen/Sparse"
-//#include "Eigen/PardisoSupport"
+#include "../../Eigen/Eigen/PardisoSupport"
 
 namespace nonlocal::structural {
 
@@ -210,7 +212,7 @@ void structural_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor
 
 template<class T, class I>
 template<class Influence_Function>
-void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
                                             Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
                                             const std::vector<bound_cond<T>>& bounds_cond,
                                             const T p1, const Influence_Function& influence_fun) {
@@ -223,11 +225,15 @@ void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMaj
         });
 
     double time = omp_get_wtime();
-    create_matrix_portrait(K, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
+    create_matrix_portrait(K_inner, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
+    std::cout << "rank = " << _base::rank() << std::endl;
+    std::cout << "K_inner.nonzero() = " << K_inner.nonZeros() << std::endl;
+    std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;
     std::cout << "create_matrix_portrait: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
-    calc_matrix(K, K_bound, p1, influence_fun, inner_nodes);
+    calc_matrix(K_inner, K_bound, p1, influence_fun, inner_nodes);
+    std::cout << "rank = " << _base::rank() << std::endl;
     std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 }
 
@@ -254,9 +260,12 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
+
+    _base::MKL_solver(f, K, 2);
+    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
     //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
     //Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
-    _base::PETSc_solver(f, K);
+    //_base::PETSc_solver(f, K);
     Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 

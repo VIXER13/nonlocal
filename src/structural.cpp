@@ -1,5 +1,3 @@
-#include <iostream>
-#include <petsc.h>
 #include "influence_functions.hpp"
 #include "structural_solver.hpp"
 
@@ -7,119 +5,94 @@ namespace {
 
 template<class T>
 void save_raw_data(const mesh::mesh_2d<T>& msh,
-                   const std::vector<std::array<T, 3>>& strain,
-                   const std::vector<std::array<T, 3>>& stress) {
+                   const nonlocal::structural::solution<T, int>& sol) {
     std::ofstream eps11{"eps11.csv"},
-                  sigma11{"sigma11.csv"};
+                  eps22{"eps22.csv"},
+                  eps12{"eps12.csv"},
+                  sigma11{"sigma11.csv"},
+                  sigma22{"sigma22.csv"},
+                  sigma12{"sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
-        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << strain[i][0] << std::endl;
-        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << stress[i][0] << std::endl;
+        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[0][i] << std::endl;
+        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[1][i] << std::endl;
+        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[2][i] << std::endl;
+        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [0][i] << std::endl;
+        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [1][i] << std::endl;
+        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [2][i] << std::endl;
     }
 }
 
 }
 
 int main(int argc, char** argv) {
-    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+    int provided = 0;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 
-    if(argc < 2) {
-        std::cerr << "Input format [program name] <path to mesh>";
+    if(argc < 5) {
+        std::cerr << "Input format [program name] <path to mesh> <num_threads> <r> <p1>";
         return EXIT_FAILURE;
     }
 
     try {
         std::cout.precision(7);
 
-        static constexpr double r = 0.05, p1 = 1./2.;
+        omp_set_num_threads(std::stoi(argv[2]));
+        mkl_set_num_threads(std::stoi(argv[2]));
+
+        const double r = std::stod(argv[3]), p1 = std::stod(argv[4]);
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
+
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_info = std::make_shared<mesh::mesh_info<double, int>>(mesh);
+        auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999)
-            mesh_info->find_neighbours(1.2*r, mesh::balancing_t::SPEED);
+            mesh_proxy->find_neighbours(r, mesh::balancing_t::MEMORY);
 
-        const nonlocal::structural::parameters<double> params = {.nu = 0.3, .E = 21};
-        nonlocal::structural::structural_solver<double, int> fem_sol{mesh_info, params};
+        nonlocal::structural::structural_solver<double, int> fem_sol{mesh_proxy};
+        nonlocal::structural::calculation_parameters<double> parameters;
+        parameters.nu = 0.3;
+        parameters.E = 21;
 
+        auto sol = fem_sol.stationary(parameters,
+                { // Граничные условия
+                        {   // Down
+                            nonlocal::structural::boundary_t::PRESSURE,
+                            [](const std::array<double, 2>& x) { return 0; },
+                            nonlocal::structural::boundary_t::PRESSURE,
+                            [](const std::array<double, 2>& x) { return 0; }
+                        },
 
-        // T
-        const auto U = fem_sol.stationary(
-            {
-                {  // Down
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>&) { return -1; }
+                        {   // Right
+                            nonlocal::structural::boundary_t::PRESSURE,
+                            [](const std::array<double, 2>& x) { return 1; },
+                            nonlocal::structural::boundary_t::PRESSURE,
+                            [](const std::array<double, 2>& x) { return 0; }
+                        },
+
+                        {   // Up
+                            nonlocal::structural::boundary_t::PRESSURE,
+                            [](const std::array<double, 2>& x) { return 0; },
+                            nonlocal::structural::boundary_t::PRESSURE,
+                            [](const std::array<double, 2>& x) { return 0; }
+                        },
+
+                        {   // Left
+                            nonlocal::structural::boundary_t::DISPLACEMENT,
+                            [](const std::array<double, 2>& x) { return 0; },
+                            nonlocal::structural::boundary_t::DISPLACEMENT,
+                            [](const std::array<double, 2>& x) { return 0; }
+                        }
                 },
-
-                {  // Up
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
-                    [](const std::array<double, 2>&) { return 0; }
-                }
-            },
-            p1, bell
+                {}, // Правая часть
+                p1, // Вес
+                bell // Функция влияния
         );
 
+        sol.calc_strain_and_stress();
 
-//        const auto U = fem_sol.stationary(
-//            {
-//                {  // Down
-//                    nonlocal::structural::boundary_t::PRESSURE,
-//                    [](const std::array<double, 2>&) { return 0; },
-//                    nonlocal::structural::boundary_t::PRESSURE,
-//                    [](const std::array<double, 2>&) { return -1; }
-//                },
-//
-//                {}, // Right
-//
-//                {   // Horizontal
-//                    nonlocal::structural::boundary_t::PRESSURE,
-//                    [](const std::array<double, 2>&) { return 0; },
-//                    nonlocal::structural::boundary_t::DISPLACEMENT,
-//                    [](const std::array<double, 2>&) { return 0; }
-//                },
-//
-//                {}, // Left
-//
-//                {   // Vertical
-//                    nonlocal::structural::boundary_t::DISPLACEMENT,
-//                    [](const std::array<double, 2>&) { return 0; },
-//                    nonlocal::structural::boundary_t::PRESSURE,
-//                    [](const std::array<double, 2>&) { return 0; }
-//                },
-//
-//                {   // Up
-//                    nonlocal::structural::boundary_t::PRESSURE,
-//                    [](const std::array<double, 2>&) { return 0; },
-//                    nonlocal::structural::boundary_t::PRESSURE,
-//                    [](const std::array<double, 2>&) { return 1; }
-//                },
-//
-//                {} // Circle
-//            },
-//            p1, bell
-//        );
-
-        if (mesh_info->rank() == 0)
-        {
-            const auto [strain, stress] = fem_sol.strains_and_stress(U, p1, bell);
-            std::cout << "Energy U = " << fem_sol.calc_energy(strain, stress) << std::endl;
-
-            std::vector<double> strain11(strain.size()),
-                                strain12(strain.size()),
-                                strain22(strain.size());
-            for(size_t i = 0; i < strain.size(); ++i) {
-                strain11[i] = strain[i][0];
-                strain12[i] = strain[i][1];
-                strain22[i] = strain[i][2];
-            }
-
-            //save_raw_data(mesh, strain, stress);
-            fem_sol.save_as_vtk("structural.vtk", U, strain, stress,
-                                mesh_info->calc_gradient(strain11),
-                                mesh_info->calc_gradient(strain12),
-                                mesh_info->calc_gradient(strain22));
+        int rank = -1;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0) {
+            std::cout << "Energy = " << sol.calc_energy() << std::endl;
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -129,5 +102,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    return PetscFinalize();
+    MPI_Finalize();
+    return 0;
 }

@@ -20,7 +20,8 @@ void save_raw_data(const std::shared_ptr<mesh::mesh_2d<double>>& mesh,
 }
 
 int main(int argc, char** argv) {
-    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+    int provided;
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 
     if(argc < 5) {
         std::cerr << "Input format [program name] <path to mesh> <num_threads> <r> <p1>";
@@ -31,6 +32,8 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
 
         omp_set_num_threads(std::stoi(argv[2]));
+        mkl_set_num_threads(std::stoi(argv[2]));
+
         const double r = std::stod(argv[3]), p1 = std::stod(argv[4]);
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
 
@@ -42,58 +45,31 @@ int main(int argc, char** argv) {
         nonlocal::heat::heat_equation_solver<double, int> fem_sol{mesh_proxy};
 
         auto T = fem_sol.stationary(
-                { // Граничные условия
-                        {   // Down
-                                nonlocal::heat::boundary_t::FLOW,
-                                [](const std::array<double, 2>& x) { return -1; },
-                        },
-
-                        {   // Right
-                                nonlocal::heat::boundary_t::FLOW,
-                                [](const std::array<double, 2>& x) { return 0; },
-                        },
-
-                        {   // Up
-                                nonlocal::heat::boundary_t::FLOW,
-                                [](const std::array<double, 2>& x) { return 1; },
-                        },
-
-                        {   // Left
-                                nonlocal::heat::boundary_t::FLOW,
-                                [](const std::array<double, 2>& x) { return 0; },
-                        }
+            { // Граничные условия
+                {   // Down
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                 },
-                {[](const std::array<double, 2>&) { return 0; }}, // Правая часть
-                p1, // Вес
-                bell // Функция влияния
-        );
 
-//        auto T = fem_sol.stationary(
-//            { // Граничные условия
-//                {   // Down
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                },
-//
-//                {   // Right
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                },
-//
-//                {   // Up
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                },
-//
-//                {   // Left
-//                    nonlocal::heat::boundary_t::TEMPERATURE,
-//                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-//                }
-//            },
-//            {[](const std::array<double, 2>&) { return -4; }}, // Правая часть
-//            p1, // Вес
-//            bell // Функция влияния
-//        );
+                {   // Right
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                },
+
+                {   // Up
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                },
+
+                {   // Left
+                    nonlocal::heat::boundary_t::TEMPERATURE,
+                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                }
+            },
+            {[](const std::array<double, 2>&) { return -4; }}, // Правая часть
+            p1, // Вес
+            bell // Функция влияния
+        );
 
         int rank = -1;
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -110,5 +86,6 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    return PetscFinalize();
+    MPI_Finalize();
+    return 0;
 }

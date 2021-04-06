@@ -272,7 +272,8 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
     double time = omp_get_wtime();
-    _base::PETSc_solver(f, K_inner);
+    _base::MKL_solver(f, K_inner);
+    //_base::PETSc_solver(f, K_inner);
     //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
     //Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
     //f = temperature;

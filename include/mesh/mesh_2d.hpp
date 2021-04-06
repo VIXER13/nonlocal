@@ -161,8 +161,6 @@ mesh_2d<T, I>::mesh_2d(const mesh_2d& other)
 
 template<class T, class I>
 void mesh_2d<T, I>::read_from_file(const std::string& path) {
-    int rank = -1;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (path.substr(path.size()-4) == ".su2") {
         std::ifstream file{path};
         read_su2(file);

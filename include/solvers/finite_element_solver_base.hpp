@@ -2,8 +2,10 @@
 #define FINITE_ELEMENT_ROUTINE_HPP
 
 #include <numeric>
-#include <petsc.h>
-#include <petscsystypes.h>
+#include <mkl.h>
+#include <mkl_cluster_sparse_solver.h>
+//#include <petsc.h>
+//#include <petscsystypes.h>
 #include "../../Eigen/Eigen/Sparse"
 #undef I // for new version GCC, when use I macros
 #include "mesh.hpp"
@@ -164,11 +166,11 @@ protected:
     void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                                   const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
 
-    void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                      const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
+    //void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+    //                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
 
     void MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
+                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const int DoF = 1);
 
 public:
     void set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
@@ -308,107 +310,93 @@ void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(
             }
 }
 
-template<class T, class I>
-void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
-    Mat A = nullptr;
-    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
-                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
-
-    MatConvert(A, MATAIJ, MAT_INITIAL_MATRIX, &A);
-
-    Vec f_petsc = nullptr;
-    VecCreate(PETSC_COMM_WORLD, &f_petsc);
-    VecSetType(f_petsc, VECSTANDARD);
-    VecSetSizes(f_petsc, K.rows(), K.cols());
-    for(I i = first_node(); i < last_node(); ++i)
-        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
-    VecAssemblyBegin(f_petsc);
-    VecAssemblyEnd(f_petsc);
-
-    Vec x = nullptr;
-    VecDuplicate(f_petsc, &x);
-    VecAssemblyBegin(x);
-    VecAssemblyEnd(x);
-
-    KSP ksp = nullptr;
-    KSPCreate(PETSC_COMM_WORLD, &ksp);
-    KSPSetType(ksp, KSPSYMMLQ);
-    KSPSetOperators(ksp, A, A);
-    KSPSolve(ksp, f_petsc, x);
-    int its = 0;
-    KSPGetIterationNumber(ksp, &its);
-    std::cout << "Iterations = " << its << std::endl;
-
-    Vec y = nullptr;
-    VecScatter toall = nullptr;
-    VecScatterCreateToAll(x, &toall, &y);
-    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
-    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
-
-    f.resize(K.cols());
-    PetscScalar* data = nullptr;
-    VecGetArray(y, &data);
-    for(I i = 0; i < f.size(); ++i)
-        f[i] = data[i];
-
-    VecScatterDestroy(&toall);
-    KSPDestroy(&ksp);
-    MatDestroy(&A);
-    VecDestroy(&f_petsc);
-    VecDestroy(&x);
-    VecDestroy(&y);
-}
-
-#include "mkl_cluster_sparse_solver.h"
+//template<class T, class I>
+//void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+//                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+//    Mat A = nullptr;
+//    MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
+//                                K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
+//
+//    MatConvert(A, MATAIJ, MAT_INITIAL_MATRIX, &A);
+//
+//    Vec f_petsc = nullptr;
+//    VecCreate(PETSC_COMM_WORLD, &f_petsc);
+//    VecSetType(f_petsc, VECSTANDARD);
+//    VecSetSizes(f_petsc, K.rows(), K.cols());
+//    for(I i = first_node(); i < last_node(); ++i)
+//        VecSetValues(f_petsc, 1, &i, &f[i - first_node()], INSERT_VALUES);
+//    VecAssemblyBegin(f_petsc);
+//    VecAssemblyEnd(f_petsc);
+//
+//    Vec x = nullptr;
+//    VecDuplicate(f_petsc, &x);
+//    VecAssemblyBegin(x);
+//    VecAssemblyEnd(x);
+//
+//    KSP ksp = nullptr;
+//    KSPCreate(PETSC_COMM_WORLD, &ksp);
+//    KSPSetType(ksp, KSPSYMMLQ);
+//    KSPSetOperators(ksp, A, A);
+//    KSPSolve(ksp, f_petsc, x);
+//    int its = 0;
+//    KSPGetIterationNumber(ksp, &its);
+//    std::cout << "Iterations = " << its << std::endl;
+//
+//    Vec y = nullptr;
+//    VecScatter toall = nullptr;
+//    VecScatterCreateToAll(x, &toall, &y);
+//    VecScatterBegin(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+//    VecScatterEnd(toall, x, y, INSERT_VALUES, SCATTER_FORWARD);
+//
+//    f.resize(K.cols());
+//    PetscScalar* data = nullptr;
+//    VecGetArray(y, &data);
+//    for(I i = 0; i < f.size(); ++i)
+//        f[i] = data[i];
+//
+//    VecScatterDestroy(&toall);
+//    KSPDestroy(&ksp);
+//    MatDestroy(&A);
+//    VecDestroy(&f_petsc);
+//    VecDestroy(&x);
+//    VecDestroy(&y);
+//}
 
 template<class T, class I>
 void finite_element_solver_base<T, I>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
-    // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver.html
-
+                                                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const int DoF) {
     void *pt[64] = {};
-    int maxfct = 1; /* Maximum number of numerical factorizations. */
-    int mnum   = 1; /* Which factorization to use. */
-    int msglvl = 1; /* Print statistical information in file */
-    int error  = 0; /* Initialize error flag */
-    int mtype = 2,  // real and symmetric positive definite
-    phase = 13,     // Analysis, numerical factorization, solve, iterative refinement
-    n = K.cols(),
-    idum = 0, // ignored
-    nrhs = 1;
-
-    const int
-    *ia = K.outerIndexPtr(),
-    *ja = K.innerIndexPtr();
-
-    const double *a = K.valuePtr();
+    const int maxfct =  1, // Maximum number of numerical factorizations.
+              mnum   =  1, // Which factorization to use.
+              mtype  =  2, // real and symmetric positive definite
+              phase  = 13, // Analysis, numerical factorization, solve, iterative refinement
+              n      = K.cols(), // matrix size
+              nrhs   = 1,
+              msglvl = 1; // Print statistical information in file
+    int *perm = nullptr;  // ignored
+    int error = 0;        // error flag
+    MPI_Fint comm = MPI_Comm_c2f(MPI_COMM_WORLD);
 
     // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver-iparm-parameter.html#cluster-sparse-solver-iparm-parameter
     std::array<int, 64> iparm = {};
-    iparm[ 0] =  1; /* Solver default parameters overriden with provided by iparm */
-    //iparm[ 1] = 2; /* Use MPI reordering */
-//    iparm[ 5] =  0; /* Write solution into x */
-//    iparm[ 7] =  2; /* Max number of iterative refinement steps */
-//    iparm[ 9] = 13; /* Perturb the pivot elements with 1E-13 */
-//    iparm[10] =  0; /* Don't use nonsymmetric permutation and scaling MPS */
-//    iparm[12] =  1; /* Switch on Maximum Weighted Matching algorithm (default for non-symmetric) */
-//    iparm[17] = -1; /* Output: Number of nonzeros in the factor LU */
-//    iparm[18] = -1; /* Output: Mflops for LU factorization */
-//    iparm[26] =  1; /* Check input data for correctness */
-//    iparm[27] =  1;
-//    iparm[34] =  1; /* Cluster Sparse Solver use C-style indexing for ia and ja arrays */
-    iparm[39] =  3; /* Input: matrix/rhs/solution are distributed between MPI processes  */
-    iparm[40] = first_node();
-    iparm[41] = last_node()-1;
+    iparm[ 0] =  1; // Solver default parameters overriden with provided by iparm
+    iparm[ 1] =  3; // reordering
+    iparm[ 7] =  2; // Max number of iterative refinement steps
+    iparm[ 9] = 13; // Perturb the pivot elements with 1E-13
+    iparm[17] = -1; // Output: Number of nonzeros in the factor LU
+    iparm[18] = -1; // Output: Mflops for LU factorization
+    iparm[34] =  1; // Cluster Sparse Solver use C-style indexing for ia and ja arrays
+    iparm[39] =  3; // Input: matrix/rhs are distributed between MPI processes
+    iparm[40] = DoF * first_node();
+    iparm[41] = DoF * last_node()-1;
 
-    std::vector<double> x(K.cols(), 0), b(K.cols(), 0);
+    std::vector<double> x(K.cols(), 0), b(f.size(), 0);
     for(size_t i = 0; i < f.size(); ++i)
         b[i] = f[i];
 
-    MPI_Fint comm = MPI_Comm_c2f(MPI_COMM_WORLD);
-    cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, a, ia, ja, &idum, &nrhs,
-                          iparm.data(), &msglvl, b.data(), x.data(), &error, &comm);
+    // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver.html
+    cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+                          perm, &nrhs, iparm.data(), &msglvl, b.data(), x.data(), &error, &comm);
 
     static constexpr std::array<std::string_view, 12> errors = {
         "no error",
@@ -426,7 +414,7 @@ void finite_element_solver_base<T, I>::MKL_solver(Eigen::Matrix<T, Eigen::Dynami
     };
     error = std::abs(error);
     if (error < 13)
-        std::cout << errors[error] << std::endl;
+        std::cerr << errors[error] << std::endl;
 
     f.resize(x.size());
     for(size_t i = 0; i < f.size(); ++i)

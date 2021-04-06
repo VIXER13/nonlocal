@@ -1,0 +1,16 @@
+MKLROOT=/opt/intel/compilers_and_libraries_2020.1.217/linux/mkl
+#info
+Name: mkl
+Description: Intel(R) Math Kernel Library
+Version: 2020 Update 1
+URL: https://software.intel.com/en-us/mkl
+#Link line
+
+#OMP only
+#Libs: -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
+#Compiler line
+#Cflags: -m64 -I${MKLROOT}/include
+
+#MPI
+Libs: -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group -lgomp -lpthread -lm -ldl
+Cflags: -m64 -I${MKLROOT}/include
