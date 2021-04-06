@@ -25,9 +25,9 @@ using bound_cond = boundary_condition<T, boundary_t, 2>;
 template<class T>
 using right_part = right_partition<T, 2>;
 
-template<class T, class I>
-class structural_solver : public finite_element_solver_base<T, I> {
-    using _base = finite_element_solver_base<T, I>;
+template<class T, class I, class Matrix_Index>
+class structural_solver : public finite_element_solver_base<T, I, Matrix_Index> {
+    using _base = finite_element_solver_base<T, I, Matrix_Index>;
     using typename _base::component;
     using _base::X;
     using _base::Y;
@@ -46,20 +46,20 @@ class structural_solver : public finite_element_solver_base<T, I> {
                        const size_t iL, const size_t jNL,
                        const Influence_Function& influence_function) const;
 
-    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                                 const std::vector<bool>& inner_nodes,
                                 const bool nonlocal_task) const;
 
     template<class Influence_Function>
-    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                      const T p1, const Influence_Function& influence_fun,
                      const std::vector<bool>& inner_nodes) const;
 
     template<class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                       Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                       Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                        const std::vector<bound_cond<T>>& bounds_cond,
                        const T p1, const Influence_Function& influence_fun);
 
@@ -87,9 +87,9 @@ public:
     //                          const T p1, const Influence_Function& influence_fun);
 };
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<bool Proj, bool Approx>
-T structural_solver<T, I>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
+T structural_solver<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     static constexpr size_t k = Proj ^ Approx;
     T integral = 0;
     const auto& el   = _base::mesh().element_2d(e);
@@ -103,11 +103,11 @@ T structural_solver<T, I>::integrate_loc(const size_t e, const size_t i, const s
     return integral;
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<bool Proj, bool Approx, class Influence_Function>
-T structural_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                            const size_t iL, const size_t jNL,
-                                            const Influence_Function& influence_function) const {
+T structural_solver<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
+                                                          const size_t iL, const size_t jNL,
+                                                          const Influence_Function& influence_function) const {
     static constexpr size_t k = Proj ^ Approx;
     T integral = 0;
     const auto& elL            = _base::mesh().element_2d(eL ),
@@ -131,11 +131,11 @@ T structural_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL,
     return integral;
 }
 
-template<class T, class I>
-void structural_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                                     const std::vector<bool>& inner_nodes,
-                                                     const bool nonlocal_task) const {
+template<class T, class I, class Matrix_Index>
+void structural_solver<T, I, Matrix_Index>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                                   Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                                   const std::vector<bool>& inner_nodes,
+                                                                   const bool nonlocal_task) const {
     if (nonlocal_task)
         _base::template mesh_index<2, _base::index_stage::SHIFTS, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else
@@ -153,12 +153,12 @@ void structural_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eige
     _base::sort_indices(K_bound);
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-void structural_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
-                                          Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                          const T p1, const Influence_Function& influence_fun,
-                                          const std::vector<bool>& inner_nodes) const {
+void structural_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
+                                                        Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                        const T p1, const Influence_Function& influence_fun,
+                                                        const std::vector<bool>& inner_nodes) const {
     const auto filler_loc =
         [this, &K, &K_bound, &inner_nodes, p1, shift = 2 * first_node()]
         (const size_t e, const size_t i, const size_t j, const component proj, const component approx, const auto& integrate_rule) {
@@ -210,12 +210,12 @@ void structural_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor
     }
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                            Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                            const std::vector<bound_cond<T>>& bounds_cond,
-                                            const T p1, const Influence_Function& influence_fun) {
+void structural_solver<T, I, Matrix_Index>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                          Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                          const std::vector<bound_cond<T>>& bounds_cond,
+                                                          const T p1, const Influence_Function& influence_fun) {
     std::vector<bool> inner_nodes(2*mesh().nodes_count(), true);
     _base::template boundary_nodes_run(
         [this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
@@ -237,18 +237,18 @@ void structural_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMaj
     std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<T>& parameters,
-                                                   const std::vector<bound_cond<T>> &bounds_cond,
-                                                   const right_part<T>& right_part,
-                                                   const T p1, const Influence_Function& influence_fun) {
+solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculation_parameters<T>& parameters,
+                                                                 const std::vector<bound_cond<T>> &bounds_cond,
+                                                                 const right_part<T>& right_part,
+                                                                 const T p1, const Influence_Function& influence_fun) {
     _D = hooke_matrix(parameters.nu, parameters.E, parameters.type);
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
                  cols = 2 * mesh().nodes_count();
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
-                                               K_bound(rows, cols);
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K      (rows, cols),
+                                                          K_bound(rows, cols);
     create_matrix(K, K_bound, bounds_cond, p1, influence_fun);
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 
@@ -261,25 +261,25 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
 
     time = omp_get_wtime();
 
-#ifdef MPI_USE
-    //_base::MKL_solver(f, K, 2);
-    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
-    _base::PETSc_solver(f, K);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
-#else
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+//#ifdef MPI_USE
+//    //_base::MKL_solver(f, K, 2);
+//    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
+//    _base::PETSc_solver(f, K);
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
+//#else
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
     Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
-#endif
+//#endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), parameters, p1, influence_fun, u};
 }
 
-//template<class T, class I>
+//template<class T, class I, class Matrix_Index>
 //template<class Influence_Function>
-//void structural_solver<T, I>::temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-//                                                    const T alpha, const std::vector<T>& temperature,
-//                                                    const T p1, const Influence_Function& influence_fun) {
+//void structural_solver<T, I, Matrix_Index>::temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+            //                                                      const T alpha, const std::vector<T>& temperature,
+            //                                                      const T p1, const Influence_Function& influence_fun) {
 ////    const T c = alpha * _params.E / (1 - 2 * _params.nu);
 ////    const auto [Tx, Ty] = _base::get_mesh_proxy()->calc_gradient(temperature);
 ////    const std::vector<T> qTx = _base::get_mesh_proxy()->approx_in_quad(Tx),
@@ -330,17 +330,17 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
 ////    }
 //}
 //
-//template<class T, class I>
+//template<class T, class I, class Matrix_Index>
 //template<class Influence_Function>
-//solution<T, I> structural_solver<T, I>::stationary(const std::vector<bound_cond<T>> &bounds_cond,
-//                                                   const right_part<T>& right_part,
-//                                                   const T alpha, const std::vector<T>& temperature,
-//                                                   const T p1, const Influence_Function& influence_fun) {
+//solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const std::vector<bound_cond<T>> &bounds_cond,
+                //                                                   const right_part<T>& right_part,
+                //                                                   const T alpha, const std::vector<T>& temperature,
+                //                                                   const T p1, const Influence_Function& influence_fun) {
 //    double time = omp_get_wtime();
 //    const size_t rows = 2 * (last_node() - first_node()),
 //                 cols = 2 * mesh().nodes_count();
-//    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K      (rows, cols),
-//                                               K_bound(rows, cols);
+//    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K      (rows, cols),
+//                                                          K_bound(rows, cols);
 //    create_matrix(K, K_bound, bounds_cond, p1, influence_fun);
 //    std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;
 //
@@ -361,7 +361,7 @@ solution<T, I> structural_solver<T, I>::stationary(const calculation_parameters<
 //    std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 //
 //    time = omp_get_wtime();
-//    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+//    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
 //    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
 //    std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 //

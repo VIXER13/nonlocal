@@ -16,7 +16,7 @@
 
 namespace nonlocal {
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 class finite_element_solver_base {
     std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
 
@@ -29,14 +29,14 @@ protected:
     class indexator {
         const std::vector<bool>& _inner_nodes;
         const size_t _node_shift;
-        Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _K_inner,
-                                                  & _K_bound;
+        Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& _K_inner,
+                                                             & _K_bound;
         std::array<std::vector<bool>, DoF> _inner, _bound;
         std::array<size_t, DoF> _inner_index = {}, _bound_index = {};
 
     public:
-        explicit indexator(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                           Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+        explicit indexator(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                           Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                            const std::vector<bool>& inner_nodes, const size_t node_shift)
             : _inner_nodes{inner_nodes}
             , _node_shift{node_shift}
@@ -58,7 +58,7 @@ protected:
         }
 
         template<index_stage Stage>
-        void stage(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
+        void stage(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
                    std::array<std::vector<bool>, DoF>& inner,
                    std::array<size_t, DoF>& inner_index,
                    const size_t row, const size_t col) {
@@ -93,8 +93,8 @@ protected:
     };
 
     template<size_t DoF, index_stage Stage, theory Theory>
-    void mesh_index(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void mesh_index(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                     const std::vector<bool>& inner_nodes) const {
         indexator<DoF> ind{K_inner, K_bound, inner_nodes, first_node()};
 #pragma omp parallel for default(none) firstprivate(ind) schedule(dynamic)
@@ -112,13 +112,13 @@ protected:
         }
     }
 
-    static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+    static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
         for(size_t i = 0; i < K.rows(); ++i)
             K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
         K.data().resize(K.outerIndexPtr()[K.rows()]);
     }
 
-    static void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+    static void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
 #pragma omp parallel for default(none) shared(K) schedule(dynamic)
         for(size_t i = 0; i < K.rows(); ++i)
             std::sort(&K.innerIndexPtr()[K.outerIndexPtr()[i]], &K.innerIndexPtr()[K.outerIndexPtr()[i+1]]);
@@ -162,7 +162,7 @@ protected:
     template<class B, size_t DoF>
     void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                        const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
-                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const;
+                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound) const;
 
     template<class B, size_t DoF>
     void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
@@ -170,10 +170,10 @@ protected:
 
 #ifdef MPI_USE
     void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                      const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K);
+                      const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K);
 
     void MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const int DoF = 1);
+                    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K, const int DoF = 1);
 #endif
 
 public:
@@ -181,28 +181,28 @@ public:
     const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const;
 };
 
-template<class T, class I>
-finite_element_solver_base<T, I>::finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh) { set_mesh(mesh); }
+template<class T, class I, class Matrix_Index>
+finite_element_solver_base<T, I, Matrix_Index>::finite_element_solver_base(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh) { set_mesh(mesh); }
 
-template<class T, class I>
-void finite_element_solver_base<T, I>::set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) {
+template<class T, class I, class Matrix_Index>
+void finite_element_solver_base<T, I, Matrix_Index>::set_mesh(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy) {
     if (mesh_proxy == nullptr)
         throw std::invalid_argument{"mesh_proxy can't nullptr"};
     _mesh_proxy = mesh_proxy;
 }
 
-template<class T, class I>
-const std::shared_ptr<mesh::mesh_proxy<T, I>>& finite_element_solver_base<T, I>::mesh_proxy() const { return _mesh_proxy; }
+template<class T, class I, class Matrix_Index>
+const std::shared_ptr<mesh::mesh_proxy<T, I>>& finite_element_solver_base<T, I, Matrix_Index>::mesh_proxy() const { return _mesh_proxy; }
 
-template<class T, class I>
-T finite_element_solver_base<T, I>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs (J[0] * J[3] - J[1] * J[2]); }
+template<class T, class I, class Matrix_Index>
+T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs (J[0] * J[3] - J[1] * J[2]); }
 
-template<class T, class I>
-T finite_element_solver_base<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
+template<class T, class I, class Matrix_Index>
+T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
-template<class T, class I>
-template<typename finite_element_solver_base<T, I>::theory Theory, class Callback>
-void finite_element_solver_base<T, I>::mesh_run(const Callback& callback) const {
+template<class T, class I, class Matrix_Index>
+template<typename finite_element_solver_base<T, I, Matrix_Index>::theory Theory, class Callback>
+void finite_element_solver_base<T, I, Matrix_Index>::mesh_run(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = first_node(); node < last_node(); ++node) {
         for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
@@ -218,9 +218,9 @@ void finite_element_solver_base<T, I>::mesh_run(const Callback& callback) const 
     }
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Callback>
-void finite_element_solver_base<T, I>::boundary_nodes_run(const Callback& callback) const {
+void finite_element_solver_base<T, I, Matrix_Index>::boundary_nodes_run(const Callback& callback) const {
     for(size_t b = 0; b < mesh().boundary_groups_count(); ++b)
         for(size_t el = 0; el < mesh().elements_count(b); ++el) {
             const auto& be = mesh().element_1d(b, el);
@@ -229,9 +229,9 @@ void finite_element_solver_base<T, I>::boundary_nodes_run(const Callback& callba
         }
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Function>
-T finite_element_solver_base<T, I>::integrate_function(const size_t e, const size_t i, const Function& func) const {
+T finite_element_solver_base<T, I, Matrix_Index>::integrate_function(const size_t e, const size_t i, const Function& func) const {
     T integral = 0;
     const auto& el = mesh().element_2d(e);
     auto J = mesh_proxy()->jacobi_matrix(e);
@@ -241,10 +241,10 @@ T finite_element_solver_base<T, I>::integrate_function(const size_t e, const siz
     return integral;
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<size_t DoF>
-void finite_element_solver_base<T, I>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                            const right_partition<T, DoF>& right_part) const {
+void finite_element_solver_base<T, I, Matrix_Index>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                               const right_partition<T, DoF>& right_part) const {
 #pragma omp parallel for default(none) shared(f, right_part)
     for(size_t node = first_node(); node < last_node(); ++node)
         for(const I e : mesh_proxy()->nodes_elements_map(node)) {
@@ -254,10 +254,10 @@ void finite_element_solver_base<T, I>::integrate_right_part(Eigen::Matrix<T, Eig
         }
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Boundary_Gradient>
-T finite_element_solver_base<T, I>::integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
-                                                                const Boundary_Gradient& boundary_gradient) const {
+T finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
+                                                                              const Boundary_Gradient& boundary_gradient) const {
     T integral = 0;
     const auto& be = mesh().element_1d(b, e);
     auto qcoord = mesh_proxy()->quad_coord(b, e);
@@ -267,11 +267,11 @@ T finite_element_solver_base<T, I>::integrate_boundary_gradient(const size_t b, 
     return integral;
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class B, size_t DoF>
-void finite_element_solver_base<T, I>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                     const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
-                                                                     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) const {
+void finite_element_solver_base<T, I, Matrix_Index>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                                   const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
+                                                                                   const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound) const {
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K_bound.cols());
     boundary_nodes_run(
         [this, &bounds_cond, &x](const size_t b, const size_t el, const size_t i) {
@@ -296,10 +296,10 @@ void finite_element_solver_base<T, I>::boundary_condition_first_kind(Eigen::Matr
         });
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class B, size_t DoF>
-void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                                const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
+void finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                                              const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
     for(size_t b = 0; b < bounds_cond.size(); ++b)
         for(size_t comp = 0; comp < DoF; ++comp)
             if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND)) {
@@ -315,9 +315,9 @@ void finite_element_solver_base<T, I>::integrate_boundary_condition_second_kind(
 }
 
 #ifdef MPI_USE
-template<class T, class I>
-void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+template<class T, class I, class Matrix_Index>
+void finite_element_solver_base<T, I, Matrix_Index>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                  const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
     Mat A = nullptr;
     MatCreateMPISBAIJWithArrays(PETSC_COMM_WORLD, 1, K.rows(), K.rows(), PETSC_DETERMINE, PETSC_DETERMINE,
                                 K.outerIndexPtr(), K.innerIndexPtr(), K.valuePtr(), &A);
@@ -365,9 +365,9 @@ void finite_element_solver_base<T, I>::PETSc_solver(Eigen::Matrix<T, Eigen::Dyna
     VecDestroy(&y);
 }
 
-template<class T, class I>
-void finite_element_solver_base<T, I>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                  const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K, const int DoF) {
+template<class T, class I, class Matrix_Index>
+void finite_element_solver_base<T, I, Matrix_Index>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K, const int DoF) {
     void *pt[64] = {};
     const int maxfct =  1, // Maximum number of numerical factorizations.
               mnum   =  1, // Which factorization to use.

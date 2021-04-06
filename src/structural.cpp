@@ -25,8 +25,7 @@ void save_raw_data(const mesh::mesh_2d<T>& msh,
 }
 
 int main(int argc, char** argv) {
-    int provided = 0;
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
 
     if(argc < 5) {
         std::cerr << "Input format [program name] <path to mesh> <num_threads> <r> <p1>";
@@ -47,7 +46,7 @@ int main(int argc, char** argv) {
         if (p1 < 0.999)
             mesh_proxy->find_neighbours(r, mesh::balancing_t::MEMORY);
 
-        nonlocal::structural::structural_solver<double, int> fem_sol{mesh_proxy};
+        nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
         nonlocal::structural::calculation_parameters<double> parameters;
         parameters.nu = 0.3;
         parameters.E = 21;
@@ -89,19 +88,19 @@ int main(int argc, char** argv) {
 
         sol.calc_strain_and_stress();
 
-        int rank = -1;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        if (rank == 0) {
+        if (mesh_proxy->rank() == 0) {
             std::cout << "Energy = " << sol.calc_energy() << std::endl;
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
+        PetscFinalize();
         return EXIT_FAILURE;
     } catch(...) {
         std::cerr << "Unknown error." << std::endl;
+        PetscFinalize();
         return EXIT_FAILURE;
     }
 
-    MPI_Finalize();
+    PetscFinalize();
     return 0;
 }

@@ -25,9 +25,9 @@ using bound_cond = boundary_condition<T, boundary_t, 1>;
 template<class T>
 using right_part = right_partition<T, 1>;
 
-template<class T, class I>
-class heat_equation_solver : public finite_element_solver_base<T, I> {
-    using _base = finite_element_solver_base<T, I>;
+template<class T, class I, class Matrix_Index>
+class heat_equation_solver : public finite_element_solver_base<T, I, Matrix_Index> {
+    using _base = finite_element_solver_base<T, I, Matrix_Index>;
     using _base::size;
     using _base::rank;
     using _base::first_node;
@@ -45,21 +45,21 @@ class heat_equation_solver : public finite_element_solver_base<T, I> {
                        const size_t iL, const size_t jNL,
                        const Influence_Function& influence_function) const;
 
-    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                                 const std::vector<bool>& inner_nodes,
                                 const bool neumann_task, const bool nonlocal_task) const;
 
     template<class Integrate_Rule, class Influence_Function>
-    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                      const Integrate_Rule& integrate_rule, const bool neumann_task,
                      const T p1, const Influence_Function& influence_fun,
                      const std::vector<bool>& inner_nodes) const;
 
     template<class Integrate_Rule, class Influence_Function>
-    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                       Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
+    void create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                       Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                        const std::vector<bound_cond<T>>& bounds_cond,
                        const bool neumann_task, const Integrate_Rule& integrate_rule,
                        const T p1, const Influence_Function& influence_fun) const;
@@ -82,8 +82,8 @@ public:
 //                       const uintmax_t print_frequency = std::numeric_limits<uintmax_t>::max());
 };
 
-template<class T, class I>
-T heat_equation_solver<T, I>::integrate_basic(const size_t e, const size_t i) const {
+template<class T, class I, class Matrix_Index>
+T heat_equation_solver<T, I, Matrix_Index>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
     const auto& el = _base::mesh().element_2d(e);
           auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
@@ -92,8 +92,8 @@ T heat_equation_solver<T, I>::integrate_basic(const size_t e, const size_t i) co
     return integral;
 }
 
-template<class T, class I>
-T heat_equation_solver<T, I>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
+template<class T, class I, class Matrix_Index>
+T heat_equation_solver<T, I, Matrix_Index>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el = _base::mesh().element_2d(e);
           auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
@@ -102,8 +102,8 @@ T heat_equation_solver<T, I>::integrate_basic_pair(const size_t e, const size_t 
     return integral;
 }
 
-template<class T, class I>
-T heat_equation_solver<T, I>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
+template<class T, class I, class Matrix_Index>
+T heat_equation_solver<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el   = _base::mesh().element_2d(e);
           auto  J    = _base::mesh_proxy()->jacobi_matrix(e);
@@ -114,11 +114,11 @@ T heat_equation_solver<T, I>::integrate_loc(const size_t e, const size_t i, cons
     return integral;
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-T heat_equation_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                               const size_t iL, const size_t jNL,
-                                               const Influence_Function& influence_function) const {
+T heat_equation_solver<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
+                                                             const size_t iL, const size_t jNL,
+                                                             const Influence_Function& influence_function) const {
     T integral = 0;
     const auto& elL            = _base::mesh().element_2d(eL ),
               & elNL           = _base::mesh().element_2d(eNL);
@@ -140,11 +140,11 @@ T heat_equation_solver<T, I>::integrate_nonloc(const size_t eL, const size_t eNL
     return integral;
 }
 
-template<class T, class I>
-void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                                        const std::vector<bool>& inner_nodes,
-                                                        const bool neumann_task, const bool nonlocal_task) const {
+template<class T, class I, class Matrix_Index>
+void heat_equation_solver<T, I, Matrix_Index>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                                      Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                                      const std::vector<bool>& inner_nodes,
+                                                                      const bool neumann_task, const bool nonlocal_task) const {
     if (neumann_task)
         for(size_t i = 0; i < K_inner.rows(); ++i)
             K_inner.outerIndexPtr()[i+1] = 1;
@@ -170,13 +170,13 @@ void heat_equation_solver<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, E
     _base::sort_indices(K_bound);
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Integrate_Rule, class Influence_Function>
-void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                             Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                             const Integrate_Rule& integrate_rule, const bool neumann_task,
-                                             const T p1, const Influence_Function& influence_fun,
-                                             const std::vector<bool>& inner_nodes) const {
+void heat_equation_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                           Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                           const Integrate_Rule& integrate_rule, const bool neumann_task,
+                                                           const T p1, const Influence_Function& influence_fun,
+                                                           const std::vector<bool>& inner_nodes) const {
     if (neumann_task) {
 #pragma omp parallel for default(none) shared(K_inner)
         for(size_t node = first_node(); node < last_node(); ++node) {
@@ -218,13 +218,13 @@ void heat_equation_solver<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
     }
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Integrate_Rule, class Influence_Function>
-void heat_equation_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                               Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound,
-                                               const std::vector<bound_cond<T>>& bounds_cond,
-                                               const bool neumann_task, const Integrate_Rule& integrate_rule,
-                                               const T p1, const Influence_Function& influence_fun) const {
+void heat_equation_solver<T, I, Matrix_Index>::create_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                             Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                             const std::vector<bound_cond<T>>& bounds_cond,
+                                                             const bool neumann_task, const Integrate_Rule& integrate_rule,
+                                                             const T p1, const Influence_Function& influence_fun) const {
     std::vector<bool> inner_nodes(mesh().nodes_count(), true);
     _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
         if(bounds_cond[b].type(0) == boundary_t::TEMPERATURE)
@@ -244,10 +244,12 @@ void heat_equation_solver<T, I>::create_matrix(Eigen::SparseMatrix<T, Eigen::Row
     std::cout << "calc coeffs: " << omp_get_wtime() - time << std::endl;
 }
 
-template<class T, class I>
+template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_cond<T>>& bounds_cond, const right_part<T>& right_part,
-                                                      const T p1, const Influence_Function& influence_fun, const T volume) {
+solution<T, I> heat_equation_solver<T, I, Matrix_Index>::stationary(const std::vector<bound_cond<T>>& bounds_cond,
+                                                                    const right_part<T>& right_part,
+                                                                    const T p1, const Influence_Function& influence_fun,
+                                                                    const T volume) {
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(),
                                           [](const bound_cond<T>& bound) { return bound.type(0) == boundary_t::FLOW; });
     const size_t rows = last_node() - first_node() + (neumann_task && rank() == size() - 1),
@@ -260,8 +262,8 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
 //            f[mesh().nodes_count()] = volume;
 //        }
 
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I> K_inner(rows, cols),
-                                               K_bound(rows, cols);
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols),
+                                                          K_bound(rows, cols);
     create_matrix(
         K_inner, K_bound, bounds_cond, neumann_task,
         [this](const size_t e, const size_t i, const size_t j) { return integrate_loc(e, i, j); },
@@ -274,20 +276,21 @@ solution<T, I> heat_equation_solver<T, I>::stationary(const std::vector<bound_co
     double time = omp_get_wtime();
 #ifdef MPI_USE
     //_base::MKL_solver(f, K, 2);
-    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
     _base::PETSc_solver(f, K_inner);
 #else
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{K};
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
     Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+    f = u;
 #endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), f};
 }
 
-//template<class T, class I>
+//template<class T, class I, class Matrix_Index>
 //template<class Init_Distribution, class Right_Part, class Influence_Function>
-//void heat_equation_solver<T, I>::nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
+//void heat_equation_solver<T, I, Matrix_Index>::nonstationary(const std::string& path, const T tau, const uintmax_t time_steps,
 //                                               const std::vector<bound_cond<T>>& bounds_cond,
 //                                               const Init_Distribution& init_dist, const Right_Part& right_part,
 //                                               const T r, const T p1, const Influence_Function& influence_fun, const uintmax_t print_frequency) {
