@@ -6,28 +6,16 @@
 
 namespace metamath::function {
 
-template<intmax_t N, class Type> constexpr std::enable_if_t<(N > 0 && N % 2 == 0), Type> power(const Type);
-template<intmax_t N, class Type> constexpr std::enable_if_t<(N > 0 && N % 2 == 1), Type> power(const Type);
-
-template<intmax_t N, class Type>
-constexpr std::enable_if_t<N < 0, Type> power(const Type x) {
-    return 1 / power<-N>(x);
-}
-
-template<intmax_t N, class Type>
-constexpr std::enable_if_t<N == 0, Type> power(const Type) {
+template<intmax_t N, class T>
+constexpr T power(const T x) {
+    if constexpr (N > 0 && N % 2 == 0) {
+        const T temp = power<N / 2>(x);
+        return temp * temp;
+    } else if constexpr (N > 0 && N % 2 == 1)
+        return x * power<N - 1>(x);
+    else if constexpr (N < 0)
+        return 1 / power<-N>(x);
     return 1;
-}
-
-template<intmax_t N, class Type>
-constexpr std::enable_if_t<(N > 0 && N % 2 == 0), Type> power(const Type x) {
-    const Type temp = power<N / 2>(x);
-    return temp * temp;
-}
-
-template<intmax_t N, class Type>
-constexpr std::enable_if_t<(N > 0 && N % 2 == 1), Type> power(const Type x) {
-    return x * power<N - 1>(x);
 }
 
 };
