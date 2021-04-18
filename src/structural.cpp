@@ -52,44 +52,45 @@ int main(int argc, char** argv) {
         parameters.E = 21;
 
         auto sol = fem_sol.stationary(parameters,
-                { // Граничные условия
-                        {   // Down
-                            nonlocal::structural::boundary_t::PRESSURE,
-                            [](const std::array<double, 2>& x) { return 0; },
-                            nonlocal::structural::boundary_t::PRESSURE,
-                            [](const std::array<double, 2>& x) { return 0; }
-                        },
-
-                        {   // Right
-                            nonlocal::structural::boundary_t::PRESSURE,
-                            [](const std::array<double, 2>& x) { return 1; },
-                            nonlocal::structural::boundary_t::PRESSURE,
-                            [](const std::array<double, 2>& x) { return 0; }
-                        },
-
-                        {   // Up
-                            nonlocal::structural::boundary_t::PRESSURE,
-                            [](const std::array<double, 2>& x) { return 0; },
-                            nonlocal::structural::boundary_t::PRESSURE,
-                            [](const std::array<double, 2>& x) { return 0; }
-                        },
-
-                        {   // Left
-                            nonlocal::structural::boundary_t::DISPLACEMENT,
-                            [](const std::array<double, 2>& x) { return 0; },
-                            nonlocal::structural::boundary_t::DISPLACEMENT,
-                            [](const std::array<double, 2>& x) { return 0; }
-                        }
+            { // Граничные условия
+                {   // Down
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 0; }
                 },
-                {}, // Правая часть
-                p1, // Вес
-                bell // Функция влияния
+
+                {   // Right
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 1; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 0; }
+                },
+
+                {   // Up
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 0; },
+                    nonlocal::structural::boundary_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 0; }
+                },
+
+                {   // Left
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    [](const std::array<double, 2>& x) { return 0; },
+                    nonlocal::structural::boundary_t::DISPLACEMENT,
+                    [](const std::array<double, 2>& x) { return 0; }
+                }
+            },
+            {}, // Правая часть
+            p1, // Вес
+            bell // Функция влияния
         );
 
         sol.calc_strain_and_stress();
 
         if (mesh_proxy->rank() == 0) {
             std::cout << "Energy = " << sol.calc_energy() << std::endl;
+            sol.save_as_vtk("structural.vtk");
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
@@ -102,5 +103,5 @@ int main(int argc, char** argv) {
     }
 
     PetscFinalize();
-    return 0;
+    return EXIT_SUCCESS;
 }

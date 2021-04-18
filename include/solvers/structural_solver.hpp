@@ -262,17 +262,16 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculati
     time = omp_get_wtime();
 
 //#ifdef MPI_USE
-//    //_base::MKL_solver(f, K, 2);
-//    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = _base::template MKL_solver<2>(f, K);
+    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
 //    _base::PETSc_solver(f, K);
-//    Eigen::Matrix<T, Eigen::Dynamic, 1> u = f;
 //#else
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
-    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
+    //Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
 //#endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
-    return solution<T, I>{_base::mesh_proxy(), parameters, p1, influence_fun, u};
+    return solution<T, I>{_base::mesh_proxy(), parameters, p1, influence_fun, displacement};
 }
 
 //template<class T, class I, class Matrix_Index>

@@ -9,7 +9,7 @@ URL: https://software.intel.com/en-us/mkl
 #OMP only
 #Libs: -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a -Wl,--end-group -lgomp -lpthread -lm -ldl
 #Compiler line
-#Cflags: -m64 -I${MKLROOT}/include
+#Cflags: -m64 -I"${MKLROOT}/include"
 
 #MPI
 Libs: -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_gnu_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a -Wl,--end-group -lgomp -lpthread -lm -ldl

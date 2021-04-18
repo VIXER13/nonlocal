@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
-        nonlocal::heat::heat_equation_solver<double, int, long long> fem_sol{mesh_proxy};
+        nonlocal::heat::heat_equation_solver<double, int, int> fem_sol{mesh_proxy};
         if (p1 < 0.999)
             mesh_proxy->find_neighbours(r, mesh::balancing_t::MEMORY);
 

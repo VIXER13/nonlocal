@@ -6,11 +6,13 @@
 #include <omp.h>
 #include "finite_element_solver_base.hpp"
 #include "heat_equation_solution.hpp"
+
+#define EIGEN_USE_MKL_ALL
 #include "../../Eigen/Eigen/Dense"
 #include "../../Eigen/Eigen/Sparse"
 #include "../../Eigen/Eigen/Eigen"
 #include "../../Eigen/Eigen/SparseCholesky"
-//#include "Eigen/PardisoSupport"
+#include "../../Eigen/Eigen/PardisoSupport"
 
 namespace nonlocal::heat {
 
@@ -275,9 +277,11 @@ solution<T, I> heat_equation_solver<T, I, Matrix_Index>::stationary(const std::v
 
     double time = omp_get_wtime();
 #ifdef MPI_USE
-    //_base::MKL_solver(f, K, 2);
-    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
-    _base::PETSc_solver(f, K_inner);
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = _base::template MKL_solver<1>(f, K_inner);
+//    Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+//    f = u;
+    //_base::PETSc_solver(f, K_inner);
 #else
     Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
     Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
@@ -285,7 +289,7 @@ solution<T, I> heat_equation_solver<T, I, Matrix_Index>::stationary(const std::v
 #endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
-    return solution<T, I>{_base::mesh_proxy(), f};
+    return solution<T, I>{_base::mesh_proxy(), temperature};
 }
 
 //template<class T, class I, class Matrix_Index>
