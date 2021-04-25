@@ -261,13 +261,14 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculati
 
     time = omp_get_wtime();
 
+//    K.template selfadjointView<Eigen::Upper>();
 //#ifdef MPI_USE
     const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = _base::template MKL_solver<2>(f, K);
     //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
 //    _base::PETSc_solver(f, K);
 //#else
     //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
-    //Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
+    //const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
 //#endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 

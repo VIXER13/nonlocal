@@ -388,7 +388,7 @@ finite_element_solver_base<T, I, Matrix_Index>::MKL_solver(Eigen::Matrix<T, Eige
     std::array<Matrix_Index, 64> iparm = {};
     iparm[ 0] =  1; // Solver default parameters overriden with provided by iparm
     iparm[ 1] =  3; // reordering
-    iparm[ 7] =  2; // Max number of iterative refinement steps
+    iparm[ 7] =  5; // Max number of iterative refinement steps
     iparm[ 9] = 13; // Perturb the pivot elements with 1E-13
     iparm[17] = -1; // Output: Number of nonzeros in the factor LU
     iparm[18] = -1; // Output: Mflops for LU factorization

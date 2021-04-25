@@ -4,18 +4,18 @@
 
 namespace {
 
-void save_raw_data(const std::shared_ptr<mesh::mesh_2d<double>>& mesh,
-                   const std::vector<double>& T,
-                   const std::array<std::vector<double>, 2>& gradient) {
-    std::ofstream Tout{"T.csv"};
-    std::ofstream Tx{"Tx.csv"};
-    std::ofstream Ty{"Ty.csv"};
-    for(size_t i = 0; i < mesh->nodes_count(); ++i) {
-        Tout << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << T[i] << '\n';
-        Tx   << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << gradient[0][i] << '\n';
-        Ty   << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << gradient[1][i] << '\n';
+    void save_raw_data(const std::shared_ptr<mesh::mesh_2d<double>>& mesh,
+                       const std::vector<double>& T,
+                       const std::array<std::vector<double>, 2>& gradient) {
+        std::ofstream Tout{"T.csv"};
+        std::ofstream Tx{"Tx.csv"};
+        std::ofstream Ty{"Ty.csv"};
+        for(size_t i = 0; i < mesh->nodes_count(); ++i) {
+            Tout << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << T[i] << '\n';
+            Tx   << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << gradient[0][i] << '\n';
+            Ty   << mesh->node(i)[0] << ',' << mesh->node(i)[1] << ',' << gradient[1][i] << '\n';
+        }
     }
-}
 
 }
 
@@ -40,38 +40,35 @@ int main(int argc, char** argv) {
         if (p1 < 0.999)
             mesh_proxy->find_neighbours(r, mesh::balancing_t::MEMORY);
 
-        auto T = fem_sol.stationary(parameters,
+        fem_sol.nonstationary(
+            ".",
+            parameters, 0.0001, 1000,
             { // Граничные условия
                 {   // Down
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return -1; },
                 },
 
                 {   // Right
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return 0; },
                 },
 
                 {   // Up
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return 1; },
                 },
 
                 {   // Left
-                    nonlocal::heat::boundary_t::TEMPERATURE,
-                    [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return 0; },
                 }
             },
-            {[](const std::array<double, 2>&) { return -4; }}, // Правая часть
+            [](const std::array<double, 2>&) { return 0; }, // Начальные условия
+            [](const std::array<double, 2>&) { return 0; }, // Правая часть
             p1, // Вес
             bell // Функция влияния
         );
-
-        if (mesh_proxy->rank() == 0) {
-            std::cout << "Energy = " << T.calc_energy() << std::endl;
-            save_raw_data(mesh, T.get_temperature(), mesh_proxy->calc_gradient(T.get_temperature()));
-            T.save_as_vtk("heat.vtk");
-        }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
 #ifdef MPI_USE

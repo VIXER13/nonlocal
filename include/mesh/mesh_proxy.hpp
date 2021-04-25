@@ -104,7 +104,8 @@ public:
     std::vector<U> all_to_all(const std::vector<U>& sendbuf);
     void find_neighbours(const T r, const balancing_t balancing);
 
-    T integrate_solution(const std::vector<T>& sol) const;
+    template<class Vector>
+    T integrate_solution(const Vector& sol) const;
     std::array<std::vector<T>, 2> calc_gradient(const std::vector<T>& sol) const;
     std::vector<T> approx_in_quad(const std::vector<T>& x);
 };
@@ -521,7 +522,8 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
 }
 
 template<class T, class I>
-T mesh_proxy<T, I>::integrate_solution(const std::vector<T>& sol) const {
+template<class Vector>
+T mesh_proxy<T, I>::integrate_solution(const Vector& sol) const {
     if(mesh().nodes_count() != size_t(sol.size()))
         throw std::logic_error{"mesh.nodes_count() != T.size()"};
 

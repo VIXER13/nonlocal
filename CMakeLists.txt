@@ -46,7 +46,8 @@ endif()
 
 add_compile_options(-O2)
 
-add_executable(nonlocal src/structural_circle.cpp)
+#add_executable(nonlocal src/structural_circle.cpp)
+add_executable(nonlocal src/thermal_nonstationary.cpp)
 target_include_directories(nonlocal PUBLIC ${INCLUDES})
 target_link_libraries(
     nonlocal
