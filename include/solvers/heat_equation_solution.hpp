@@ -37,18 +37,7 @@ T solution<T, I>::calc_energy() const { return _mesh_proxy->integrate_solution(_
 
 template<class T, class I>
 void solution<T, I>::save_as_vtk(const std::string& path) const {
-    static constexpr std::string_view data_type = std::is_same_v<T, float> ? "float" : "double";
-
-    std::ofstream fout{path};
-    fout.precision(std::numeric_limits<T>::max_digits10);
-
-    _mesh_proxy->mesh().save_as_vtk(fout);
-
-    fout << "POINT_DATA " << _mesh_proxy->mesh().nodes_count() << '\n';
-    fout << "SCALARS Temperature " << data_type << " 1\n"
-         << "LOOKUP_TABLE default\n";
-    for(size_t i = 0; i < _mesh_proxy->mesh().nodes_count(); ++i)
-        fout << _temperature[i] << '\n';
+    mesh::save_as_vtk(path, _mesh_proxy->mesh(), _temperature);
 }
 
 }
