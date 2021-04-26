@@ -15,6 +15,8 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
+        std::cout << "r[0] = " << r[0] << std::endl;
+        std::cout << "r[1] = " << r[1] << std::endl;
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
         nonlocal::heat::solver_parameters<double> sol_parameters;
         sol_parameters.save_path = argv[5];
@@ -25,7 +27,7 @@ int main(int argc, char** argv) {
         sol_parameters.save_csv = true;
         sol_parameters.calc_energy = true;
 
-        nonlocal::heat::equation_parameters<double, nonlocal::heat::calc_type::ISOTROPIC> eq_parameters;
+        nonlocal::heat::equation_parameters<double, nonlocal::heat::calc_type::ORTHOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
         eq_parameters.rho = 1;

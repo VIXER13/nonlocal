@@ -393,9 +393,10 @@ void heat_equation_solver<T, I, Matrix_Index>::nonstationary(const solver_parame
     for(size_t i = 0; i < mesh().nodes_count(); ++i)
         temperature_prev[i] = init_dist(mesh().node(i));
 
-    Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index> KK = K_inner.transpose();
-    K_inner.setZero();
-    Eigen::SimplicialLLT<Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index>, Eigen::Lower> solver{KK};
+//    Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index> KK = K_inner.transpose();
+//    K_inner.setZero();
+//    Eigen::SimplicialLLT<Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index>, Eigen::Lower> solver{KK};
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
     if(sol_parameters.save_freq != std::numeric_limits<uintmax_t>::max())
         nonstationary_solver_logger(temperature_prev, sol_parameters, 0);
     for(size_t step = 1; step < sol_parameters.steps + 1; ++step) {

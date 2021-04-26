@@ -46,7 +46,7 @@ endif()
 
 add_compile_options(-O2)
 
-add_executable(nonlocal src/thermal_examples/thermal_stationary_orthotropic_quad.cpp)
+add_executable(nonlocal src/thermal_examples/thermal_nonstationary_orthotropic_quad.cpp)
 target_include_directories(nonlocal PUBLIC ${INCLUDES})
 target_link_libraries(
     nonlocal
