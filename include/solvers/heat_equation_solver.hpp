@@ -78,9 +78,7 @@ class heat_equation_solver : public finite_element_solver_base<T, I, Matrix_Inde
                                      const solver_parameters<T>& sol_parameters, const uintmax_t step);
 
 public:
-    explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh)
-        : _base{mesh} {}
-
+    explicit heat_equation_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh);
     ~heat_equation_solver() override = default;
 
     template<calc_type Calc_Type, class Influence_Function>
@@ -95,6 +93,10 @@ public:
                        const Init_Distribution& init_dist, const Right_Part& right_part,
                        const T p1, const Influence_Function& influence_fun);
 };
+
+template<class T, class I, class Matrix_Index>
+heat_equation_solver<T, I, Matrix_Index>::heat_equation_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh)
+    : _base{mesh} {}
 
 template<class T, class I, class Matrix_Index>
 T heat_equation_solver<T, I, Matrix_Index>::integrate_basic(const size_t e, const size_t i) const {
@@ -324,14 +326,14 @@ solution<T, I> heat_equation_solver<T, I, Matrix_Index>::stationary(const equati
 
     double time = omp_get_wtime();
 //#ifdef MPI_USE
-    //const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = _base::template MKL_solver<1>(f, K_inner);
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = _base::template MKL_solver<1>(f, K_inner);
 //    Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
 //    Eigen::Matrix<T, Eigen::Dynamic, 1> u = solver.solve(f);
 //    f = u;
     //_base::PETSc_solver(f, K_inner);
 //#else
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
+    //Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
 //#endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
@@ -393,10 +395,10 @@ void heat_equation_solver<T, I, Matrix_Index>::nonstationary(const solver_parame
     for(size_t i = 0; i < mesh().nodes_count(); ++i)
         temperature_prev[i] = init_dist(mesh().node(i));
 
-//    Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index> KK = K_inner.transpose();
-//    K_inner.setZero();
-//    Eigen::SimplicialLLT<Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index>, Eigen::Lower> solver{KK};
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
+    Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index> KK = K_inner.transpose();
+    K_inner.setZero();
+    Eigen::SimplicialLLT<Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index>, Eigen::Lower> solver{KK};
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
     if(sol_parameters.save_freq != std::numeric_limits<uintmax_t>::max())
         nonstationary_solver_logger(temperature_prev, sol_parameters, 0);
     for(size_t step = 1; step < sol_parameters.steps + 1; ++step) {

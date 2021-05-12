@@ -38,13 +38,15 @@ class structural_solver : public finite_element_solver_base<T, I, Matrix_Index> 
 
     std::array<T, 3> _D;
 
-    template<bool Proj, bool Approx>
-    T integrate_loc(const size_t e, const size_t i, const size_t j) const;
+    static void add_to_pair(std::array<T, 4>& pairs, const std::array<T, 2>& wdNd, const std::array<T, 2>& dNd) noexcept;
+    static std::array<T, 4> calc_block(const std::array<T, 3>& D, const std::array<T, 4>& pairs) noexcept;
 
-    template<bool Proj, bool Approx, class Influence_Function>
-    T integrate_nonloc(const size_t eL, const size_t eNL,
-                       const size_t iL, const size_t jNL,
-                       const Influence_Function& influence_function) const;
+    std::array<T, 4> integrate_loc(const size_t e, const size_t i, const size_t j) const;
+
+    template<class Influence_Function>
+    std::array<T, 4> integrate_nonloc(const size_t eL, const size_t eNL,
+                                      const size_t iL, const size_t jNL,
+                                      const Influence_Function& influence_function) const;
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                                 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
@@ -69,9 +71,7 @@ class structural_solver : public finite_element_solver_base<T, I, Matrix_Index> 
                                const T p1, const Influence_Function& influence_fun);
 
 public:
-    explicit structural_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh)
-        : _base{mesh} {}
-
+    explicit structural_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh);
     ~structural_solver() override = default;
 
     template<class Influence_Function>
@@ -79,56 +79,73 @@ public:
                               const std::vector<bound_cond<T>> &bounds_cond,
                               const right_part<T>& right_part,
                               const T p1, const Influence_Function& influence_fun);
-
-    //template<class Influence_Function>
-    //solution<T, I> stationary(const std::vector<bound_cond<T>> &bounds_cond,
-    //                          const right_part<T>& right_part,
-    //                          const T alpha, const std::vector<T>& temperature,
-    //                          const T p1, const Influence_Function& influence_fun);
 };
 
 template<class T, class I, class Matrix_Index>
-template<bool Proj, bool Approx>
-T structural_solver<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
-    static constexpr size_t k = Proj ^ Approx;
-    T integral = 0;
+structural_solver<T, I, Matrix_Index>::structural_solver(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh)
+    : _base{mesh} {}
+
+template<class T, class I, class Matrix_Index>
+void structural_solver<T, I, Matrix_Index>::add_to_pair(std::array<T, 4>& pairs,
+                                                        const std::array<T, 2>& wdNd,
+                                                        const std::array<T, 2>& dNd) noexcept {
+    pairs[0] += wdNd[X] * dNd[X];
+    pairs[1] += wdNd[X] * dNd[Y];
+    pairs[2] += wdNd[Y] * dNd[X];
+    pairs[3] += wdNd[Y] * dNd[Y];
+}
+
+template<class T, class I, class Matrix_Index>
+std::array<T, 4> structural_solver<T, I, Matrix_Index>::calc_block(const std::array<T, 3>& D,
+                                                                   const std::array<T, 4>& pairs) noexcept {
+    return {
+        D[0] * pairs[0] + D[2] * pairs[3],
+        D[1] * pairs[1] + D[2] * pairs[2],
+        D[1] * pairs[2] + D[2] * pairs[1],
+        D[0] * pairs[3] + D[2] * pairs[0],
+    };
+}
+
+template<class T, class I, class Matrix_Index>
+std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     const auto& el   = _base::mesh().element_2d(e);
           auto  J    = _base::mesh_proxy()->jacobi_matrix(e);
           auto  dNdi = _base::mesh_proxy()->dNdX(e, i),
                 dNdj = _base::mesh_proxy()->dNdX(e, j);
-    for(size_t q = 0; q < el->qnodes_count(); ++q, ++J, ++dNdi, ++dNdj)
-        integral += el->weight(q) / jacobian(*J) *
-                    (_D[k] * (*dNdi)[ Proj] * (*dNdj)[ Approx] +
-                     _D[2] * (*dNdi)[!Proj] * (*dNdj)[!Approx]);
-    return integral;
+    std::array<T, 4> pairs = {};
+    for(size_t q = 0; q < el->qnodes_count(); ++q, ++J, ++dNdi, ++dNdj) {
+        const T weight = el->weight(q) / jacobian(*J);
+        const std::array<T, 2> wdNdi = {weight * (*dNdi)[X], weight * (*dNdi)[Y]};
+        add_to_pair(pairs, wdNdi, *dNdj);
+    }
+    return calc_block(_D, pairs);
 }
 
 template<class T, class I, class Matrix_Index>
-template<bool Proj, bool Approx, class Influence_Function>
-T structural_solver<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                                          const size_t iL, const size_t jNL,
-                                                          const Influence_Function& influence_function) const {
-    static constexpr size_t k = Proj ^ Approx;
-    T integral = 0;
+template<class Influence_Function>
+std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
+                                                                         const size_t iL, const size_t jNL,
+                                                                         const Influence_Function& influence_function) const {
     const auto& elL            = _base::mesh().element_2d(eL ),
               & elNL           = _base::mesh().element_2d(eNL);
           auto  qcoordL        = _base::mesh_proxy()->quad_coord(eL);
           auto  dNdL           = _base::mesh_proxy()->dNdX(eL, iL);
     const auto  qcoordNL_start = _base::mesh_proxy()->quad_coord(eNL);
     const auto  dNdNL_start    = _base::mesh_proxy()->dNdX(eNL, jNL);
+    std::array<T, 4> pairs = {};
     for(size_t qL = 0; qL < elL->qnodes_count(); ++qL, ++qcoordL, ++dNdL) {
-        std::array<T, 2> inner_int = {};
-        auto qcoordNL = qcoordNL_start;
         auto dNdNL    = dNdNL_start;
+        auto qcoordNL = qcoordNL_start;
+        std::array<T, 2> inner_int = {};
         for(size_t qNL = 0; qNL < elNL->qnodes_count(); ++qNL, ++qcoordNL, ++dNdNL) {
             const T influence_weight = elNL->weight(qNL) * influence_function(*qcoordL, *qcoordNL);
-            inner_int[X] += influence_weight * (*dNdNL)[ Approx];
-            inner_int[Y] += influence_weight * (*dNdNL)[!Approx];
+            inner_int[X] += influence_weight * (*dNdNL)[X];
+            inner_int[Y] += influence_weight * (*dNdNL)[Y];
         }
-        integral += elL->weight(qL) * (_D[k] * inner_int[X] * (*dNdL)[ Proj] +
-                                       _D[2] * inner_int[Y] * (*dNdL)[!Proj]);
+        const std::array<T, 2> wdNdL = {elL->weight(qL) * (*dNdL)[X], elL->weight(qL) * (*dNdL)[Y]};
+        add_to_pair(pairs, wdNdL, inner_int);
     }
-    return integral;
+    return calc_block(_D, pairs);
 }
 
 template<class T, class I, class Matrix_Index>
@@ -159,53 +176,54 @@ void structural_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, E
                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                                                         const T p1, const Influence_Function& influence_fun,
                                                         const std::vector<bool>& inner_nodes) const {
-    const auto filler_loc =
-        [this, &K, &K_bound, &inner_nodes, p1, shift = 2 * first_node()]
-        (const size_t e, const size_t i, const size_t j, const component proj, const component approx, const auto& integrate_rule) {
-            const I row = 2 * mesh().node_number(e, i) + proj,
-                    col = 2 * mesh().node_number(e, j) + approx;
-            if (inner_nodes[row] && inner_nodes[col]) {
-                if (row <= col)
-                    K.coeffRef(row - shift, col) += p1 * integrate_rule(e, i, j);
-            } else if (row != col) {
-                if (!inner_nodes[col])
-                    K_bound.coeffRef(row - shift, col) += p1 * integrate_rule(e, i, j);
-            } else
-                K.coeffRef(row - shift, col) = 1;
-        };
+    const auto calc_predicate = [&inner_nodes](const size_t glob_row, const size_t glob_col, const bool flag) {
+        bool calc_flag = false;
+        for(size_t row = glob_row; !calc_flag && row < glob_row + 2; ++row)
+            for(size_t col = glob_col; !calc_flag && col < glob_col + 2; ++col)
+                calc_flag = inner_nodes[row] && inner_nodes[col] ? row <= col :
+                            row != col                           ? !inner_nodes[col] : flag;
+        return calc_flag;
+    };
 
     _base::template mesh_run<_base::theory::LOCAL>(
-        [this, &filler_loc](const size_t e, const size_t i, const size_t j) {
-            filler_loc(e, i, j, X, X, [this](const size_t e, const size_t i, const size_t j) { return integrate_loc<X, X>(e, i, j); });
-            filler_loc(e, i, j, X, Y, [this](const size_t e, const size_t i, const size_t j) { return integrate_loc<X, Y>(e, i, j); });
-            filler_loc(e, i, j, Y, X, [this](const size_t e, const size_t i, const size_t j) { return integrate_loc<Y, X>(e, i, j); });
-            filler_loc(e, i, j, Y, Y, [this](const size_t e, const size_t i, const size_t j) { return integrate_loc<Y, Y>(e, i, j); });
+        [this, &calc_predicate, &K, &K_bound, &inner_nodes, p1, shift = 2 * first_node()](const size_t e, const size_t i, const size_t j) {
+            const I glob_row = 2 * mesh().node_number(e, i),
+                    glob_col = 2 * mesh().node_number(e, j);
+            if (calc_predicate(glob_row, glob_col, true)) {
+                const std::array<T, 4> block = integrate_loc(e, i, j);
+                auto component = block.cbegin();
+                for(size_t row = glob_row; row < glob_row + 2; ++row)
+                    for(size_t col = glob_col; col < glob_col + 2; ++col, ++component)
+                        if (inner_nodes[row] && inner_nodes[col]) {
+                            if (row <= col)
+                                K.coeffRef(row - shift, col) += p1 * (*component);
+                        } else if (row != col) {
+                            if (!inner_nodes[col])
+                                K_bound.coeffRef(row - shift, col) += p1 * (*component);
+                        } else
+                            K.coeffRef(row - shift, col) = 1;
+            }
         });
 
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
-        const auto filler_nonloc =
-            [this, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1, shift = 2 * first_node()]
-            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const component proj, const component approx, const auto& integrate_rule) {
-                const I row = 2 * mesh().node_number(eL,  iL ) + proj,
-                        col = 2 * mesh().node_number(eNL, jNL) + approx;
-                if (inner_nodes[row] && inner_nodes[col]) {
-                    if (row <= col)
-                        K.coeffRef(row - shift, col) += p2 * integrate_rule(eL, eNL, iL, jNL, influence_fun);
-                } else if (row != col)
-                    if (!inner_nodes[col])
-                        K_bound.coeffRef(row - shift, col) += p2 * integrate_rule(eL, eNL, iL, jNL, influence_fun);
-            };
-
         _base::template mesh_run<_base::theory::NONLOCAL>(
-            [this, &filler_nonloc](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-#define INTEGRATE_NONLOC(X, Y) filler_nonloc(eL, eNL, iL, jNL, X, Y, \
-                               [this](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) \
-                               { return integrate_nonloc<X, Y, Influence_Function>(eL, eNL, iL, jNL, influence_function); });
-                INTEGRATE_NONLOC(X, X)
-                INTEGRATE_NONLOC(X, Y)
-                INTEGRATE_NONLOC(Y, X)
-                INTEGRATE_NONLOC(Y, Y)
-#undef INTEGRATE_NONLOC
+            [this, &calc_predicate, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1, shift = 2 * first_node()]
+            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+                const I glob_row = 2 * mesh().node_number(eL,   iL),
+                        glob_col = 2 * mesh().node_number(eNL, jNL);
+                if (calc_predicate(glob_row, glob_col, false)) {
+                    const std::array<T, 4> block = integrate_nonloc(eL, eNL, iL, jNL, influence_fun);
+                    auto component = block.cbegin();
+                    for(size_t row = glob_row; row < glob_row + 2; ++row)
+                        for(size_t col = glob_col; col < glob_col + 2; ++col, ++component)
+                            if (inner_nodes[row] && inner_nodes[col]) {
+                                if (row <= col)
+                                    K.coeffRef(row - shift, col) += p2 * (*component);
+                            } else if (row != col) {
+                                if (!inner_nodes[col])
+                                    K_bound.coeffRef(row - shift, col) += p2 * (*component);
+                            }
+                }
             });
     }
 }
