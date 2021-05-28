@@ -8,13 +8,6 @@
 #include "heat_equation_parameters.hpp"
 #include "heat_equation_solution.hpp"
 
-#define EIGEN_USE_MKL_ALL
-#include "../../Eigen/Eigen/Dense"
-#include "../../Eigen/Eigen/Sparse"
-#include "../../Eigen/Eigen/Eigen"
-#include "../../Eigen/Eigen/SparseCholesky"
-#include "../../Eigen/Eigen/PardisoSupport"
-
 namespace nonlocal::heat {
 
 enum class boundary_t : uint8_t {

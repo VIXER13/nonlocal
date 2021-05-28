@@ -7,11 +7,6 @@
 #include "finite_element_solver_base.hpp"
 #include "structural_solution.hpp"
 
-#define EIGEN_USE_MKL_ALL
-#include "../../Eigen/Eigen/Dense"
-#include "../../Eigen/Eigen/Sparse"
-#include "../../Eigen/Eigen/PardisoSupport"
-
 namespace nonlocal::structural {
 
 enum class boundary_t : uint8_t {
@@ -172,7 +167,7 @@ void structural_solver<T, I, Matrix_Index>::create_matrix_portrait(Eigen::Sparse
 
 template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-void structural_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
+void structural_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                                                         const T p1, const Influence_Function& influence_fun,
                                                         const std::vector<bool>& inner_nodes) const {
@@ -185,45 +180,40 @@ void structural_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, E
         return calc_flag;
     };
 
+    const auto calc = [&K_inner, &K_bound, &inner_nodes, shift = 2 * first_node()]
+                      (const std::array<T, 4>& block, const T weight, const size_t glob_row, const size_t glob_col, const bool flag) {
+        for(auto [row, component] = std::make_tuple(glob_row, block.cbegin()); row < glob_row + 2; ++row) {
+            T* data_ptr = nullptr;
+            for(size_t col = glob_col; col < glob_col + 2; ++col, ++component)
+                if (inner_nodes[row] && inner_nodes[col]) {
+                    if (row <= col) {
+                        if (!data_ptr) data_ptr = &K_inner.coeffRef(row - shift, col);
+                        else         ++data_ptr;
+                        *data_ptr += weight * (*component);
+                    }
+                } else if (row != col) {
+                    if (!inner_nodes[col])
+                        K_bound.coeffRef(row - shift, col) += weight * (*component);
+                } else if (flag)
+                    K_inner.coeffRef(row - shift, col) = T{1};
+        }
+    };
+
     _base::template mesh_run<_base::theory::LOCAL>(
-        [this, &calc_predicate, &K, &K_bound, &inner_nodes, p1, shift = 2 * first_node()](const size_t e, const size_t i, const size_t j) {
+        [this, &calc_predicate, &calc, p1](const size_t e, const size_t i, const size_t j) {
             const I glob_row = 2 * mesh().node_number(e, i),
                     glob_col = 2 * mesh().node_number(e, j);
-            if (calc_predicate(glob_row, glob_col, true)) {
-                const std::array<T, 4> block = integrate_loc(e, i, j);
-                auto component = block.cbegin();
-                for(size_t row = glob_row; row < glob_row + 2; ++row)
-                    for(size_t col = glob_col; col < glob_col + 2; ++col, ++component)
-                        if (inner_nodes[row] && inner_nodes[col]) {
-                            if (row <= col)
-                                K.coeffRef(row - shift, col) += p1 * (*component);
-                        } else if (row != col) {
-                            if (!inner_nodes[col])
-                                K_bound.coeffRef(row - shift, col) += p1 * (*component);
-                        } else
-                            K.coeffRef(row - shift, col) = 1;
-            }
+            if (calc_predicate(glob_row, glob_col, true))
+                calc(integrate_loc(e, i, j), p1, glob_row, glob_col, true);
         });
 
     if (p1 < _base::MAX_LOCAL_WEIGHT) {
         _base::template mesh_run<_base::theory::NONLOCAL>(
-            [this, &calc_predicate, &K, &K_bound, &inner_nodes, &influence_fun, p2 = 1 - p1, shift = 2 * first_node()]
-            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            [this, &calc_predicate, &calc, &influence_fun, p2 = 1 - p1](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
                 const I glob_row = 2 * mesh().node_number(eL,   iL),
                         glob_col = 2 * mesh().node_number(eNL, jNL);
-                if (calc_predicate(glob_row, glob_col, false)) {
-                    const std::array<T, 4> block = integrate_nonloc(eL, eNL, iL, jNL, influence_fun);
-                    auto component = block.cbegin();
-                    for(size_t row = glob_row; row < glob_row + 2; ++row)
-                        for(size_t col = glob_col; col < glob_col + 2; ++col, ++component)
-                            if (inner_nodes[row] && inner_nodes[col]) {
-                                if (row <= col)
-                                    K.coeffRef(row - shift, col) += p2 * (*component);
-                            } else if (row != col) {
-                                if (!inner_nodes[col])
-                                    K_bound.coeffRef(row - shift, col) += p2 * (*component);
-                            }
-                }
+                if (calc_predicate(glob_row, glob_col, false))
+                    calc(integrate_nonloc(eL, eNL, iL, jNL, influence_fun), p2, glob_row, glob_col, false);
             });
     }
 }
@@ -281,12 +271,13 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculati
 
 //    K.template selfadjointView<Eigen::Upper>();
 //#ifdef MPI_USE
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = _base::template MKL_solver<2>(f, K);
+    //const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = _base::template MKL_solver<2>(f, K);
     //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
 //    _base::PETSc_solver(f, K);
 //#else
-    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
-    //const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
+    std::cout << "iterations = " << solver.iterations() << std::endl;
 //#endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 

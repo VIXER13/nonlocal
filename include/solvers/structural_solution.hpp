@@ -97,7 +97,7 @@ void solution<T, I>::collect_solution(const bool with_stress) {
 template<class T, class I>
 void solution<T, I>::strain_and_stress_loc() {
     const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
-#pragma omp parallel for default(none)
+#pragma omp parallel for default(none) shared(D)
     for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {
         for(const I e : _mesh_proxy->nodes_elements_map(node)) {
             const auto& el = _mesh_proxy->mesh().element_2d(e);
@@ -131,10 +131,9 @@ void solution<T, I>::stress_nonloc() {
         _mesh_proxy->approx_in_quad(_strain[1]),
         _mesh_proxy->approx_in_quad(_strain[2])
     };
-
     const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
     std::vector<bool> neighbors(_mesh_proxy->mesh().elements_count(), false);
-#pragma omp parallel for default(none) firstprivate(neighbors)
+#pragma omp parallel for default(none) shared(p2, strains_in_quads, D) firstprivate(neighbors)
     for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {
         std::fill(neighbors.begin(), neighbors.end(), false);
         for(const I elL : _mesh_proxy->nodes_elements_map(node))
