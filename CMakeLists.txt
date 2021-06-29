@@ -46,11 +46,11 @@ endif()
 
 add_compile_options(-O2)
 
-add_executable(nonlocal src/thermal_examples/thermal_nonstationary_orthotropic_quad.cpp)
+add_executable(nonlocal src/1d/thermal/stationary.cpp)
 target_include_directories(nonlocal PUBLIC ${INCLUDES})
 target_link_libraries(
     nonlocal
     ${MKL_LINK_LIBRARIES} ${MKL_LDFLAGS}
-    ${PETSc_LIBRARIES}
+    ${PETSc_LIBRARIES} ${PETSc_LDFLAGS}
     ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES}
     metamath_lib mesh_lib finite_element_solvers_lib)

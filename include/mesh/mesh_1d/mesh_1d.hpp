@@ -2,9 +2,20 @@
 #define MESH_1D_HPP
 
 #include "metamath.hpp"
+#include <cstdlib>
 #include <memory>
 
 namespace mesh {
+
+union curr_next_elements final {
+    struct _curr_next_elements final {
+        size_t curr_element    = std::numeric_limits<size_t>::max(),
+               curr_loc_number = std::numeric_limits<size_t>::max(),
+               next_element    = std::numeric_limits<size_t>::max(),
+               next_loc_number = std::numeric_limits<size_t>::max();
+    } named = {};
+    std::array<std::array<size_t, 2>, 2> arr;
+};
 
 template<class T, class I = int32_t>
 class mesh_1d final {
@@ -27,6 +38,12 @@ public:
     const std::array<T, 2>& section() const;
     size_t elements_count() const;
     size_t nodes_count() const;
+
+    // Возвращает номера элементов и локальные номера узлов на элементах
+    curr_next_elements node_elements(const size_t node) const;
+
+    //std::array<size_t, 2> node_elements(const size_t node) const;
+    size_t node_begin(const size_t e) const;
 };
 
 template<class T, class I>
@@ -54,6 +71,23 @@ size_t mesh_1d<T, I>::elements_count() const { return _elements_count; }
 
 template<class T, class I>
 size_t mesh_1d<T, I>::nodes_count() const { return _nodes_count; }
+
+template<class T, class I>
+curr_next_elements mesh_1d<T, I>::node_elements(const size_t node) const {
+    if (!node)
+        return {.named = {.curr_element = 0, .curr_loc_number = 0}};
+    if (node == nodes_count()-1)
+        return {.named = {.curr_element = elements_count()-1, .curr_loc_number = _element->nodes_count()-1}};
+
+    const auto div = std::div(int64_t(node), int64_t(_element->nodes_count() - 1));
+    if (div.rem)
+        return {.named = {.curr_element = size_t(div.quot), .curr_loc_number = size_t(div.rem)}};
+    return {.named = {.curr_element = size_t(div.quot-1), .curr_loc_number = _element->nodes_count()-1,
+                      .next_element = size_t(div.quot),   .next_loc_number = 0}};
+}
+
+template<class T, class I>
+size_t mesh_1d<T, I>::node_begin(const size_t e) const { return e * (_element->nodes_count() - 1); }
 
 }
 
