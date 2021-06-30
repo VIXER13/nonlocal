@@ -72,6 +72,18 @@ int main(int argc, char** argv) {
                       << elements.arr[1][1] << ' ' << std::endl;
         }
 
+        std::cout << std::endl;
+
+        std::cout << "jacobian: " << mesh->jacobian() << std::endl;
+        for(size_t e = 0; e < mesh->elements_count(); ++e) {
+            std::cout << "e = " << e << ' ';
+            for(size_t q = 0; q < mesh->element()->qnodes_count(); ++q)
+                std::cout << mesh->quad_coord(e, q) << ' ';
+            std::cout << std::endl;
+        }
+
+        std::cout << std::endl;
+        std::cout << std::endl;
 
         nonlocal::finite_element_solver_base_1d<double, int> solver{mesh};
 
@@ -81,10 +93,10 @@ int main(int argc, char** argv) {
         auto solution = solver.stationary(
             parameters,
             {
-                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0},
-                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 1},
+                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, 0},
+                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, 0},
             },
-            [](const double x) { return 0; },
+            [](const double x) { return 1; },
             [](const double x, const double xp) { return 1; }
         );
 

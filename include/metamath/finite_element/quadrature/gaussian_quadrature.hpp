@@ -46,15 +46,15 @@ protected:
     ~gauss4() override = default;
 
     static const inline std::array<std::array<T, 1>, 4>
-            nodes = { -std::sqrt(T{3}/T{7} + T{2}/T{7} * std::sqrt(T{6}/T{5})),
-                      -std::sqrt(T{3}/T{7} - T{2}/T{7} * std::sqrt(T{6}/T{5})),
-                       std::sqrt(T{3}/T{7} - T{2}/T{7} * std::sqrt(T{6}/T{5})),
-                       std::sqrt(T{3}/T{7} + T{2}/T{7} * std::sqrt(T{6}/T{5})) };
+        nodes = { -std::sqrt(T{3}/T{7} + T{2}/T{7} * std::sqrt(T{6}/T{5})),
+                  -std::sqrt(T{3}/T{7} - T{2}/T{7} * std::sqrt(T{6}/T{5})),
+                   std::sqrt(T{3}/T{7} - T{2}/T{7} * std::sqrt(T{6}/T{5})),
+                   std::sqrt(T{3}/T{7} + T{2}/T{7} * std::sqrt(T{6}/T{5})) };
     static const inline std::array<T, 4>
-            weights = { (T{18} - std::sqrt(T{30})) / T{36},
-                        (T{18} + std::sqrt(T{30})) / T{36},
-                        (T{18} + std::sqrt(T{30})) / T{36},
-                        (T{18} - std::sqrt(T{30})) / T{36} };
+        weights = { (T{18} - std::sqrt(T{30})) / T{36},
+                    (T{18} + std::sqrt(T{30})) / T{36},
+                    (T{18} + std::sqrt(T{30})) / T{36},
+                    (T{18} - std::sqrt(T{30})) / T{36} };
 };
 
 template<class T>
@@ -64,17 +64,17 @@ protected:
     ~gauss5() override = default;
 
     static const inline std::array<std::array<T, 1>, 5>
-            nodes = { T{-1}/T{3} * std::sqrt(T{5} + T{2} * std::sqrt(T{10}/T{7})),
-                      T{-1}/T{3} * std::sqrt(T{5} - T{2} * std::sqrt(T{10}/T{7})),
-                      T{ 0},
-                      T{ 1}/T{3} * std::sqrt(T{5} - T{2} * std::sqrt(T{10}/T{7})),
-                      T{ 1}/T{3} * std::sqrt(T{5} + T{2} * std::sqrt(T{10}/T{7})) };
+        nodes = { T{-1}/T{3} * std::sqrt(T{5} + T{2} * std::sqrt(T{10}/T{7})),
+                  T{-1}/T{3} * std::sqrt(T{5} - T{2} * std::sqrt(T{10}/T{7})),
+                  T{ 0},
+                  T{ 1}/T{3} * std::sqrt(T{5} - T{2} * std::sqrt(T{10}/T{7})),
+                  T{ 1}/T{3} * std::sqrt(T{5} + T{2} * std::sqrt(T{10}/T{7})) };
     static const inline std::array<T, 5>
-            weights = { (T{322} - T{13} * std::sqrt(T{70})) / T{900},
-                        (T{322} + T{13} * std::sqrt(T{70})) / T{900},
-                        T{128} / T{225},
-                        (T{322} + T{13} * std::sqrt(T{70})) / T{900},
-                        (T{322} - T{13} * std::sqrt(T{70})) / T{900} };
+        weights = { (T{322} - T{13} * std::sqrt(T{70})) / T{900},
+                    (T{322} + T{13} * std::sqrt(T{70})) / T{900},
+                    T{128} / T{225},
+                    (T{322} + T{13} * std::sqrt(T{70})) / T{900},
+                    (T{322} - T{13} * std::sqrt(T{70})) / T{900} };
 };
 
 }

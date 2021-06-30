@@ -29,20 +29,22 @@ class mesh_1d final {
     Finite_Element_1D_Ptr _element = make_default_element();
     std::array<T, 2> _section = {T{-1}, T{1}};
     size_t _elements_count = 1, _nodes_count = 2;
+    T _step = (_section.back() - _section.front()) / _elements_count,
+      _jacobian = T{2} / _step;
+    std::vector<T> _quad_coord_loc;
 
 public:
-    explicit mesh_1d() = default;
     explicit mesh_1d(Finite_Element_1D_Ptr&& element, const size_t elements_count = 1, const std::array<T, 2> section = {T{-1}, T{1}});
 
-    const Finite_Element_1D_Ptr& element() const;
-    const std::array<T, 2>& section() const;
-    size_t elements_count() const;
-    size_t nodes_count() const;
+    const Finite_Element_1D_Ptr& element() const noexcept;
+    const std::array<T, 2>& section() const noexcept;
+    size_t elements_count() const noexcept;
+    size_t nodes_count() const noexcept;
+    T jacobian() const noexcept;
+    T quad_coord(const size_t e, const size_t q) const noexcept;
 
     // Возвращает номера элементов и локальные номера узлов на элементах
     curr_next_elements node_elements(const size_t node) const;
-
-    //std::array<size_t, 2> node_elements(const size_t node) const;
     size_t node_begin(const size_t e) const;
 };
 
@@ -58,19 +60,31 @@ mesh_1d<T, I>::mesh_1d(Finite_Element_1D_Ptr&& element, const size_t elements_co
     : _element{std::move(element)}
     , _elements_count{elements_count}
     , _section{section}
-    , _nodes_count{_elements_count * (_element->nodes_count() - 1) + 1} {}
+    , _nodes_count{_elements_count * (_element->nodes_count() - 1) + 1}
+    , _step{(_section.back() - _section.front()) / _elements_count}
+    , _jacobian{_step / (_element->boundary(metamath::finite_element::side_1d::RIGHT) - _element->boundary(metamath::finite_element::side_1d::LEFT))}
+    , _quad_coord_loc(_element->qnodes_count()) {
+    for(size_t q = 0; q < _quad_coord_loc.size(); ++q)
+        _quad_coord_loc[q] = (_element->quadrature()->node(q)[0] - _element->boundary(metamath::finite_element::side_1d::LEFT)) * _jacobian;
+}
 
 template<class T, class I>
-const typename mesh_1d<T, I>::Finite_Element_1D_Ptr& mesh_1d<T, I>::element() const { return _element; }
+const typename mesh_1d<T, I>::Finite_Element_1D_Ptr& mesh_1d<T, I>::element() const noexcept { return _element; }
 
 template<class T, class I>
-const std::array<T, 2>& mesh_1d<T, I>::section() const { return _section; }
+const std::array<T, 2>& mesh_1d<T, I>::section() const noexcept { return _section; }
 
 template<class T, class I>
-size_t mesh_1d<T, I>::elements_count() const { return _elements_count; }
+size_t mesh_1d<T, I>::elements_count() const noexcept { return _elements_count; }
 
 template<class T, class I>
-size_t mesh_1d<T, I>::nodes_count() const { return _nodes_count; }
+size_t mesh_1d<T, I>::nodes_count() const noexcept { return _nodes_count; }
+
+template<class T, class I>
+T mesh_1d<T, I>::jacobian() const noexcept { return _jacobian; }
+
+template<class T, class I>
+T mesh_1d<T, I>::quad_coord(const size_t e, const size_t q) const noexcept { return _step * e + _quad_coord_loc[q]; }
 
 template<class T, class I>
 curr_next_elements mesh_1d<T, I>::node_elements(const size_t node) const {

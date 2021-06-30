@@ -32,6 +32,9 @@ class finite_element_solver_base_1d {
     void boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                         const std::array<std::pair<boundary_condition_t, T>, 2>& bound_cond) const;
 
+    template<class Function>
+    T integrate_function(const size_t e, const size_t i, const Function& func) const;
+
     template<class Right_Part>
     void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const;
 
@@ -79,22 +82,23 @@ void finite_element_solver_base_1d<T, I>::boundary_condition_second_kind(Eigen::
 }
 
 template<class T, class I>
+template<class Function>
+T finite_element_solver_base_1d<T, I>::integrate_function(const size_t e, const size_t i, const Function& func) const {
+    T integral = 0;
+    const auto& el = mesh()->element();
+    for(size_t q = 0; q < el->qnodes_count(); ++q)
+        integral += el->weight(q) * el->qN(i, q) * func(mesh()->quad_coord(e, q));
+    return integral * mesh()->jacobian();
+}
+
+template<class T, class I>
 template<class Right_Part>
 void finite_element_solver_base_1d<T, I>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
-    const auto& el = mesh()->element();
-//#pragma omp parallel for default(none) shared(f, right_part, el)
-//    for(size_t node = 0; node < mesh()->nodes_count(); ++node)
-//        for(const I e : mesh()->node_elements(node)) {
-//            if (e == std::numeric_limits<size_t>::max())
-//                continue;
-//
-//        }
-//    for(size_t node = first_node(); node < last_node(); ++node)
-//        for(const I e : mesh_proxy()->nodes_elements_map(node)) {
-//            const size_t i = mesh_proxy()->global_to_local_numbering(e).find(node)->second;
-//            for(size_t comp = 0; comp < DoF; ++comp)
-//                f[DoF * (node - first_node()) + comp] += integrate_function(e, i, right_part[comp]);
-//        }
+#pragma omp parallel for default(none) shared(f, right_part)
+    for(size_t node = 0; node < mesh()->nodes_count(); ++node)
+        for(const auto& [e, i] : mesh()->node_elements(node).arr)
+            if (e != std::numeric_limits<size_t>::max())
+                f[node] += integrate_function(e, i, right_part);
 }
 
 template<class T, class I>
@@ -119,6 +123,12 @@ std::vector<T> finite_element_solver_base_1d<T, I>::stationary(const equation_pa
     boundary_condition_second_kind(f, bound_cond);
     integrate_right_part(f, right_part);
     boundary_condition_first_kind(f, bound_cond, K_bound);
+
+    std::cout << f.transpose() << std::endl;
+    T sum = 0;
+    for(size_t i = 0; i < f.size(); ++i)
+        sum += f[i];
+    std::cout << sum << std::endl;
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{K_inner};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
