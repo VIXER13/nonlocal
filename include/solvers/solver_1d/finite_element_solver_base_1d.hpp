@@ -116,32 +116,24 @@ template<class T, class I>
 void finite_element_solver_base_1d<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
                                                                  std::array<std::vector<std::pair<size_t, T>>, 2>& K_bound,
                                                                  const std::array<bool, 2> boundary_first_kind, const bool nonlocal_task) const {
-    for(size_t row = 0; row < K_inner.rows(); ++row)
-        K_inner.outerIndexPtr()[row+1] = 1;
+    for(size_t e = 0; e < mesh()->elements_count(); ++e) {
+        const size_t right_neighbour = nonlocal_task ? mesh()->right_neighbour(e) : e + 1;
+        for(size_t i = 0; i < mesh()->element()->nodes_count(); ++i) {
+            const size_t row = e * (mesh()->element()->nodes_count() - 1) + i + 1;
+            if (boundary_first_kind.front() && row == 1 || boundary_first_kind.back() && row == mesh()->nodes_count())
+                K_inner.outerIndexPtr()[row] = 1;
+            else {
+                const bool last_node_first_kind = boundary_first_kind.back() && right_neighbour * (mesh()->element()->nodes_count() - 1) == mesh()->nodes_count()-1;
+                K_inner.outerIndexPtr()[row] = (right_neighbour - e) * (mesh()->element()->nodes_count() - 1) - i + 1 - last_node_first_kind;
+            }
+        }
+    }
 
     const bool neumann_task = !boundary_first_kind.front() && !boundary_first_kind.back();
     if (neumann_task)
         for(size_t row = 0; row < K_inner.rows(); ++row)
             ++K_inner.outerIndexPtr()[row+1];
 
-    std::array<size_t, 2> boundary_elements_count = {};
-    mesh_run<theory::LOCAL>(
-        [this, &K_inner, &boundary_elements_count, boundary_first_kind](const size_t e, const size_t i, const size_t j) {
-            const size_t row = mesh()->node_number(e, i),
-                         col = mesh()->node_number(e, j);
-            if (boundary_first_kind.front() && (col == 0 || row == 0)) { // Left boundary
-                if (row == 0)
-                    ++boundary_elements_count[0];
-            } else if (boundary_first_kind.back() && (col == mesh()->nodes_count()-1 || row == mesh()->nodes_count()-1)) { // Right boundary
-                if (row == mesh()->nodes_count()-1)
-                    ++boundary_elements_count[1];
-            } else if (row < col) // Regular
-                ++K_inner.outerIndexPtr()[row + 1];
-        }
-    );
-
-    K_bound[0].reserve(boundary_elements_count[0]);
-    K_bound[1].reserve(boundary_elements_count[1]);
     prepare_memory(K_inner);
 
     if (neumann_task)
@@ -154,6 +146,7 @@ void finite_element_solver_base_1d<T, I>::create_matrix_portrait(Eigen::SparseMa
                 K_inner.innerIndexPtr()[j] = k;
             K_inner.valuePtr()[j] = T{0};
         }
+    //std::cout << Eigen::MatrixXd{K_inner} << std::endl << std::endl;
 }
 
 template<class T, class I>
