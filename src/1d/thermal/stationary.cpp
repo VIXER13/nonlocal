@@ -58,9 +58,6 @@ int main(int argc, char** argv) {
         std::cout << "element info: nodes count - " << mesh->element()->nodes_count() <<
                      "; qnodes count - " << mesh->element()->qnodes_count() << std::endl;
 
-        for(size_t e = 0; e < mesh->elements_count(); ++e)
-            std::cout << "element " << e << " begins node " << mesh->node_begin(e) << std::endl;
-
         std::cout << std::endl;
 
         for(size_t node = 0; node < mesh->nodes_count(); ++node) {
@@ -85,6 +82,13 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
         std::cout << std::endl;
 
+        mesh->calc_neighbours_count(0.1);
+        for(size_t e = 0; e < mesh->elements_count(); ++e) {
+            std::cout << "e = " << e << ' ';
+            std::cout << "Left = " << mesh->left_neighbour(e) << ' '
+                      << "Right = " << mesh->right_neighbour(e) << std::endl;
+        }
+
         nonlocal::finite_element_solver_base_1d<double, int> solver{mesh};
 
         nonlocal::equation_parameters<double> parameters;
@@ -93,8 +97,8 @@ int main(int argc, char** argv) {
         auto solution = solver.stationary(
             parameters,
             {
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, 0},
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, 0},
+                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0},
+                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0},
             },
             [](const double x) { return 1; },
             [](const double x, const double xp) { return 1; }

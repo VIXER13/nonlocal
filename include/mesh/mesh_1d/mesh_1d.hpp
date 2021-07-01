@@ -7,6 +7,10 @@
 
 namespace mesh {
 
+// Вспомогательная структура, необходимая для поузлового обхода сетки.
+// Хранит в себе пару номеров элементов, которым принадлежит узел
+// и локальные номера этого узла относительно каждого из элементов.
+// Для удобства, имеет два варианта просмотра, именованный и в виде массива.
 union curr_next_elements final {
     struct _curr_next_elements final {
         size_t curr_element    = std::numeric_limits<size_t>::max(),
@@ -17,6 +21,9 @@ union curr_next_elements final {
     std::array<std::array<size_t, 2>, 2> arr;
 };
 
+// Класс сетки для одномерных задач.
+// Выбрана гипотеза, что сетка равномерная, состоит из однородных элементов и все элементы и узлы пронумерованы слева направо.
+// Все данные о нумерации и местоположении узлов вычисляются и не хранятся.
 template<class T, class I = int32_t>
 class mesh_1d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
@@ -32,6 +39,7 @@ class mesh_1d final {
     T _step = (_section.back() - _section.front()) / _elements_count,
       _jacobian = T{2} / _step;
     std::vector<T> _quad_coord_loc;
+    size_t _neighbours_count;
 
 public:
     explicit mesh_1d(Finite_Element_1D_Ptr&& element, const size_t elements_count = 1, const std::array<T, 2> section = {T{-1}, T{1}});
@@ -42,10 +50,14 @@ public:
     size_t nodes_count() const noexcept;
     T jacobian() const noexcept;
     T quad_coord(const size_t e, const size_t q) const noexcept;
+    size_t node_number(const size_t e, const size_t i) const noexcept;
+    bool is_boundary_node(const size_t node) const noexcept;
 
-    // Возвращает номера элементов и локальные номера узлов на элементах
-    curr_next_elements node_elements(const size_t node) const;
-    size_t node_begin(const size_t e) const;
+    curr_next_elements node_elements(const size_t node) const noexcept; // Возвращает номера элементов и локальные номера узлов на элементах
+
+    void calc_neighbours_count(const T r) noexcept;
+    size_t left_neighbour(const size_t e) const noexcept;
+    size_t right_neighbour(const size_t e) const noexcept;
 };
 
 template<class T, class I>
@@ -87,7 +99,13 @@ template<class T, class I>
 T mesh_1d<T, I>::quad_coord(const size_t e, const size_t q) const noexcept { return _step * e + _quad_coord_loc[q]; }
 
 template<class T, class I>
-curr_next_elements mesh_1d<T, I>::node_elements(const size_t node) const {
+size_t mesh_1d<T, I>::node_number(const size_t e, const size_t i) const noexcept { return e * (element()->nodes_count()-1) + i; }
+
+template<class T, class I>
+bool mesh_1d<T, I>::is_boundary_node(const size_t node) const noexcept { return !node || node == nodes_count()-1; }
+
+template<class T, class I>
+curr_next_elements mesh_1d<T, I>::node_elements(const size_t node) const noexcept {
     if (!node)
         return {.named = {.curr_element = 0, .curr_loc_number = 0}};
     if (node == nodes_count()-1)
@@ -101,7 +119,18 @@ curr_next_elements mesh_1d<T, I>::node_elements(const size_t node) const {
 }
 
 template<class T, class I>
-size_t mesh_1d<T, I>::node_begin(const size_t e) const { return e * (_element->nodes_count() - 1); }
+void mesh_1d<T, I>::calc_neighbours_count(const T r) noexcept { _neighbours_count = r / _step + 1; }
+
+template<class T, class I>
+size_t mesh_1d<T, I>::left_neighbour(const size_t e) const noexcept {
+    return e > _neighbours_count ? e - _neighbours_count : 0;
+}
+
+template<class T, class I>
+size_t mesh_1d<T, I>::right_neighbour(const size_t e) const noexcept {
+    const size_t right = e + _neighbours_count;
+    return right > elements_count() ? elements_count() : right;
+}
 
 }
 
