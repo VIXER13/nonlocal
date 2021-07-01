@@ -43,9 +43,31 @@ template<class Vector>
 void save_as_csv(const std::string& path, const Vector& x) {
     std::ofstream csv{path};
     //csv.precision(std::numeric_limits<T>::max_digits10);
+    const double h = 1. / (x.size() - 1);
     for(size_t i = 0; i < x.size(); ++i)
-        csv << i << ',' << x[i] << '\n';
+        csv << i * h << ',' << x[i] << '\n';
 }
+
+template<class T, uintmax_t p, uintmax_t q>
+class polynomial final {
+    T _r, _norm;
+
+public:
+    explicit polynomial(const T r) noexcept { set_radius(r); }
+
+    void set_radius(const T r) noexcept {
+        _r = r;
+        _norm = T{p} / (2 * _r * std::beta(T{1} / T{p}, T{q + 1}));
+    }
+
+    T radius() const noexcept { return _r; }
+
+    T operator()(const T x, const T y) const noexcept {
+        const T h = std::abs(x - y);
+        using metamath::function::power;
+        return h < _r ? _norm * power<q>(T{1} - power<p>(h / _r)) : T{0};
+    }
+};
 
 }
 
@@ -62,60 +84,45 @@ int main(int argc, char** argv) {
             std::stoull(argv[2]), std::array{std::stod(argv[3]), std::stod(argv[4])}
         );
 
-//        std::cout << "section: [" << mesh->section().front() << ',' << mesh->section().back() << ']' << std::endl;
-//        std::cout << "elements count: " << mesh->elements_count() << std::endl;
-//        std::cout << "nodes count: " << mesh->nodes_count() << std::endl;
-//        std::cout << "element info: nodes count - " << mesh->element()->nodes_count() <<
-//                     "; qnodes count - " << mesh->element()->qnodes_count() << std::endl;
-//
-//        std::cout << std::endl;
-//
-//        for(size_t node = 0; node < mesh->nodes_count(); ++node) {
-//            const auto elements = mesh->node_elements(node);
-//            std::cout << "node " << node << " elements "
-//                      << elements.arr[0][0] << ' '
-//                      << elements.arr[0][1] << ' '
-//                      << elements.arr[1][0] << ' '
-//                      << elements.arr[1][1] << ' ' << std::endl;
-//        }
-//
-//        std::cout << std::endl;
-//
-//        std::cout << "jacobian: " << mesh->jacobian() << std::endl;
-//        for(size_t e = 0; e < mesh->elements_count(); ++e) {
-//            std::cout << "e = " << e << ' ';
-//            for(size_t q = 0; q < mesh->element()->qnodes_count(); ++q)
-//                std::cout << mesh->quad_coord(e, q) << ' ';
-//            std::cout << std::endl;
-//        }
-//
-//        std::cout << std::endl;
-//        std::cout << std::endl;
-
-        mesh->calc_neighbours_count(0.1);
-//        for(size_t e = 0; e < mesh->elements_count(); ++e) {
-//            std::cout << "e = " << e << ' ';
-//            std::cout << "Left = " << mesh->left_neighbour(e) << ' '
-//                      << "Right = " << mesh->right_neighbour(e) << std::endl;
-//        }
-
-        nonlocal::finite_element_solver_base_1d<double, int> solver{mesh};
+        nonlocal::solver_parameters<double> sol_parameters;
+        sol_parameters.save_path = "./datanonloc/";
+        sol_parameters.time_interval[0] = 0;
+        sol_parameters.time_interval[1] = 0.1;
+        sol_parameters.steps = 1000;
+        sol_parameters.save_freq = 1;
 
         nonlocal::equation_parameters<double> parameters;
-        parameters.p1 = 1;
-        parameters.r = 0;
-        auto solution = solver.stationary(
-            parameters,
+        parameters.p1 = 0.5;
+        parameters.r = 0.1;
+        mesh->calc_neighbours_count(parameters.r);
+        nonlocal::finite_element_solver_base_1d<double, int> solver{mesh};
+
+        solver.nonstationary(sol_parameters, parameters,
             {
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, 2},
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, -2},
+                std::pair{
+                    nonlocal::boundary_condition_t::SECOND_KIND,
+                    [](const double t) { return 1; }
+                },
+                std::pair{
+                    nonlocal::boundary_condition_t::SECOND_KIND,
+                    [](const double t) { return -1; }
+                }
             },
             [](const double x) { return 0; },
-            [](const double x, const double xp) { return std::abs(x - xp) < 0.1 ? 5 : 0; }
+            [](const double x) { return 0; },
+            polynomial<double, 2, 1>{parameters.r}
         );
 
-        using namespace std::string_literals;
-        save_as_csv("test.csv"s, solution);
+//        auto solution = solver.stationary(
+//            parameters,
+//            {
+//                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, -1},
+//                std::pair{nonlocal::boundary_condition_t::SECOND_KIND,  1},
+//            },
+//            [](const double x) { return 0; },
+//            polynomial<double, 2, 1>{parameters.r}
+//        );
+//        save_as_csv("test.csv", solution);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
