@@ -96,8 +96,8 @@ int main(int argc, char** argv) {
         sol_parameters.steps = 10000;
         sol_parameters.save_freq = 1;
 
-        nonlocal::equation_parameters<double> parameters;
-        parameters.p1 = 0.5;
+        nonlocal::heat::equation_parameters<double> parameters;
+        parameters.p1 = 0.3;
         parameters.r = 0.1;
         mesh->calc_neighbours_count(parameters.r);
         nonlocal::heat::heat_equation_solver_1d<double, int> solver{mesh};
@@ -123,8 +123,8 @@ int main(int argc, char** argv) {
         auto solution = solver.stationary(
             parameters,
             {
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, -1},
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND,  1},
+                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 1},
+                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0.5},
             },
             [](const double x) { return 0; },
             polynomial<double, 2, 1>{parameters.r}

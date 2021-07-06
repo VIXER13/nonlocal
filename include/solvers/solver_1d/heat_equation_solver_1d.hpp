@@ -5,6 +5,15 @@
 
 namespace nonlocal::heat {
 
+template<class T>
+struct equation_parameters final {
+    T lambda = T{1},
+      rho    = T{1},
+      c      = T{1},
+      p1     = T{1},
+      r      = T{0};
+};
+
 template<class T, class I>
 class heat_equation_solver_1d : public finite_element_solver_base_1d<T, I> {
     enum class calc_type : bool {STATIONARY, NONSTATIONARY};
@@ -31,9 +40,12 @@ class heat_equation_solver_1d : public finite_element_solver_base_1d<T, I> {
     template<calc_type type, class Influence_Function>
     void calc_matrix(const equation_parameters<T>& parameters,
                      Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                     std::array<std::vector<std::pair<size_t, T>>, 2>& K_bound,
+                     std::array<std::unordered_map<size_t, T>, 2>& K_bound,
                      const stationary_boundary& bound_cond,
                      const bool nonlocal_task, const Influence_Function& influence_function) const;
+
+//    void nonstationary_solver_logger(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature,
+//                                     const solver_parameters<T>& sol_parameters, const uintmax_t step) const;
 
 public:
     explicit heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T, I>>& mesh);
@@ -44,6 +56,14 @@ public:
                               const stationary_boundary& bound_cond,
                               const Right_Part& right_part,
                               const Influence_Function& influence_function) const;
+
+//    template<class Init_Dist, class Right_Part, class Influence_Function>
+//    void nonstationary(const solver_parameters<T>& sol_parameters,
+//                       const equation_parameters<T>& parameters,
+//                       const nonstatinary_boundary& bound_cond,
+//                       const Init_Dist& init_dist,
+//                       const Right_Part& right_part,
+//                       const Influence_Function& influence_function) const;
 };
 
 template<class T, class I>
@@ -124,7 +144,7 @@ template<class T, class I>
 template<typename heat_equation_solver_1d<T, I>::calc_type type, class Influence_Function>
 void heat_equation_solver_1d<T, I>::calc_matrix(const equation_parameters<T>& parameters,
                                                 Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                                                std::array<std::vector<std::pair<size_t, T>>, 2>& K_bound,
+                                                std::array<std::unordered_map<size_t, T>, 2>& K_bound,
                                                 const stationary_boundary& bound_cond,
                                                 const bool nonlocal_task, const Influence_Function& influence_function) const {
     if constexpr (type == calc_type::STATIONARY)
@@ -155,7 +175,7 @@ std::vector<T> heat_equation_solver_1d<T, I>::stationary(const equation_paramete
 
     const size_t size = mesh()->nodes_count() + neumann_task;
     Eigen::SparseMatrix<T, Eigen::RowMajor> K_inner(size, size);
-    std::array<std::vector<std::pair<size_t, T>>, 2> K_bound;
+    std::array<std::unordered_map<size_t, T>, 2> K_bound;
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(size);
 
     const bool nonlocal_task = parameters.p1 < 0.999;
@@ -172,6 +192,88 @@ std::vector<T> heat_equation_solver_1d<T, I>::stationary(const equation_paramete
     const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
     return std::vector<T>{temperature.cbegin(), std::next(temperature.cbegin(), mesh()->nodes_count())};
 }
+
+//template<class T, class I>
+//template<class Init_Dist, class Right_Part, class Influence_Function>
+//void finite_element_solver_base_1d<T, I>::nonstationary(const solver_parameters<T>& sol_parameters,
+//                                                        const equation_parameters<T>& parameters,
+//                                                        const nonstatinary_boundary& bound_cond,
+//                                                        const Init_Dist& init_dist,
+//                                                        const Right_Part& right_part,
+//                                                        const Influence_Function& influence_function) const {
+//    const bool nonlocal_task = parameters.p1 < 0.999;
+//    Eigen::SparseMatrix<T, Eigen::RowMajor> K_inner(mesh()->nodes_count(), mesh()->nodes_count());
+//    std::array<std::vector<std::pair<size_t, T>>, 2> K_bound;
+//
+//    stationary_boundary bound = convert_nonstationary_boundary_to_stationary(bound_cond, sol_parameters.time_interval.front());
+//    const auto integrate_rule_loc = [this, factor = parameters.lambda * parameters.p1](const size_t e, const size_t i, const size_t j) {
+//        return factor * integrate_loc(e, i, j);
+//    };
+//    const auto integrate_rule_nonloc =
+//        [this, factor = parameters.lambda * (T{1} - parameters.p1)]
+//                (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
+//            return factor * integrate_nonloc(eL, eNL, iL, jNL, influence_function);
+//        };
+//    static constexpr bool NOT_NEUMANN_TASK = false;
+//    create_matrix(K_inner, K_bound, NOT_NEUMANN_TASK, bound, integrate_rule_loc, integrate_rule_nonloc, nonlocal_task, influence_function);
+//
+//    static constexpr bool LOCAL = false;
+//    Eigen::SparseMatrix<T, Eigen::RowMajor, I> C_inner(mesh()->nodes_count(), mesh()->nodes_count());
+//    std::array<std::vector<std::pair<size_t, T>>, 2> C_bound;
+//    create_matrix(
+//        C_inner, C_bound, NOT_NEUMANN_TASK, bound,
+//        [this](const size_t e, const size_t i, const size_t j) { return integrate_basic_pair(e, i, j); },
+//        [](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) { return 0; },
+//        LOCAL, influence_function
+//    );
+//
+//    const T tau = (sol_parameters.time_interval.back() - sol_parameters.time_interval.front()) / sol_parameters.steps;
+//    C_inner *= parameters.rho * parameters.c;
+//    //K_bound *= tau;
+//    K_inner *= tau;
+//    K_inner += C_inner;
+//
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh()->nodes_count()),
+//                                        temperature_prev(mesh()->nodes_count()),
+//                                        temperature_curr(mesh()->nodes_count());
+//    for(size_t i = 0; i < mesh()->nodes_count(); ++i)
+//        temperature_prev[i] = 0;// init_dist(mesh()->node(i));
+//    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{K_inner};
+//    if(sol_parameters.save_freq != std::numeric_limits<uintmax_t>::max())
+//        nonstationary_solver_logger(temperature_prev, sol_parameters, 0);
+//    for(size_t step = 1; step < sol_parameters.steps + 1; ++step) {
+//        f.setZero();
+//        bound = convert_nonstationary_boundary_to_stationary(bound_cond, sol_parameters.time_interval.front() + step * tau);
+//        boundary_condition_second_kind(f, bound);
+//        integrate_right_part(f, right_part);
+//        f *= tau;
+//        f += C_inner.template selfadjointView<Eigen::Upper>() * temperature_prev;
+//        boundary_condition_first_kind(f, bound, K_bound);
+//        //temperature_curr = solver.solve(f);
+//        temperature_curr = solver.template solveWithGuess(f, temperature_prev);
+//        temperature_prev.swap(temperature_curr);
+//        if(step % sol_parameters.save_freq == 0)
+//            nonstationary_solver_logger(temperature_prev, sol_parameters, step);
+//    }
+//}
+//
+//template<class T, class I>
+//void finite_element_solver_base_1d<T, I>::nonstationary_solver_logger(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature,
+//                                                                      const solver_parameters<T>& sol_parameters, const uintmax_t step) const {
+//    std::cout << "step = " << step << std::endl;
+//    //if(sol_parameters.save_vtk)
+//    //    mesh::save_as_vtk(sol_parameters.save_path + std::to_string(step) + ".vtk", _base::mesh_proxy()->mesh(), temperature);
+//    if(sol_parameters.save_csv) {
+//        std::ofstream csv{sol_parameters.save_path + std::to_string(step) + ".csv"};
+//        csv.precision(std::numeric_limits<T>::max_digits10);
+//        const T h = T{5} / (temperature.size() - 1);
+//        for(size_t i = 0; i < temperature.size(); ++i)
+//            csv << i * h << ',' << temperature[i] << '\n';
+//    }
+//        //mesh::save_as_csv(sol_parameters.save_path + std::to_string(step) + ".csv", _base::mesh_proxy()->mesh(), temperature);
+//    //if(sol_parameters.calc_energy)
+//    //    std::cout << "Energy = " << _base::mesh_proxy()->integrate_solution(temperature) << std::endl;
+//}
 
 }
 
