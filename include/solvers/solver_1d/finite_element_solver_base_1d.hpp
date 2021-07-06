@@ -29,16 +29,16 @@ class finite_element_solver_base_1d {
 protected:
     enum class theory : bool { LOCAL, NONLOCAL };
 
-    using stationary_boundary = std::array<std::pair<boundary_condition_t, T>, 2>;
-    using nonstatinary_boundary = std::array<std::pair<boundary_condition_t, std::function<T(T)>>, 2>;
+    using stationary_boundary_t = std::array<std::pair<boundary_condition_t, T>, 2>;
+    using nonstatinary_boundary_t = std::array<std::pair<boundary_condition_t, std::function<T(T)>>, 2>;
 
     explicit finite_element_solver_base_1d(const std::shared_ptr<mesh::mesh_1d<T, I>>& mesh);
 
     static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor>& K);
-    static stationary_boundary convert_nonstationary_boundary_to_stationary(const nonstatinary_boundary& bound_cond, const T t);
+    static stationary_boundary_t nonstationary_boundary_to_stationary(const nonstatinary_boundary_t& bound_cond, const T t);
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                                const stationary_boundary& bound_cond,
+                                const stationary_boundary_t& bound_cond,
                                 const bool nonlocal_task) const;
 
     template<theory Theory, class Callback>
@@ -47,17 +47,17 @@ protected:
     template<class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
     void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
                      std::array<std::unordered_map<size_t, T>, 2>& K_bound,
-                     const stationary_boundary& bound_cond,
+                     const stationary_boundary_t& bound_cond,
                      const bool nonlocal_task, const Influence_Function& influence_fun,
                      const Integrate_Loc& integrate_rule_loc,
                      const Integrate_Nonloc& integrate_rule_nonloc) const;
 
     void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                       const stationary_boundary& bound_cond,
+                                       const stationary_boundary_t& bound_cond,
                                        const std::array<std::unordered_map<size_t, T>, 2>& K_bound) const;
 
     void boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                        const stationary_boundary& bound_cond) const;
+                                        const stationary_boundary_t& bound_cond) const;
 
     template<class Function>
     T integrate_function(const size_t e, const size_t i, const Function& func) const;
@@ -83,8 +83,8 @@ void finite_element_solver_base_1d<T, I>::prepare_memory(Eigen::SparseMatrix<T, 
 }
 
 template<class T, class I>
-typename finite_element_solver_base_1d<T, I>::stationary_boundary
-finite_element_solver_base_1d<T, I>::convert_nonstationary_boundary_to_stationary(const nonstatinary_boundary& bound_cond, const T t) {
+typename finite_element_solver_base_1d<T, I>::stationary_boundary_t
+finite_element_solver_base_1d<T, I>::nonstationary_boundary_to_stationary(const nonstatinary_boundary_t& bound_cond, const T t) {
     return {
         std::pair{bound_cond[0].first, bound_cond[0].second(t)},
         std::pair{bound_cond[1].first, bound_cond[1].second(t)},
@@ -100,7 +100,7 @@ const std::shared_ptr<mesh::mesh_1d<T, I>>& finite_element_solver_base_1d<T, I>:
 
 template<class T, class I>
 void finite_element_solver_base_1d<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                                                                 const stationary_boundary& bound_cond,
+                                                                 const stationary_boundary_t& bound_cond,
                                                                  const bool nonlocal_task) const {
 #pragma omp parallel for default(none) shared(K_inner, bound_cond, nonlocal_task)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
@@ -147,7 +147,7 @@ template<class T, class I>
 template<class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
 void finite_element_solver_base_1d<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
                                                       std::array<std::unordered_map<size_t, T>, 2>& K_bound,
-                                                      const stationary_boundary& bound_cond,
+                                                      const stationary_boundary_t& bound_cond,
                                                       const bool nonlocal_task, const Influence_Function& influence_fun,
                                                       const Integrate_Loc& integrate_rule_loc,
                                                       const Integrate_Nonloc& integrate_rule_nonloc) const {
@@ -200,7 +200,7 @@ void finite_element_solver_base_1d<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eig
 
 template<class T, class I>
 void finite_element_solver_base_1d<T, I>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                        const stationary_boundary& bound_cond,
+                                                                        const stationary_boundary_t& bound_cond,
                                                                         const std::array<std::unordered_map<size_t, T>, 2>& K_bound) const {
     std::array<T*, 2> fval = {&f[0], &f[mesh()->nodes_count()-1]};
     for(size_t b = 0; b < 2; ++b)
@@ -213,7 +213,7 @@ void finite_element_solver_base_1d<T, I>::boundary_condition_first_kind(Eigen::M
 
 template<class T, class I>
 void finite_element_solver_base_1d<T, I>::boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                         const stationary_boundary& bound_cond) const {
+                                                                         const stationary_boundary_t& bound_cond) const {
     std::array<T*, 2> fval = {&f[0], &f[mesh()->nodes_count()-1]};
     for(size_t b = 0; b < 2; ++b)
         if(bound_cond[b].first == boundary_condition_t::SECOND_KIND)

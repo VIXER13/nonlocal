@@ -49,6 +49,7 @@ public:
     size_t elements_count() const noexcept;
     size_t nodes_count() const noexcept;
     T jacobian() const noexcept;
+    T node_coord(const size_t node) const noexcept;
     T quad_coord(const size_t e, const size_t q) const noexcept;
     size_t node_number(const size_t e, const size_t i) const noexcept;
     bool is_boundary_node(const size_t node) const noexcept;
@@ -94,6 +95,11 @@ size_t mesh_1d<T, I>::nodes_count() const noexcept { return _nodes_count; }
 
 template<class T, class I>
 T mesh_1d<T, I>::jacobian() const noexcept { return _jacobian; }
+
+template<class T, class I>
+T mesh_1d<T, I>::node_coord(const size_t node) const noexcept {
+    return section().front() + node * (section().back() - section().front()) / nodes_count();
+}
 
 template<class T, class I>
 T mesh_1d<T, I>::quad_coord(const size_t e, const size_t q) const noexcept { return _step * e + _quad_coord_loc[q]; }

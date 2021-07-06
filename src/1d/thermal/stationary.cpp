@@ -49,11 +49,11 @@ void save_as_csv(const std::string& path, const Vector& x) {
 }
 
 template<class T, uintmax_t p, uintmax_t q>
-class polynomial final {
+class polynomial_1d final {
     T _r, _norm;
 
 public:
-    explicit polynomial(const T r) noexcept { set_radius(r); }
+    explicit polynomial_1d(const T r) noexcept { set_radius(r); }
 
     void set_radius(const T r) noexcept {
         _r = r;
@@ -61,6 +61,7 @@ public:
     }
 
     T radius() const noexcept { return _r; }
+    T norm() const noexcept { return _norm; }
 
     T operator()(const T x, const T y) const noexcept {
         const T h = std::abs(x - y);
@@ -68,11 +69,6 @@ public:
         return h < _r ? _norm * power<q>(T{1} - power<p>(h / _r)) : T{0};
     }
 };
-
-template<class Func>
-void test(const Func& func = [](){}) {
-    func();
-}
 
 }
 
@@ -90,6 +86,7 @@ int main(int argc, char** argv) {
         );
 
         nonlocal::solver_parameters<double> sol_parameters;
+        //sol_parameters.save_path = "./impulseNonLocP12R05/";
         sol_parameters.save_path = "./impulseLoc/";
         sol_parameters.time_interval[0] = 0;
         sol_parameters.time_interval[1] = 10;
@@ -97,39 +94,37 @@ int main(int argc, char** argv) {
         sol_parameters.save_freq = 1;
 
         nonlocal::heat::equation_parameters<double> parameters;
-        parameters.p1 = 0.3;
-        parameters.r = 0.1;
+        parameters.p1 = 1;
+        parameters.r = 0.5;
         mesh->calc_neighbours_count(parameters.r);
         nonlocal::heat::heat_equation_solver_1d<double, int> solver{mesh};
 
-        //nonlocal::finite_element_solver_base_1d<double, int> solver{mesh};
+        solver.nonstationary(sol_parameters, parameters,
+            {
+                std::pair{
+                    nonlocal::boundary_condition_t::SECOND_KIND,
+                    [](const double t) { return 4 * t * t * std::exp(-2 * t); }
+                },
+                std::pair{
+                    nonlocal::boundary_condition_t::SECOND_KIND,
+                    [](const double t) { return 0; }
+                }
+            },
+            [](const double x) { return 0; },
+            [](const double t, const double x) { return 0; },
+            polynomial_1d<double, 2, 1>{parameters.r}
+        );
 
-//        solver.nonstationary(sol_parameters, parameters,
+//        auto solution = solver.stationary(
+//            parameters,
 //            {
-//                std::pair{
-//                    nonlocal::boundary_condition_t::SECOND_KIND,
-//                    [](const double t) { return 4 * t * t * std::exp(-2 * t); }
-//                },
-//                std::pair{
-//                    nonlocal::boundary_condition_t::SECOND_KIND,
-//                    [](const double t) { return 0; }
-//                }
+//                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 1},
+//                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0.5},
 //            },
-//            [](const double x) { return 0; },
 //            [](const double x) { return 0; },
 //            polynomial<double, 2, 1>{parameters.r}
 //        );
-
-        auto solution = solver.stationary(
-            parameters,
-            {
-                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 1},
-                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0.5},
-            },
-            [](const double x) { return 0; },
-            polynomial<double, 2, 1>{parameters.r}
-        );
-        save_as_csv("test.csv", solution);
+//        save_as_csv("test.csv", solution);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
