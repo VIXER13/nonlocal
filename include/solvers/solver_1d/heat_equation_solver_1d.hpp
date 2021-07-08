@@ -7,11 +7,12 @@ namespace nonlocal::heat {
 
 template<class T>
 struct equation_parameters final {
-    T lambda = T{1}, // Коэффициент теплопроводности
-      rho    = T{1}, // Плотность
-      c      = T{1}, // Теплоёмкость
-      p1     = T{1}, // Весовой параметр модели
-      r      = T{0}; // Радиус нелокального влияния
+    T lambda   = T{1}, // Коэффициент теплопроводности
+      rho      = T{1}, // Плотность
+      c        = T{1}, // Теплоёмкость
+      p1       = T{1}, // Весовой параметр модели
+      r        = T{0}, // Радиус нелокального влияния
+      integral = T{0}; // Значение интеграла для задачи Неймана
 };
 
 template<class T>
@@ -271,6 +272,8 @@ std::vector<T> heat_equation_solver_1d<T>::stationary(const equation_parameters<
     _base::template integrate_right_part(f, right_part);
     _base::boundary_condition_second_kind(f, bound_cond);
     _base::boundary_condition_first_kind(f, bound_cond, K_bound);
+    if (neumann_task)
+        f[f.size()-1] = parameters.integral;
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{K_inner};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
