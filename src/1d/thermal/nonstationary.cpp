@@ -43,17 +43,21 @@ int main(int argc, char** argv) {
         parameters.r = 0.5;
         mesh->calc_neighbours_count(parameters.r);
         nonlocal::heat::heat_equation_solver_1d<double> solver{mesh};
-
-        auto solution = solver.stationary(
-            parameters,
-            {
-                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 1},
-                std::pair{nonlocal::boundary_condition_t::FIRST_KIND, 0.5},
-            },
-            [](const double x) { return 0; },
-            nonlocal::influence::polynomial_1d<double, 2, 1>{parameters.r}
+        solver.nonstationary(sol_parameters, parameters,
+             {
+                 std::pair{
+                     nonlocal::boundary_condition_t::SECOND_KIND,
+                     [](const double t) { return 4 * t * t * std::exp(-2 * t); }
+                 },
+                 std::pair{
+                     nonlocal::boundary_condition_t::SECOND_KIND,
+                     [](const double t) { return 0; }
+                 }
+             },
+             [](const double x) { return 0; },
+             [](const double t, const double x) { return 0; },
+             nonlocal::influence::polynomial_1d<double, 2, 1>{parameters.r}
         );
-        save_as_csv("test.csv", solution);
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

@@ -22,9 +22,9 @@ struct solver_parameters final {
          calc_energy = true; // Вычислять энергия при сохранении, иногда полезно для контроля расчёта
 };
 
-template<class T, class I>
+template<class T>
 class finite_element_solver_base_1d {
-    std::shared_ptr<mesh::mesh_1d<T, I>> _mesh;
+    std::shared_ptr<mesh::mesh_1d<T>> _mesh;
 
 protected:
     enum class theory : bool { LOCAL, NONLOCAL };
@@ -32,7 +32,7 @@ protected:
     using stationary_boundary_t = std::array<std::pair<boundary_condition_t, T>, 2>;
     using nonstatinary_boundary_t = std::array<std::pair<boundary_condition_t, std::function<T(T)>>, 2>;
 
-    explicit finite_element_solver_base_1d(const std::shared_ptr<mesh::mesh_1d<T, I>>& mesh);
+    explicit finite_element_solver_base_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
 
     static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor>& K);
     static stationary_boundary_t nonstationary_boundary_to_stationary(const nonstatinary_boundary_t& bound_cond, const T t);
@@ -68,40 +68,40 @@ protected:
 public:
     virtual ~finite_element_solver_base_1d() = default;
 
-    const std::shared_ptr<mesh::mesh_1d<T, I>>& mesh() const;
+    const std::shared_ptr<mesh::mesh_1d<T>>& mesh() const;
 };
 
-template<class T, class I>
-void finite_element_solver_base_1d<T, I>::prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor>& K) {
+template<class T>
+void finite_element_solver_base_1d<T>::prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor>& K) {
     for(size_t i = 0; i < K.rows(); ++i)
         K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
     K.data().resize(K.outerIndexPtr()[K.rows()]);
     for(size_t i = 0; i < K.outerIndexPtr()[K.rows()]; ++i) {
-        K.innerIndexPtr()[i] = std::numeric_limits<I>::max();
+        K.innerIndexPtr()[i] = std::numeric_limits<int>::max();
         K.valuePtr()[i] = T{0};
     }
 }
 
-template<class T, class I>
-typename finite_element_solver_base_1d<T, I>::stationary_boundary_t
-finite_element_solver_base_1d<T, I>::nonstationary_boundary_to_stationary(const nonstatinary_boundary_t& bound_cond, const T t) {
+template<class T>
+typename finite_element_solver_base_1d<T>::stationary_boundary_t
+finite_element_solver_base_1d<T>::nonstationary_boundary_to_stationary(const nonstatinary_boundary_t& bound_cond, const T t) {
     return {
         std::pair{bound_cond[0].first, bound_cond[0].second(t)},
         std::pair{bound_cond[1].first, bound_cond[1].second(t)},
     };
 }
 
-template<class T, class I>
-finite_element_solver_base_1d<T, I>::finite_element_solver_base_1d(const std::shared_ptr<mesh::mesh_1d<T, I>>& mesh)
+template<class T>
+finite_element_solver_base_1d<T>::finite_element_solver_base_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
     : _mesh{mesh} {}
 
-template<class T, class I>
-const std::shared_ptr<mesh::mesh_1d<T, I>>& finite_element_solver_base_1d<T, I>::mesh() const { return _mesh; }
+template<class T>
+const std::shared_ptr<mesh::mesh_1d<T>>& finite_element_solver_base_1d<T>::mesh() const { return _mesh; }
 
-template<class T, class I>
-void finite_element_solver_base_1d<T, I>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                                                                 const stationary_boundary_t& bound_cond,
-                                                                 const bool nonlocal_task) const {
+template<class T>
+void finite_element_solver_base_1d<T>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
+                                                              const stationary_boundary_t& bound_cond,
+                                                              const bool nonlocal_task) const {
 #pragma omp parallel for default(none) shared(K_inner, bound_cond, nonlocal_task)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         if (bound_cond.front().first == boundary_condition_t::FIRST_KIND && node == 0 ||
@@ -124,9 +124,9 @@ void finite_element_solver_base_1d<T, I>::create_matrix_portrait(Eigen::SparseMa
             K_inner.innerIndexPtr()[j] = k;
 }
 
-template<class T, class I>
-template<typename finite_element_solver_base_1d<T, I>::theory Theory, class Callback>
-void finite_element_solver_base_1d<T, I>::mesh_run(const Callback& callback) const {
+template<class T>
+template<typename finite_element_solver_base_1d<T>::theory Theory, class Callback>
+void finite_element_solver_base_1d<T>::mesh_run(const Callback& callback) const {
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         for(const auto& [eL, iL] : mesh()->node_elements(node).arr)
@@ -143,14 +143,14 @@ void finite_element_solver_base_1d<T, I>::mesh_run(const Callback& callback) con
             }
 }
 
-template<class T, class I>
+template<class T>
 template<class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
-void finite_element_solver_base_1d<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                                                      std::array<std::unordered_map<size_t, T>, 2>& K_bound,
-                                                      const stationary_boundary_t& bound_cond,
-                                                      const bool nonlocal_task, const Influence_Function& influence_fun,
-                                                      const Integrate_Loc& integrate_rule_loc,
-                                                      const Integrate_Nonloc& integrate_rule_nonloc) const {
+void finite_element_solver_base_1d<T>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
+                                                   std::array<std::unordered_map<size_t, T>, 2>& K_bound,
+                                                   const stationary_boundary_t& bound_cond,
+                                                   const bool nonlocal_task, const Influence_Function& influence_fun,
+                                                   const Integrate_Loc& integrate_rule_loc,
+                                                   const Integrate_Nonloc& integrate_rule_nonloc) const {
     const auto boundary_calc = [&K_bound, &K_inner](const size_t b, const size_t row, const size_t col, const T integral) {
         if (col == row)
             K_inner.coeffRef(row, col) = 1;
@@ -166,8 +166,8 @@ void finite_element_solver_base_1d<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eig
 
     mesh_run<theory::LOCAL>(
         [this, &K_inner, &K_bound, boundary_first_kind, &integrate_rule_loc, &boundary_calc](const size_t e, const size_t i, const size_t j) {
-            const I row = mesh()->node_number(e, i),
-                    col = mesh()->node_number(e, j);
+            const size_t row = mesh()->node_number(e, i),
+                         col = mesh()->node_number(e, j);
             if (boundary_first_kind.front() && (row == 0 || col == 0)) {
                 if (row == 0)
                     boundary_calc(0, row, col, integrate_rule_loc(e, i, j));
@@ -183,8 +183,8 @@ void finite_element_solver_base_1d<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eig
         mesh_run<theory::NONLOCAL>(
             [this, &K_inner, &K_bound, boundary_first_kind, &boundary_calc, &integrate_rule_nonloc, &influence_fun]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                const I row = mesh()->node_number(eL,  iL ),
-                        col = mesh()->node_number(eNL, jNL);
+                const size_t row = mesh()->node_number(eL,  iL ),
+                             col = mesh()->node_number(eNL, jNL);
                 if (boundary_first_kind.front() && (row == 0 || col == 0)) {
                     if (row == 0)
                         boundary_calc(0, row, col, integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun));
@@ -198,10 +198,10 @@ void finite_element_solver_base_1d<T, I>::calc_matrix(Eigen::SparseMatrix<T, Eig
     }
 }
 
-template<class T, class I>
-void finite_element_solver_base_1d<T, I>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                        const stationary_boundary_t& bound_cond,
-                                                                        const std::array<std::unordered_map<size_t, T>, 2>& K_bound) const {
+template<class T>
+void finite_element_solver_base_1d<T>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                     const stationary_boundary_t& bound_cond,
+                                                                     const std::array<std::unordered_map<size_t, T>, 2>& K_bound) const {
     std::array<T*, 2> fval = {&f[0], &f[mesh()->nodes_count()-1]};
     for(size_t b = 0; b < 2; ++b)
         if(bound_cond[b].first == boundary_condition_t::FIRST_KIND) {
@@ -211,18 +211,18 @@ void finite_element_solver_base_1d<T, I>::boundary_condition_first_kind(Eigen::M
         }
 }
 
-template<class T, class I>
-void finite_element_solver_base_1d<T, I>::boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                         const stationary_boundary_t& bound_cond) const {
+template<class T>
+void finite_element_solver_base_1d<T>::boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+                                                                      const stationary_boundary_t& bound_cond) const {
     std::array<T*, 2> fval = {&f[0], &f[mesh()->nodes_count()-1]};
     for(size_t b = 0; b < 2; ++b)
         if(bound_cond[b].first == boundary_condition_t::SECOND_KIND)
             *fval[b] += bound_cond[b].second;
 }
 
-template<class T, class I>
+template<class T>
 template<class Function>
-T finite_element_solver_base_1d<T, I>::integrate_function(const size_t e, const size_t i, const Function& func) const {
+T finite_element_solver_base_1d<T>::integrate_function(const size_t e, const size_t i, const Function& func) const {
     T integral = 0;
     const auto& el = mesh()->element();
     for(size_t q = 0; q < el->qnodes_count(); ++q)
@@ -230,9 +230,9 @@ T finite_element_solver_base_1d<T, I>::integrate_function(const size_t e, const 
     return integral * mesh()->jacobian();
 }
 
-template<class T, class I>
+template<class T>
 template<class Right_Part>
-void finite_element_solver_base_1d<T, I>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
+void finite_element_solver_base_1d<T>::integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const Right_Part& right_part) const {
 #pragma omp parallel for default(none) shared(f, right_part)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         for(const auto& [e, i] : mesh()->node_elements(node).arr)
