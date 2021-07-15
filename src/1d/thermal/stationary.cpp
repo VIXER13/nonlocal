@@ -37,10 +37,10 @@ int main(int argc, char** argv) {
         auto solution = solver.stationary(
             parameters,
             {
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND, -1.},
-                std::pair{nonlocal::boundary_condition_t::SECOND_KIND,  1.},
+                std::pair{nonlocal::heat::FLOW, -1.},
+                std::pair{nonlocal::heat::FLOW,  1.},
             },
-            [](const double x) { return 0; },
+            [](const double x) noexcept { return 0; },
             nonlocal::influence::polynomial_1d<double, 2, 1>{parameters.r}
         );
         save_as_csv(argv[5], solution, mesh->section());

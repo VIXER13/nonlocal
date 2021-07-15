@@ -13,16 +13,6 @@ enum class boundary_condition_t : uint8_t {
 };
 
 template<class T>
-struct solver_parameters final {
-    std::string save_path; // Путь куда сохранять данные
-    std::array<T, 2> time_interval = {0, 1};
-    uintmax_t steps = 100,
-              save_freq = 1; // Частота сохранения
-    bool save_csv    = true, // Сохранять .csv файлы в формате (x1, x2, T)
-         calc_energy = true; // Вычислять энергия при сохранении, иногда полезно для контроля расчёта
-};
-
-template<class T>
 class finite_element_solver_base_1d {
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
 

@@ -16,6 +16,19 @@ struct equation_parameters final {
 };
 
 template<class T>
+struct solver_parameters final {
+    std::string save_path; // Путь куда сохранять данные
+    std::array<T, 2> time_interval = {0, 1};
+    uintmax_t steps = 100,
+              save_freq = 1; // Частота сохранения
+    bool save_csv    = true, // Сохранять .csv файлы в формате (x1, x2, T)
+    calc_energy = true; // Вычислять энергия при сохранении, иногда полезно для контроля расчёта
+};
+
+static constexpr boundary_condition_t TEMPERATURE = boundary_condition_t::FIRST_KIND;
+static constexpr boundary_condition_t FLOW = boundary_condition_t::FIRST_KIND;
+
+template<class T>
 class heat_equation_solver_1d final : public finite_element_solver_base_1d<T> {
     enum class matrix : bool {THERMAL_CONDUCTIVITY, HEAT_CAPACITY};
 

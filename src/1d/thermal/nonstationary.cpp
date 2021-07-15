@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
         mesh->calc_neighbours_count(parameters.r);
         nonlocal::heat::heat_equation_solver_1d<double> solver{mesh};
 
-        nonlocal::solver_parameters<double> sol_parameters;
+        nonlocal::heat::solver_parameters<double> sol_parameters;
         sol_parameters.save_path = argv[5];
         sol_parameters.time_interval[0] = 0;
         sol_parameters.time_interval[1] = 10;
@@ -47,16 +47,16 @@ int main(int argc, char** argv) {
         solver.nonstationary(sol_parameters, parameters,
              {
                  std::pair{
-                     nonlocal::boundary_condition_t::SECOND_KIND,
-                     [](const double t) { return impulse<double, 2>(t); }
+                     nonlocal::heat::FLOW,
+                     [](const double t) noexcept { return impulse<double, 2>(t); }
                  },
                  std::pair{
-                     nonlocal::boundary_condition_t::SECOND_KIND,
-                     [](const double t) { return 0; }
+                     nonlocal::heat::FLOW,
+                     [](const double t) noexcept { return 0; }
                  }
              },
-             [](const double x) { return 0; },
-             [](const double t, const double x) { return 0; },
+             [](const double x) noexcept { return 0; },
+             [](const double t, const double x) noexcept { return 0; },
              nonlocal::influence::polynomial_1d<double, 2, 1>{parameters.r}
         );
     } catch (const std::exception& e) {
