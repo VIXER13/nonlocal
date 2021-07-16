@@ -118,6 +118,8 @@ protected:
         for(size_t i = 0; i < K.rows(); ++i)
             K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
         K.data().resize(K.outerIndexPtr()[K.rows()]);
+        for(size_t i = 0; i < K.outerIndexPtr()[K.rows()]; ++i)
+            K.innerIndexPtr()[i] = K.cols()-1;
     }
 
     static void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
@@ -139,6 +141,11 @@ protected:
 
     static T jacobian(const std::array<T, 4>& J) noexcept;
     static T jacobian(const std::array<T, 2>& J) noexcept;
+
+    template<size_t DoF>
+    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                const std::vector<bool>& inner_nodes, const bool nonlocal_task) const;
 
     template<theory Type, class Callback>
     void mesh_run(const Callback& callback) const;
@@ -203,6 +210,21 @@ T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 4
 
 template<class T, class I, class Matrix_Index>
 T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
+
+template<class T, class I, class Matrix_Index>
+template<size_t DoF>
+void finite_element_solver_base<T, I, Matrix_Index>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                                            Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                                            const std::vector<bool>& inner_nodes, const bool nonlocal_task) const {
+    if (nonlocal_task) mesh_index<DoF, index_stage::SHIFTS, theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
+    else               mesh_index<DoF, index_stage::SHIFTS, theory::   LOCAL>(K_inner, K_bound, inner_nodes);
+    prepare_memory(K_inner);
+    prepare_memory(K_bound);
+    if (nonlocal_task) mesh_index<DoF, index_stage::NONZERO, theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
+    else               mesh_index<DoF, index_stage::NONZERO, theory::   LOCAL>(K_inner, K_bound, inner_nodes);
+    sort_indices(K_inner);
+    sort_indices(K_bound);
+}
 
 template<class T, class I, class Matrix_Index>
 template<typename finite_element_solver_base<T, I, Matrix_Index>::theory Theory, class Callback>

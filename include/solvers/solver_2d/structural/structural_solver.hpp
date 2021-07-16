@@ -43,11 +43,6 @@ class structural_solver : public finite_element_solver_base<T, I, Matrix_Index> 
                                       const size_t iL, const size_t jNL,
                                       const Influence_Function& influence_function) const;
 
-    void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
-                                Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
-                                const std::vector<bool>& inner_nodes,
-                                const bool nonlocal_task) const;
-
     template<class Influence_Function>
     void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                      Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
@@ -144,28 +139,6 @@ std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_nonloc(const s
 }
 
 template<class T, class I, class Matrix_Index>
-void structural_solver<T, I, Matrix_Index>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
-                                                                   Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
-                                                                   const std::vector<bool>& inner_nodes,
-                                                                   const bool nonlocal_task) const {
-    if (nonlocal_task)
-        _base::template mesh_index<2, _base::index_stage::SHIFTS, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
-    else
-        _base::template mesh_index<2, _base::index_stage::SHIFTS, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
-
-    _base::prepare_memory(K_inner);
-    _base::prepare_memory(K_bound);
-
-    if (nonlocal_task)
-        _base::template mesh_index<2, _base::index_stage::NONZERO, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
-    else
-        _base::template mesh_index<2, _base::index_stage::NONZERO, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
-
-    _base::sort_indices(K_inner);
-    _base::sort_indices(K_bound);
-}
-
-template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
 void structural_solver<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
@@ -233,7 +206,7 @@ void structural_solver<T, I, Matrix_Index>::create_matrix(Eigen::SparseMatrix<T,
         });
 
     double time = omp_get_wtime();
-    create_matrix_portrait(K_inner, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
+    _base::template create_matrix_portrait<1>(K_inner, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
     std::cout << "rank = " << _base::rank() << std::endl;
     std::cout << "K_inner.nonzero() = " << K_inner.nonZeros() << std::endl;
     std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;

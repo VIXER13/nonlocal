@@ -49,6 +49,8 @@ class heat_equation_solver_2d : public finite_element_solver_base<T, I, Matrix_I
                                 const std::vector<bool>& inner_nodes,
                                 const bool neumann_task, const bool nonlocal_task) const;
 
+    void neumann_task_col_fill(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner) const;
+
     template<class Integrate_Loc, class Integrate_Nonloc, class Influence_Function>
     void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                      Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
@@ -170,32 +172,23 @@ T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc(const size_t eL,
 
 template<class T, class I, class Matrix_Index>
 void heat_equation_solver_2d<T, I, Matrix_Index>::create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
-                                                                      Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
-                                                                      const std::vector<bool>& inner_nodes,
-                                                                      const bool neumann_task, const bool nonlocal_task) const {
+                                                                         Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                                         const std::vector<bool>& inner_nodes,
+                                                                         const bool neumann_task, const bool nonlocal_task) const {
     if (neumann_task)
-        for(size_t i = 0; i < K_inner.rows(); ++i)
-            K_inner.outerIndexPtr()[i+1] = 1;
+        for(size_t row = 0; row < K_inner.rows(); ++row)
+            K_inner.outerIndexPtr()[row+1] = 1;
+    _base::template create_matrix_portrait<1>(K_inner, K_bound, inner_nodes, nonlocal_task);
+}
 
-    if (nonlocal_task)
-        _base::template mesh_index<1, _base::index_stage::SHIFTS, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
-    else
-        _base::template mesh_index<1, _base::index_stage::SHIFTS, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
-
-    _base::prepare_memory(K_inner);
-    _base::prepare_memory(K_bound);
-
-    if (nonlocal_task)
-        _base::template mesh_index<1, _base::index_stage::NONZERO, _base::theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
-    else
-        _base::template mesh_index<1, _base::index_stage::NONZERO, _base::theory::LOCAL>(K_inner, K_bound, inner_nodes);
-
-    if (neumann_task)
-        for(size_t i = 0; i < K_inner.rows(); ++i)
-            K_inner.innerIndexPtr()[K_inner.outerIndexPtr()[i+1]-1] = mesh().nodes_count();
-
-    _base::sort_indices(K_inner);
-    _base::sort_indices(K_bound);
+template<class T, class I, class Matrix_Index>
+void heat_equation_solver_2d<T, I, Matrix_Index>::neumann_task_col_fill(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner) const {
+#pragma omp parallel for default(none) shared(K_inner)
+    for(size_t node = first_node(); node < last_node(); ++node) {
+        T& val = K_inner.coeffRef(node - first_node(), mesh().nodes_count());
+        for(const I e : _base::mesh_proxy()->nodes_elements_map(node))
+            val += integrate_basic(e, _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second);
+    }
 }
 
 template<class T, class I, class Matrix_Index>
@@ -207,15 +200,6 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatri
                                                            const bool neumann_task,
                                                            const bool nonlocal_task, const Influence_Function& influence_fun,
                                                            const std::vector<bool>& inner_nodes) const {
-    if (neumann_task) {
-#pragma omp parallel for default(none) shared(K_inner)
-        for(size_t node = first_node(); node < last_node(); ++node) {
-            T& val = K_inner.coeffRef(node - first_node(), mesh().nodes_count());
-            for(const I e : _base::mesh_proxy()->nodes_elements_map(node))
-                val += integrate_basic(e, _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second);
-        }
-    }
-
     _base::template mesh_run<_base::theory::LOCAL>(
         [this, &K_inner, &K_bound, &inner_nodes, &integrate_rule_loc](const size_t e, const size_t i, const size_t j) {
             const I row = mesh().node_number(e, i),
@@ -313,6 +297,8 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
         integrate_rule_loc, integrate_rule_nonloc,
         p1 < _base::MAX_LOCAL_WEIGHT, influence_fun
     );
+    if (neumann_task)
+        neumann_task_col_fill(K_inner);
 
     _base::template integrate_right_part(f, right_part);
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
