@@ -13,7 +13,7 @@ struct equation_parameters final {
     T rho = 1,
       c   = 1;
 
-    equation_parameters() {
+    equation_parameters() noexcept {
         lambda.fill(T{1});
     }
 };

@@ -1,6 +1,7 @@
 #ifndef SAVE_RESULTS_HPP
 #define SAVE_RESULTS_HPP
 
+#include <numeric>
 #include <string_view>
 #include "mesh_2d.hpp"
 

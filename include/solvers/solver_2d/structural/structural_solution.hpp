@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_STRUCTURAL_SOLUTION_HPP
 #define NONLOCAL_STRUCTURAL_SOLUTION_HPP
 
-#include "mesh_proxy.hpp"
+#include "mesh_2d/mesh_proxy.hpp"
 
 namespace nonlocal::structural {
 

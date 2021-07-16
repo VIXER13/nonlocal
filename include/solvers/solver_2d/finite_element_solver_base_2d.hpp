@@ -9,8 +9,8 @@
 //#include <petscsystypes.h>
 #endif
 #include <eigen3/Eigen/Sparse>
-#define EIGEN_USE_MKL_ALL
-#include <eigen3/Eigen/PardisoSupport>
+//#define EIGEN_USE_MKL_ALL
+//#include <eigen3/Eigen/PardisoSupport>
 #undef I // for new version GCC, when use I macros
 #include "mesh.hpp"
 #include "right_partition.hpp"
@@ -319,6 +319,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_conditio
 }
 
 #ifdef MPI_USE
+
 /*
 template<class T, class I, class Matrix_Index>
 void finite_element_solver_base<T, I, Matrix_Index>::PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
@@ -369,7 +370,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::PETSc_solver(Eigen::Matrix<
     VecDestroy(&x);
     VecDestroy(&y);
 }
-*/
+ */
 
 template<class T, class I, class Matrix_Index>
 template<size_t DoF>

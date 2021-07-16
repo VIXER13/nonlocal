@@ -112,8 +112,6 @@ private:
     std::array<Finite_Element_1D_Ptr, 2> _elements_1d = make_default_1d_elements();
     std::array<Finite_Element_2D_Ptr, 5> _elements_2d = make_default_2d_elements();
 
-    bool check_intersect(const std::array<T, 2>& a, const std::array<T, 2>& b) const;
-
 public:
     explicit mesh_2d(const std::string& path);
     mesh_2d(const mesh_2d& other);

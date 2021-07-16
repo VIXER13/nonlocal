@@ -4,7 +4,7 @@
 #include <functional>
 #include <algorithm>
 #include <omp.h>
-#include "finite_element_solver_base.hpp"
+#include "solver_2d/finite_element_solver_base_2d.hpp"
 #include "structural_solution.hpp"
 
 namespace nonlocal::structural {
@@ -272,12 +272,12 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculati
 //    K.template selfadjointView<Eigen::Upper>();
 //#ifdef MPI_USE
     //const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = _base::template MKL_solver<2>(f, K);
-    //Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
+    Eigen::PardisoLLT<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
 //    _base::PETSc_solver(f, K);
 //#else
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
-    std::cout << "iterations = " << solver.iterations() << std::endl;
+    //std::cout << "iterations = " << solver.iterations() << std::endl;
 //#endif
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
