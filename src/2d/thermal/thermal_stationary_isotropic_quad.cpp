@@ -1,4 +1,4 @@
-#include "solver_2d/influence_functions.hpp"
+#include "solver_2d/influence_functions_2d.hpp"
 #include "solver_2d/thermal/heat_equation_solver_2d.hpp"
 
 int main(int argc, char** argv) {

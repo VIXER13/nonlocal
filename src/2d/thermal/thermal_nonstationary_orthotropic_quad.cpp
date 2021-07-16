@@ -1,4 +1,4 @@
-#include "solver_2d/influence_functions.hpp"
+#include "solver_2d/influence_functions_2d.hpp"
 #include "solver_2d/thermal/heat_equation_solver_2d.hpp"
 
 int main(int argc, char** argv) {
@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         std::cout << "r[0] = " << r[0] << std::endl;
         std::cout << "r[1] = " << r[1] << std::endl;
-        static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
+        static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
         nonlocal::heat::solver_parameters<double> sol_parameters;
         sol_parameters.save_path = argv[5];
         sol_parameters.time_interval = {0, 5};

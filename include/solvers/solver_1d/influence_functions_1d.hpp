@@ -22,14 +22,15 @@ public:
     T norm() const noexcept { return _norm; }
 
     T operator()(const T x, const T y) const noexcept {
-        const T h = std::abs(x - y);
-        using metamath::function::power;
-        return h < _r ? _norm : T{0};
+        return std::abs(x - y) < _r ? _norm : T{0};
     }
 };
 
-template<class T, uintmax_t p, uintmax_t q>
+template<class T, intmax_t p, intmax_t q>
 class polynomial_1d final {
+    static_assert(p > 0, "Parameter p must be greater than 0.");
+    static_assert(q > 0, "Parameter q must be greater than 0.");
+
     T _r, _norm;
 
 public:
