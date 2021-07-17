@@ -27,11 +27,12 @@ int main(int argc, char** argv) {
         sol_parameters.save_csv = true;
         sol_parameters.calc_energy = true;
 
-        nonlocal::heat::equation_parameters<double, nonlocal::heat::calc_type::ORTHOTROPIC> eq_parameters;
+        nonlocal::heat::equation_parameters<double, nonlocal::heat::material_t::ORTHOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
         eq_parameters.rho = 1;
         eq_parameters.c = 1;
+        eq_parameters.p1 = p1;
 
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
@@ -70,7 +71,6 @@ int main(int argc, char** argv) {
             },
             [](const std::array<double, 2>&) { return 0; }, // Начальные условия
             [](const std::array<double, 2>&) { return 0; }, // Правая часть
-            p1, // Вес
             bell // Функция влияния
         );
     } catch(const std::exception& e) {

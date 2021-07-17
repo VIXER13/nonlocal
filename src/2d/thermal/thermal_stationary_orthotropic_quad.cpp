@@ -16,9 +16,11 @@ int main(int argc, char** argv) {
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
-        nonlocal::heat::equation_parameters<double, nonlocal::heat::calc_type::ORTHOTROPIC> eq_parameters;
+        nonlocal::heat::equation_parameters<double, nonlocal::heat::material_t::ORTHOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
+        eq_parameters.p1 = p1;
+        eq_parameters.r  = r;
 
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
@@ -54,8 +56,7 @@ int main(int argc, char** argv) {
                     [](const std::array<double, 2>& x) { return 0; },
                 }
             },
-            {[](const std::array<double, 2>&) { return 0; }}, // Правая часть
-            p1, // Вес
+            [](const std::array<double, 2>&) { return 0; }, // Правая часть
             bell // Функция влияния
         );
 

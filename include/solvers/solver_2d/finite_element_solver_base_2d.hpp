@@ -150,6 +150,14 @@ protected:
     template<theory Type, class Callback>
     void mesh_run(const Callback& callback) const;
 
+    template<size_t DoF, class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
+    void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                     const std::vector<bool>& inner_nodes,
+                     const bool nonlocal_task, const Influence_Function& influence_fun,
+                     const Integrate_Loc& integrate_rule_loc,
+                     const Integrate_Nonloc& integrate_rule_nonloc) const;
+
     // Функция обхода групп граничных элементов.
     // Callback - функтор с сигнатурой void(size_t, size_t, size_t)
     template<class Callback>
@@ -241,6 +249,62 @@ void finite_element_solver_base<T, I, Matrix_Index>::mesh_run(const Callback& ca
                     for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL) // Аппроксимационные функции
                         callback(eL, eNL, iL, jNL);
         }
+    }
+}
+
+template<class T, class I, class Matrix_Index>
+template<size_t DoF, class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
+void finite_element_solver_base<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
+                                                                 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
+                                                                 const std::vector<bool>& inner_nodes,
+                                                                 const bool nonlocal_task, const Influence_Function& influence_fun,
+                                                                 const Integrate_Loc& integrate_rule_loc,
+                                                                 const Integrate_Nonloc& integrate_rule_nonloc) const {
+    const auto calc_predicate = [&inner_nodes](const size_t glob_row, const size_t glob_col, const theory flag) {
+        bool calc_flag = false;
+        for(size_t row = glob_row; !calc_flag && row < glob_row + DoF; ++row)
+            for(size_t col = glob_col; !calc_flag && col < glob_col + DoF; ++col)
+                calc_flag = inner_nodes[row] && inner_nodes[col] ? row <= col :
+                            row != col                           ? !inner_nodes[col] : flag == theory::LOCAL;
+        return calc_flag;
+    };
+
+    const auto calc =
+        [&K_inner, &K_bound, &inner_nodes, shift = DoF * first_node()]
+        (const std::array<T, DoF * DoF>& block, const size_t glob_row, const size_t glob_col, const theory flag) {
+            for(auto [row, component] = std::make_tuple(glob_row, block.cbegin()); row < glob_row + DoF; ++row) {
+                T* data_ptr = nullptr;
+                for(size_t col = glob_col; col < glob_col + DoF; ++col, ++component)
+                    if (inner_nodes[row] && inner_nodes[col]) {
+                        if (row <= col) {
+                            if (!data_ptr) data_ptr = &K_inner.coeffRef(row - shift, col);
+                            else         ++data_ptr;
+                            *data_ptr += *component;
+                        }
+                    } else if (row != col) {
+                        if (!inner_nodes[col])
+                            K_bound.coeffRef(row - shift, col) += *component;
+                    } else if (flag == theory::LOCAL)
+                        K_inner.coeffRef(row - shift, col) = T{1};
+            }
+        };
+
+    mesh_run<theory::LOCAL>(
+        [this, &calc_predicate, &calc, &integrate_rule_loc](const size_t e, const size_t i, const size_t j) {
+            const I glob_row = DoF * mesh().node_number(e, i),
+                    glob_col = DoF * mesh().node_number(e, j);
+            if (calc_predicate(glob_row, glob_col, theory::LOCAL))
+                calc(integrate_rule_loc(e, i, j), glob_row, glob_col, theory::LOCAL);
+        });
+
+    if (nonlocal_task) {
+        mesh_run<theory::NONLOCAL>(
+            [this, &calc_predicate, &calc, &integrate_rule_nonloc, &influence_fun](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+                const I glob_row = DoF * mesh().node_number(eL,   iL),
+                        glob_col = DoF * mesh().node_number(eNL, jNL);
+                if (calc_predicate(glob_row, glob_col, theory::NONLOCAL))
+                    calc(integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun), glob_row, glob_col, theory::NONLOCAL);
+            });
     }
 }
 

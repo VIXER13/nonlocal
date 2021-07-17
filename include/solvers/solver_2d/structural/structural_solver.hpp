@@ -206,7 +206,7 @@ void structural_solver<T, I, Matrix_Index>::create_matrix(Eigen::SparseMatrix<T,
         });
 
     double time = omp_get_wtime();
-    _base::template create_matrix_portrait<1>(K_inner, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
+    _base::template create_matrix_portrait<2>(K_inner, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
     std::cout << "rank = " << _base::rank() << std::endl;
     std::cout << "K_inner.nonzero() = " << K_inner.nonZeros() << std::endl;
     std::cout << "K_bound.nonzero() = " << K_bound.nonZeros() << std::endl;

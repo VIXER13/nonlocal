@@ -15,8 +15,9 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
         const double r = std::stod(argv[2]), p1 = std::stod(argv[3]);
         static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
-        nonlocal::heat::equation_parameters<double, nonlocal::heat::calc_type::ISOTROPIC> eq_parameters;
+        nonlocal::heat::equation_parameters<double, nonlocal::heat::material_t::ISOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = 1;
+        eq_parameters.p1 = p1;
 
         auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
@@ -53,7 +54,6 @@ int main(int argc, char** argv) {
                 }
             },
             {[](const std::array<double, 2>&) { return 0; }}, // Правая часть
-            p1, // Вес
             bell // Функция влияния
         );
 

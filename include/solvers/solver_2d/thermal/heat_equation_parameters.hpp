@@ -5,16 +5,20 @@
 
 namespace nonlocal::heat {
 
-enum class calc_type : bool { ISOTROPIC, ORTHOTROPIC };
+enum class material_t : bool { ISOTROPIC, ORTHOTROPIC };
 
-template<class T, calc_type Calc_Type>
+template<class T, material_t Material>
 struct equation_parameters final {
-    std::array<T, Calc_Type == calc_type::ORTHOTROPIC ? 2 : 1> lambda;
-    T rho = 1,
-      c   = 1;
+    std::array<T, Material == material_t::ORTHOTROPIC ? 2 : 1> lambda, // Коэффициент теплопроводности
+                                                               r;      // Длины полуосей области нелокального влияния
+    T rho      = T{1}, // Плотность
+      c        = T{1}, // Теплоёмкость
+      p1       = T{1}, // Весовой параметр модели
+      integral = T{0}; // Значение интеграла для задачи Неймана
 
     equation_parameters() noexcept {
         lambda.fill(T{1});
+        r.fill(T{0});
     }
 };
 
