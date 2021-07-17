@@ -31,14 +31,14 @@ class heat_equation_solver_2d : public finite_element_solver_base<T, I, Matrix_I
 
     std::array<T, 2> _lambda = { T{1}, T{1} };
 
-    std::array<T, 1> integrate_basic(const size_t e, const size_t i) const;
-    std::array<T, 1> integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
+    T integrate_basic(const size_t e, const size_t i) const;
+    T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
     template<material_t Matherial>
-    std::array<T, 1> integrate_loc(const size_t e, const size_t i, const size_t j) const;
+    T integrate_loc(const size_t e, const size_t i, const size_t j) const;
     template<material_t Matherial, class Influence_Function>
-    std::array<T, 1> integrate_nonloc(const size_t eL, const size_t eNL,
-                                      const size_t iL, const size_t jNL,
-                                      const Influence_Function& influence_function) const;
+    T integrate_nonloc(const size_t eL, const size_t eNL,
+                       const size_t iL, const size_t jNL,
+                       const Influence_Function& influence_function) const;
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                                 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
@@ -95,28 +95,28 @@ heat_equation_solver_2d<T, I, Matrix_Index>::heat_equation_solver_2d(const std::
     : _base{mesh} {}
 
 template<class T, class I, class Matrix_Index>
-std::array<T, 1> heat_equation_solver_2d<T, I, Matrix_Index>::integrate_basic(const size_t e, const size_t i) const {
+T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
     const auto& el = _base::mesh().element_2d(e);
           auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
     for(size_t q = 0; q < el->nodes_count(); ++q, ++J)
         integral += el->weight(q) * el->qN(i, q) * _base::jacobian(*J);
-    return {integral};
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
-std::array<T, 1> heat_equation_solver_2d<T, I, Matrix_Index>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
+T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el = _base::mesh().element_2d(e);
           auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
     for(size_t q = 0; q < el->nodes_count(); ++q, ++J)
         integral += el->weight(q) * el->qN(i, q) * el->qN(j, q) * _base::jacobian(*J);
-    return {integral};
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material>
-std::array<T, 1> heat_equation_solver_2d<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
+T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el   = _base::mesh().element_2d(e);
           auto  J    = _base::mesh_proxy()->jacobi_matrix(e);
@@ -134,14 +134,14 @@ std::array<T, 1> heat_equation_solver_2d<T, I, Matrix_Index>::integrate_loc(cons
         }
         integral = _lambda[X] * integral_part[X] + _lambda[Y] * integral_part[Y];
     }
-    return {integral};
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Influence_Function>
-std::array<T, 1> heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                                                               const size_t iL, const size_t jNL,
-                                                                               const Influence_Function& influence_function) const {
+T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
+                                                                const size_t iL, const size_t jNL,
+                                                                const Influence_Function& influence_function) const {
     T integral = 0;
     const auto& elL            = _base::mesh().element_2d(eL ),
               & elNL           = _base::mesh().element_2d(eNL);
@@ -168,7 +168,7 @@ std::array<T, 1> heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc(c
     }
     if constexpr (Material == material_t::ORTHOTROPIC)
         integral = _lambda[X] * integral_part[X] + _lambda[Y] * integral_part[Y];
-    return {integral};
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
@@ -188,7 +188,7 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::neumann_task_col_fill(Eigen::S
     for(size_t node = _base::first_node(); node < _base::last_node(); ++node) {
         T& val = K_inner.coeffRef(node - _base::first_node(), _base::mesh().nodes_count());
         for(const I e : _base::mesh_proxy()->nodes_elements_map(node))
-            val += integrate_basic(e, _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second).front();
+            val += integrate_basic(e, _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second);
     }
 }
 
@@ -203,20 +203,14 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatri
         const T factor_loc    = Material == material_t::ISOTROPIC ? eq_parameters.p1 * eq_parameters.lambda[0] : eq_parameters.p1,
                 factor_nonloc = Material == material_t::ISOTROPIC ? (T{1} - eq_parameters.p1) * eq_parameters.lambda[0] : (T{1} - eq_parameters.p1);
         _base::template calc_matrix<1>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
-            [this, factor_loc](const size_t e, const size_t i, const size_t j) {
-                std::array<T, 1> integral = integrate_loc<Material>(e, i, j);
-                integral[0] *= factor_loc;
-                return integral;
-            },
+            [this, factor_loc](const size_t e, const size_t i, const size_t j) { return factor_loc * integrate_loc<Material>(e, i, j); },
             [this, factor_nonloc](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
-                std::array<T, 1> integral = integrate_nonloc<Material>(eL, eNL, iL, jNL, influence_function);
-                integral[0] *= factor_nonloc;
-                return integral;
+                return factor_nonloc * integrate_nonloc<Material>(eL, eNL, iL, jNL, influence_function);
         });
     } else if constexpr (Type == matrix::HEAT_CAPACITY)
         _base::template calc_matrix<1>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
             [this](const size_t e, const size_t i, const size_t j) { return integrate_basic_pair(e, i, j); },
-            [this](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) { return std::array<T, 1>{}; });
+            [this](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) { return 0; });
 }
 
 template<class T, class I, class Matrix_Index>

@@ -269,9 +269,10 @@ void finite_element_solver_base<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMa
         return calc_flag;
     };
 
+    using block_t = std::array<T, DoF * DoF>;
     const auto calc =
         [&K_inner, &K_bound, &inner_nodes, shift = DoF * first_node()]
-        (const std::array<T, DoF * DoF>& block, const size_t glob_row, const size_t glob_col, const theory flag) {
+        (const block_t& block, const size_t glob_row, const size_t glob_col, const theory flag) {
             for(auto [row, component] = std::make_tuple(glob_row, block.cbegin()); row < glob_row + DoF; ++row) {
                 T* data_ptr = nullptr;
                 for(size_t col = glob_col; col < glob_col + DoF; ++col, ++component)
@@ -294,7 +295,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMa
             const I glob_row = DoF * mesh().node_number(e, i),
                     glob_col = DoF * mesh().node_number(e, j);
             if (calc_predicate(glob_row, glob_col, theory::LOCAL))
-                calc(integrate_rule_loc(e, i, j), glob_row, glob_col, theory::LOCAL);
+                calc(block_t{integrate_rule_loc(e, i, j)}, glob_row, glob_col, theory::LOCAL);
         });
 
     if (nonlocal_task) {
@@ -303,7 +304,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMa
                 const I glob_row = DoF * mesh().node_number(eL,   iL),
                         glob_col = DoF * mesh().node_number(eNL, jNL);
                 if (calc_predicate(glob_row, glob_col, theory::NONLOCAL))
-                    calc(integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun), glob_row, glob_col, theory::NONLOCAL);
+                    calc(block_t{integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun)}, glob_row, glob_col, theory::NONLOCAL);
             });
     }
 }
