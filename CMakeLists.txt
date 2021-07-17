@@ -21,3 +21,4 @@ add_compile_options(-O2)
 
 add_subdirectory(src/1d/thermal)
 add_subdirectory(src/2d/thermal)
+add_subdirectory(src/2d/structural)

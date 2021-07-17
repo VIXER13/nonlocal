@@ -142,6 +142,9 @@ protected:
     static T jacobian(const std::array<T, 4>& J) noexcept;
     static T jacobian(const std::array<T, 2>& J) noexcept;
 
+    template<class B, size_t DoF>
+    std::vector<bool> calc_inner_nodes(const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
+
     template<size_t DoF>
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                                 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
@@ -218,6 +221,19 @@ T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 4
 
 template<class T, class I, class Matrix_Index>
 T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
+
+template<class T, class I, class Matrix_Index>
+template<class B, size_t DoF>
+std::vector<bool> finite_element_solver_base<T, I, Matrix_Index>::calc_inner_nodes(const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
+    std::vector<bool> inner_nodes(DoF * mesh().nodes_count(), true);
+    boundary_nodes_run(
+        [this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
+            for(size_t comp = 0; comp < DoF; ++comp)
+                if(boundary_type(bounds_cond[b].type(comp)) == boundary_type::FIRST_KIND)
+                    inner_nodes[DoF * mesh().node_number(b, el, i) + comp] = false;
+        });
+    return std::move(inner_nodes);
+}
 
 template<class T, class I, class Matrix_Index>
 template<size_t DoF>

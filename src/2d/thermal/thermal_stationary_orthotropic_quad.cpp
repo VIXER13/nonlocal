@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
             { // Граничные условия
                 {   // Down
                     nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return -1; },
+                    [](const std::array<double, 2>& x) { return 1; },
                 },
 
                 {   // Right

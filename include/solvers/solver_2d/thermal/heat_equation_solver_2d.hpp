@@ -210,7 +210,7 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatri
     } else if constexpr (Type == matrix::HEAT_CAPACITY)
         _base::template calc_matrix<1>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
             [this](const size_t e, const size_t i, const size_t j) { return integrate_basic_pair(e, i, j); },
-            [this](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) { return 0; });
+            [this](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) { return T{0}; });
 }
 
 template<class T, class I, class Matrix_Index>
@@ -294,12 +294,8 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
     if constexpr (Material == material_t::ORTHOTROPIC)
         _lambda = eq_parameters.lambda;
 
-    std::vector<bool> inner_nodes(_base::mesh().nodes_count(), true);
-    _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
-        if(bounds_cond[b].type(0) == boundary_t::TEMPERATURE)
-            inner_nodes[_base::mesh().node_number(b, el, i)] = false;
-    });
     const bool nonlocal_task = eq_parameters.p1 < _base::MAX_LOCAL_WEIGHT;
+    const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols), K_bound(rows, cols);
     create_matrix_portrait(K_inner, K_bound, inner_nodes, neumann_task, nonlocal_task);
     calc_matrix<matrix::THERMAL_CONDUCTIVITY>(K_inner, K_bound, eq_parameters, inner_nodes, nonlocal_task, influence_fun);
@@ -327,14 +323,9 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary(const solver_par
     if constexpr (Material == material_t::ORTHOTROPIC)
         _lambda = eq_parameters.lambda;
 
-    std::vector<bool> inner_nodes(_base::mesh().nodes_count(), true);
-    _base::template boundary_nodes_run([this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
-        if(bounds_cond[b].type(0) == boundary_t::TEMPERATURE)
-            inner_nodes[_base::mesh().node_number(b, el, i)] = false;
-    });
-
     const size_t size = _base::mesh().nodes_count();
     const bool nonlocal_task = eq_parameters.p1 < _base::MAX_LOCAL_WEIGHT;
+    const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K_inner(size, size), K_bound(size, size);
     create_matrix_portrait(K_inner, K_bound, inner_nodes, NOT_NEUMANN_TASK, nonlocal_task);
     calc_matrix<matrix::THERMAL_CONDUCTIVITY>(K_inner, K_bound, eq_parameters, inner_nodes, nonlocal_task, influence_fun);

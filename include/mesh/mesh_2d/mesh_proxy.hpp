@@ -410,7 +410,7 @@ std::vector<std::array<T, 2>> mesh_proxy<T, I>::approx_centres_of_elements(const
         const auto& el = mesh.element_2d(e);
         const T x0 = is_trinagle(mesh.element_2d_type(e)) ? T{1}/T{3} : T{0};
         for(size_t node = 0; node < el->nodes_count(); ++node) {
-            using namespace utils;
+            using namespace metamath::function;
             centres[e] += mesh.node(mesh.node_number(e, node)) * el->N(node, {x0, x0});
         }
     }
@@ -442,7 +442,7 @@ std::vector<U> mesh_proxy<T, I>::all_to_all(const std::vector<U>& sendbuf) {
         recvcounts[i] = sizeof(U) * (_first_last_node[i].back() - _first_last_node[i].front());
         rdispls[i]    = sizeof(U) *  _first_last_node[i].front();
     }
-    std::vector<U> recvbuf(mesh().nodes_count()); // for old version mpich, when strict sendbuf and recvbuf don't support
+    std::vector<U> recvbuf = sendbuf; // for old version mpich, when strict sendbuf and recvbuf don't support
 #ifdef MPI_USE
     MPI_Alltoallv(const_cast<void*>(static_cast<const void*>(sendbuf.data())), sendcounts.data(), sdispls.data(), MPI_BYTE,
                   recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_BYTE, MPI_COMM_WORLD);
