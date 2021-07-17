@@ -30,12 +30,12 @@ static constexpr boundary_condition_t FLOW = boundary_condition_t::FIRST_KIND;
 
 template<class T>
 class heat_equation_solver_1d final : public finite_element_solver_base_1d<T> {
-    enum class matrix : bool {THERMAL_CONDUCTIVITY, HEAT_CAPACITY};
-
     using _base = finite_element_solver_base_1d<T>;
     using typename _base::stationary_boundary_t;
     using typename _base::nonstatinary_boundary_t;
     using _base::mesh;
+
+    enum class matrix : bool {THERMAL_CONDUCTIVITY, HEAT_CAPACITY};
 
     T integrate_basic(const size_t e, const size_t i) const;
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
@@ -51,7 +51,7 @@ class heat_equation_solver_1d final : public finite_element_solver_base_1d<T> {
 
     void neumann_task_col_fill(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner) const;
 
-    template<matrix type, class Influence_Function>
+    template<matrix Type, class Influence_Function>
     void calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
                      std::array<std::unordered_map<size_t, T>, 2>& K_bound,
                      const stationary_boundary_t& bound_cond,
@@ -170,13 +170,13 @@ void heat_equation_solver_1d<T>::neumann_task_col_fill(Eigen::SparseMatrix<T, Ei
 }
 
 template<class T>
-template<typename heat_equation_solver_1d<T>::matrix type, class Influence_Function>
+template<typename heat_equation_solver_1d<T>::matrix Type, class Influence_Function>
 void heat_equation_solver_1d<T>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
                                              std::array<std::unordered_map<size_t, T>, 2>& K_bound,
                                              const stationary_boundary_t& bound_cond,
                                              const equation_parameters<T>& parameters,
                                              const bool nonlocal_task, const Influence_Function& influence_function) const {
-    if constexpr (type == matrix::THERMAL_CONDUCTIVITY)
+    if constexpr (Type == matrix::THERMAL_CONDUCTIVITY)
         _base::template calc_matrix(K_inner, K_bound, bound_cond, nonlocal_task, influence_function,
             [this, factor = parameters.lambda * parameters.p1](const size_t e, const size_t i, const size_t j) {
                 return factor * integrate_loc(e, i, j);
@@ -185,7 +185,7 @@ void heat_equation_solver_1d<T>::calc_matrix(Eigen::SparseMatrix<T, Eigen::RowMa
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
                 return factor * integrate_nonloc(eL, eNL, iL, jNL, influence_function);
             });
-    else if constexpr (type == matrix::HEAT_CAPACITY)
+    else if constexpr (Type == matrix::HEAT_CAPACITY)
         _base::template calc_matrix(K_inner, K_bound, bound_cond, nonlocal_task, influence_function,
             [this](const size_t e, const size_t i, const size_t j) { return integrate_basic_pair(e, i, j); },
             [](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) { return 0; });
