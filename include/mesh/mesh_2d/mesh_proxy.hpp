@@ -20,6 +20,7 @@ class mesh_proxy final {
     std::vector<std::unordered_map<I, uint8_t>> _global_to_local_numbering; // Переход от глобальной нумерации к локальной каждого элемента.
                                                                             // Считаем, что в элементе не более 255 узлов.
 
+    std::vector<T>                              _elements_ares;
     std::vector<std::array<T, 4>>               _jacobi_matrices_nodes;     // Матрицы Якоби вычисленные в узлах сетки.
 
     std::vector<I>                              _quad_shifts;               // Квадратурные сдвиги.
@@ -41,7 +42,9 @@ class mesh_proxy final {
     static std::vector<std::vector<I>>                 node_elements_map_init        (const mesh_2d<T, I>& mesh);
     static std::vector<std::unordered_map<I, uint8_t>> global_to_local_numbering_init(const mesh_2d<T, I>& mesh);
 
+    static std::vector<T> approx_elements_areas(const mesh_2d<T, I>& mesh);
     static std::vector<std::array<T, 4>> approx_jacobi_matrices_nodes(const mesh_2d<T, I>& mesh,
+                                                                      const std::vector<T>& elements_ares,
                                                                       const std::vector<std::vector<I>>& nodes_elements_map,
                                                                       const std::vector<std::unordered_map<I, uint8_t>>& global_to_local_numbering);
 
@@ -86,6 +89,7 @@ public:
     const std::vector<I>&                 nodes_elements_map       (const size_t node)                        const;
     const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element)                     const;
     const std::array<T, 4>&               jacobi_matrix_node       (const size_t node)                        const;
+    T                                     element_area             (const size_t element)                     const;
     I                                     quad_shift               (const size_t element)                     const;
     quad_coord_iterator                   quad_coord               (const size_t element)                     const;
     jacobi_matrix_iterator                jacobi_matrix            (const size_t element)                     const;
@@ -122,7 +126,8 @@ void mesh_proxy<T, I>::set_mesh(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
     _nodes_elements_map = node_elements_map_init(*_mesh);
     _global_to_local_numbering = global_to_local_numbering_init(*_mesh);
 
-    _jacobi_matrices_nodes = approx_jacobi_matrices_nodes(*_mesh, _nodes_elements_map, _global_to_local_numbering);
+    _elements_ares = approx_elements_areas(*_mesh);
+    _jacobi_matrices_nodes = approx_jacobi_matrices_nodes(*_mesh, _elements_ares, _nodes_elements_map, _global_to_local_numbering);
 
     _quad_shifts = quadrature_shifts_init(*_mesh);
     _quad_coords = approx_all_quad_nodes(*_mesh, _quad_shifts);
@@ -149,6 +154,9 @@ const std::unordered_map<I, uint8_t>& mesh_proxy<T, I>::global_to_local_numberin
 
 template<class T, class I>
 const std::array<T, 4>& mesh_proxy<T, I>::jacobi_matrix_node(const size_t node) const { return _jacobi_matrices_nodes[node]; }
+
+template<class T, class I>
+T mesh_proxy<T, I>::element_area(const size_t element) const { return _elements_ares[element]; }
 
 template<class T, class I>
 I mesh_proxy<T, I>::quad_shift(const size_t element) const { return _quad_shifts[element]; }
@@ -228,27 +236,42 @@ std::vector<std::unordered_map<I, uint8_t>> mesh_proxy<T, I>::global_to_local_nu
 }
 
 template<class T, class I>
+std::vector<T> mesh_proxy<T, I>::approx_elements_areas(const mesh_2d<T, I>& mesh) {
+    std::vector<T> elements_areas(mesh.elements_count(), 0);
+    for(size_t e = 0; e < mesh.elements_count(); ++e) {
+        const auto& el = mesh.element_2d(e);
+        for(size_t i = 0; i < el->nodes_count(); ++i)
+            for(size_t q = 0; q < el->qnodes_count(); ++q)
+                elements_areas[e] += el->weight(q) * el->qN(i, q);
+    }
+    return std::move(elements_areas);
+}
+
+template<class T, class I>
 std::vector<std::array<T, 4>> mesh_proxy<T, I>::approx_jacobi_matrices_nodes(const mesh_2d<T, I>& mesh,
+                                                                             const std::vector<T>& elements_ares,
                                                                              const std::vector<std::vector<I>>& nodes_elements_map,
                                                                              const std::vector<std::unordered_map<I, uint8_t>>& global_to_local_numbering) {
     std::vector<std::array<T, 4>> jacobi_matrices(mesh.nodes_count(), std::array<T, 4>{});
-#pragma omp parallel for default(none) shared(jacobi_matrices, mesh, nodes_elements_map, global_to_local_numbering)
+#pragma omp parallel for default(none) shared(jacobi_matrices, mesh, elements_ares, nodes_elements_map, global_to_local_numbering)
     for(size_t node = 0; node < mesh.nodes_count(); ++node) {
+        T node_area = T{0};
         for(const I e : nodes_elements_map[node]) {
             const auto& el = mesh.element_2d(e);
             const size_t i = global_to_local_numbering[e].find(node)->second;
             for(size_t j = 0; j < el->nodes_count(); ++j) {
                 const std::array<T, 2>& mesh_node = mesh.node(mesh.node_number(e, j));
-                const T Nxi  = el->Nxi (j, el->node(i)),
-                        Neta = el->Neta(j, el->node(i));
+                const T Nxi  = el->Nxi (j, el->node(i)) * elements_ares[e], // TODO: optimize Nxi and Neta computations
+                        Neta = el->Neta(j, el->node(i)) * elements_ares[e];
                 jacobi_matrices[node][0] += mesh_node[0] * Nxi;
                 jacobi_matrices[node][1] += mesh_node[0] * Neta;
                 jacobi_matrices[node][2] += mesh_node[1] * Nxi;
                 jacobi_matrices[node][3] += mesh_node[1] * Neta;
             }
+            node_area += elements_ares[e];
         }
-        for(size_t i = 0; i < 4; ++i)
-            jacobi_matrices[node][i] /= nodes_elements_map[node].size();
+        using namespace metamath::function;
+        jacobi_matrices[node] /= node_area;
     }
     return std::move(jacobi_matrices);
 }
@@ -547,20 +570,22 @@ std::array<std::vector<T>, 2> mesh_proxy<T, I>::calc_gradient(const std::vector<
     std::vector<T> dx(sol.size(), 0), dy(sol.size(), 0);
 #pragma omp parallel for default(none) shared(dx, dy, sol)
     for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+        T node_area = T{0};
         for(const I e : nodes_elements_map(node)) {
             const auto& el = mesh().element_2d(e);
             const size_t i = global_to_local_numbering(e).find(node)->second;
             const std::array<T, 4>& J = jacobi_matrix_node(node);
             const T jac = jacobian(J);
             for(size_t j = 0; j < el->nodes_count(); ++j) {
-                const T Nxi  = el->Nxi (j, el->node(i)),
-                        Neta = el->Neta(j, el->node(i));
+                const T Nxi  = el->Nxi (j, el->node(i)) * element_area(e), // TODO: optimize Nxi and Neta calculations
+                        Neta = el->Neta(j, el->node(i)) * element_area(e);
                 dx[node] += ( J[3] * Nxi - J[2] * Neta) * sol[mesh().node_number(e, j)] / jac;
                 dy[node] += (-J[1] * Nxi + J[0] * Neta) * sol[mesh().node_number(e, j)] / jac;
             }
+            node_area += element_area(e);
         }
-        dx[node] /= nodes_elements_map(node).size();
-        dy[node] /= nodes_elements_map(node).size();
+        dx[node] /= node_area;
+        dy[node] /= node_area;
     }
     return {std::move(dx), std::move(dy)};
 }

@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
         nonlocal::structural::calculation_parameters<double> parameters;
         parameters.nu = 0.3;
         parameters.E = 21;
+        parameters.p1 = p1;
 
         auto sol = fem_sol.stationary(parameters,
             { // Граничные условия
@@ -93,7 +94,6 @@ int main(int argc, char** argv) {
                 }
             },
             {}, // Правая часть
-            p1, // Вес
             bell // Функция влияния
         );
 

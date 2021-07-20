@@ -12,7 +12,9 @@ struct calculation_parameters final {
     calc_type type = calc_type::PLANE_STRESS;
     T nu    = 0, // Коэффициент Пуассона
       E     = 0, // Модуль Юнга
-      alpha = 0; // Коэффициент линейного расширения
+      alpha = 0, // Коэффициент линейного расширения
+      p1    = 0, // Весовой параметр модели
+      r     = 0; // Длины полуосей области нелокального влияния
     bool thermoelasticity = false;
     std::vector<T> delta_temperature;
 };
@@ -99,13 +101,15 @@ void solution<T, I>::strain_and_stress_loc() {
     const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
 #pragma omp parallel for default(none) shared(D)
     for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {
+        T node_area = T{0};
         for(const I e : _mesh_proxy->nodes_elements_map(node)) {
             const auto& el = _mesh_proxy->mesh().element_2d(e);
             const size_t i = _mesh_proxy->global_to_local_numbering(e).find(node)->second;
             const std::array<T, 4>& J = _mesh_proxy->jacobi_matrix_node(node);
             const T jac = _mesh_proxy->jacobian(J);
             for(size_t j = 0; j < el->nodes_count(); ++j) {
-                const T Nxi = el->Nxi(j, el->node(i)), Neta = el->Neta(j, el->node(i));
+                const T Nxi  = el->Nxi (j, el->node(i)) * _mesh_proxy->element_area(e), // TODO: optimize Nxi and Neta calculations
+                        Neta = el->Neta(j, el->node(i)) * _mesh_proxy->element_area(e);
                 const std::array<T, 2> dx = {( J[3] * Nxi - J[2] * Neta) / jac,
                                              (-J[1] * Nxi + J[0] * Neta) / jac};
                 _strain[0][node] += dx[0] * _u[0][_mesh_proxy->mesh().node_number(e, j)];
@@ -113,10 +117,11 @@ void solution<T, I>::strain_and_stress_loc() {
                 _strain[2][node] += dx[0] * _u[1][_mesh_proxy->mesh().node_number(e, j)] +
                                     dx[1] * _u[0][_mesh_proxy->mesh().node_number(e, j)];
             }
+            node_area += _mesh_proxy->element_area(e);
         }
-        _strain[0][node] /=     _mesh_proxy->nodes_elements_map(node).size();
-        _strain[1][node] /=     _mesh_proxy->nodes_elements_map(node).size();
-        _strain[2][node] /= 2 * _mesh_proxy->nodes_elements_map(node).size();
+        _strain[0][node] /=     node_area;
+        _strain[1][node] /=     node_area;
+        _strain[2][node] /= 2 * node_area;
         _stress[0][node] += D[0] * _strain[0][node] + D[1] * _strain[1][node];
         _stress[1][node] += D[1] * _strain[0][node] + D[0] * _strain[1][node];
         _stress[2][node] += D[2] * _strain[2][node];

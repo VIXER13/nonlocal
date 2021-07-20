@@ -53,10 +53,8 @@ public:
     ~structural_solver() override = default;
 
     template<class Influence_Function>
-    solution<T, I> stationary(const calculation_parameters<T>& params,
-                              const std::vector<bound_cond<T>> &bounds_cond,
-                              const right_part<T>& right_part,
-                              const T p1, const Influence_Function& influence_fun);
+    solution<T, I> stationary(const calculation_parameters<T>& params, const std::vector<bound_cond<T>> &bounds_cond,
+                              const right_part<T>& right_part, const Influence_Function& influence_fun);
 };
 
 template<class T, class I, class Matrix_Index>
@@ -128,21 +126,21 @@ template<class Influence_Function>
 solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculation_parameters<T>& parameters,
                                                                  const std::vector<bound_cond<T>> &bounds_cond,
                                                                  const right_part<T>& right_part,
-                                                                 const T p1, const Influence_Function& influence_fun) {
+                                                                 const Influence_Function& influence_fun) {
     _D = hooke_matrix(parameters.nu, parameters.E, parameters.type);
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
                  cols = 2 * mesh().nodes_count();
-    const bool nonlocal_task = p1 < _base::MAX_LOCAL_WEIGHT;
+    const bool nonlocal_task = parameters.p1 < _base::MAX_LOCAL_WEIGHT;
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols), K_bound(rows, cols);
-    _base::template create_matrix_portrait<2>(K_inner, K_bound, inner_nodes, p1 < _base::MAX_LOCAL_WEIGHT);
+    _base::template create_matrix_portrait<2>(K_inner, K_bound, inner_nodes, nonlocal_task);
     _base::template calc_matrix<2>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
-        [this, p1](const size_t e, const size_t i, const size_t j) {
+        [this, p1 = parameters.p1](const size_t e, const size_t i, const size_t j) {
             using namespace metamath::function;
             return p1 * integrate_loc(e, i, j);
         },
-        [this, p2 = 1 - p1](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
+        [this, p2 = 1 - parameters.p1](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
             using namespace metamath::function;
             return p2 * integrate_nonloc(eL, eNL, iL, jNL, influence_function);
         });
@@ -162,7 +160,7 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const calculati
     std::cout << "iterations = " << solver.iterations() << std::endl;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
-    return solution<T, I>{_base::mesh_proxy(), parameters, p1, influence_fun, displacement};
+    return solution<T, I>{_base::mesh_proxy(), parameters, parameters.p1, influence_fun, displacement};
 }
 
 //template<class T, class I, class Matrix_Index>
