@@ -20,9 +20,6 @@ class mesh_proxy final {
     std::vector<std::unordered_map<I, uint8_t>> _global_to_local_numbering; // Переход от глобальной нумерации к локальной каждого элемента.
                                                                             // Считаем, что в элементе не более 255 узлов.
 
-    std::vector<T>                              _elements_ares;
-    std::vector<std::array<T, 4>>               _jacobi_matrices_nodes;     // Матрицы Якоби вычисленные в узлах сетки.
-
     std::vector<I>                              _quad_shifts;               // Квадратурные сдвиги.
     std::vector<std::array<T, 2>>               _quad_coords;               // Координаты квадратурных узлов сетки.
     std::vector<std::array<T, 4>>               _jacobi_matrices;           // Матрицы Якоби вычисленные в квадратурных узлах.
@@ -34,6 +31,9 @@ class mesh_proxy final {
     std::vector<std::vector<std::array<T, 2>>>  _quad_coords_bound,         // Координаты квадратурных узлов на границе.
                                                 _jacobi_matrices_bound;     // Матрицы Якоби на границе.
 
+    std::vector<T>                              _elements_ares;
+    std::vector<std::array<T, 4>>               _jacobi_matrices_nodes;     // Матрицы Якоби вычисленные в узлах сетки.
+
     int                                         _rank = 0, _size = 1;       // Данные о процессах MPI
     std::vector<std::array<size_t, 2>>          _first_last_node;           // С какого и по какой узлы распределена обработка данных между процессами
 
@@ -41,12 +41,6 @@ class mesh_proxy final {
 
     static std::vector<std::vector<I>>                 node_elements_map_init        (const mesh_2d<T, I>& mesh);
     static std::vector<std::unordered_map<I, uint8_t>> global_to_local_numbering_init(const mesh_2d<T, I>& mesh);
-
-    static std::vector<T> approx_elements_areas(const mesh_2d<T, I>& mesh);
-    static std::vector<std::array<T, 4>> approx_jacobi_matrices_nodes(const mesh_2d<T, I>& mesh,
-                                                                      const std::vector<T>& elements_ares,
-                                                                      const std::vector<std::vector<I>>& nodes_elements_map,
-                                                                      const std::vector<std::unordered_map<I, uint8_t>>& global_to_local_numbering);
 
     static std::vector<I>                quadrature_shifts_init    (const mesh_2d<T, I>& mesh);
     static void                          check_shifts              (const mesh_2d<T, I>& mesh, const std::vector<I>& quad_shifts);
@@ -62,6 +56,14 @@ class mesh_proxy final {
     static void                                       check_shifts                    (const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts);
     static std::vector<std::vector<std::array<T, 2>>> approx_all_quad_nodes_bound     (const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts);
     static std::vector<std::vector<std::array<T, 2>>> approx_all_jacobi_matrices_bound(const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts);
+
+    static std::vector<T> approx_elements_areas(const mesh_2d<T, I>& mesh,
+                                                const std::vector<I>& quad_shifts,
+                                                const std::vector<std::array<T, 4>>& jacobi_matrices);
+    static std::vector<std::array<T, 4>> approx_jacobi_matrices_nodes(const mesh_2d<T, I>& mesh,
+                                                                      const std::vector<T>& elements_ares,
+                                                                      const std::vector<std::vector<I>>& nodes_elements_map,
+                                                                      const std::vector<std::unordered_map<I, uint8_t>>& global_to_local_numbering);
 
     void first_last_node_init();
 
@@ -126,9 +128,6 @@ void mesh_proxy<T, I>::set_mesh(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
     _nodes_elements_map = node_elements_map_init(*_mesh);
     _global_to_local_numbering = global_to_local_numbering_init(*_mesh);
 
-    _elements_ares = approx_elements_areas(*_mesh);
-    _jacobi_matrices_nodes = approx_jacobi_matrices_nodes(*_mesh, _elements_ares, _nodes_elements_map, _global_to_local_numbering);
-
     _quad_shifts = quadrature_shifts_init(*_mesh);
     _quad_coords = approx_all_quad_nodes(*_mesh, _quad_shifts);
     _jacobi_matrices = approx_all_jacobi_matrices(*_mesh, _quad_shifts);
@@ -139,6 +138,9 @@ void mesh_proxy<T, I>::set_mesh(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
     _quad_shifts_bound = quadrature_shifts_bound_init(*_mesh);
     _quad_coords_bound = approx_all_quad_nodes_bound(*_mesh, _quad_shifts_bound);
     _jacobi_matrices_bound = approx_all_jacobi_matrices_bound(*_mesh, _quad_shifts_bound);
+
+    _elements_ares = approx_elements_areas(*_mesh, _quad_shifts, _jacobi_matrices);
+    _jacobi_matrices_nodes = approx_jacobi_matrices_nodes(*_mesh, _elements_ares, _nodes_elements_map, _global_to_local_numbering);
 
     first_last_node_init();
 }
@@ -236,13 +238,18 @@ std::vector<std::unordered_map<I, uint8_t>> mesh_proxy<T, I>::global_to_local_nu
 }
 
 template<class T, class I>
-std::vector<T> mesh_proxy<T, I>::approx_elements_areas(const mesh_2d<T, I>& mesh) {
+std::vector<T> mesh_proxy<T, I>::approx_elements_areas(const mesh_2d<T, I>& mesh,
+                                                       const std::vector<I>& quad_shifts,
+                                                       const std::vector<std::array<T, 4>>& jacobi_matrices
+                                                       ) {
     std::vector<T> elements_areas(mesh.elements_count(), 0);
     for(size_t e = 0; e < mesh.elements_count(); ++e) {
         const auto& el = mesh.element_2d(e);
-        for(size_t i = 0; i < el->nodes_count(); ++i)
-            for(size_t q = 0; q < el->qnodes_count(); ++q)
-                elements_areas[e] += el->weight(q) * el->qN(i, q);
+        for(size_t q = 0; q < el->qnodes_count(); ++q) {
+            const T weight = el->weight(q) * jacobian(jacobi_matrices[quad_shifts[e]+q]);
+            for(size_t i = 0; i < el->nodes_count(); ++i)
+                elements_areas[e] += weight * el->qN(i, q);
+        }
     }
     return std::move(elements_areas);
 }
