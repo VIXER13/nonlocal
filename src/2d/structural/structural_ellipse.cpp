@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
             mesh_proxy->find_neighbours(r + 0.05, mesh::balancing_t::MEMORY);
 
         nonlocal::structural::structural_solver<double, int, int> fem_sol{mesh_proxy};
-        nonlocal::structural::calculation_parameters<double> parameters;
+        nonlocal::structural::equation_parameters<double> parameters;
         parameters.nu = 0.3;
         parameters.E = 21;
         parameters.p1 = p1;

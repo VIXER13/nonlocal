@@ -29,15 +29,16 @@ class heat_equation_solver_2d : public finite_element_solver_base<T, I, Matrix_I
 
     enum class matrix : bool {THERMAL_CONDUCTIVITY, HEAT_CAPACITY};
 
-    std::array<T, 2> _lambda = { T{1}, T{1} };
-
     T integrate_basic(const size_t e, const size_t i) const;
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
-    template<material_t Matherial>
-    T integrate_loc(const size_t e, const size_t i, const size_t j) const;
-    template<material_t Matherial, class Influence_Function>
-    T integrate_nonloc(const size_t eL, const size_t eNL,
-                       const size_t iL, const size_t jNL,
+
+    template<material_t Material>
+    T integrate_loc([[maybe_unused]] const std::array<T, Material == material_t::ORTHOTROPIC ? 2 : 1>& lambda,
+                    const size_t e, const size_t i, const size_t j) const;
+
+    template<material_t Material, class Influence_Function>
+    T integrate_nonloc([[maybe_unused]] const std::array<T, Material == material_t::ORTHOTROPIC ? 2 : 1>& lambda,
+                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
                        const Influence_Function& influence_function) const;
 
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
@@ -116,7 +117,8 @@ T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_basic_pair(const size_t
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material>
-T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
+T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_loc([[maybe_unused]] const std::array<T, Material == material_t::ORTHOTROPIC ? 2 : 1>& lambda,
+                                                             const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el   = _base::mesh().element_2d(e);
           auto  J    = _base::mesh_proxy()->jacobi_matrix(e);
@@ -132,15 +134,15 @@ T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_loc(const size_t e, con
             integral_part[X] += factor * (*dNdi)[X] * (*dNdj)[X];
             integral_part[Y] += factor * (*dNdi)[Y] * (*dNdj)[Y];
         }
-        integral = _lambda[X] * integral_part[X] + _lambda[Y] * integral_part[Y];
+        integral = lambda[X] * integral_part[X] + lambda[Y] * integral_part[Y];
     }
     return integral;
 }
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Influence_Function>
-T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                                                const size_t iL, const size_t jNL,
+T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc([[maybe_unused]] const std::array<T, Material == material_t::ORTHOTROPIC ? 2 : 1>& lambda,
+                                                                const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
                                                                 const Influence_Function& influence_function) const {
     T integral = 0;
     const auto& elL            = _base::mesh().element_2d(eL ),
@@ -167,7 +169,7 @@ T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc(const size_t eL,
         }
     }
     if constexpr (Material == material_t::ORTHOTROPIC)
-        integral = _lambda[X] * integral_part[X] + _lambda[Y] * integral_part[Y];
+        integral = lambda[X] * integral_part[X] + lambda[Y] * integral_part[Y];
     return integral;
 }
 
@@ -203,9 +205,11 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMatri
         const T factor_loc    = Material == material_t::ISOTROPIC ? eq_parameters.p1 * eq_parameters.lambda[0] : eq_parameters.p1,
                 factor_nonloc = Material == material_t::ISOTROPIC ? (T{1} - eq_parameters.p1) * eq_parameters.lambda[0] : (T{1} - eq_parameters.p1);
         _base::template calc_matrix<1>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
-            [this, factor_loc](const size_t e, const size_t i, const size_t j) { return factor_loc * integrate_loc<Material>(e, i, j); },
-            [this, factor_nonloc](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
-                return factor_nonloc * integrate_nonloc<Material>(eL, eNL, iL, jNL, influence_function);
+            [this, factor_loc, &lambda = eq_parameters.lambda]
+            (const size_t e, const size_t i, const size_t j) { return factor_loc * integrate_loc<Material>(lambda, e, i, j); },
+            [this, factor_nonloc, &lambda = eq_parameters.lambda]
+            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
+                return factor_nonloc * integrate_nonloc<Material>(lambda, eL, eNL, iL, jNL, influence_function);
         });
     } else if constexpr (Type == matrix::HEAT_CAPACITY)
         _base::template calc_matrix<1>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
@@ -291,9 +295,6 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
         f[_base::mesh().nodes_count()] = eq_parameters.integral;
     }
 
-    if constexpr (Material == material_t::ORTHOTROPIC)
-        _lambda = eq_parameters.lambda;
-
     const bool nonlocal_task = eq_parameters.p1 < _base::MAX_LOCAL_WEIGHT;
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols), K_bound(rows, cols);
@@ -317,15 +318,12 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary(const solver_par
                                                              const std::vector<bound_cond<T>>& bounds_cond,
                                                              const Init_Distribution& init_dist, const Right_Part& right_part,
                                                              const Influence_Function& influence_fun) {
-    static constexpr bool NOT_NEUMANN_TASK = false;
     static constexpr bool LOCAL = false;
-
-    if constexpr (Material == material_t::ORTHOTROPIC)
-        _lambda = eq_parameters.lambda;
-
+    static constexpr bool NOT_NEUMANN_TASK = false;
     const size_t size = _base::mesh().nodes_count();
     const bool nonlocal_task = eq_parameters.p1 < _base::MAX_LOCAL_WEIGHT;
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
+
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K_inner(size, size), K_bound(size, size);
     create_matrix_portrait(K_inner, K_bound, inner_nodes, NOT_NEUMANN_TASK, nonlocal_task);
     calc_matrix<matrix::THERMAL_CONDUCTIVITY>(K_inner, K_bound, eq_parameters, inner_nodes, nonlocal_task, influence_fun);

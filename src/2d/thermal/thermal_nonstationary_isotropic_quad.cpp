@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
     try {
         std::cout.precision(7);
         const double r = std::stod(argv[2]), p1 = std::stod(argv[3]);
-        static const nonlocal::influence::polynomial<double, 2, 1> bell(r);
+        static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
         nonlocal::heat::solver_parameters<double> sol_parameters;
         sol_parameters.save_path = argv[4];
         sol_parameters.time_interval = {0, 5};
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
                 mean += mesh_proxy->neighbors(e).size();
             std::cout << "Average neighbours = " << mean << std::endl;
         }
-        nonlocal::heat::heat_equation_solver<double, int, int> fem_sol{mesh_proxy};
+        nonlocal::heat::heat_equation_solver_2d<double, int, int> fem_sol{mesh_proxy};
 
         fem_sol.nonstationary(
             sol_parameters, eq_parameters,

@@ -31,16 +31,14 @@ class structural_solver : public finite_element_solver_base<T, I, Matrix_Index> 
     using _base::first_node;
     using _base::last_node;
 
-    std::array<T, 3> _D;
-
     static void add_to_pair(std::array<T, 4>& pairs, const std::array<T, 2>& wdNd, const std::array<T, 2>& dNd) noexcept;
     static std::array<T, 4> calc_block(const std::array<T, 3>& D, const std::array<T, 4>& pairs) noexcept;
 
-    std::array<T, 4> integrate_loc(const size_t e, const size_t i, const size_t j) const;
+    std::array<T, 4> integrate_loc(const std::array<T, 3>& D, const size_t e, const size_t i, const size_t j) const;
 
     template<class Influence_Function>
-    std::array<T, 4> integrate_nonloc(const size_t eL, const size_t eNL,
-                                      const size_t iL, const size_t jNL,
+    std::array<T, 4> integrate_nonloc(const std::array<T, 3>& D,
+                                      const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
                                       const Influence_Function& influence_function) const;
 
     template<class Influence_Function>
@@ -80,7 +78,7 @@ std::array<T, 4> structural_solver<T, I, Matrix_Index>::calc_block(const std::ar
 }
 
 template<class T, class I, class Matrix_Index>
-std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
+std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_loc(const std::array<T, 3>& D, const size_t e, const size_t i, const size_t j) const {
     const auto& el   = _base::mesh().element_2d(e);
           auto  J    = _base::mesh_proxy()->jacobi_matrix(e);
           auto  dNdi = _base::mesh_proxy()->dNdX(e, i),
@@ -91,13 +89,13 @@ std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_loc(const size
         const std::array<T, 2> wdNdi = {weight * (*dNdi)[X], weight * (*dNdi)[Y]};
         add_to_pair(pairs, wdNdi, *dNdj);
     }
-    return calc_block(_D, pairs);
+    return calc_block(D, pairs);
 }
 
 template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                                                         const size_t iL, const size_t jNL,
+std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_nonloc(const std::array<T, 3>& D,
+                                                                         const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
                                                                          const Influence_Function& influence_function) const {
     const auto& elL            = _base::mesh().element_2d(eL ),
               & elNL           = _base::mesh().element_2d(eNL);
@@ -118,7 +116,7 @@ std::array<T, 4> structural_solver<T, I, Matrix_Index>::integrate_nonloc(const s
         const std::array<T, 2> wdNdL = {elL->weight(qL) * (*dNdL)[X], elL->weight(qL) * (*dNdL)[Y]};
         add_to_pair(pairs, wdNdL, inner_int);
     }
-    return calc_block(_D, pairs);
+    return calc_block(D, pairs);
 }
 
 template<class T, class I, class Matrix_Index>
@@ -182,22 +180,22 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
                                                                  const std::vector<bound_cond<T>> &bounds_cond,
                                                                  const right_part<T>& right_part,
                                                                  const Influence_Function& influence_fun) {
-    _D = hooke_matrix(parameters.nu, parameters.E, parameters.type);
     double time = omp_get_wtime();
     const size_t rows = 2 * (last_node() - first_node()),
                  cols = 2 * mesh().nodes_count();
     const bool nonlocal_task = parameters.p1 < _base::MAX_LOCAL_WEIGHT;
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
+    const std::array<T, 3> D = hooke_matrix(parameters.nu, parameters.E, parameters.type);
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols), K_bound(rows, cols);
     _base::template create_matrix_portrait<2>(K_inner, K_bound, inner_nodes, nonlocal_task);
     _base::template calc_matrix<2>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
-        [this, p1 = parameters.p1](const size_t e, const size_t i, const size_t j) {
+        [this, p1 = parameters.p1, &D](const size_t e, const size_t i, const size_t j) {
             using namespace metamath::function;
-            return p1 * integrate_loc(e, i, j);
+            return p1 * integrate_loc(D, e, i, j);
         },
-        [this, p2 = 1 - parameters.p1](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
+        [this, p2 = 1 - parameters.p1, &D](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
             using namespace metamath::function;
-            return p2 * integrate_nonloc(eL, eNL, iL, jNL, influence_function);
+            return p2 * integrate_nonloc(D, eL, eNL, iL, jNL, influence_function);
         });
 
     std::cout << "Matrix create: " << omp_get_wtime() - time << std::endl;

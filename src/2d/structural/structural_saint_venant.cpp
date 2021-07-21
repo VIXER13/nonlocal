@@ -15,7 +15,6 @@ void save_raw_data(const std::string& path,
             sigma22{path + "/sigma22.csv"},
             sigma12{path + "/sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
-        //sol.displacement()[0][i]
         eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[0][i] << std::endl;
         eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[1][i] << std::endl;
         eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[2][i] << std::endl;
@@ -58,10 +57,11 @@ int main(int argc, char** argv) {
         }
 
         nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
-        nonlocal::structural::calculation_parameters<double> parameters;
+        nonlocal::structural::equation_parameters<double> parameters;
         parameters.nu = 0.3;
         parameters.E = 21;
         parameters.p1 = p1;
+        parameters.type = nonlocal::structural::calc_t::PLANE_STRAIN;
 
         auto sol = fem_sol.stationary(parameters,
             { // Граничные условия
