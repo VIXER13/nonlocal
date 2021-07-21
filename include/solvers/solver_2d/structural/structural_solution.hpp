@@ -5,18 +5,18 @@
 
 namespace nonlocal::structural {
 
-enum class calc_type : bool { PLANE_STRESS, PLANE_STRAIN };
+enum class calc_t : bool { PLANE_STRESS, PLANE_STRAIN };
 
 template<class T>
-struct calculation_parameters final {
-    calc_type type = calc_type::PLANE_STRESS;
+struct equation_parameters final {
+    calc_t type = calc_t::PLANE_STRESS;
     T nu    = 0, // Коэффициент Пуассона
       E     = 0, // Модуль Юнга
       alpha = 0, // Коэффициент линейного расширения
       p1    = 0, // Весовой параметр модели
       r     = 0; // Длины полуосей области нелокального влияния
-    bool thermoelasticity = false;
-    std::vector<T> delta_temperature;
+    bool thermoelasticity = false; // Учитывать температурные деформации
+    std::vector<T> delta_temperature; // Разница температур: T - T0
 };
 
 // Матрица Гука, которая имеет следующий портрет:
@@ -24,10 +24,10 @@ struct calculation_parameters final {
 // arr[1] arr[0]   0
 //   0      0    arr[2]
 template<class T>
-std::array<T, 3> hooke_matrix(const T nu, const T E, const calc_type type) noexcept {
-    const bool plane_stress = type == calc_type::PLANE_STRESS;
-    const T _nu = type == calc_type::PLANE_STRESS ? nu : nu / (1 - nu),
-            _E  = type == calc_type::PLANE_STRESS ? E  : E  / (1 - nu * nu);
+std::array<T, 3> hooke_matrix(const T nu, const T E, const calc_t type) noexcept {
+    const bool plane_stress = type == calc_t::PLANE_STRESS;
+    const T _nu = plane_stress ? nu : nu / (1 - nu),
+            _E  = plane_stress ? E  : E  / (1 - nu * nu);
     return {       _E / (1 - _nu*_nu),
              _nu * _E / (1 - _nu*_nu),
              0.5 * _E / (1 + _nu) };
@@ -36,8 +36,7 @@ std::array<T, 3> hooke_matrix(const T nu, const T E, const calc_type type) noexc
 template<class T, class I>
 class solution final {
     std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
-    calculation_parameters<T> _parameters;
-    T _p1 = 1;
+    equation_parameters<T> _parameters;
     std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)> _influence_fun;
 
     std::array<std::vector<T>, 2> _u;
@@ -49,10 +48,11 @@ class solution final {
 
 public:
     template<class Vector>
-    explicit solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const calculation_parameters<T>& parameters,
-                      const T p1, const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun,
+    explicit solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const equation_parameters<T>& parameters,
+                      const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun,
                       const Vector& u);
 
+    const equation_parameters<T>&        parameters  () const;
     const std::array<std::vector<T>, 2>& displacement() const;
     const std::array<std::vector<T>, 3>& strains     () const;
     const std::array<std::vector<T>, 3>& stress      () const;
@@ -64,12 +64,11 @@ public:
 
 template<class T, class I>
 template<class Vector>
-solution<T, I>::solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const calculation_parameters<T>& parameters,
-                  const T p1, const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun,
-                  const Vector& u)
+solution<T, I>::solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy, const equation_parameters<T>& parameters,
+                         const std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>& influence_fun,
+                         const Vector& u)
     : _mesh_proxy{mesh_proxy}
     , _parameters{parameters}
-    , _p1{p1}
     , _influence_fun{influence_fun} {
     for(size_t comp = 0; comp < _u.size(); ++comp) {
         _u[comp].resize(_mesh_proxy->mesh().nodes_count());
@@ -77,6 +76,9 @@ solution<T, I>::solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_pro
             _u[comp][i] = u[2*i+comp];
     }
 }
+
+template<class T, class I>
+const equation_parameters<T>& solution<T, I>::parameters() const { return _parameters; }
 
 template<class T, class I>
 const std::array<std::vector<T>, 2>& solution<T, I>::displacement() const { return _u; }
@@ -130,7 +132,7 @@ void solution<T, I>::strain_and_stress_loc() {
 
 template<class T, class I>
 void solution<T, I>::stress_nonloc() {
-    const T p2 = 1 - _p1;
+    const T p2 = 1 - _parameters.p1;
     const std::array<std::vector<T>, 3> strains_in_quads{
         _mesh_proxy->approx_in_quad(_strain[0]),
         _mesh_proxy->approx_in_quad(_strain[1]),
@@ -167,10 +169,10 @@ void solution<T, I>::calc_strain_and_stress() {
         _stress[comp].resize(_mesh_proxy->mesh().nodes_count());
     }
     strain_and_stress_loc();
-    if(_p1 < 0.999) { // Нелокальная задача
+    if(_parameters.p1 < 0.999) { // Нелокальная задача
         for(size_t comp = 0; comp < _stress.size(); ++comp)
             for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node)
-                _stress[comp][node] *= _p1;
+                _stress[comp][node] *= _parameters.p1;
         collect_solution(false);
         stress_nonloc();
     }
