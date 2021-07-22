@@ -17,6 +17,9 @@ struct equation_parameters final {
       r     = 0; // Длины полуосей области нелокального влияния
     bool thermoelasticity = false; // Учитывать температурные деформации
     std::vector<T> delta_temperature; // Разница температур: T - T0
+
+    T poisson() const noexcept { return type == calc_t::PLANE_STRESS ? nu : nu / (1 - nu); }
+    T young  () const noexcept { return type == calc_t::PLANE_STRESS ? E  : E  / (1 - nu * nu); }
 };
 
 // Матрица Гука, которая имеет следующий портрет:
@@ -24,13 +27,12 @@ struct equation_parameters final {
 // arr[1] arr[0]   0
 //   0      0    arr[2]
 template<class T>
-std::array<T, 3> hooke_matrix(const T nu, const T E, const calc_t type) noexcept {
-    const bool plane_stress = type == calc_t::PLANE_STRESS;
-    const T _nu = plane_stress ? nu : nu / (1 - nu),
-            _E  = plane_stress ? E  : E  / (1 - nu * nu);
-    return {       _E / (1 - _nu*_nu),
-             _nu * _E / (1 - _nu*_nu),
-             0.5 * _E / (1 + _nu) };
+std::array<T, 3> hooke_matrix(const equation_parameters<T>& parameters) noexcept {
+    const T nu = parameters.poisson(),
+            E  = parameters.young();
+    return {       E / (1 - nu*nu),
+              nu * E / (1 - nu*nu),
+             0.5 * E / (1 + nu) };
 }
 
 template<class T, class I>
@@ -100,7 +102,7 @@ void solution<T, I>::collect_solution(const bool with_stress) {
 
 template<class T, class I>
 void solution<T, I>::strain_and_stress_loc() {
-    const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
+    const std::array<T, 3> D = hooke_matrix(_parameters);
 #pragma omp parallel for default(none) shared(D)
     for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {
         T node_area = T{0};
@@ -138,7 +140,7 @@ void solution<T, I>::stress_nonloc() {
         _mesh_proxy->approx_in_quad(_strain[1]),
         _mesh_proxy->approx_in_quad(_strain[2])
     };
-    const std::array<T, 3> D = hooke_matrix(_parameters.nu, _parameters.E, _parameters.type);
+    const std::array<T, 3> D = hooke_matrix(_parameters);
     std::vector<bool> neighbors(_mesh_proxy->mesh().elements_count(), false);
 #pragma omp parallel for default(none) shared(p2, strains_in_quads, D) firstprivate(neighbors)
     for(size_t node = _mesh_proxy->first_node(); node < _mesh_proxy->last_node(); ++node) {

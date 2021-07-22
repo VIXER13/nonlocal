@@ -165,9 +165,11 @@ template<class Influence_Function>
 void structural_solver<T, I, Matrix_Index>::temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                                                   const equation_parameters<T>& parameters,
                                                                   const Influence_Function& influence_fun) {
-    const T c = parameters.alpha * parameters.E / (1 - 2 * parameters.nu);
+    const T nu = parameters.poisson(),
+            E  = parameters.young();
+    const T factor = 0.5 * parameters.alpha * E / (1 - nu);
     using namespace metamath::function;
-    const std::vector<T> eps_T = c * _base::mesh_proxy()->approx_in_quad(parameters.delta_temperature);
+    const std::vector<T> eps_T = factor * _base::mesh_proxy()->approx_in_quad(parameters.delta_temperature);
 
 #pragma omp parallel for default(none) shared(f, eps_T, parameters)
     for(size_t node = _base::first_node(); node < _base::last_node(); ++node)
@@ -204,7 +206,7 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
                  cols = 2 * _base::mesh().nodes_count();
     const bool nonlocal_task = parameters.p1 < _base::MAX_LOCAL_WEIGHT;
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
-    const std::array<T, 3> D = hooke_matrix(parameters.nu, parameters.E, parameters.type);
+    const std::array<T, 3> D = hooke_matrix(parameters);
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols), K_bound(rows, cols);
     _base::template create_matrix_portrait<2>(K_inner, K_bound, inner_nodes, nonlocal_task);
     _base::template calc_matrix<2>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
