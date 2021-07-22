@@ -149,12 +149,12 @@ T heat_equation_solver_2d<T, I, Matrix_Index>::integrate_nonloc([[maybe_unused]]
               & elNL           = _base::mesh().element_2d(eNL);
           auto  qcoordL        = _base::mesh_proxy()->quad_coord(eL);
           auto  dNdL           = _base::mesh_proxy()->dNdX(eL, iL);
-    const auto  qcoordNL_start = _base::mesh_proxy()->quad_coord(eNL);
-    const auto  dNdNL_start    = _base::mesh_proxy()->dNdX(eNL, jNL);
+    const auto  qcoordNL_begin = _base::mesh_proxy()->quad_coord(eNL);
+    const auto  dNdNL_begin    = _base::mesh_proxy()->dNdX(eNL, jNL);
     std::array<T, Material == material_t::ORTHOTROPIC ? 2 : 1> integral_part = {};
     for(size_t qL = 0; qL < elL->qnodes_count(); ++qL, ++qcoordL, ++dNdL) {
-        auto dNdNL    = dNdNL_start;
-        auto qcoordNL = qcoordNL_start;
+        auto dNdNL    = dNdNL_begin;
+        auto qcoordNL = qcoordNL_begin;
         std::array<T, 2> inner_integral_part = {};
         for(size_t qNL = 0; qNL < elNL->qnodes_count(); ++qNL, ++qcoordNL, ++dNdNL) {
             const T influence_weight = elNL->weight(qNL) * influence_function(*qcoordL, *qcoordNL);
