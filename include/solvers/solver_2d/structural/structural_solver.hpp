@@ -6,6 +6,7 @@
 #include <omp.h>
 #include "solver_2d/finite_element_solver_base_2d.hpp"
 #include "structural_solution.hpp"
+#include "conjugate_gradient.hpp"
 
 namespace nonlocal::structural {
 
@@ -234,6 +235,9 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
     Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{K_inner};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
     std::cout << "iterations = " << solver.iterations() << std::endl;
+
+//    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = conjugate_gradient(K_inner, f);
+
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, displacement};
