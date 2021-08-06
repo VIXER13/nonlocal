@@ -1,6 +1,7 @@
 #include <iostream>
-#include "solver_2d/influence_functions_2d.hpp"
-#include "solver_2d/structural/structural_solver.hpp"
+#include "influence_functions_2d.hpp"
+#include "structural_solver.hpp"
+#include "MPI_utils.hpp"
 
 namespace {
 
@@ -43,6 +44,11 @@ int main(int argc, char** argv) {
         //PetscFinalize();
         return EXIT_FAILURE;
     }
+
+#ifdef MPI_USE
+    std::cout << "blablabla" << std::endl;
+    std::cout << MPI_utils::MPI_rank() << std::endl;
+#endif
 
     try {
         std::cout.precision(7);

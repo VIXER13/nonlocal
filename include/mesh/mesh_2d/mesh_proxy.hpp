@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #ifdef MPI_USE
-#include <mpi.h>
+    #include "MPI_utils.hpp"
 #endif
 
 namespace nonlocal::mesh {

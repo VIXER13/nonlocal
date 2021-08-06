@@ -24,11 +24,11 @@ class _conjugate_gradient final {
                           Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& threadedAp) {
         for(size_t i = 1; i < threadedAp.cols(); ++i)
             threadedAp.col(0) += threadedAp.col(i);
-#if MPI_USE
-        MPI_Allreduce(threadedAp.data(), Ap.data(), Ap.size() * sizeof(T), MPI_BYTE, MPI_SUM, MPI_COMM_WORLD);
-#else
+//#if MPI_USE
+//        MPI_Allreduce(threadedAp.data(), Ap.data(), Ap.size() * sizeof(T), MPI_BYTE, MPI_SUM, MPI_COMM_WORLD);
+//#else
         Ap = threadedAp.col(0);
-#endif
+//#endif
     }
 
     template<class T, class I>
@@ -62,15 +62,15 @@ template<class T, class I>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
                                                        const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
                                                        const conjugate_gradient_parameters<T>& parameters) {
-#if MPI_USE
-    Eigen::Matrix<T, Eigen::Dynamic, 1> b_full = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(A.cols());
-    int rank = -1, size = -1;
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    std::vector<std::array<size_t, 2>> nodes_ranges()
-#else
+//#if MPI_USE
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> b_full = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(A.cols());
+//    int rank = -1, size = -1;
+//    MPI_Comm_size(MPI_COMM_WORLD, &size);
+//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+//    std::vector<std::array<size_t, 2>> nodes_ranges()
+//#else
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b_full = b;
-#endif
+//#endif
 
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> threadedAp(A.rows(), omp_get_max_threads());
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(b_full.size()),

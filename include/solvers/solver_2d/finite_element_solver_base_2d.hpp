@@ -3,8 +3,8 @@
 
 #include <numeric>
 #ifdef MPI_USE
-#include <mkl.h>
-#include <mkl_cluster_sparse_solver.h>
+//#include <mkl.h>
+//#include <mkl_cluster_sparse_solver.h>
 //#include <petsc.h>
 //#include <petscsystypes.h>
 #endif
@@ -192,10 +192,10 @@ protected:
     //void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
     //                  const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K);
 
-    template<size_t DoF>
-    Eigen::Matrix<T, Eigen::Dynamic, 1>
-    MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-               const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K);
+//    template<size_t DoF>
+//    Eigen::Matrix<T, Eigen::Dynamic, 1>
+//    MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+//               const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K);
 #endif
 
 public:
@@ -475,86 +475,86 @@ void finite_element_solver_base<T, I, Matrix_Index>::PETSc_solver(Eigen::Matrix<
 }
  */
 
-template<class T, class I, class Matrix_Index>
-template<size_t DoF>
-Eigen::Matrix<T, Eigen::Dynamic, 1>
-finite_element_solver_base<T, I, Matrix_Index>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                           const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
-    void *pt[64] = {};
-    const Matrix_Index maxfct =  1,       // Maximum number of numerical factorizations.
-                       mnum   =  1,       // Which factorization to use.
-                       mtype  =  2,       // real and symmetric positive definite
-                       n      = K.cols(), // matrix size
-                       nrhs   = 1,        // right hands count
-                       msglvl = 1;        // Print statistical information in file
-    T fdum = 0;                           // ignored
-    Matrix_Index idum = 0;                // ignored
-    Matrix_Index error = 0;               // error flag
-    MPI_Fint comm = MPI_Comm_c2f(MPI_COMM_WORLD);
-
-    // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver-iparm-parameter.html#cluster-sparse-solver-iparm-parameter
-    std::array<Matrix_Index, 64> iparm = {};
-    iparm[ 0] =  1; // Solver default parameters overriden with provided by iparm
-    iparm[ 1] =  3; // reordering
-    iparm[ 7] =  5; // Max number of iterative refinement steps
-    iparm[ 9] = 13; // Perturb the pivot elements with 1E-13
-    iparm[17] = -1; // Output: Number of nonzeros in the factor LU
-    iparm[18] = -1; // Output: Mflops for LU factorization
-    iparm[27] = std::is_same_v<T, float>;
-    iparm[34] =  1; // Cluster Sparse Solver use C-style indexing for ia and ja arrays
-    iparm[39] =  3; // Input: matrix/rhs are distributed between MPI processes
-    iparm[40] = DoF * first_node();
-    iparm[41] = iparm[40] + K.rows() - 1;
-
-    Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K.cols());
-    if constexpr (std::is_same_v<Matrix_Index, int>) {
-        Matrix_Index phase = 11;
-        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
-                              &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
-        phase = 22;
-        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
-                              &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
-        phase = 33;
-        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
-                              &idum, &nrhs, iparm.data(), &msglvl, f.data(), x.data(), &comm, &error);
-        phase = -1; // Release internal memory.
-        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, &fdum, K.outerIndexPtr(), K.innerIndexPtr(),
-                              &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
-    } else {
-        Matrix_Index phase = 11;
-        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
-                                 &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
-        phase = 22;
-        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
-                                 &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
-        phase = 33;
-        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
-                                 &idum, &nrhs, iparm.data(), &msglvl, f.data(), x.data(), &comm, &error);
-        phase = -1; // Release internal memory.
-        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, &fdum, K.outerIndexPtr(), K.innerIndexPtr(),
-                                 &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
-    }
-
-    static constexpr std::array<std::string_view, 12> errors = {
-        "no error",
-        "input inconsistent",
-        "not enough memory",
-        "reordering problem",
-        "Zero pivot, numerical factorization or iterative refinement problem. If the error appears during the solution phase, try to change the pivoting perturbation (iparm[9]) and also increase the number of iterative refinement steps. If it does not help, consider changing the scaling, matching and pivoting options (iparm[10], iparm[12], iparm[20])",
-        "unclassified (internal) error",
-        "reordering failed (matrix types 11 and 13 only)",
-        "diagonal matrix is singular",
-        "32-bit integer overflow problem",
-        "not enough memory for OOC",
-        "error opening OOC files",
-        "read/write error with OOC files"
-    };
-    error = std::abs(error);
-    if (error < 13)
-        std::cerr << errors[error] << std::endl;
-
-    return std::move(x);
-}
+//template<class T, class I, class Matrix_Index>
+//template<size_t DoF>
+//Eigen::Matrix<T, Eigen::Dynamic, 1>
+//finite_element_solver_base<T, I, Matrix_Index>::MKL_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+//                                                           const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
+//    void *pt[64] = {};
+//    const Matrix_Index maxfct =  1,       // Maximum number of numerical factorizations.
+//                       mnum   =  1,       // Which factorization to use.
+//                       mtype  =  2,       // real and symmetric positive definite
+//                       n      = K.cols(), // matrix size
+//                       nrhs   = 1,        // right hands count
+//                       msglvl = 1;        // Print statistical information in file
+//    T fdum = 0;                           // ignored
+//    Matrix_Index idum = 0;                // ignored
+//    Matrix_Index error = 0;               // error flag
+//    MPI_Fint comm = MPI_Comm_c2f(MPI_COMM_WORLD);
+//
+//    // https://software.intel.com/content/www/us/en/develop/documentation/onemkl-developer-reference-c/top/sparse-solver-routines/parallel-direct-sparse-solver-for-clusters-interface/cluster-sparse-solver-iparm-parameter.html#cluster-sparse-solver-iparm-parameter
+//    std::array<Matrix_Index, 64> iparm = {};
+//    iparm[ 0] =  1; // Solver default parameters overriden with provided by iparm
+//    iparm[ 1] =  3; // reordering
+//    iparm[ 7] =  5; // Max number of iterative refinement steps
+//    iparm[ 9] = 13; // Perturb the pivot elements with 1E-13
+//    iparm[17] = -1; // Output: Number of nonzeros in the factor LU
+//    iparm[18] = -1; // Output: Mflops for LU factorization
+//    iparm[27] = std::is_same_v<T, float>;
+//    iparm[34] =  1; // Cluster Sparse Solver use C-style indexing for ia and ja arrays
+//    iparm[39] =  3; // Input: matrix/rhs are distributed between MPI processes
+//    iparm[40] = DoF * first_node();
+//    iparm[41] = iparm[40] + K.rows() - 1;
+//
+//    Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K.cols());
+//    if constexpr (std::is_same_v<Matrix_Index, int>) {
+//        Matrix_Index phase = 11;
+//        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+//                              &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
+//        phase = 22;
+//        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+//                              &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
+//        phase = 33;
+//        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+//                              &idum, &nrhs, iparm.data(), &msglvl, f.data(), x.data(), &comm, &error);
+//        phase = -1; // Release internal memory.
+//        cluster_sparse_solver(pt, &maxfct, &mnum, &mtype, &phase, &n, &fdum, K.outerIndexPtr(), K.innerIndexPtr(),
+//                              &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
+//    } else {
+//        Matrix_Index phase = 11;
+//        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+//                                 &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
+//        phase = 22;
+//        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+//                                 &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
+//        phase = 33;
+//        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, K.valuePtr(), K.outerIndexPtr(), K.innerIndexPtr(),
+//                                 &idum, &nrhs, iparm.data(), &msglvl, f.data(), x.data(), &comm, &error);
+//        phase = -1; // Release internal memory.
+//        cluster_sparse_solver_64(pt, &maxfct, &mnum, &mtype, &phase, &n, &fdum, K.outerIndexPtr(), K.innerIndexPtr(),
+//                                 &idum, &nrhs, iparm.data(), &msglvl, &fdum, &fdum, &comm, &error);
+//    }
+//
+//    static constexpr std::array<std::string_view, 12> errors = {
+//        "no error",
+//        "input inconsistent",
+//        "not enough memory",
+//        "reordering problem",
+//        "Zero pivot, numerical factorization or iterative refinement problem. If the error appears during the solution phase, try to change the pivoting perturbation (iparm[9]) and also increase the number of iterative refinement steps. If it does not help, consider changing the scaling, matching and pivoting options (iparm[10], iparm[12], iparm[20])",
+//        "unclassified (internal) error",
+//        "reordering failed (matrix types 11 and 13 only)",
+//        "diagonal matrix is singular",
+//        "32-bit integer overflow problem",
+//        "not enough memory for OOC",
+//        "error opening OOC files",
+//        "read/write error with OOC files"
+//    };
+//    error = std::abs(error);
+//    if (error < 13)
+//        std::cerr << errors[error] << std::endl;
+//
+//    return std::move(x);
+//}
 #endif
 
 }

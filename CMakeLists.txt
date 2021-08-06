@@ -1,14 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
+
 project(nonlocalMPI)
 
-set(INCLUDES)
-set(LINKS)
-
-add_subdirectory(include/metamath)
-add_subdirectory(include/mesh)
-add_subdirectory(include/solvers)
-
-set(CMAKE_CXX_STANDARD 17)
+if (WITH_MPI)
+    find_package(MPI)
+    if(MPI_FOUND)
+        add_definitions(-DMPI_USE=1)
+#        set(CMAKE_C_COMPILER ${MPI_C_COMPILER})
+#        set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
+    endif()
+endif()
 
 find_package(OpenMP)
 if(OPENMP_FOUND)
@@ -17,8 +18,18 @@ if(OPENMP_FOUND)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
+set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-O2)
 
+#libraries
+if (WITH_MPI)
+    add_subdirectory(include/MPI_utils)
+endif()
+add_subdirectory(include/metamath)
+add_subdirectory(include/mesh)
+add_subdirectory(include/solvers)
+
+#tests
 add_subdirectory(src/1d/thermal)
 add_subdirectory(src/2d/thermal)
 add_subdirectory(src/2d/structural)
