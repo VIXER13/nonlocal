@@ -6,7 +6,7 @@ namespace {
 
 template<class T>
 void save_raw_data(const std::string& path,
-                   const mesh::mesh_2d<T>& msh,
+                   const nonlocal::mesh::mesh_2d<T>& msh,
                    const nonlocal::structural::solution<T, int>& sol) {
     std::ofstream eps11{path + "/eps11.csv"},
             eps22{path + "/eps22.csv"},
@@ -50,10 +50,10 @@ int main(int argc, char** argv) {
         const double r = std::stod(argv[2]), p1 = std::stod(argv[3]);
         static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
 
-        auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
+        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
+        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999) {
-            mesh_proxy->find_neighbours(r + 0.025, mesh::balancing_t::MEMORY);
+            mesh_proxy->find_neighbours(r + 0.025, nonlocal::mesh::balancing_t::MEMORY);
         }
 
         nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
         parameters.nu = 0.3;
         parameters.E = 21;
         parameters.p1 = p1;
-        parameters.type = nonlocal::structural::calc_t::PLANE_STRAIN;
+        parameters.type = nonlocal::structural::calc_t::PLANE_STRESS;
 
         auto sol = fem_sol.stationary(parameters,
             { // Граничные условия

@@ -8,7 +8,7 @@
 #include <sstream>
 #include "metamath.hpp"
 
-namespace mesh {
+namespace nonlocal::mesh {
 
 // Наиболее употребительные одномерные элементы
 enum class element_1d_t : uint8_t {

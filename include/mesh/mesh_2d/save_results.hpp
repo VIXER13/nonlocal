@@ -5,7 +5,7 @@
 #include <string_view>
 #include "mesh_2d.hpp"
 
-namespace mesh {
+namespace nonlocal::mesh {
 
 template<class T, class I>
 template<size_t K0, size_t... K>

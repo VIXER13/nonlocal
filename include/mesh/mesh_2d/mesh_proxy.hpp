@@ -9,7 +9,7 @@
 #include <mpi.h>
 #endif
 
-namespace mesh {
+namespace nonlocal::mesh {
 
 enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
 
@@ -477,7 +477,7 @@ std::vector<U> mesh_proxy<T, I>::all_to_all(const std::vector<U>& sendbuf) {
     MPI_Alltoallv(const_cast<void*>(static_cast<const void*>(sendbuf.data())), sendcounts.data(), sdispls.data(), MPI_BYTE,
                   recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_BYTE, MPI_COMM_WORLD);
 #endif
-    return std::move(recvbuf);
+    return recvbuf;
 }
 
 template<class T, class I>

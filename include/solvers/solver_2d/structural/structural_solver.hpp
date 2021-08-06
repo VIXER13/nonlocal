@@ -232,7 +232,7 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
     time = omp_get_wtime();
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = conjugate_gradient(K_inner, f);
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = slae::conjugate_gradient(K_inner, f, {});
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, displacement};

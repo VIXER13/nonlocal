@@ -16,6 +16,7 @@
 cmake_minimum_required(VERSION 3.17)
 project(finite_element_solvers)
 
+add_subdirectory(slae)
 add_subdirectory(solver_1d)
 add_subdirectory(solver_2d)
 
@@ -30,7 +31,7 @@ target_include_directories(finite_element_solvers_lib INTERFACE ${FINITE_ELEMENT
 target_link_libraries(finite_element_solvers_lib INTERFACE
                       finite_element_solver_1d_lib
                       finite_element_solver_2d_lib
-                     )
+                      slae_solver_lib)
 
 
 

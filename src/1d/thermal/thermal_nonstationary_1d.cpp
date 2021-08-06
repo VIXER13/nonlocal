@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 
     try {
         std::cout.precision(3);
-        auto mesh = std::make_shared<mesh::mesh_1d<double>>(
+        auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<double>>(
             nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
             std::stoull(argv[2]), std::array{0., 5.});
 

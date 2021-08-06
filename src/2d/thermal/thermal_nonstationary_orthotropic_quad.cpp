@@ -34,10 +34,10 @@ int main(int argc, char** argv) {
         eq_parameters.c = 1;
         eq_parameters.p1 = p1;
 
-        auto mesh = std::make_shared<mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_proxy = std::make_shared<mesh::mesh_proxy<double, int>>(mesh);
+        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
+        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999) {
-            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, mesh::balancing_t::MEMORY); // 0.05 это некая гарантированная добавка
+            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY); // 0.05 это некая гарантированная добавка
             // Нужна, чтобы все квадратурные узлы, которые попадают под зону влияния были учтены.
             double mean = 0;
             for(size_t e = 0; e < mesh->elements_count(); ++e)

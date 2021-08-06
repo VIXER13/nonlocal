@@ -4,7 +4,7 @@
 #include <array>
 #include "metamath.hpp"
 
-namespace mesh::utils {
+namespace nonlocal::mesh::utils {
 
 template<class T, size_t N>
 T distance(const std::array<T, N>& A, const std::array<T, N>& B) noexcept {

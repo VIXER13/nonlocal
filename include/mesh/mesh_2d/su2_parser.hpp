@@ -4,7 +4,7 @@
 #include "mesh_2d.hpp"
 #include <iostream>
 
-namespace mesh {
+namespace nonlocal::mesh {
 
 template<class T, class I>
 template<size_t... K, class Stream>

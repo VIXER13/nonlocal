@@ -7,6 +7,7 @@
 #include "solver_2d/finite_element_solver_base_2d.hpp"
 #include "heat_equation_parameters.hpp"
 #include "heat_equation_solution_2d.hpp"
+#include "conjugate_gradient.hpp"
 
 namespace nonlocal::heat {
 
@@ -306,7 +307,7 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
     _base::template integrate_right_part(f, right_partition<T, 1>{right_part});
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = conjugate_gradient(K_inner, f);
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = slae::conjugate_gradient(K_inner, f, {});
     return solution<T, I>{_base::mesh_proxy(), temperature};
 }
 
