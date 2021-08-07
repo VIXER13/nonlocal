@@ -4,8 +4,8 @@ project(thermal_2d)
 
 add_executable(nonlocal_stationary_2d thermal_stationary_orthotropic_quad.cpp)
 target_include_directories(nonlocal_stationary_2d PUBLIC ".")
-target_link_libraries(nonlocal_stationary_2d metamath_lib mesh_lib finite_element_solvers_lib)
+target_link_libraries(nonlocal_stationary_2d metamath_lib mesh_lib finite_element_solvers_lib MPI_utils_lib)
 
 add_executable(nonlocal_nonstationary_2d thermal_nonstationary_orthotropic_quad.cpp)
 target_include_directories(nonlocal_nonstationary_2d PUBLIC ".")
-target_link_libraries(nonlocal_nonstationary_2d metamath_lib mesh_lib finite_element_solvers_lib)
+target_link_libraries(nonlocal_nonstationary_2d metamath_lib mesh_lib finite_element_solvers_lib MPI_utils_lib)

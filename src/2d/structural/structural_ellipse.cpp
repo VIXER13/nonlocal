@@ -26,21 +26,19 @@ void save_raw_data(const std::string& path,
 }
 
 int main(int argc, char** argv) {
-    //PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
-    //MPI_Init(&argc, &argv);
+#if MPI_USE
+    MPI_Init(&argc, &argv);
+#endif
 
     if(argc < 5) {
         std::cerr << "Input format [program name] <path to mesh> <r> <p1> <output_path>";
-        //PetscFinalize();
-        //MPI_Finalize();
+#if MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     }
 
     try {
-        //std::cout.precision(2);
-
-        Eigen::setNbThreads(0);
-
         const double r = std::stod(argv[2]), p1 = std::stod(argv[3]);
         static const nonlocal::influence::polynomial_2d<double, 2, 1> bell{r};
 
@@ -91,7 +89,7 @@ int main(int argc, char** argv) {
 
         sol.calc_strain_and_stress();
 
-        if (mesh_proxy->rank() == 0) {
+        if (MPI_utils::MPI_rank() == 0) {
             std::cout << "Energy = " << sol.calc_energy() << std::endl;
             using namespace std::string_literals;
             sol.save_as_vtk(argv[4] + "/structural.vtk"s);
@@ -99,17 +97,20 @@ int main(int argc, char** argv) {
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
-        //PetscFinalize();
-        //MPI_Finalize();
+#if MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     } catch(...) {
         std::cerr << "Unknown error." << std::endl;
-        //PetscFinalize();
-        //MPI_Finalize();
+#if MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     }
 
-    //PetscFinalize();
-    //MPI_Finalize();
+#if MPI_USE
+    MPI_Finalize();
+#endif
     return EXIT_SUCCESS;
 }

@@ -3,11 +3,14 @@
 
 int main(int argc, char** argv) {
 #ifdef MPI_USE
-    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+    MPI_Init(&argc, &argv);
 #endif
 
     if(argc < 5) {
         std::cerr << "Input format [program name] <path to mesh> <r1> <r2> <p1>" << std::endl;
+#ifdef MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     }
 
@@ -60,7 +63,7 @@ int main(int argc, char** argv) {
             bell // Функция влияния
         );
 
-        if (mesh_proxy->rank() == 0) {
+        if (MPI_utils::MPI_rank()) {
             std::cout << "Energy = " << T.calc_energy() << std::endl;
             nonlocal::mesh::save_as_csv("T.csv", *mesh, T.get_temperature());
             T.save_as_vtk("heat.vtk");

@@ -3,14 +3,18 @@
 namespace MPI_utils {
 
 int MPI_rank() noexcept {
-    int rank = -1;
+    int rank = 0;
+#if MPI_USE
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
     return rank;
 }
 
 int MPI_size() noexcept {
-    int size = -1;
+    int size = 1;
+#if MPI_USE
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+#endif
     return size;
 }
 

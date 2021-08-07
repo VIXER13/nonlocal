@@ -1,7 +1,6 @@
 #include <iostream>
 #include "influence_functions_2d.hpp"
 #include "structural_solver.hpp"
-#include "MPI_utils.hpp"
 
 namespace {
 
@@ -36,19 +35,17 @@ double f7(const std::array<double, 2>& x) { return x[1] < 0.45 || x[1] > 0.55 ? 
 }
 
 int main(int argc, char** argv) {
-    //PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
-    //MPI_Init(&argc, &argv);
+#if MPI_USE
+    MPI_Init(&argc, &argv);
+#endif
 
     if(argc < 5) {
         std::cerr << "Input format [program name] <path to mesh> <r> <p1> <output_path>";
-        //PetscFinalize();
+#if MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     }
-
-#ifdef MPI_USE
-    std::cout << "blablabla" << std::endl;
-    std::cout << MPI_utils::MPI_rank() << std::endl;
-#endif
 
     try {
         std::cout.precision(7);
@@ -105,7 +102,7 @@ int main(int argc, char** argv) {
 
         sol.calc_strain_and_stress();
 
-        if (mesh_proxy->rank() == 0) {
+        if (MPI_utils::MPI_rank() == 0) {
             std::cout << "Energy = " << sol.calc_energy() << std::endl;
             using namespace std::string_literals;
             sol.save_as_vtk(argv[4] + "/structural.vtk"s);
@@ -113,15 +110,20 @@ int main(int argc, char** argv) {
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
-        //PetscFinalize();
+#if MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     } catch(...) {
         std::cerr << "Unknown error." << std::endl;
-        //PetscFinalize();
+#if MPI_USE
+    MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     }
 
-    //PetscFinalize();
-    //MPI_Finalize();
+#if MPI_USE
+    MPI_Finalize();
+#endif
     return EXIT_SUCCESS;
 }

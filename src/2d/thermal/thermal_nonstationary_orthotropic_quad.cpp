@@ -3,11 +3,14 @@
 
 int main(int argc, char** argv) {
 #ifdef MPI_USE
-    PetscErrorCode ierr = PetscInitialize(&argc, &argv, nullptr, nullptr); CHKERRQ(ierr);
+    MPI_Init(&argc, &argv);
 #endif
 
     if(argc < 6) {
         std::cerr << "Input format [program name] <path to mesh> <r1> <r2> <p1> <save_path>" << std::endl;
+#ifdef MPI_USE
+        MPI_Finalize();
+#endif
         return EXIT_FAILURE;
     }
 

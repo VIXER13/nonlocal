@@ -94,9 +94,9 @@ const std::array<std::vector<T>, 3>& solution<T, I>::stress() const { return _st
 template<class T, class I>
 void solution<T, I>::collect_solution(const bool with_stress) {
     for(size_t comp = 0; comp < _strain.size(); ++comp) {
-        _strain[comp] = _mesh_proxy->all_to_all(_strain[comp]);
+        _strain[comp] = MPI_utils::all_to_all<T>(_strain[comp], _mesh_proxy->ranges());
         if (with_stress)
-            _stress[comp] = _mesh_proxy->all_to_all(_stress[comp]);
+            _stress[comp] = MPI_utils::all_to_all<T>(_stress[comp], _mesh_proxy->ranges());
     }
 }
 

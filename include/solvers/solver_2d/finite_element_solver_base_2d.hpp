@@ -134,8 +134,6 @@ protected:
     virtual ~finite_element_solver_base() noexcept = default;
 
     const mesh::mesh_2d<T, I>&            mesh                     ()                     const { return _mesh_proxy->mesh(); }
-    int                                   rank                     ()                     const { return _mesh_proxy->rank(); }
-    int                                   size                     ()                     const { return _mesh_proxy->size(); }
     size_t                                first_node               ()                     const { return _mesh_proxy->first_node(); }
     size_t                                last_node                ()                     const { return _mesh_proxy->last_node(); }
 

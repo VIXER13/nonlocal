@@ -34,8 +34,7 @@ class mesh_proxy final {
     std::vector<T>                              _elements_ares;
     std::vector<std::array<T, 4>>               _jacobi_matrices_nodes;     // Матрицы Якоби вычисленные в узлах сетки.
 
-    int                                         _rank = 0, _size = 1;       // Данные о процессах MPI
-    std::vector<std::array<size_t, 2>>          _first_last_node;           // С какого и по какой узлы распределена обработка данных между процессами
+    MPI_utils::MPI_ranges                       _ranges;                    // С какого и по какой узлы распределена обработка данных между процессами
 
     std::vector<std::vector<I>>                 _elements_neighbors;        // Массив с номерами ближайших соседей.
 
@@ -98,16 +97,13 @@ public:
     dNdX_iterator                         dNdX                     (const size_t element, const size_t i)     const;
     quad_coord_bound_iterator             quad_coord               (const size_t bound, const size_t element) const;
     jacobi_matrix_bound_iterator          jacobi_matrix            (const size_t bound, const size_t element) const;
-    int                                   rank                     ()                                         const;
-    int                                   size                     ()                                         const;
+    MPI_utils::MPI_ranges                 ranges                   ()                                         const;
     size_t                                first_node               ()                                         const;
     size_t                                last_node                ()                                         const;
     const std::vector<I>&                 neighbors                (const size_t element)                     const;
 
     static T jacobian(const std::array<T, 4>& J) noexcept;
 
-    template<class U>
-    std::vector<U> all_to_all(const std::vector<U>& sendbuf);
     void find_neighbours(const T r, const balancing_t balancing);
 
     template<class Vector>
@@ -197,16 +193,13 @@ typename mesh_proxy<T, I>::dNdX_iterator mesh_proxy<T, I>::dNdX(const size_t ele
 }
 
 template<class T, class I>
-int mesh_proxy<T, I>::rank() const { return _rank; }
+MPI_utils::MPI_ranges mesh_proxy<T, I>::ranges() const { return _ranges; }
 
 template<class T, class I>
-int mesh_proxy<T, I>::size() const { return _size; }
+size_t mesh_proxy<T, I>::first_node() const { return _ranges.range().front(); }
 
 template<class T, class I>
-size_t mesh_proxy<T, I>::first_node() const { return _first_last_node[rank()].front(); }
-
-template<class T, class I>
-size_t mesh_proxy<T, I>::last_node() const { return _first_last_node[rank()].back(); }
+size_t mesh_proxy<T, I>::last_node() const { return _ranges.range().back(); }
 
 template<class T, class I>
 const std::vector<I>& mesh_proxy<T, I>::neighbors(const size_t element) const { return _elements_neighbors[element]; }
@@ -222,7 +215,7 @@ std::vector<std::vector<I>> mesh_proxy<T, I>::node_elements_map_init(const mesh_
         for(size_t node = 0; node < el->nodes_count(); ++node)
             nodes_elements_map[mesh.node_number(e, node)].push_back(e);
     }
-    return std::move(nodes_elements_map);
+    return nodes_elements_map;
 }
 
 template<class T, class I>
@@ -234,7 +227,7 @@ std::vector<std::unordered_map<I, uint8_t>> mesh_proxy<T, I>::global_to_local_nu
         for(size_t node = 0; node < el->nodes_count(); ++node)
             global_to_local_numbering[e][mesh.node_number(e, node)] = node;
     }
-    return std::move(global_to_local_numbering);
+    return global_to_local_numbering;
 }
 
 template<class T, class I>
@@ -251,7 +244,7 @@ std::vector<T> mesh_proxy<T, I>::approx_elements_areas(const mesh_2d<T, I>& mesh
                 elements_areas[e] += weight * el->qN(i, q);
         }
     }
-    return std::move(elements_areas);
+    return elements_areas;
 }
 
 template<class T, class I>
@@ -280,7 +273,7 @@ std::vector<std::array<T, 4>> mesh_proxy<T, I>::approx_jacobi_matrices_nodes(con
         using namespace metamath::function;
         jacobi_matrices[node] /= node_area;
     }
-    return std::move(jacobi_matrices);
+    return jacobi_matrices;
 }
 
 template<class T, class I>
@@ -289,7 +282,7 @@ std::vector<I> mesh_proxy<T, I>::quadrature_shifts_init(const mesh_2d<T, I>& mes
     quad_shifts[0] = 0;
     for(size_t e = 0; e < mesh.elements_count(); ++e)
         quad_shifts[e+1] = quad_shifts[e] + mesh.element_2d(e)->qnodes_count();
-    return std::move(quad_shifts);
+    return quad_shifts;
 }
 
 template<class T, class I>
@@ -310,7 +303,7 @@ std::vector<std::array<T, 2>> mesh_proxy<T, I>::approx_all_quad_nodes(const mesh
                 for(size_t comp = 0; comp < 2; ++comp)
                     quad_coords[quad_shifts[e]+q][comp] += mesh.node(mesh.node_number(e, i))[comp] * el->qN(i, q);
     }
-    return std::move(quad_coords);
+    return quad_coords;
 }
 
 template<class T, class I>
@@ -328,7 +321,7 @@ std::vector<std::array<T, 4>> mesh_proxy<T, I>::approx_all_jacobi_matrices(const
                 jacobi_matrices[quad_shifts[e]+q][3] += mesh.node(mesh.node_number(e, i))[1] * el->qNeta(i, q);
             }
     }
-    return std::move(jacobi_matrices);
+    return jacobi_matrices;
 }
 
 template<class T, class I>
@@ -339,7 +332,7 @@ std::vector<I> mesh_proxy<T, I>::quadrature_node_shits_init(const mesh_2d<T, I>&
         const auto& el = mesh.element_2d(e);
         quad_element_shift[e+1] = quad_element_shift[e] + el->nodes_count() * el->qnodes_count();
     }
-    return std::move(quad_element_shift);
+    return quad_element_shift;
 }
 
 template<class T, class I>
@@ -359,7 +352,7 @@ std::vector<std::array<T, 2>> mesh_proxy<T, I>::dNdX_init(const mesh_2d<T, I>& m
                 };
             }
     }
-    return std::move(dNdX);
+    return dNdX;
 }
 
 template<class T, class I>
@@ -371,7 +364,7 @@ std::vector<std::vector<I>> mesh_proxy<T, I>::quadrature_shifts_bound_init(const
         for(size_t e = 0; e < mesh.elements_count(b); ++e)
             quad_shifts[b][e+1] = quad_shifts[b][e] + mesh.element_1d(b, e)->qnodes_count();
     }
-    return std::move(quad_shifts);
+    return quad_shifts;
 }
 
 template<class T, class I>
@@ -398,7 +391,7 @@ std::vector<std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_quad_nod
                         quad_coords[b][quad_shifts[b][e]+q][comp] += mesh.node(mesh.node_number(b, e, i))[comp] * el->qN(i, q);
         }
     }
-    return std::move(quad_coords);
+    return quad_coords;
 }
 
 template<class T, class I>
@@ -416,20 +409,14 @@ std::vector<std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_jacobi_m
                         jacobi_matrices[b][quad_shifts[b][e]+q][comp] += mesh.node(mesh.node_number(b, e, i))[comp] * el->qNxi(i, q);
         }
     }
-    return std::move(jacobi_matrices);
+    return jacobi_matrices;
 }
 
 template<class T, class I>
 void mesh_proxy<T, I>::first_last_node_init() {
-#ifdef MPI_USE
-    MPI_Comm_size(MPI_COMM_WORLD, &_size);
-    MPI_Comm_rank(MPI_COMM_WORLD, &_rank);
-#endif
-    _first_last_node.resize(size());
-    for(int i = 0; i < size(); ++i) {
-        _first_last_node[i].front() = mesh().nodes_count() / size() *  i;
-        _first_last_node[i].back()  = mesh().nodes_count() / size() * (i+1) + (i == size()-1) * mesh().nodes_count() % size();
-    }
+    for(size_t rank = 0, size = MPI_utils::MPI_size(); rank < size; ++rank)
+        _ranges.range(rank) = { mesh().nodes_count() / size *  rank,
+                                mesh().nodes_count() / size * (rank+1) + (rank == size-1) * mesh().nodes_count() % size };
 }
 
 template<class T, class I>
@@ -444,7 +431,7 @@ std::vector<std::array<T, 2>> mesh_proxy<T, I>::approx_centres_of_elements(const
             centres[e] += mesh.node(mesh.node_number(e, node)) * el->N(node, {x0, x0});
         }
     }
-    return std::move(centres);
+    return centres;
 }
 
 template<class T, class I>
@@ -464,23 +451,6 @@ void mesh_proxy<T, I>::find_elements_neighbors(std::vector<std::vector<I>>& elem
 }
 
 template<class T, class I>
-template<class U>
-std::vector<U> mesh_proxy<T, I>::all_to_all(const std::vector<U>& sendbuf) {
-    std::vector<int> sendcounts(size(), sizeof(U) * (last_node() - first_node())), sdispls(size(), sizeof(U) * first_node());
-    std::vector<int> recvcounts(size()), rdispls(size());
-    for(int i = 0; i < size(); ++i) {
-        recvcounts[i] = sizeof(U) * (_first_last_node[i].back() - _first_last_node[i].front());
-        rdispls[i]    = sizeof(U) *  _first_last_node[i].front();
-    }
-    std::vector<U> recvbuf = sendbuf; // for old version mpich, when strict sendbuf and recvbuf don't support
-#ifdef MPI_USE
-    MPI_Alltoallv(const_cast<void*>(static_cast<const void*>(sendbuf.data())), sendcounts.data(), sdispls.data(), MPI_BYTE,
-                  recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_BYTE, MPI_COMM_WORLD);
-#endif
-    return recvbuf;
-}
-
-template<class T, class I>
 void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
     _elements_neighbors.clear();
     const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(*_mesh);
@@ -490,7 +460,7 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
             elements.insert(e);
     find_elements_neighbors(_elements_neighbors, *_mesh, centres, elements, r);
 
-    if (size() > 1 && balancing != balancing_t::NO) {
+    if (MPI_utils::MPI_size() > 1 && balancing != balancing_t::NO) {
         std::vector<int> data_count_per_nodes(mesh().nodes_count(), 0);
         switch(balancing) {
             case balancing_t::MEMORY: {
@@ -524,15 +494,15 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
                 throw std::invalid_argument{"Unknown balancing type"};
         }
 
-        data_count_per_nodes = all_to_all(data_count_per_nodes);
+        data_count_per_nodes = MPI_utils::all_to_all<int>(data_count_per_nodes, _ranges);
 
         size_t sum = 0, curr_rank = 0;
-        const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / size();
+        const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / MPI_utils::MPI_size();
         for(size_t node = 0; node < data_count_per_nodes.size(); ++node) {
             sum += data_count_per_nodes[node];
             if (sum > mean) {
-                _first_last_node[curr_rank].back() = node;
-                _first_last_node[curr_rank+1].front() = node;
+                _ranges.range(curr_rank).back() = node;
+                _ranges.range(curr_rank+1).front() = node;
                 ++curr_rank;
                 sum = 0;
             }
@@ -607,7 +577,7 @@ std::vector<T> mesh_proxy<T, I>::approx_in_quad(const std::vector<T>& x) {
             for(size_t i = 0; i < el->nodes_count(); ++i)
                 x_in_quad[shift] += x[mesh().node_number(e, i)] * el->qN(i, q);
     }
-    return std::move(x_in_quad);
+    return x_in_quad;
 }
 
 }

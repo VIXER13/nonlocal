@@ -3,7 +3,9 @@
 
 #include <array>
 #include <vector>
-#include <mpi.h>
+#if MPI_USE
+    #include <mpi.h>
+#endif
 
 namespace MPI_utils {
 
@@ -30,10 +32,14 @@ Vector all_to_all(const Vector& sendbuf, const MPI_ranges& ranges) {
         recvcounts[i] = sizeof(U) * (ranges.range(i).back() - ranges.range(i).front());
         rdispls[i]    = sizeof(U) *  ranges.range(i).front();
     }
+#if MPI_USE
     Vector recvbuf(sendbuf.size()); // for old version mpich, when strict sendbuf and recvbuf don't support
     // double cast also for old mpich version
     MPI_Alltoallv(const_cast<void*>(static_cast<const void*>(sendbuf.data())), sendcounts.data(), sdispls.data(), MPI_BYTE,
                   recvbuf.data(), recvcounts.data(), rdispls.data(), MPI_BYTE, MPI_COMM_WORLD);
+#else
+    Vector recvbuf = sendbuf;
+#endif
     return recvbuf;
 }
 

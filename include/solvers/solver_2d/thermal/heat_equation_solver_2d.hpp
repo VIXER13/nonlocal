@@ -286,7 +286,7 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
                                                                     const Influence_Function& influence_fun) {
     static constexpr auto boundary_checker = [](const bound_cond<T>& bound) noexcept { return bound.type(0) == boundary_t::FLOW; };
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(), boundary_checker);
-    const size_t rows = _base::last_node() - _base::first_node() + (neumann_task && _base::rank() == _base::size() - 1),
+    const size_t rows = _base::last_node() - _base::first_node() + (neumann_task && MPI_utils::MPI_rank() == MPI_utils::MPI_size() - 1),
                  cols = _base::mesh().nodes_count() + neumann_task;
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(rows);
     _base::template integrate_boundary_condition_second_kind(f, bounds_cond);
