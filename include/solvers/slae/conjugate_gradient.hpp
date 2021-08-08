@@ -4,9 +4,7 @@
 #include <cmath>
 #undef I // for new version GCC, when use I macros
 #include <eigen3/Eigen/Sparse>
-#if MPI_USE
-#include <mpi.h>
-#endif
+#include "MPI_utils.hpp"
 
 namespace nonlocal::slae {
 
@@ -20,32 +18,42 @@ class _conjugate_gradient final {
     explicit _conjugate_gradient() noexcept = default;
 
     template<class T>
+    static Eigen::Matrix<T, Eigen::Dynamic, 1> calc_b_full(const Eigen::Matrix<T, Eigen::Dynamic, 1>& b, const MPI_utils::MPI_ranges& ranges) {
+        Eigen::Matrix<T, Eigen::Dynamic, 1> b_full(ranges.ranges().back().back());
+        for(size_t i = ranges.range().front(), j = 0; j < b.size(); ++i, ++j)
+            b_full[i] = b[j];
+        return MPI_utils::all_to_all<T>(b_full, ranges);
+    }
+
+    template<class T>
     static void reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& Ap,
                           Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& threadedAp) {
         for(size_t i = 1; i < threadedAp.cols(); ++i)
             threadedAp.col(0) += threadedAp.col(i);
-//#if MPI_USE
-//        MPI_Allreduce(threadedAp.data(), Ap.data(), Ap.size() * sizeof(T), MPI_BYTE, MPI_SUM, MPI_COMM_WORLD);
-//#else
+#if MPI_USE
+        Ap.setZero();
+        MPI_Allreduce(threadedAp.col(0).data(), Ap.data(), Ap.size(), std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#else
         Ap = threadedAp.col(0);
-//#endif
+#endif
     }
 
     template<class T, class I>
     static void matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& Ap,
                                       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& threadedAp,
                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
-                                      const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) {
+                                      const Eigen::Matrix<T, Eigen::Dynamic, 1>& p,
+                                      const size_t shift) {
         threadedAp.setZero();
-#pragma omp parallel default(none) shared(Ap, threadedAp, A, p)
+#pragma omp parallel default(none) shared(Ap, threadedAp, A, p, shift)
         {
             const int thread = omp_get_thread_num();
 #pragma omp for schedule(dynamic)
             for(I row = 0; row < A.rows(); ++row) {
                 for(I i = A.outerIndexPtr()[row]; i < A.outerIndexPtr()[row+1]; ++i)
-                    threadedAp(row, thread) += A.valuePtr()[i] * p[A.innerIndexPtr()[i]];
+                    threadedAp(row + shift, thread) += A.valuePtr()[i] * p[A.innerIndexPtr()[i]];
                 for(I i = A.outerIndexPtr()[row]+1; i < A.outerIndexPtr()[row+1]; ++i)
-                    threadedAp(A.innerIndexPtr()[i], thread) += A.valuePtr()[i] * p[row];
+                    threadedAp(A.innerIndexPtr()[i], thread) += A.valuePtr()[i] * p[row + shift];
             }
         }
         reduction(Ap, threadedAp);
@@ -55,31 +63,30 @@ public:
     template<class T, class I>
     friend Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
                                                                   const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
-                                                                  const conjugate_gradient_parameters<T>& parameters);
+                                                                  const conjugate_gradient_parameters<T>& parameters,
+                                                                  const MPI_utils::MPI_ranges& ranges);
 };
 
 template<class T, class I>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
                                                        const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
-                                                       const conjugate_gradient_parameters<T>& parameters) {
-//#if MPI_USE
-//    Eigen::Matrix<T, Eigen::Dynamic, 1> b_full = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(A.cols());
-//    int rank = -1, size = -1;
-//    MPI_Comm_size(MPI_COMM_WORLD, &size);
-//    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-//    std::vector<std::array<size_t, 2>> nodes_ranges()
-//#else
+                                                       const conjugate_gradient_parameters<T>& parameters,
+                                                       const MPI_utils::MPI_ranges& ranges) {
+#if MPI_USE
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> b_full = _conjugate_gradient::calc_b_full(b, ranges);
+#else
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b_full = b;
-//#endif
+#endif
 
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> threadedAp(A.rows(), omp_get_max_threads());
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> threadedAp(b_full.size(), omp_get_max_threads());
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(b_full.size()),
                                         r = b_full, p = b_full, z = r;
     uintmax_t iterations = 0;
     const T b_norm = b_full.norm();
     T r_squaredNorm = r.squaredNorm();
+    const size_t shift = ranges.range().front();
     for(; iterations < parameters.max_iterations && std::sqrt(r_squaredNorm) / b_norm > parameters.eps; ++iterations) {
-        _conjugate_gradient::matrix_vector_product(z, threadedAp, A, p);
+        _conjugate_gradient::matrix_vector_product(z, threadedAp, A, p, shift);
         const T nu = r_squaredNorm / p.dot(z);
         x += nu * p;
         r -= nu * z;
