@@ -27,9 +27,11 @@ class _conjugate_gradient final {
 
     template<class T>
     static void reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& Ap,
-                          Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& threadedAp) {
+                          Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& threadedAp,
+                          const size_t rows, const size_t shift) {
         for(size_t i = 1; i < threadedAp.cols(); ++i)
-            threadedAp.col(0) += threadedAp.col(i);
+            threadedAp.block(shift, 0, rows, 1) += threadedAp.block(shift, i, rows, 1);
+
 #if MPI_USE
         Ap.setZero();
         MPI_Allreduce(threadedAp.col(0).data(), Ap.data(), Ap.size(), std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -50,13 +52,20 @@ class _conjugate_gradient final {
             const int thread = omp_get_thread_num();
 #pragma omp for schedule(dynamic)
             for(I row = 0; row < A.rows(); ++row) {
-                for(I i = A.outerIndexPtr()[row]; i < A.outerIndexPtr()[row+1]; ++i)
-                    threadedAp(row + shift, thread) += A.valuePtr()[i] * p[A.innerIndexPtr()[i]];
-                for(I i = A.outerIndexPtr()[row]+1; i < A.outerIndexPtr()[row+1]; ++i)
-                    threadedAp(A.innerIndexPtr()[i], thread) += A.valuePtr()[i] * p[row + shift];
+                const I glob_row = row + shift;
+                const size_t start = A.outerIndexPtr()[row], finish = A.outerIndexPtr()[row+1];
+                const I *const index_finish = &A.innerIndexPtr()[finish];
+                const I* index = &A.innerIndexPtr()[start];
+                const T* value = &A.valuePtr()[start];
+                T& val = threadedAp(glob_row, thread);
+                val += *(value++) * p[*(index++)];
+                for(; index < index_finish; ++index, ++value) {
+                    val += *value * p[*index];
+                    threadedAp(*index, thread) += *value * p[glob_row];
+                }
             }
         }
-        reduction(Ap, threadedAp);
+        reduction(Ap, threadedAp, A.rows(), shift);
     }
 
 public:
