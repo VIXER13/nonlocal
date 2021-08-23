@@ -28,9 +28,9 @@ class _conjugate_gradient final {
     template<class T>
     static void reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& Ap,
                           Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& threadedAp,
-                          const size_t rows, const size_t shift) {
+                          const size_t shift) {
         for(size_t i = 1; i < threadedAp.cols(); ++i)
-            threadedAp.block(shift, 0, rows, 1) += threadedAp.block(shift, i, rows, 1);
+            threadedAp.block(shift, 0, Ap.size()-shift, 1) += threadedAp.block(shift, i, Ap.size()-shift, 1);
 
 #if MPI_USE
         Ap.setZero();
@@ -65,7 +65,7 @@ class _conjugate_gradient final {
                 }
             }
         }
-        reduction(Ap, threadedAp, A.rows(), shift);
+        reduction(Ap, threadedAp, shift);
     }
 
 public:
