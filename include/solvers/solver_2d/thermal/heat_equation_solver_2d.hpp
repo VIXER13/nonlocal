@@ -307,17 +307,20 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
     _base::template integrate_right_part(f, right_partition<T, 1>{right_part});
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = slae::conjugate_gradient(K_inner, f, {}, _base::mesh_proxy()->ranges());
+    const slae::conjugate_gradient<T, Matrix_Index> solver{K_inner, _base::mesh_proxy()->ranges()};
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    std::cout << "iterations = " << solver.iterations() << std::endl;
+    std::cout << "residual = " << solver.residual() << std::endl;
     return solution<T, I>{_base::mesh_proxy(), temperature};
 }
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Init_Distribution, class Right_Part, class Influence_Function>
 void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary(const solver_parameters<T>& sol_parameters,
-                                                             const equation_parameters<T, Material>& eq_parameters,
-                                                             const std::vector<bound_cond<T>>& bounds_cond,
-                                                             const Init_Distribution& init_dist, const Right_Part& right_part,
-                                                             const Influence_Function& influence_fun) {
+                                                                const equation_parameters<T, Material>& eq_parameters,
+                                                                const std::vector<bound_cond<T>>& bounds_cond,
+                                                                const Init_Distribution& init_dist, const Right_Part& right_part,
+                                                                const Influence_Function& influence_fun) {
     static constexpr bool LOCAL = false;
     static constexpr bool NOT_NEUMANN_TASK = false;
     const size_t size = _base::mesh().nodes_count();

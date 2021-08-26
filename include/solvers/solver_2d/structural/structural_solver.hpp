@@ -236,7 +236,10 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
     for(size_t rank = 0; rank < ranges.ranges().size(); ++rank)
         for(size_t& val : ranges.range(rank))
             val += val;
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = slae::conjugate_gradient(K_inner, f, {}, ranges);
+    const slae::conjugate_gradient<T, Matrix_Index> solver{K_inner, ranges};
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
+    std::cout << "iterations = " << solver.iterations() << std::endl;
+    std::cout << "residual = " << solver.residual() << std::endl;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, displacement};
