@@ -77,23 +77,17 @@ void conjugate_gradient<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z)
 
 template<class T, class I>
 void conjugate_gradient<T, I>::matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& z, const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) const {
-    _threaded_z.setZero();
 #pragma omp parallel default(none) shared(p)
 {
     const int thread = omp_get_thread_num();
+    _threaded_z.col(thread).setZero();
 #pragma omp for schedule(dynamic)
     for(I row = 0; row < _A.rows(); ++row) {
-        const I glob_row = row + _shift;
-        const size_t start = _A.outerIndexPtr()[row], finish = _A.outerIndexPtr()[row+1];
-        const I *const index_finish = &_A.innerIndexPtr()[finish];
-        const I* index = &_A.innerIndexPtr()[start];
-        const T* value = &_A.valuePtr()[start];
-        T& val = _threaded_z(glob_row, thread);
-        val += *(value++) * p[*(index++)];
-        for(; index < index_finish; ++index, ++value) {
-            val += *value * p[*index];
-            _threaded_z(*index, thread) += *value * p[glob_row];
-        }
+        I glob_row = row + _shift;
+        for(I i = _A.outerIndexPtr()[row]; i < _A.outerIndexPtr()[row+1]; ++i)
+            _threaded_z(glob_row, thread) += _A.valuePtr()[i] * p[_A.innerIndexPtr()[i]];
+        for(I i = _A.outerIndexPtr()[row]+1; i < _A.outerIndexPtr()[row+1]; ++i)
+            _threaded_z(_A.innerIndexPtr()[i], thread) += _A.valuePtr()[i] * p[glob_row];
     }
 }
     reduction(z);
