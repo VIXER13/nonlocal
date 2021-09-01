@@ -83,11 +83,12 @@ void conjugate_gradient<T, I>::matrix_vector_product(Eigen::Matrix<T, Eigen::Dyn
     _threaded_z.col(thread).setZero();
 #pragma omp for schedule(dynamic)
     for(I row = 0; row < _A.rows(); ++row) {
-        I glob_row = row + _shift;
-        for(I i = _A.outerIndexPtr()[row]; i < _A.outerIndexPtr()[row+1]; ++i)
+        const I glob_row = row + _shift, ind = _A.outerIndexPtr()[row];
+        _threaded_z(glob_row, thread) += _A.valuePtr()[ind] * p[_A.innerIndexPtr()[ind]];
+        for(I i = ind+1; i < _A.outerIndexPtr()[row+1]; ++i) {
             _threaded_z(glob_row, thread) += _A.valuePtr()[i] * p[_A.innerIndexPtr()[i]];
-        for(I i = _A.outerIndexPtr()[row]+1; i < _A.outerIndexPtr()[row+1]; ++i)
             _threaded_z(_A.innerIndexPtr()[i], thread) += _A.valuePtr()[i] * p[glob_row];
+        }
     }
 }
     reduction(z);
