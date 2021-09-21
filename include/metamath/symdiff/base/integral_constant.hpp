@@ -1,9 +1,9 @@
 #ifndef SYMDIFF_INTEGRAL_CONSTANT_HPP
 #define SYMDIFF_INTEGRAL_CONSTANT_HPP
 
+#include "expression.hpp"
 #include <cstdint>
 #include <type_traits>
-#include "expression.hpp"
 
 namespace metamath::symdiff {
 

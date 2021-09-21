@@ -19,8 +19,7 @@ public:
         power_expression_type<cos_expression<E>, 2>
     >;
 
-    constexpr explicit tan_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit tan_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(std::tan(e(x))) {

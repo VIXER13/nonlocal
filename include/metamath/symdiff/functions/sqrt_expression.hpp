@@ -22,8 +22,7 @@ public:
     template<uintmax_t X>
     using derivative_type = typename derivative_t<X>::derivative_type;
 
-    constexpr explicit sqrt_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit sqrt_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(std::sqrt(e(x))) {

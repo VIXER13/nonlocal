@@ -1,9 +1,9 @@
 #ifndef ELEMENT_2D_BASE_HPP
 #define ELEMENT_2D_BASE_HPP
 
-#include <array>
 #include "element_base.hpp"
 #include "geometry_2d.hpp"
+#include <array>
 
 namespace metamath::finite_element {
 

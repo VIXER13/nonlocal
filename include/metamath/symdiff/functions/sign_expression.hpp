@@ -13,8 +13,7 @@ public:
     template<uintmax_t X>
     using derivative_type = integral_constant<intmax_t, 0>;
 
-    constexpr explicit sign_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit sign_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr intmax_t operator()(const U& x) const {

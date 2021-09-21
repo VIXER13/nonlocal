@@ -63,8 +63,7 @@ public:
         typename E::template derivative_type<X>
     >;
 
-    constexpr explicit power_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit power_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(function::power<N>(e(x))) {

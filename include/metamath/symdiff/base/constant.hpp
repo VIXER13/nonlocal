@@ -13,8 +13,7 @@ struct constant : expression<constant<T>> {
 
     const T value = 0;
 
-    constexpr constant(const T& value) :
-        value{value} {}
+    constexpr constant(const T& value) : value{value} {}
 
     template<class U>
     constexpr T operator()(const U&) const {

@@ -1,8 +1,8 @@
 #ifndef FINITE_ELEMENT_1D_BASIS_QUADRATIC_ELEMENT_HPP
 #define FINITE_ELEMENT_1D_BASIS_QUADRATIC_ELEMENT_HPP
 
-#include <functional>
 #include "geometry_1d.hpp"
+#include <functional>
 
 namespace metamath::finite_element {
 

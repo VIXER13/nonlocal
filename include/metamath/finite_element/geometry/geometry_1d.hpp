@@ -1,8 +1,8 @@
 #ifndef FINITE_ELEMENT_GEOMETRY_1D_HPP
 #define FINITE_ELEMENT_GEOMETRY_1D_HPP
 
-#include <array>
 #include "variable.hpp"
+#include <array>
 
 namespace metamath::finite_element {
 

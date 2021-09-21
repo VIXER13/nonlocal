@@ -4,6 +4,7 @@
 #include "element_integrate_base.hpp"
 #include "element_1d_base.hpp"
 #include "quadrature.hpp"
+#include <memory>
 
 namespace metamath::finite_element {
 
@@ -12,6 +13,7 @@ class element_1d_integrate_base : public element_integrate_base<T>,
                                   private virtual element_1d_base<T> {
 protected:
     std::vector<T> _qNxi;
+    std::unique_ptr<quadrature_1d_base<T>> _quadrature = nullptr;
 
 public:
     using element_integrate_base<T>::nodes_count;
@@ -24,6 +26,7 @@ public:
     ~element_1d_integrate_base() override = default;
 
     virtual void set_quadrature(const quadrature_1d_base<T>& quadrature) = 0;
+    const std::unique_ptr<quadrature_1d_base<T>>& quadrature() const noexcept { return _quadrature; }
 
     T qNxi(const size_t i, const size_t q) const noexcept { return _qNxi[i*qnodes_count() + q]; }
 };

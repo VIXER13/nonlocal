@@ -16,9 +16,11 @@ class quadrature_1d : public quadrature_1d_base<T>,
 public:
     ~quadrature_1d() override = default;
 
+    std::unique_ptr<quadrature_1d_base<T>> clone() const override { return std::make_unique<quadrature_1d<T, Quadrature_Type>>(); }
+
     size_t nodes_count() const override { return Quadrature_Type<T>::nodes.size(); }
 
-    const std::array<T, 1>& node  (const size_t i) const override { return Quadrature_Type<T>::nodes[i]; }
+    const std::array<T, 1>& node (const size_t i) const override { return Quadrature_Type<T>::nodes[i]; }
     T weight(const size_t i) const override { return Quadrature_Type<T>::weights[i]; }
 
     T boundary(const side_1d bound) const override { return Quadrature_Type<T>::boundary(bound); }
