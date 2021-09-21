@@ -1,13 +1,13 @@
 #ifndef HEAT_EQUATION_SOLVER_HPP
 #define HEAT_EQUATION_SOLVER_HPP
 
-#include <iostream>
-#include <algorithm>
-#include <omp.h>
-#include "solver_2d/finite_element_solver_base_2d.hpp"
+#include "finite_element_solver_base_2d.hpp"
 #include "heat_equation_parameters.hpp"
 #include "heat_equation_solution_2d.hpp"
 #include "conjugate_gradient.hpp"
+#include <iostream>
+#include <algorithm>
+#include <omp.h>
 
 namespace nonlocal::heat {
 

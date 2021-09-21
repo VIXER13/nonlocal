@@ -1,12 +1,12 @@
 #ifndef STRUCTURAL_SOLVER_HPP
 #define STRUCTURAL_SOLVER_HPP
 
+#include "finite_element_solver_base_2d.hpp"
+#include "structural_solution.hpp"
+#include "conjugate_gradient.hpp"
 #include <functional>
 #include <algorithm>
 #include <omp.h>
-#include "solver_2d/finite_element_solver_base_2d.hpp"
-#include "structural_solution.hpp"
-#include "conjugate_gradient.hpp"
 
 namespace nonlocal::structural {
 

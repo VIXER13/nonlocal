@@ -1,5 +1,5 @@
-#include "solver_2d/influence_functions_2d.hpp"
-#include "solver_2d/structural/structural_solver.hpp"
+#include "influence_functions_2d.hpp"
+#include "structural_solver.hpp"
 
 namespace {
 

@@ -1,8 +1,8 @@
 #ifndef MESH_UTILS_HPP
 #define MESH_UTILS_HPP
 
-#include <array>
 #include "metamath.hpp"
+#include <array>
 
 namespace nonlocal::mesh::utils {
 

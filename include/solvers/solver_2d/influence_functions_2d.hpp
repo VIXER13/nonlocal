@@ -3,9 +3,9 @@
 
 // В данном модуле описаны различные возмоные функции виляния
 
+#include "power.hpp"
 #include <cmath>
 #include <array>
-#include "power.hpp"
 
 namespace nonlocal::influence {
 

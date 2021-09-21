@@ -1,7 +1,7 @@
 #ifndef FINITE_ELEMENT_SOLVER_BASE_1D_HPP
 #define FINITE_ELEMENT_SOLVER_BASE_1D_HPP
 
-#include "mesh.hpp"
+#include "mesh_1d.hpp"
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 

@@ -1,7 +1,7 @@
 #ifndef MESH_SU2_PARSER_HPP
 #define MESH_SU2_PARSER_HPP
 
-#include "mesh_2d.hpp"
+#include "mesh_container_2d.hpp"
 #include <iostream>
 
 namespace nonlocal::mesh {

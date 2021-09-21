@@ -1,4 +1,3 @@
-#include <iostream>
 #include "influence_functions_2d.hpp"
 #include "structural_solver.hpp"
 

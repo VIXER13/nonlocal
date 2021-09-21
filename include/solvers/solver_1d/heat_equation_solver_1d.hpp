@@ -2,6 +2,7 @@
 #define HEAT_EQUATION_SOLVER_HPP
 
 #include "finite_element_solver_base_1d.hpp"
+#include <fstream>
 
 namespace nonlocal::heat {
 

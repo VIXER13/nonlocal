@@ -1,13 +1,12 @@
 #ifndef MESH_PROXY_HPP
 #define MESH_PROXY_HPP
 
-#include "mesh_2d.hpp"
+#include "mesh_container_2d.hpp"
 #include "utils.hpp"
+#include "MPI_utils.hpp"
 #include <unordered_set>
 #include <unordered_map>
-#ifdef MPI_USE
-    #include "MPI_utils.hpp"
-#endif
+#include <numeric>
 
 namespace nonlocal::mesh {
 

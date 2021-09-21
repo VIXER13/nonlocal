@@ -1,7 +1,6 @@
 #ifndef FINITE_ELEMENT_ROUTINE_HPP
 #define FINITE_ELEMENT_ROUTINE_HPP
 
-#include <numeric>
 #ifdef MPI_USE
 //#include <mkl.h>
 //#include <mkl_cluster_sparse_solver.h>
@@ -12,9 +11,11 @@
 //#define EIGEN_USE_MKL_ALL
 //#include <eigen3/Eigen/PardisoSupport>
 #undef I // for new version GCC, when use I macros
-#include "mesh.hpp"
+#include "mesh_2d.hpp"
 #include "right_partition.hpp"
 #include "boundary_condition.hpp"
+#include <numeric>
+#include <iostream>
 
 namespace nonlocal {
 
@@ -117,6 +118,7 @@ protected:
     static void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
         for(size_t i = 0; i < K.rows(); ++i)
             K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
+        std::cout << K.outerIndexPtr()[K.rows()] << std::endl;
         K.data().resize(K.outerIndexPtr()[K.rows()]);
         for(size_t i = 0; i < K.outerIndexPtr()[K.rows()]; ++i)
             K.innerIndexPtr()[i] = K.cols()-1;
@@ -240,7 +242,10 @@ void finite_element_solver_base<T, I, Matrix_Index>::create_matrix_portrait(Eige
                                                                             const std::vector<bool>& inner_nodes, const bool nonlocal_task) const {
     if (nonlocal_task) mesh_index<DoF, index_stage::SHIFTS, theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else               mesh_index<DoF, index_stage::SHIFTS, theory::   LOCAL>(K_inner, K_bound, inner_nodes);
+    std::cout << "rank = " << MPI_utils::MPI_rank() << std::endl;
+    std::cout << "K_inner nnz count: ";
     prepare_memory(K_inner);
+    std::cout << "K_bound nnz count: ";
     prepare_memory(K_bound);
     if (nonlocal_task) mesh_index<DoF, index_stage::NONZERO, theory::NONLOCAL>(K_inner, K_bound, inner_nodes);
     else               mesh_index<DoF, index_stage::NONZERO, theory::   LOCAL>(K_inner, K_bound, inner_nodes);

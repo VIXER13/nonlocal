@@ -22,12 +22,13 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-O2)
 
 #libraries
-if (WITH_MPI)
-    add_subdirectory(include/MPI_utils)
-endif()
+add_subdirectory(include/MPI_utils)
 add_subdirectory(include/metamath)
-add_subdirectory(include/mesh)
-add_subdirectory(include/solvers)
+add_subdirectory(include/mesh/mesh_1d)
+add_subdirectory(include/mesh/mesh_2d)
+add_subdirectory(include/solvers/slae)
+add_subdirectory(include/solvers/solver_1d)
+add_subdirectory(include/solvers/solver_2d)
 
 #tests
 add_subdirectory(src/1d/thermal)
