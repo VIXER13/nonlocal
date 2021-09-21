@@ -1,8 +1,8 @@
 #ifndef GAUSSIAN_QUADRATURE_HPP
 #define GAUSSIAN_QUADRATURE_HPP
 
-#include <cmath>
 #include "geometry_1d.hpp"
+#include <cmath>
 
 namespace metamath::finite_element {
 

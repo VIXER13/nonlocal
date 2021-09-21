@@ -1,9 +1,9 @@
 #ifndef FINITE_ELEMENT_GEOMETRY_2D_HPP
 #define FINITE_ELEMENT_GEOMETRY_2D_HPP
 
+#include "variable.hpp"
 #include <array>
 #include <functional>
-#include "variable.hpp"
 
 namespace metamath::finite_element {
 

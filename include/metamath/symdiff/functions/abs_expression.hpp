@@ -18,8 +18,7 @@ public:
         sign_expression<E>
     >;
 
-    constexpr abs_expression(const expression<E> &e) :
-        e{e()} {}
+    constexpr abs_expression(const expression<E> &e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(std::abs(e(x))) {

@@ -23,8 +23,7 @@ public:
     template<uintmax_t X>
     using derivative_type = negate_type<typename E::template derivative_type<X>>;
 
-    constexpr explicit negate(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit negate(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(-e(x)) {

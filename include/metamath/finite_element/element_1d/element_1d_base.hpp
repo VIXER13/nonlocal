@@ -1,9 +1,9 @@
 #ifndef ELEMENT_1D_BASE_HPP
 #define ELEMENT_1D_BASE_HPP
 
-#include <type_traits>
 #include "element_base.hpp"
 #include "geometry_1d.hpp"
+#include <type_traits>
 
 namespace metamath::finite_element {
 

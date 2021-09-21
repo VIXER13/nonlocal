@@ -36,8 +36,7 @@ public:
     template<uintmax_t X>
     using derivative_type = minus_type<typename E1::template derivative_type<X>, typename E2::template derivative_type<X>>;
 
-    constexpr explicit minus(const expression<E1>& e1, const expression<E2>& e2) :
-        e1{e1()}, e2{e2()} {}
+    constexpr explicit minus(const expression<E1>& e1, const expression<E2>& e2) : e1{e1()}, e2{e2()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(e1(x) - e2(x)) {

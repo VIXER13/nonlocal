@@ -43,8 +43,7 @@ public:
         multiplies_type<E2, E2>
     >;
 
-    constexpr explicit divides(const expression<E1>& e1, const expression<E2>& e2) :
-        e1{e1()}, e2{e2()} {}
+    constexpr explicit divides(const expression<E1>& e1, const expression<E2>& e2) : e1{e1()}, e2{e2()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(e1(x) / e2(x)) {

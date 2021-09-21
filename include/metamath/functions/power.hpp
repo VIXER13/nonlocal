@@ -6,7 +6,7 @@
 namespace metamath::function {
 
 template<intmax_t N, class T>
-constexpr T power(const T& x) {
+constexpr T power(const T& x) noexcept {
     if constexpr (N == 0)
         return 1;
     else if constexpr (N < 0)

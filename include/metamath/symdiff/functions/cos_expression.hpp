@@ -18,8 +18,7 @@ public:
     template<uintmax_t X>
     using derivative_type = negate_type<multiplies_type<sin_expression<E>, typename E::template derivative_type<X>>>;
 
-    constexpr explicit cos_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit cos_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(std::cos(e(x))) {

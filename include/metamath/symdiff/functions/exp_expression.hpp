@@ -14,8 +14,7 @@ public:
     template<uintmax_t X>
     using derivative_type = multiplies_type<exp_expression<E>, typename E::template derivative_type<X>>;
 
-    constexpr explicit exp_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit exp_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(std::exp(e(x))) {

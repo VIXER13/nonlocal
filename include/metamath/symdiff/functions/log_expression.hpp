@@ -14,8 +14,7 @@ public:
     template<uintmax_t X>
     using derivative_type = divides_type<typename E::template derivative_type<X>, E>;
 
-    constexpr explicit log_expression(const expression<E>& e) :
-        e{e()} {}
+    constexpr explicit log_expression(const expression<E>& e) : e{e()} {}
 
     template<class U>
     constexpr auto operator()(const U& x) const -> decltype(std::log(e(x))) {
