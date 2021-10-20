@@ -4,4 +4,6 @@
 #include "heat_equation_solver_1d.hpp"
 #include "influence_functions_1d.hpp"
 
+#include "stationary_heat_equation_solver_1d.hpp"
+
 #endif

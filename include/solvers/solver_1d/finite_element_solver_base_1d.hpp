@@ -9,7 +9,9 @@ namespace nonlocal {
 
 enum class boundary_condition_t : uint8_t {
     FIRST_KIND,
-    SECOND_KIND
+    SECOND_KIND,
+    THIRD_KIND,
+    FOURTH_KIND
 };
 
 template<class T>

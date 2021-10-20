@@ -13,3 +13,7 @@ target_link_libraries(nonlocal_structural_T metamath_lib mesh_2d_lib slae_solver
 add_executable(nonlocal_ellipse structural_ellipse.cpp)
 target_include_directories(nonlocal_ellipse PUBLIC ".")
 target_link_libraries(nonlocal_ellipse metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+
+add_executable(strain_stress_calculator strain_stress_calculator.cpp)
+target_include_directories(strain_stress_calculator PUBLIC ".")
+target_link_libraries(strain_stress_calculator metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)

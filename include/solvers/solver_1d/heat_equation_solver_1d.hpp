@@ -8,26 +8,27 @@ namespace nonlocal::heat {
 
 template<class T>
 struct equation_parameters final {
-    T lambda   = T{1}, // Коэффициент теплопроводности
-      rho      = T{1}, // Плотность
-      c        = T{1}, // Теплоёмкость
-      p1       = T{1}, // Весовой параметр модели
-      r        = T{0}, // Радиус нелокального влияния
-      integral = T{0}; // Значение интеграла для задачи Неймана
+    T lambda   = T{1}; // Коэффициент теплопроводности
+    T rho      = T{1}; // Плотность
+    T c        = T{1}; // Теплоёмкость
+    T p1       = T{1}; // Весовой параметр модели
+    T r        = T{0}; // Радиус нелокального влияния
+    T integral = T{0}; // Значение интеграла для задачи Неймана
 };
 
 template<class T>
 struct solver_parameters final {
     std::string save_path; // Путь куда сохранять данные
     std::array<T, 2> time_interval = {0, 1};
-    uintmax_t steps = 100,
-              save_freq = 1; // Частота сохранения
-    bool save_csv    = true, // Сохранять .csv файлы в формате (x1, x2, T)
-    calc_energy = true; // Вычислять энергия при сохранении, иногда полезно для контроля расчёта
+    uintmax_t steps = 100;
+    uintmax_t save_freq = 1; // Частота сохранения
+    bool save_csv    = true; // Сохранять .csv файлы в формате (x1, x2, T)
+    bool calc_energy = true; // Вычислять энергия при сохранении, иногда полезно для контроля расчёта
 };
 
-static constexpr boundary_condition_t TEMPERATURE = boundary_condition_t::FIRST_KIND;
-static constexpr boundary_condition_t FLOW = boundary_condition_t::FIRST_KIND;
+inline constexpr boundary_condition_t TEMPERATURE = boundary_condition_t::FIRST_KIND;
+inline constexpr boundary_condition_t FLOW = boundary_condition_t::FIRST_KIND;
+inline constexpr boundary_condition_t IMPEDANCE = boundary_condition_t::THIRD_KIND;
 
 template<class T>
 class heat_equation_solver_1d final : public finite_element_solver_base_1d<T> {

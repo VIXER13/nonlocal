@@ -7,19 +7,24 @@ template<class T>
 void save_raw_data(const std::string& path,
                    const nonlocal::mesh::mesh_2d<T>& msh,
                    const nonlocal::structural::solution<T, int>& sol) {
-    std::ofstream eps11{path + "/eps11.csv"},
-            eps22{path + "/eps22.csv"},
-            eps12{path + "/eps12.csv"},
-            sigma11{path + "/sigma11.csv"},
-            sigma22{path + "/sigma22.csv"},
-            sigma12{path + "/sigma12.csv"};
+    std::ofstream
+        u1{path + "/u1.csv"},
+        u2{path + "/u2.csv"},
+        eps11{path + "/eps11.csv"},
+        eps22{path + "/eps22.csv"},
+        eps12{path + "/eps12.csv"},
+        sigma11{path + "/sigma11.csv"},
+        sigma22{path + "/sigma22.csv"},
+        sigma12{path + "/sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
-        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[0][i] << std::endl;
-        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[1][i] << std::endl;
-        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[2][i] << std::endl;
-        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [0][i] << std::endl;
-        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [1][i] << std::endl;
-        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [2][i] << std::endl;
+        u1      << msh.node(i)[0] << ',' << msh.node(i)[1] << ',' << sol.displacement()[0][i] << '\n';
+        u2      << msh.node(i)[0] << ',' << msh.node(i)[1] << ',' << sol.displacement()[1][i] << '\n';
+        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[0][i] << '\n';
+        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[1][i] << '\n';
+        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[2][i] << '\n';
+        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [0][i] << '\n';
+        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [1][i] << '\n';
+        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [2][i] << '\n';
     }
 }
 
@@ -47,10 +52,10 @@ int main(int argc, char** argv) {
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999) {
-            mesh_proxy->find_neighbours(r + 0.025, nonlocal::mesh::balancing_t::MEMORY);
+            mesh_proxy->find_neighbours(r + 0.008, nonlocal::mesh::balancing_t::MEMORY);
         }
 
-        nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
+        nonlocal::structural::structural_solver<double, int, int> fem_sol{mesh_proxy};
         nonlocal::structural::equation_parameters<double> parameters;
         parameters.nu = 0.3;
         parameters.E = 420;
