@@ -18,14 +18,14 @@ class finite_element_matrix_1d {
 protected:
     explicit finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
 
-    void create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond, const bool is_nonlocal);
+    void create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond, const theory_t theory);
 
     template<theory_t Theory, class Callback>
     void mesh_run(const Callback& callback) const;
 
     template<class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
     void calc_matrix(const std::array<boundary_condition_t, 2> bound_cond,
-                     const bool is_nonlocal,
+                     const theory_t theory,
                      const Influence_Function& influence_fun,
                      const Integrate_Loc& integrate_rule_loc,
                      const Integrate_Nonloc& integrate_rule_nonloc);
@@ -39,7 +39,7 @@ public:
     std::array<std::unordered_map<size_t, T>, 2>& matrix_bound();
     const std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() const;
 
-    void clear();
+    void clear_matrix();
 };
 
 template<class T, class I>
@@ -72,14 +72,15 @@ const std::array<std::unordered_map<size_t, T>, 2>& finite_element_matrix_1d<T, 
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::clear() {
+void finite_element_matrix_1d<T, I>::clear_matrix() {
     _matrix_inner = Eigen::SparseMatrix<T, Eigen::RowMajor, I>{};
     _matrix_bound = std::array<std::unordered_map<size_t, T>, 2>{};
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond, const bool is_nonlocal) {
-#pragma omp parallel for default(none) shared(bound_cond, is_nonlocal)
+void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond,
+                                                            const theory_t theory) {
+#pragma omp parallel for default(none) shared(bound_cond, theory)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         if (bound_cond.front() == boundary_condition_t::FIRST_KIND && node == 0 ||
             bound_cond.back () == boundary_condition_t::FIRST_KIND && node == mesh()->nodes_count()-1)
@@ -88,7 +89,7 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bou
             const auto [eL, iL, eR, iR] = mesh()->node_elements(node).named;
             const size_t e = eR == std::numeric_limits<size_t>::max() ? eL : eR,
                          i = iR == std::numeric_limits<size_t>::max() ? iL : iR,
-                         right_neighbour = is_nonlocal ? mesh()->right_neighbour(e) : e + 1;
+                         right_neighbour = theory == theory_t::NONLOCAL ? mesh()->right_neighbour(e) : e + 1;
             const bool last_node_first_kind = bound_cond.back() == boundary_condition_t::FIRST_KIND &&
                                               right_neighbour * (mesh()->element()->nodes_count() - 1) == mesh()->nodes_count()-1;
             _matrix_inner.outerIndexPtr()[node+1] += (right_neighbour - e) * (mesh()->element()->nodes_count() - 1) - i + 1 - last_node_first_kind;
@@ -123,7 +124,7 @@ void finite_element_matrix_1d<T, I>::mesh_run(const Callback& callback) const {
 template<class T, class I>
 template<class Influence_Function, class Integrate_Loc, class Integrate_Nonloc>
 void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condition_t, 2> bound_cond,
-                                                 const bool is_nonlocal,
+                                                 const theory_t theory,
                                                  const Influence_Function& influence_fun,
                                                  const Integrate_Loc& integrate_rule_loc,
                                                  const Integrate_Nonloc& integrate_rule_nonloc) {
@@ -168,7 +169,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condi
         }
     );
 
-    if (is_nonlocal) {
+    if (theory == theory_t::NONLOCAL) {
         mesh_run<theory_t::NONLOCAL>(
             [this, &calc_predicate, &boundary_calc, &integrate_rule_nonloc, &influence_fun]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {

@@ -26,8 +26,18 @@ enum class theory_t : uint8_t {
 template<class T>
 inline constexpr T MAX_NONLOCAL_WEIGHT = T{0.999};
 
+namespace thermal {
+
 template<class T>
-inline constexpr T MAX_NEUMANN_PROBLEM_ERROR = T{1e-5};
+inline constexpr T NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR = std::is_same_v<T, float> ? T{1e-5} : T{1e-14};
+
+template<class T>
+inline constexpr T NEUMANN_PROBLEM_ALPHA_THRESHOLD = std::is_same_v<T, float> ? T{1e-5} : T{1e-14};
+
+template<class T>
+inline constexpr T ROBIN_PROBLEM_ALPHA_THRESHOLD = std::is_same_v<T, float> ? T{1e-5} : T{1e-14};
+
+}
 
 }
 

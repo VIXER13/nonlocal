@@ -206,7 +206,7 @@ void heat_equation_solver_1d<T>::prepare_nonstationary_matrix(Eigen::SparseMatri
     K_inner *= tau;
     K_inner += C_inner;
     if (bound_cond[0].first == boundary_condition_t::FIRST_KIND)
-        K_inner.coeffRef(0, 0) == 1;
+        K_inner.coeffRef(0, 0) = 1;
     if (bound_cond[1].first == boundary_condition_t::FIRST_KIND)
         K_inner.coeffRef(K_inner.rows()-1, K_inner.cols()-1) = 1;
     for(size_t b = 0; b < K_bound.size(); ++b)

@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
         std::cout.precision(3);
         auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<double>>(
             nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
-            std::stoull(argv[2]), std::array{0., 1.});
+            std::stoull(argv[2]), std::array{0., 10.});
 
         const nonlocal::nonlocal_parameters_1d<double> nonloc_parameters = {
             .p1 = std::stod(argv[3]),
@@ -35,15 +35,15 @@ int main(int argc, char** argv) {
         const nonlocal::thermal::heat_equation_parameters_1d<double> equation_parameters = {
             .lambda = 1,
             .integral = 0,
-            .alpha = {-0.1, -0.1}
+            .alpha = {2., 2. / 19.}
         };
 
         mesh->calc_neighbours_count(nonloc_parameters.r);
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
             nonloc_parameters, equation_parameters, mesh,
             {
-                std::pair{nonlocal::boundary_condition_t::THIRD_KIND, -1},
-                std::pair{nonlocal::boundary_condition_t::THIRD_KIND, 1},
+                std::pair{nonlocal::boundary_condition_t::THIRD_KIND, 0},
+                std::pair{nonlocal::boundary_condition_t::THIRD_KIND, 0},
             },
             [](const double x) noexcept { return 0; },
             nonlocal::influence::polynomial_1d<double, 2, 1>{nonloc_parameters.r}

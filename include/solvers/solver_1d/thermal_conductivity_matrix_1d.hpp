@@ -18,7 +18,7 @@ protected:
                        const Influence_Function& influence_function) const;
 
     void create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond,
-                                const bool is_neumann, const bool is_nonlocal);
+                                const theory_t theory, const bool is_neumann);
 
     void neumann_problem_col_fill();
 
@@ -27,8 +27,8 @@ public:
     ~thermal_conductivity_matrix_1d() override = default;
 
     template<class Influence_Function>
-    void calc_matrix(const T lambda, const std::array<boundary_condition_t, 2> bound_cond,
-                     const T p1, const Influence_Function& influence_function);
+    void calc_matrix(const T lambda, const T p1, const Influence_Function& influence_function,
+                     const std::array<boundary_condition_t, 2> bound_cond, const bool is_neumann = false);
 };
 
 template<class T, class I>
@@ -74,11 +74,11 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const 
 
 template<class T, class I>
 void thermal_conductivity_matrix_1d<T, I>::create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond,
-                                                                  const bool is_neumann, const bool is_nonlocal) {
+                                                                  const theory_t theory, const bool is_neumann) {
     if (is_neumann)
         for(size_t row = 0; row < _base::matrix_inner().rows(); ++row)
             _base::matrix_inner().outerIndexPtr()[row+1] = 1;
-    _base::create_matrix_portrait(bound_cond, is_nonlocal);
+    _base::create_matrix_portrait(bound_cond, theory);
     if (is_neumann)
         for(size_t row = 0; row < _base::matrix_inner().rows(); ++row)
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row+1]-1] = _base::mesh()->nodes_count();
@@ -97,16 +97,14 @@ void thermal_conductivity_matrix_1d<T, I>::neumann_problem_col_fill() {
 
 template<class T, class I>
 template<class Influence_Function>
-void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const T lambda, const std::array<boundary_condition_t, 2> bound_cond,
-                                                       const T p1, const Influence_Function& influence_function) {
-    _base::clear();
-    const bool is_nonlocal = p1 < MAX_NONLOCAL_WEIGHT<T>;
-    const bool is_neumann = bound_cond.front() == boundary_condition_t::SECOND_KIND &&
-                            bound_cond.back()  == boundary_condition_t::SECOND_KIND;
+void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const T lambda, const T p1, const Influence_Function& influence_function,
+                                                       const std::array<boundary_condition_t, 2> bound_cond, const bool is_neumann) {
+    _base::clear_matrix();
+    const theory_t theory = p1 < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
     const size_t matrix_size = _base::mesh()->nodes_count() + is_neumann;
     _base::matrix_inner().resize(matrix_size, matrix_size);
-    create_matrix_portrait(bound_cond, is_neumann, is_nonlocal);
-    _base::template calc_matrix(bound_cond, is_nonlocal, influence_function,
+    create_matrix_portrait(bound_cond, theory, is_neumann);
+    _base::template calc_matrix(bound_cond, theory, influence_function,
         [this, factor = lambda * p1](const size_t e, const size_t i, const size_t j) {
             return factor * integrate_loc(e, i, j);
         },
