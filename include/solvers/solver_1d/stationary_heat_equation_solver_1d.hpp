@@ -6,6 +6,8 @@
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "boundary_condition_third_kind_1d.hpp"
 
+#include <iostream>
+
 namespace nonlocal::thermal {
 
 template<class T>
@@ -41,14 +43,15 @@ std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T
                                                   const Influence_Function& influence_function) {
     const bool is_neumann = is_neumann_problem(boundary_condition, equation_param.alpha);
     if (is_neumann && std::abs(boundary_value(boundary_condition.front()) + boundary_value(boundary_condition.back())) > NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>)
-        throw std::domain_error{"This is unsolvable Neumann problem: left_flow + right_flow != 0"};
+        throw std::domain_error{"Unsolvable Neumann problem: left_flow + right_flow != 0."};
 
     const std::array<T, 2>& alpha = equation_param.alpha;
     if (is_robin_problem(boundary_condition) && !is_solvable_robin_problem(mesh->section(), equation_param.alpha))
-        throw std::domain_error{"This is unsolvable Robin problem: alpha[0] == alpha[1] / ((b - a) * alpha[1] - 1)."};
+        throw std::domain_error{"Unsolvable Robin problem: alpha[0] == alpha[1] / ((b - a) * alpha[1] - 1)."};
 
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
     conductivity.template calc_matrix(equation_param.lambda, nonloc_param.p1, influence_function, boundary_type(boundary_condition), is_neumann);
+
     boundary_condition_third_kind_1d(conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(conductivity.matrix_inner().cols());
