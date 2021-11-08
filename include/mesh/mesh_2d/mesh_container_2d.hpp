@@ -136,10 +136,14 @@ public:
     element_1d_t element_1d_type(const size_t boundary, const size_t element) const noexcept;
     const Finite_Element_1D_Ptr& element_1d(const element_1d_t type) const noexcept;
     const Finite_Element_1D_Ptr& element_1d(const size_t boundary, const size_t element) const noexcept;
+    Finite_Element_1D_Ptr& element_1d(const element_1d_t type) noexcept;
+    Finite_Element_1D_Ptr& element_1d(const size_t boundary, const size_t element) noexcept;
 
     element_2d_t element_2d_type(const size_t element) const noexcept;
     const Finite_Element_2D_Ptr& element_2d(const element_2d_t type) const noexcept;
     const Finite_Element_2D_Ptr& element_2d(const size_t number) const noexcept;
+    Finite_Element_2D_Ptr& element_2d(const element_2d_t type) noexcept;
+    Finite_Element_2D_Ptr& element_2d(const size_t number) noexcept;
 
     void save_as_vtk(std::ofstream& mesh_file) const;
 };
@@ -241,6 +245,16 @@ const typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(c
 }
 
 template<class T, class I>
+typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const element_1d_t type) noexcept {
+    return _elements_1d[size_t(type)];
+}
+
+template<class T, class I>
+typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const size_t boundary, const size_t element) noexcept {
+    return element_1d(element_1d_type(boundary, element));
+}
+
+template<class T, class I>
 element_2d_t mesh_2d<T, I>::element_2d_type(const size_t element) const noexcept {
     return _elements_2d_type[element];
 }
@@ -252,6 +266,16 @@ const typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(c
 
 template<class T, class I>
 const typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const size_t number) const noexcept {
+    return element_2d(element_2d_type(number));
+}
+
+template<class T, class I>
+typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const element_2d_t type) noexcept {
+    return _elements_2d[size_t(type)];
+}
+
+template<class T, class I>
+typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const size_t number) noexcept {
     return element_2d(element_2d_type(number));
 }
 

@@ -69,10 +69,8 @@ protected:
             if (!inner[i][col]) {
                 if constexpr (Stage == index_stage::SHIFTS)
                     ++K.outerIndexPtr()[row - DoF * _node_shift + 1];
-                if constexpr (Stage == index_stage::NONZERO) {
-                    K.valuePtr()[inner_index[i]] = 0;
+                if constexpr (Stage == index_stage::NONZERO)
                     K.innerIndexPtr()[inner_index[i]++] = col;
-                }
                 inner[i][col] = true;
             }
         }
@@ -120,8 +118,10 @@ protected:
             K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
         std::cout << K.outerIndexPtr()[K.rows()] << std::endl;
         K.data().resize(K.outerIndexPtr()[K.rows()]);
-        for(size_t i = 0; i < K.outerIndexPtr()[K.rows()]; ++i)
+        for(size_t i = 0; i < K.outerIndexPtr()[K.rows()]; ++i) {
             K.innerIndexPtr()[i] = K.cols()-1;
+            K.valuePtr()[i] = T{0};
+        }
     }
 
     static void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K) {
