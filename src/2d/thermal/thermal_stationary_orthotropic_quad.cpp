@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
             { // Граничные условия
                 {   // Down
                     nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return 1; },
+                    [](const std::array<double, 2>& x) { return -1; },
                 },
 
                 {   // Right
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
             bell // Функция влияния
         );
 
-        if (MPI_utils::MPI_rank()) {
+        if (MPI_utils::MPI_rank() == 0) {
             std::cout << "Energy = " << T.calc_energy() << std::endl;
             nonlocal::mesh::save_as_csv("T.csv", *mesh, T.get_temperature());
             T.save_as_vtk("heat.vtk");

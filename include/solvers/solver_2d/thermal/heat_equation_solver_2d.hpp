@@ -30,6 +30,8 @@ class heat_equation_solver_2d : public finite_element_solver_base<T, I, Matrix_I
 
     enum class matrix : bool {THERMAL_CONDUCTIVITY, HEAT_CAPACITY};
 
+    std::array<T, 2> _lambda = {T{1}, T{1}};
+
     T integrate_basic(const size_t e, const size_t i) const;
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
 
@@ -270,10 +272,22 @@ template<class T, class I, class Matrix_Index>
 void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary_solver_logger(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature,
                                                                               const solver_parameters<T>& sol_parameters, const uintmax_t step) const {
     std::cout << "step = " << step << std::endl;
-    if(sol_parameters.save_vtk)
+
+    auto flux = _base::mesh_proxy()->calc_gradient(temperature);
+    for(size_t comp = 0; comp < flux.size(); ++comp)
+        for(T& val : flux[comp])
+            val *= _lambda[comp];
+
+    if(sol_parameters.save_vtk) {
         mesh::save_as_vtk(sol_parameters.save_path + std::to_string(step) + ".vtk", _base::mesh_proxy()->mesh(), temperature);
-    if(sol_parameters.save_csv)
+        mesh::save_as_vtk(sol_parameters.save_path + std::to_string(step) + ".vtk", _base::mesh_proxy()->mesh(), flux[X]);
+        mesh::save_as_vtk(sol_parameters.save_path + std::to_string(step) + ".vtk", _base::mesh_proxy()->mesh(), flux[Y]);
+    }
+    if(sol_parameters.save_csv) {
         mesh::save_as_csv(sol_parameters.save_path + std::to_string(step) + ".csv", _base::mesh_proxy()->mesh(), temperature);
+        mesh::save_as_csv(sol_parameters.save_path + 'X' + std::to_string(step) + ".csv", _base::mesh_proxy()->mesh(), flux[X]);
+        mesh::save_as_csv(sol_parameters.save_path + 'Y' + std::to_string(step) + ".csv", _base::mesh_proxy()->mesh(), flux[Y]);
+    }
     if(sol_parameters.calc_energy)
         std::cout << "Energy = " << _base::mesh_proxy()->integrate_solution(temperature) << std::endl;
 }
@@ -326,6 +340,11 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary(const solver_par
     const size_t size = _base::mesh().nodes_count();
     const bool nonlocal_task = eq_parameters.p1 < _base::MAX_LOCAL_WEIGHT;
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
+
+    if constexpr(Material == material_t::ISOTROPIC)
+        _lambda.fill(eq_parameters.lambda[0]);
+    else if constexpr(Material == material_t::ORTHOTROPIC)
+        _lambda = eq_parameters.lambda;
 
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> K_inner(size, size), K_bound(size, size);
     create_matrix_portrait(K_inner, K_bound, inner_nodes, NOT_NEUMANN_TASK, nonlocal_task);

@@ -22,10 +22,10 @@ int main(int argc, char** argv) {
         std::cout << "r[1] = " << r[1] << std::endl;
         static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
         nonlocal::heat::solver_parameters<double> sol_parameters;
-        sol_parameters.save_path = argv[5];
-        sol_parameters.time_interval = {0, 5};
-        sol_parameters.steps = 10000;
-        sol_parameters.save_freq = 50;
+        sol_parameters.save_path = std::string{argv[5]} + '/';
+        sol_parameters.time_interval = {0, 0.5};
+        sol_parameters.steps = 1000;
+        sol_parameters.save_freq = 5;
         sol_parameters.save_vtk = false;
         sol_parameters.save_csv = true;
         sol_parameters.calc_energy = true;
