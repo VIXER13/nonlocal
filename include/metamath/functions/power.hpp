@@ -32,6 +32,6 @@ constexpr T power(const T& x) noexcept {
         return power_m<uintmax_t{-(N + 1)} + 1>(x);
 }
 
-};
+}
 
 #endif
