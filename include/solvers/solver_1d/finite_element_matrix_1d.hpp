@@ -78,8 +78,7 @@ void finite_element_matrix_1d<T, I>::clear_matrix() {
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond,
-                                                            const theory_t theory) {
+void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<boundary_condition_t, 2> bound_cond, const theory_t theory) {
 #pragma omp parallel for default(none) shared(bound_cond, theory)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         if (bound_cond.front() == boundary_condition_t::FIRST_KIND && node == 0 ||
@@ -128,58 +127,36 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condi
                                                  const Influence_Function& influence_fun,
                                                  const Integrate_Loc& integrate_rule_loc,
                                                  const Integrate_Nonloc& integrate_rule_nonloc) {
-    enum class coeff_destination : uint8_t {
-        LEFT_BOUND,
-        RIGHT_BOUND,
-        REGULAR,
-        NO
+    const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
+        if (col == row)
+            _matrix_inner.coeffRef(row, col) = 1;
+        else if (const auto [it, flag] = matrix_bound.template try_emplace(col, integral); !flag)
+            it->second += integral;
     };
 
-    const auto calc_predicate = [this, bound_cond](const size_t row, const size_t col) {
+    const auto assemble = [this, bound_cond, &assemble_bound, last_node = mesh()->nodes_count()-1]<class Integrate, class... Args>
+                          (const size_t row, const size_t col, const Integrate& integrate_rule, const Args&... args) {
         if (bound_cond.front() == boundary_condition_t::FIRST_KIND && (row == 0 || col == 0)) {
             if (row == 0)
-                return coeff_destination::LEFT_BOUND;
-        } else if (bound_cond.back() == boundary_condition_t::FIRST_KIND &&
-                   (row == mesh()->nodes_count()-1 || col == mesh()->nodes_count()-1)) {
-            if (row == mesh()->nodes_count()-1)
-                return coeff_destination::RIGHT_BOUND;
+                assemble_bound(_matrix_bound.front(), row, col, integrate_rule(args...));
+        } else if (bound_cond.back() == boundary_condition_t::FIRST_KIND && (row == last_node || col == last_node)) {
+            if (row == last_node)
+                assemble_bound(_matrix_bound.back(), row, col, integrate_rule(args...));
         } else if (row <= col)
-            return coeff_destination::REGULAR;
-        return coeff_destination::NO;
-    };
-
-    const auto boundary_calc = [this](const size_t b, const size_t row, const size_t col, const T integral) {
-        if (col == row)
-            _matrix_inner.coeffRef(row, col) = T{1};
-        else {
-            const auto [it, flag] = _matrix_bound[b].template try_emplace(col, integral);
-            if (!flag) it->second += integral;
-        }
+            _matrix_inner.coeffRef(row, col) += integrate_rule(args...);
     };
 
     mesh_run<theory_t::LOCAL>(
-        [this, &calc_predicate, &boundary_calc, &integrate_rule_loc](const size_t e, const size_t i, const size_t j) {
-            const size_t row = mesh()->node_number(e, i),
-                         col = mesh()->node_number(e, j);
-            if (const coeff_destination dst = calc_predicate(row, col); dst != coeff_destination::NO) {
-                const T integral = integrate_rule_loc(e, i, j);
-                if (dst == coeff_destination::REGULAR) _matrix_inner.coeffRef(row, col) += integral;
-                else                                   boundary_calc(size_t(dst), row, col, integral);
-            }
+        [this, &integrate_rule_loc, &assemble](const size_t e, const size_t i, const size_t j) {
+            assemble(mesh()->node_number(e, i), mesh()->node_number(e, j), integrate_rule_loc, e, i, j);
         }
     );
 
     if (theory == theory_t::NONLOCAL) {
         mesh_run<theory_t::NONLOCAL>(
-            [this, &calc_predicate, &boundary_calc, &integrate_rule_nonloc, &influence_fun]
+            [this, &integrate_rule_nonloc, &influence_fun, &assemble]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                const size_t row = mesh()->node_number(eL,  iL ),
-                             col = mesh()->node_number(eNL, jNL);
-                if (const coeff_destination dst = calc_predicate(row, col); dst != coeff_destination::NO) {
-                    const T integral = integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun);
-                    if (dst == coeff_destination::REGULAR) _matrix_inner.coeffRef(row, col) += integral;
-                    else                                   boundary_calc(size_t(dst), row, col, integral);
-                }
+                assemble(mesh()->node_number(eL, iL), mesh()->node_number(eNL, jNL), integrate_rule_nonloc, eL, eNL, iL, jNL, influence_fun);
             }
         );
     }
