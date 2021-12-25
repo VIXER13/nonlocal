@@ -10,24 +10,24 @@
 
 namespace nonlocal {
 
-template<class T, class Vector>
-void boundary_condition_first_kind_1d(Vector& f, const std::array<stationary_boundary_1d_t<T>, 2>& boundary_condition,
+template<class B, class T, class Vector>
+void boundary_condition_first_kind_1d(Vector& f, const std::array<stationary_boundary_1d_t<B, T>, 2>& boundary_condition,
                                       const std::array<std::unordered_map<size_t, T>, 2>& matrix_bound) {
     const std::array<size_t, 2> ind = {0, size_t(f.size()-1)};
     for(size_t b = 0; b < boundary_condition.size(); ++b)
-        if (boundary_type(boundary_condition[b]) == boundary_condition_t::FIRST_KIND) {
+        if (boundary_condition_t(boundary_type(boundary_condition[b])) == boundary_condition_t::FIRST_KIND) {
             for(const auto& [i, val] : matrix_bound[b])
                 f[i] -= val * boundary_value(boundary_condition[b]);
             f[ind[b]] = boundary_value(boundary_condition[b]);
         }
 }
 
-template<class T, class Vector>
-void boundary_condition_second_kind_1d(Vector& f, const std::array<stationary_boundary_1d_t<T>, 2>& boundary_condition,
+template<class B, class T, class Vector>
+void boundary_condition_second_kind_1d(Vector& f, const std::array<stationary_boundary_1d_t<B, T>, 2>& boundary_condition,
                                        const std::array<size_t, 2>& ind) {
     for(size_t b = 0; b < boundary_condition.size(); ++b)
-        if (boundary_type(boundary_condition[b]) == boundary_condition_t::SECOND_KIND ||
-            boundary_type(boundary_condition[b]) == boundary_condition_t::THIRD_KIND)
+        if (boundary_condition_t(boundary_type(boundary_condition[b])) == boundary_condition_t::SECOND_KIND ||
+            boundary_condition_t(boundary_type(boundary_condition[b])) == boundary_condition_t::THIRD_KIND)
             f[ind[b]] += boundary_value(boundary_condition[b]);
 }
 

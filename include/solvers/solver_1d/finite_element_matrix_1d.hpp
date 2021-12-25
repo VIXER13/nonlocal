@@ -96,7 +96,7 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bou
 
     utils::prepare_memory(_matrix_inner);
 
-    for(size_t i = 0; i < _matrix_inner.rows(); ++i)
+    for(const size_t i : std::views::iota(size_t{0}, size_t(_matrix_inner.rows())))
         for(size_t j = _matrix_inner.outerIndexPtr()[i], k = i; j < _matrix_inner.outerIndexPtr()[i+1]; ++j, ++k)
             _matrix_inner.innerIndexPtr()[j] = k;
 }
@@ -104,19 +104,17 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bou
 template<class T, class I>
 template<theory_t Theory, class Callback>
 void finite_element_matrix_1d<T, I>::mesh_run(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
+#pragma omp parallel for default(none) firstprivate(callback) shared(std::views::iota) schedule(dynamic)
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         for(const auto& [eL, iL] : mesh()->node_elements(node).arr)
             if(eL != std::numeric_limits<size_t>::max()) {
                 if constexpr (Theory == theory_t::LOCAL)
-                    for(size_t jL = 0; jL < mesh()->element()->nodes_count(); ++jL)
+                    for(const size_t jL : std::views::iota(size_t{0}, mesh()->element()->nodes_count()))
                         callback(eL, iL, jL);
-                if constexpr (Theory == theory_t::NONLOCAL) {
-                    const size_t finish = mesh()->right_neighbour(eL);
-                    for(size_t eNL = mesh()->left_neighbour(eL); eNL < finish; ++eNL)
-                        for(size_t jNL = 0; jNL < mesh()->element()->nodes_count(); ++jNL)
+                if constexpr (Theory == theory_t::NONLOCAL)
+                    for(const size_t eNL : std::views::iota(mesh()->left_neighbour(eL), mesh()->right_neighbour(eL)))
+                        for(const size_t jNL : std::views::iota(size_t{0}, mesh()->element()->nodes_count()))
                             callback(eL, eNL, iL, jNL);
-                }
             }
 }
 

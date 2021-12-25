@@ -11,21 +11,21 @@
 namespace nonlocal::thermal {
 
 template<class T>
-constexpr bool is_neumann_problem(const std::array<stationary_boundary_1d_t<T>, 2>& boundary_condition,
+constexpr bool is_neumann_problem(const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                   const std::array<T, 2>& alpha) noexcept {
-    const bool left_neumann  = boundary_type(boundary_condition.front()) == boundary_condition_t::SECOND_KIND ||
-                               boundary_type(boundary_condition.front()) == boundary_condition_t::THIRD_KIND &&
+    const bool left_neumann  = boundary_type(boundary_condition.front()) == boundary_condition_t::FLUX ||
+                               boundary_type(boundary_condition.front()) == boundary_condition_t::CONVECTION &&
                                std::abs(alpha.front()) < NEUMANN_PROBLEM_ALPHA_THRESHOLD<T>;
-    const bool right_neumann = boundary_type(boundary_condition.back()) == boundary_condition_t::SECOND_KIND ||
-                               boundary_type(boundary_condition.back()) == boundary_condition_t::THIRD_KIND &&
+    const bool right_neumann = boundary_type(boundary_condition.back()) == boundary_condition_t::FLUX ||
+                               boundary_type(boundary_condition.back()) == boundary_condition_t::CONVECTION &&
                                std::abs(alpha.back()) < NEUMANN_PROBLEM_ALPHA_THRESHOLD<T>;
     return left_neumann && right_neumann;
 }
 
 template<class T>
-constexpr bool is_robin_problem(const std::array<stationary_boundary_1d_t<T>, 2>& boundary_condition) noexcept {
-    return boundary_type(boundary_condition.front()) == boundary_condition_t::THIRD_KIND &&
-           boundary_type(boundary_condition.front()) == boundary_condition_t::THIRD_KIND;
+constexpr bool is_robin_problem(const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition) noexcept {
+    return boundary_type(boundary_condition.front()) == boundary_condition_t::CONVECTION &&
+           boundary_type(boundary_condition.front()) == boundary_condition_t::CONVECTION;
 }
 
 template<class T>
@@ -38,7 +38,7 @@ template<class T, class I, class Right_Part, class Influence_Function>
 std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T>& nonloc_param,
                                                   const heat_equation_parameters_1d<T>& equation_param,
                                                   const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                  const std::array<stationary_boundary_1d_t<T>, 2>& boundary_condition,
+                                                  const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                   const Right_Part& right_part,
                                                   const Influence_Function& influence_function) {
     const bool is_neumann = is_neumann_problem(boundary_condition, equation_param.alpha);
@@ -52,7 +52,7 @@ std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
     conductivity.template calc_matrix(equation_param.lambda, nonloc_param.p1, influence_function, boundary_type(boundary_condition), is_neumann);
 
-    boundary_condition_third_kind_1d(conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
+    convection_condition_1d(conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(conductivity.matrix_inner().cols());
     integrate_right_part(f, *mesh, right_part);

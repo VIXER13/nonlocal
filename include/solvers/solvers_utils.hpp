@@ -4,15 +4,16 @@
 #include "solvers_constants.hpp"
 #include <eigen3/Eigen/Sparse>
 #include <algorithm>
+#include <ranges>
 
 namespace nonlocal::utils {
 
 template<class T, class I>
 void prepare_memory(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
-    for(size_t i = 0; i < K.rows(); ++i)
+    for(const size_t i : std::views::iota(size_t{0}, size_t(K.rows())))
         K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
     K.data().resize(K.outerIndexPtr()[K.rows()]);
-    for(size_t i = 0; i < K.outerIndexPtr()[K.rows()]; ++i) {
+    for(const size_t i : std::views::iota(size_t{0}, size_t(K.outerIndexPtr()[K.rows()]))) {
         K.innerIndexPtr()[i] = K.cols()-1;
         K.valuePtr()[i] = T{0};
     }

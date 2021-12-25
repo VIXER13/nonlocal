@@ -1,8 +1,8 @@
-#include <iostream>
-#include <ostream>
-#include "heat_equation_solver_1d.hpp"
-#include "influence_functions_1d.hpp"
 #include "make_element.hpp"
+#include "thermal/stationary_heat_equation_solver_1d.hpp"
+#include "influence_functions_1d.hpp"
+#include <iostream>
+#include <fstream>
 
 namespace {
 
@@ -16,7 +16,7 @@ void save_as_csv(const std::string& path, const Vector& x, const std::array<T, 2
 
 }
 
-int main(int argc, char** argv) {
+int main(const int argc, const char *const *const argv) {
     if (argc < 6) {
         std::cerr << "run format: program_name <element_type> <elements_count> <p1> <r> <save_name>" << std::endl;
         return EXIT_FAILURE;
@@ -28,20 +28,25 @@ int main(int argc, char** argv) {
             nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
             std::stoull(argv[2]), std::array{0., 1.});
 
-        nonlocal::heat::equation_parameters<double> parameters;
-        parameters.p1 = std::stod(argv[3]);
-        parameters.r = std::stod(argv[4]);
-        mesh->calc_neighbours_count(parameters.r);
-        nonlocal::heat::heat_equation_solver_1d<double> solver{mesh};
+        const nonlocal::nonlocal_parameters_1d<double> nonloc_parameters = {
+            .p1 = std::stod(argv[3]),
+            .r  = std::stod(argv[4])
+        };
+        const nonlocal::thermal::heat_equation_parameters_1d<double> equation_parameters = {
+            .lambda = 1,
+            .integral = 0,
+            .alpha = {2., 2. / 19.}
+        };
 
-        auto solution = solver.stationary(
-            parameters,
+        mesh->calc_neighbours_count(nonloc_parameters.r);
+        auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
+            nonloc_parameters, equation_parameters, mesh,
             {
-                std::pair{nonlocal::heat::FLOW, -1.},
-                std::pair{nonlocal::heat::FLOW,  1.},
+                std::pair{nonlocal::thermal::boundary_condition_t::FLUX, 1},
+                std::pair{nonlocal::thermal::boundary_condition_t::FLUX, -1},
             },
             [](const double x) noexcept { return 0; },
-            nonlocal::influence::polynomial_1d<double, 2, 1>{parameters.r}
+            nonlocal::influence::polynomial_1d<double, 2, 1>{nonloc_parameters.r}
         );
         save_as_csv(argv[5], solution, mesh->section());
     } catch (const std::exception& e) {
