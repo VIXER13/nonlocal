@@ -4,8 +4,10 @@
 #include "thermal/thermal_conductivity_matrix_1d.hpp"
 #include "heat_capacity_matrix_1d.hpp"
 #include "right_part_1d.hpp"
-#include "boundary_condition_third_kind_1d.hpp"
+#include "convection_condition_1d.hpp"
 #include "parameters_1d.hpp"
+#include <iostream>
+#include <fstream>
 
 namespace nonlocal::thermal {
 
@@ -13,51 +15,65 @@ class _nonstationary_heat_equation_solver_1d final {
     explicit _nonstationary_heat_equation_solver_1d() noexcept = default;
 
     template<class T, class I>
-    static void prepare_nonstationary_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_inner,
-                                             std::array<std::unordered_map<size_t, T>, 2>& K_bound,
-                                             Eigen::SparseMatrix<T, Eigen::RowMajor, I>& C_inner,
+    static void prepare_nonstationary_matrix(thermal_conductivity_matrix_1d<T, I>& K,
+                                             const heat_capacity_matrix_1d<T, I>& C,
                                              const std::array<boundary_condition_t, 2> bound_cond,
                                              const T tau) {
-        K_inner *= tau;
-        K_inner += C_inner;
+        K.matrix_inner() *= tau;
+        K.matrix_inner() += C.matrix_inner();
         if (bound_cond.front() == boundary_condition_t::TEMPERATURE)
-            K_inner.coeffRef(0, 0) = T{1};
+            K.matrix_inner().coeffRef(0, 0) = T{1};
         if (bound_cond.back() == boundary_condition_t::TEMPERATURE)
-            K_inner.coeffRef(K_inner.rows()-1, K_inner.cols()-1) = T{1};
-        for(std::unordered_map<size_t, T>& matrix_part : K_bound)
+            K.matrix_inner().coeffRef(K.matrix_inner().rows()-1, K.matrix_inner().cols()-1) = T{1};
+        for(std::unordered_map<size_t, T>& matrix_part : K.matrix_bound())
             for(auto& [_, val] : matrix_part)
                 val *= tau;
     }
 
     template<class T, class I, class Init_Dist, class Right_Part>
     static void nonstationary_calc(const nonstationary_solver_parameters_1d<T>& solver_param,
-                                   const Eigen::SparseMatrix<T, Eigen::RowMajor>& K_inner,
-                                   const std::array<std::unordered_map<size_t, T>, 2>& K_bound,
-                                   const Eigen::SparseMatrix<T, Eigen::RowMajor>& C_inner,
-                                   const std::array<std::pair<boundary_condition_t, T>, 2>& boundary_condition,
+                                   const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                   const thermal_conductivity_matrix_1d<T, I>& K,
+                                   const heat_capacity_matrix_1d<T, I>& C,
+                                   const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                    const Init_Dist& init_dist, const Right_Part& right_part) {
        const T tau = (solver_param.time_interval.back() - solver_param.time_interval.front()) / solver_param.steps;
-        Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh()->nodes_count());
-        Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev(mesh()->nodes_count());
-        Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr(mesh()->nodes_count());
-        for(size_t i = 0; i < mesh()->nodes_count(); ++i)
-            temperature_prev[i] = init_dist(mesh()->node_coord(i));
-        Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{K_inner};
-        if(sol_parameters.save_freq != std::numeric_limits<uintmax_t>::max())
-            nonstationary_solver_logger(temperature_prev, sol_parameters, 0);
-        for(size_t step = 1; step < sol_parameters.steps + 1; ++step) {
+        Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev(mesh->nodes_count());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr(mesh->nodes_count());
+        for(const size_t i : std::views::iota(size_t{1}, mesh->nodes_count()))
+            temperature_prev[i] = init_dist(mesh->node_coord(i));
+        const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{K.matrix_inner()};
+        if(solver_param.save_freq != std::numeric_limits<uintmax_t>::max())
+            nonstationary_solver_logger(temperature_prev, mesh, solver_param, 0);
+        for(const uintmax_t step : std::views::iota(uintmax_t{1}, solver_param.steps + 1)) {
             f.setZero();
-            const T t = sol_parameters.time_interval.front() + step * tau;
-            const stationary_boundary_t stationary_bound = _base::nonstationary_boundary_to_stationary(bound_cond, t);
-            _base::boundary_condition_second_kind(f, stationary_bound);
-            _base::template integrate_right_part(f, [&right_part, t](const T x) { return right_part(t, x); });
+            const T t = solver_param.time_interval.front() + step * tau;
+            const auto stationary_bound = nonstationary_boundary_to_stationary(boundary_condition, t);
+            boundary_condition_second_kind_1d(f, stationary_bound, std::array{size_t{0}, size_t(f.size() - 1)});
+            integrate_right_part(f, *mesh, [&right_part, t](const T x) { return right_part(t, x); });
             f *= tau;
-            f += C_inner.template selfadjointView<Eigen::Upper>() * temperature_prev;
-            _base::boundary_condition_first_kind(f, stationary_bound, K_bound);
+            f += C.matrix_inner().template selfadjointView<Eigen::Upper>() * temperature_prev;
+            boundary_condition_first_kind_1d(f, stationary_bound, K.matrix_bound());
             temperature_curr = solver.template solveWithGuess(f, temperature_prev);
             temperature_prev.swap(temperature_curr);
-            if(step % sol_parameters.save_freq == 0)
-                nonstationary_solver_logger(temperature_prev, sol_parameters, step);
+            if(step % solver_param.save_freq == 0)
+                nonstationary_solver_logger(temperature_prev, mesh, solver_param, step);
+        }
+    }
+
+    template<class T>
+    static void nonstationary_solver_logger(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature,
+                                            const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                            const nonstationary_solver_parameters_1d<T>& solver_param,
+                                            const uintmax_t step) {
+        std::cout << "step = " << step << std::endl;
+        if(solver_param.save_csv) {
+            std::ofstream csv{solver_param.save_path.c_str() + std::to_string(step) + ".csv"};
+            csv.precision(std::numeric_limits<T>::max_digits10);
+            const T h = (mesh->section().back() - mesh->section().front()) / (mesh->nodes_count() - 1);
+            for(const size_t i : std::views::iota(size_t{0}, mesh->nodes_count()))
+                csv << mesh->section().front() + i * h << ',' << temperature[i] << '\n';
         }
     }
 
@@ -84,15 +100,15 @@ void nonstationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T>& nonl
                                            const Influence_Function& influence_function) {
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
     conductivity.template calc_matrix(equation_param.lambda, nonloc_param.p1, influence_function, boundary_type(boundary_condition));
-    convection_condition_1d(conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
+    convection_condition_1d(conductivity.matrix_inner(), boundary_type(boundary_condition), equation_param.alpha);
 
     heat_capacity_matrix_1d<T, I> capacity{mesh};
-    capacity.calc_matrix(equation_param.c, equation_param.rho, boundary_type(boundary_condition.front()));
+    capacity.calc_matrix(equation_param.c, equation_param.rho, boundary_type(boundary_condition));
 
+    using _base = _nonstationary_heat_equation_solver_1d;
     const T tau = (solver_param.time_interval.back() - solver_param.time_interval.front()) / solver_param.steps;
-    prepare_nonstationary_matrix(conductivity.matrix_inner(), conductivity.matrix_bound(), capacity.matrix_inner(),
-                                 boundary_type(boundary_condition), tau);
-
+    _base::prepare_nonstationary_matrix(conductivity, capacity, boundary_type(boundary_condition), tau);
+    _base::nonstationary_calc(solver_param, mesh, conductivity, capacity,  boundary_condition, init_dist, right_part);
 }
 
 }

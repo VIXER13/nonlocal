@@ -24,7 +24,7 @@ int main(const int argc, const char *const *const argv) {
 
     try {
         std::cout.precision(3);
-        auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<double>>(
+        const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<double>>(
             nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
             std::stoull(argv[2]), std::array{0., 1.});
 
@@ -42,7 +42,7 @@ int main(const int argc, const char *const *const argv) {
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
             nonloc_parameters, equation_parameters, mesh,
             {
-                std::pair{nonlocal::thermal::boundary_condition_t::FLUX, 1},
+                std::pair{nonlocal::thermal::boundary_condition_t::FLUX,  1},
                 std::pair{nonlocal::thermal::boundary_condition_t::FLUX, -1},
             },
             [](const double x) noexcept { return 0; },

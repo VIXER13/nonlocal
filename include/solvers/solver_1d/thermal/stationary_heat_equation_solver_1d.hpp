@@ -4,7 +4,7 @@
 #include "parameters_1d.hpp"
 #include "right_part_1d.hpp"
 #include "thermal_conductivity_matrix_1d.hpp"
-#include "boundary_condition_third_kind_1d.hpp"
+#include "convection_condition_1d.hpp"
 
 #include <iostream>
 
@@ -52,11 +52,11 @@ std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
     conductivity.template calc_matrix(equation_param.lambda, nonloc_param.p1, influence_function, boundary_type(boundary_condition), is_neumann);
 
-    convection_condition_1d(conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
+    convection_condition_1d(conductivity.matrix_inner(), boundary_type(boundary_condition), equation_param.alpha);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(conductivity.matrix_inner().cols());
     integrate_right_part(f, *mesh, right_part);
-    boundary_condition_second_kind_1d(f, boundary_condition, std::array<size_t, 2>{0, size_t(f.size() - 1 - is_neumann)});
+    boundary_condition_second_kind_1d(f, boundary_condition, std::array{size_t{0}, size_t(f.size() - 1 - is_neumann)});
     boundary_condition_first_kind_1d(f, boundary_condition, conductivity.matrix_bound());
     if (is_neumann)
         f[f.size()-1] = equation_param.integral;
