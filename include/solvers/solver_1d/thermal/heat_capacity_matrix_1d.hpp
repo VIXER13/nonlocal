@@ -37,9 +37,9 @@ template<class T, class I>
 void heat_capacity_matrix_1d<T, I>::calc_matrix(const T c, const T rho, const std::array<boundary_condition_t, 2> bound_cond) {
     _base::clear_matrix();
     _base::matrix_inner().resize(_base::mesh()->nodes_count(), _base::mesh()->nodes_count());
-    _base::create_matrix_portrait(make_general_condition(bound_cond), theory_t::LOCAL);
+    _base::create_matrix_portrait(utils::to_general_condition(bound_cond), theory_t::LOCAL);
     static constexpr auto NO_INFLUENCE = []() constexpr noexcept {};
-    _base::template calc_matrix(make_general_condition(bound_cond), theory_t::LOCAL, NO_INFLUENCE,
+    _base::template calc_matrix(utils::to_general_condition(bound_cond), theory_t::LOCAL, NO_INFLUENCE,
         [this, factor = c * rho](const size_t e, const size_t i, const size_t j) { return factor * integrate_basic_pair(e, i, j); },
         [](const size_t, const size_t, const size_t, const size_t, const decltype(NO_INFLUENCE)) constexpr noexcept { return 0; }
     );

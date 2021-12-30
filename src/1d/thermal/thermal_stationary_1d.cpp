@@ -42,8 +42,8 @@ int main(const int argc, const char *const *const argv) {
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
             nonloc_parameters, equation_parameters, mesh,
             {
-                std::pair{nonlocal::thermal::boundary_condition_t::FLUX,  1},
-                std::pair{nonlocal::thermal::boundary_condition_t::FLUX, -1},
+                nonlocal::thermal::boundary_condition_t::FLUX,  1.,
+                nonlocal::thermal::boundary_condition_t::FLUX, -1.,
             },
             [](const double x) noexcept { return 0; },
             nonlocal::influence::polynomial_1d<double, 2, 1>{nonloc_parameters.r}

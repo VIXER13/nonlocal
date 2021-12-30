@@ -79,7 +79,7 @@ void thermal_conductivity_matrix_1d<T, I>::create_matrix_portrait(const std::arr
     if (is_neumann)
         for(const size_t row : std::views::iota(size_t{0}, size_t(_base::matrix_inner().rows())))
             _base::matrix_inner().outerIndexPtr()[row+1] = 1;
-    _base::create_matrix_portrait(make_general_condition(bound_cond), theory);
+    _base::create_matrix_portrait(utils::to_general_condition(bound_cond), theory);
     if (is_neumann)
         for(const size_t row : std::views::iota(size_t{0}, size_t(_base::matrix_inner().rows())))
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row+1]-1] = _base::mesh()->nodes_count();
@@ -105,7 +105,7 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const T lambda, const T p
     const size_t matrix_size = _base::mesh()->nodes_count() + is_neumann;
     _base::matrix_inner().resize(matrix_size, matrix_size);
     create_matrix_portrait(bound_cond, theory, is_neumann);
-    _base::template calc_matrix(make_general_condition(bound_cond), theory, influence_function,
+    _base::template calc_matrix(utils::to_general_condition(bound_cond), theory, influence_function,
         [this, factor = lambda * p1](const size_t e, const size_t i, const size_t j) {
             return factor * integrate_loc(e, i, j);
         },

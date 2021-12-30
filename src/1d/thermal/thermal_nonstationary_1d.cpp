@@ -32,8 +32,8 @@ int main(const int argc, const char *const *const argv) {
         nonlocal::thermal::nonstationary_heat_equation_solver_1d<double, int>(
             nonloc_parameters, equation_parameters, sol_parameters, mesh,
             {
-                std::pair{nonlocal::thermal::boundary_condition_t::FLUX, [](const double) { return  1; }},
-                std::pair{nonlocal::thermal::boundary_condition_t::FLUX, [](const double) { return -1; }},
+                nonlocal::thermal::boundary_condition_t::FLUX, [](const double) constexpr noexcept { return  1; },
+                nonlocal::thermal::boundary_condition_t::FLUX, [](const double) constexpr noexcept { return -1; }
             },
             [](const double) { return 0; },
             [](const double t, const double x) { return 0; },

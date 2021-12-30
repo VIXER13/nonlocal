@@ -13,19 +13,19 @@ namespace nonlocal::thermal {
 template<class T>
 constexpr bool is_neumann_problem(const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                   const std::array<T, 2>& alpha) noexcept {
-    const bool left_neumann  = boundary_type(boundary_condition.front()) == boundary_condition_t::FLUX ||
-                               boundary_type(boundary_condition.front()) == boundary_condition_t::CONVECTION &&
+    const bool left_neumann  = boundary_condition.front().type == boundary_condition_t::FLUX ||
+                               boundary_condition.front().type == boundary_condition_t::CONVECTION &&
                                std::abs(alpha.front()) < NEUMANN_PROBLEM_ALPHA_THRESHOLD<T>;
-    const bool right_neumann = boundary_type(boundary_condition.back()) == boundary_condition_t::FLUX ||
-                               boundary_type(boundary_condition.back()) == boundary_condition_t::CONVECTION &&
+    const bool right_neumann = boundary_condition.back().type == boundary_condition_t::FLUX ||
+                               boundary_condition.back().type == boundary_condition_t::CONVECTION &&
                                std::abs(alpha.back()) < NEUMANN_PROBLEM_ALPHA_THRESHOLD<T>;
     return left_neumann && right_neumann;
 }
 
 template<class T>
 constexpr bool is_robin_problem(const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition) noexcept {
-    return boundary_type(boundary_condition.front()) == boundary_condition_t::CONVECTION &&
-           boundary_type(boundary_condition.front()) == boundary_condition_t::CONVECTION;
+    return boundary_condition.front().type == boundary_condition_t::CONVECTION &&
+           boundary_condition.front().type == boundary_condition_t::CONVECTION;
 }
 
 template<class T>
@@ -42,7 +42,7 @@ std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T
                                                   const Right_Part& right_part,
                                                   const Influence_Function& influence_function) {
     const bool is_neumann = is_neumann_problem(boundary_condition, equation_param.alpha);
-    if (is_neumann && std::abs(boundary_value(boundary_condition.front()) + boundary_value(boundary_condition.back())) > NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>)
+    if (is_neumann && std::abs(boundary_condition.front().val + boundary_condition.back().val) > NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>)
         throw std::domain_error{"Unsolvable Neumann problem: left_flow + right_flow != 0."};
 
     const std::array<T, 2>& alpha = equation_param.alpha;

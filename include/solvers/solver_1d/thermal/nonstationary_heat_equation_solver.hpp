@@ -49,7 +49,7 @@ class _nonstationary_heat_equation_solver_1d final {
         for(const uintmax_t step : std::views::iota(uintmax_t{1}, solver_param.steps + 1)) {
             f.setZero();
             const T t = solver_param.time_interval.front() + step * tau;
-            const auto stationary_bound = nonstationary_boundary_to_stationary(boundary_condition, t);
+            const auto stationary_bound = to_stationary(boundary_condition, t);
             boundary_condition_second_kind_1d(f, stationary_bound, std::array{size_t{0}, size_t(f.size() - 1)});
             integrate_right_part(f, *mesh, [&right_part, t](const T x) { return right_part(t, x); });
             f *= tau;
