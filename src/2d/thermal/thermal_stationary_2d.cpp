@@ -25,38 +25,47 @@ int main(int argc, char** argv) {
         eq_parameters.p1 = p1;
         eq_parameters.r  = r;
 
-        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999) {
-            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY); // 0.05 это некая гарантированная добавка
-            // Нужна, чтобы все квадратурные узлы, которые попадают под зону влияния были учтены.
+            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY);
             double mean = 0;
             for(size_t e = 0; e < mesh->elements_count(); ++e)
                 mean += mesh_proxy->neighbors(e).size();
+            mean /= mesh->nodes_count();
             std::cout << "Average neighbours = " << mean << std::endl;
         }
+
         nonlocal::heat::heat_equation_solver_2d<double, int, int> fem_sol{mesh_proxy};
 
         auto T = fem_sol.stationary(eq_parameters,
             { // Граничные условия
-                {   // Down
-                    nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return -1; },
+                {   "Up",
+                    {
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return 1; },
+                    }
                 },
 
-                {   // Right
-                    nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return 0; },
+                {   "Down",
+                    {
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return -1; },
+                    }
                 },
 
-                {   // Up
-                    nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return 1; },
+                {
+                    "Left",
+                    {
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return 0; },
+                    }
                 },
 
-                {   // Left
-                    nonlocal::heat::boundary_t::FLOW,
-                    [](const std::array<double, 2>& x) { return 0; },
+                {   "Right",
+                    {
+                        nonlocal::heat::boundary_t::FLOW,
+                        [](const std::array<double, 2>& x) { return 0; },
+                    }
                 }
             },
             [](const std::array<double, 2>&) { return 0; }, // Правая часть

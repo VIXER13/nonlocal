@@ -3,6 +3,7 @@
 
 #include "mesh_container_2d.hpp"
 #include <iostream>
+#include <ranges>
 
 namespace nonlocal::mesh {
 
@@ -64,37 +65,32 @@ void mesh_2d<T, I>::read_su2(Stream& mesh_file) {
     for(size_t node = 0; node < count; ++node)
         mesh_file >> _nodes[node][0] >> _nodes[node][1] >> pass;
 
-    // Элементы на границах
+    std::string name;
     mesh_file >> pass >> count;
-    _boundaries.resize(count);
-    _elements_1d_type.resize(count);
-    for(size_t b = 0; b < _boundaries.size(); ++b) {
-        mesh_file >> pass >> pass;
-        if(pass != "Group_Of_All_Edges") {
-            mesh_file >> pass >> count;
-            _boundaries[b].resize(count);
-            _elements_1d_type[b].resize(count);
-            for(size_t e = 0; e < count; ++e) {
-                uintmax_t type = 0;
-                mesh_file >> type;
-                switch(vtk_element_number(type)) {
-                    case vtk_element_number::LINEAR:
-                        _elements_1d_type[b][e] = element_1d_t::LINEAR;
-                        read_element<0, 1>(mesh_file, _boundaries[b][e]);
-                    break;
+    for(const size_t b : std::views::iota(size_t{0}, count)) {
+        mesh_file >> pass >> name >> pass >> count;
+        _boundaries_names.template emplace_back(std::move(name));
+        auto& boundary = _boundaries[_boundaries_names.back()];
+        auto& boundary_elements_type = _elements_1d_type[_boundaries_names.back()];
+        boundary.resize(count);
+        boundary_elements_type.resize(count);
+        for(const size_t e : std::views::iota(size_t{0}, count)) {
+            uintmax_t type = 0;
+            mesh_file >> type;
+            switch(vtk_element_number(type)) {
+                case vtk_element_number::LINEAR:
+                    boundary_elements_type[e] = element_1d_t::LINEAR;
+                    read_element<0, 1>(mesh_file, boundary[e]);
+                break;
 
-                    case vtk_element_number::QUADRATIC:
-                        _elements_1d_type[b][e] = element_1d_t::QUADRATIC;
-                        read_element<0, 2, 1>(mesh_file, _boundaries[b][e]);
-                    break;
+                case vtk_element_number::QUADRATIC:
+                    boundary_elements_type[e] = element_1d_t::QUADRATIC;
+                    read_element<0, 2, 1>(mesh_file, boundary[e]);
+                break;
 
-                    default:
-                        throw std::domain_error{"Unknown 1D element."};
-                }
+                default:
+                    throw std::domain_error{"Unknown 1D element."};
             }
-        } else {
-            _boundaries.pop_back();
-            _elements_1d_type.pop_back();
         }
     }
 }

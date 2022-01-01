@@ -71,7 +71,7 @@ class heat_equation_solver_2d : public finite_element_solver_base<T, I, Matrix_I
                             const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                             const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                             const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& C_inner,
-                            const std::vector<bound_cond<T>>& bounds_cond,
+                            const std::unordered_map<std::string, bound_cond<T>>& bounds_cond,
                             const Init_Dist& init_dist, const Right_Part& right_part) const;
 
     void nonstationary_solver_logger(const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature,
@@ -83,13 +83,13 @@ public:
 
     template<material_t Material, class Right_Part, class Influence_Function>
     solution<T, I> stationary(const equation_parameters<T, Material>& eq_parameters,
-                              const std::vector<bound_cond<T>>& bounds_cond, const Right_Part& right_part,
+                              const std::unordered_map<std::string, bound_cond<T>>& bounds_cond, const Right_Part& right_part,
                               const Influence_Function& influence_fun);
 
     template<material_t Material, class Init_Distribution, class Right_Part, class Influence_Function>
     void nonstationary(const solver_parameters<T>& sol_parameters,
                        const equation_parameters<T, Material>& eq_parameters,
-                       const std::vector<bound_cond<T>>& bounds_cond,
+                       const std::unordered_map<std::string, bound_cond<T>>& bounds_cond,
                        const Init_Distribution& init_dist, const Right_Part& right_part,
                        const Influence_Function& influence_fun);
 };
@@ -243,7 +243,7 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary_calc(const solve
                                                                      const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
                                                                      const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound,
                                                                      const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& C_inner,
-                                                                     const std::vector<bound_cond<T>>& bounds_cond,
+                                                                     const std::unordered_map<std::string, bound_cond<T>>& bounds_cond,
                                                                      const Init_Dist& init_dist, const Right_Part& right_part) const {
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(_base::mesh().nodes_count()),
                                         temperature_prev(_base::mesh().nodes_count()),
@@ -295,10 +295,12 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary_solver_logger(co
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Right_Part, class Influence_Function>
 solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equation_parameters<T, Material>& eq_parameters,
-                                                                    const std::vector<bound_cond<T>>& bounds_cond,
+                                                                    const std::unordered_map<std::string, bound_cond<T>>& bounds_cond,
                                                                     const Right_Part& right_part,
                                                                     const Influence_Function& influence_fun) {
-    static constexpr auto boundary_checker = [](const bound_cond<T>& bound) noexcept { return bound.type(0) == boundary_t::FLOW; };
+    static constexpr auto boundary_checker = [](const std::pair<std::string, bound_cond<T>>& bound) noexcept {
+        return std::get<bound_cond<T>>(bound).type(0) == boundary_t::FLOW;
+    };
     const bool neumann_task = std::all_of(bounds_cond.cbegin(), bounds_cond.cend(), boundary_checker);
     const size_t rows = _base::last_node() - _base::first_node() + (neumann_task && MPI_utils::MPI_rank() == MPI_utils::MPI_size() - 1),
                  cols = _base::mesh().nodes_count() + neumann_task;
@@ -332,7 +334,7 @@ template<class T, class I, class Matrix_Index>
 template<material_t Material, class Init_Distribution, class Right_Part, class Influence_Function>
 void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary(const solver_parameters<T>& sol_parameters,
                                                                 const equation_parameters<T, Material>& eq_parameters,
-                                                                const std::vector<bound_cond<T>>& bounds_cond,
+                                                                const std::unordered_map<std::string, bound_cond<T>>& bounds_cond,
                                                                 const Init_Distribution& init_dist, const Right_Part& right_part,
                                                                 const Influence_Function& influence_fun) {
     static constexpr bool LOCAL = false;

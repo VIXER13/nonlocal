@@ -143,7 +143,7 @@ protected:
     static T jacobian(const std::array<T, 2>& J) noexcept;
 
     template<class B, size_t DoF>
-    std::vector<bool> calc_inner_nodes(const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
+    std::vector<bool> calc_inner_nodes(const std::unordered_map<std::string, boundary_condition<T, B, DoF>>& bounds_cond) const;
 
     template<size_t DoF>
     void create_matrix_portrait(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_inner,
@@ -176,17 +176,17 @@ protected:
 
     // Boundary_Gradient - функтор с сигнатурой T(std::array<T, 2>&)
     template<class Boundary_Gradient>
-    T integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
+    T integrate_boundary_gradient(const std::string& b, const size_t e, const size_t i,
                                   const Boundary_Gradient& boundary_gradient) const;
 
     template<class B, size_t DoF>
     void boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                       const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
+                                       const std::unordered_map<std::string, boundary_condition<T, B, DoF>>& bounds_cond,
                                        const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound) const;
 
     template<class B, size_t DoF>
     void integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                  const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const;
+                                                  const std::unordered_map<std::string, boundary_condition<T, B, DoF>>& bounds_cond) const;
 
 #ifdef MPI_USE
     //void PETSc_solver(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
@@ -224,12 +224,12 @@ T finite_element_solver_base<T, I, Matrix_Index>::jacobian(const std::array<T, 2
 
 template<class T, class I, class Matrix_Index>
 template<class B, size_t DoF>
-std::vector<bool> finite_element_solver_base<T, I, Matrix_Index>::calc_inner_nodes(const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
+std::vector<bool> finite_element_solver_base<T, I, Matrix_Index>::calc_inner_nodes(const std::unordered_map<std::string, boundary_condition<T, B, DoF>>& bounds_cond) const {
     std::vector<bool> inner_nodes(DoF * mesh().nodes_count(), true);
     boundary_nodes_run(
-        [this, &bounds_cond, &inner_nodes](const size_t b, const size_t el, const size_t i) {
+        [this, &bounds_cond, &inner_nodes](const std::string& b, const size_t el, const size_t i) {
             for(size_t comp = 0; comp < DoF; ++comp)
-                if(boundary_type(bounds_cond[b].type(comp)) == boundary_type::FIRST_KIND)
+                if(boundary_type(bounds_cond.at(b).type(comp)) == boundary_type::FIRST_KIND)
                     inner_nodes[DoF * mesh().node_number(b, el, i) + comp] = false;
         });
     return std::move(inner_nodes);
@@ -331,7 +331,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMa
 template<class T, class I, class Matrix_Index>
 template<class Callback>
 void finite_element_solver_base<T, I, Matrix_Index>::boundary_nodes_run(const Callback& callback) const {
-    for(size_t b = 0; b < mesh().boundary_groups_count(); ++b)
+    for(const std::string& b : mesh().boundary_names())
         for(size_t el = 0; el < mesh().elements_count(b); ++el) {
             const auto& be = mesh().element_1d(b, el);
             for(size_t i = 0; i < be->nodes_count(); ++i)
@@ -366,7 +366,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::integrate_right_part(Eigen:
 
 template<class T, class I, class Matrix_Index>
 template<class Boundary_Gradient>
-T finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_gradient(const size_t b, const size_t e, const size_t i,
+T finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_gradient(const std::string& b, const size_t e, const size_t i,
                                                                               const Boundary_Gradient& boundary_gradient) const {
     T integral = 0;
     const auto& be = mesh().element_1d(b, e);
@@ -380,25 +380,25 @@ T finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_gradient(co
 template<class T, class I, class Matrix_Index>
 template<class B, size_t DoF>
 void finite_element_solver_base<T, I, Matrix_Index>::boundary_condition_first_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                                   const std::vector<boundary_condition<T, B, DoF>>& bounds_cond,
+                                                                                   const std::unordered_map<std::string, boundary_condition<T, B, DoF>>& bounds_cond,
                                                                                    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound) const {
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K_bound.cols());
     boundary_nodes_run(
-        [this, &bounds_cond, &x](const size_t b, const size_t el, const size_t i) {
+        [this, &bounds_cond, &x](const std::string& b, const size_t el, const size_t i) {
             for(size_t comp = 0; comp < DoF; ++comp)
-                if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
+                if (bounds_cond.at(b).type(comp) == B(boundary_type::FIRST_KIND)) {
                     const I node = DoF * mesh().node_number(b, el, i) + comp;
                     if (x[node] == 0)
-                        x[node] = bounds_cond[b].func(comp)(mesh().node(node));
+                        x[node] = bounds_cond.at(b).func(comp)(mesh().node(node));
                 }
         });
 
     f -= K_bound * x;
 
     boundary_nodes_run(
-        [this, &bounds_cond, &x, &f](const size_t b, const size_t el, const size_t i) {
+        [this, &bounds_cond, &x, &f](const std::string& b, const size_t el, const size_t i) {
             for(size_t comp = 0; comp < DoF; ++comp)
-                if (bounds_cond[b].type(comp) == B(boundary_type::FIRST_KIND)) {
+                if (bounds_cond.at(b).type(comp) == B(boundary_type::FIRST_KIND)) {
                     const I node = DoF * mesh().node_number(b, el, i) + comp;
                     if (node >= DoF * first_node() && node < DoF * last_node())
                         f[node - DoF * first_node()] = x[node];
@@ -409,16 +409,16 @@ void finite_element_solver_base<T, I, Matrix_Index>::boundary_condition_first_ki
 template<class T, class I, class Matrix_Index>
 template<class B, size_t DoF>
 void finite_element_solver_base<T, I, Matrix_Index>::integrate_boundary_condition_second_kind(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                                              const std::vector<boundary_condition<T, B, DoF>>& bounds_cond) const {
-    for(size_t b = 0; b < bounds_cond.size(); ++b)
+                                                                                              const std::unordered_map<std::string, boundary_condition<T, B, DoF>>& bounds_cond) const {
+    for(const std::string& b : mesh().boundary_names())
         for(size_t comp = 0; comp < DoF; ++comp)
-            if(bounds_cond[b].type(comp) == B(boundary_type::SECOND_KIND)) {
+            if(bounds_cond.at(b).type(comp) == B(boundary_type::SECOND_KIND)) {
                 for(size_t e = 0; e < mesh().elements_count(b); ++e) {
                     const auto& be = mesh().element_1d(b, e);
                     for(size_t i = 0; i < be->nodes_count(); ++i) {
                         const I node = DoF * mesh().node_number(b, e, i) + comp;
                         if(node >= DoF * first_node() && node < DoF * last_node())
-                            f[node - DoF * first_node()] += integrate_boundary_gradient(b, e, i, bounds_cond[b].func(comp));
+                            f[node - DoF * first_node()] += integrate_boundary_gradient(b, e, i, bounds_cond.at(b).func(comp));
                     }
                 }
             }

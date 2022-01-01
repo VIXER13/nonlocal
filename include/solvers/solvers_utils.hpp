@@ -4,7 +4,9 @@
 #include "solvers_constants.hpp"
 #include <eigen3/Eigen/Sparse>
 #include <algorithm>
+#include <array>
 #include <ranges>
+#include <vector>
 
 namespace nonlocal::utils {
 

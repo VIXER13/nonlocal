@@ -2,6 +2,7 @@
 #define NONLOCAL_SOLVERS_BOUNDARY_CONDITION_HPP
 
 #include <array>
+#include <string>
 #include <functional>
 
 namespace nonlocal {

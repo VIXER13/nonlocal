@@ -1,12 +1,13 @@
 #ifndef MESH_CONTAINER_2D_HPP
 #define MESH_CONTAINER_2D_HPP
 
+#include "metamath.hpp"
 #include <memory>
 #include <string>
 #include <fstream>
 #include <exception>
 #include <sstream>
-#include "metamath.hpp"
+#include <iostream>
 
 namespace nonlocal::mesh {
 
@@ -44,14 +45,13 @@ class mesh_2d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     static_assert(std::is_integral_v<I>, "The I must be integral.");
 
-    std::vector<std::array<T, 2>>            _nodes;              // Глобальные кооридинаты узлов.
-    std::vector<std::vector<I>>              _elements;           // Массив с глобальными номерами узлов для каждого элемента
-                                                                  // _elements[e][i] --- номер i-го узла элемента под номером e.
-    std::vector<std::vector<std::vector<I>>> _boundaries;         // Массив с группами элементов на границе. Считаем, что на гранях элементов,
-                                                                  // которые располагаются вблизи границы, заданы одномерные элементы, поэтому
-                                                                  // _boundaries[b][e][i] - обращение к b-ой группе, i-ому узлу элемента под номером e.
-    std::vector<std::vector<element_1d_t>>   _elements_1d_type;   // Массив с индексами одномерных элементов.
-    std::vector<element_2d_t>                _elements_2d_type;   // Массив с индексами двумерных элементов.
+    std::vector<std::array<T, 2>> _nodes;
+    std::vector<std::vector<I>>   _elements;
+    std::vector<element_2d_t>     _elements_2d_type;
+
+    std::vector<std::string>                                          _boundaries_names;
+    std::unordered_map<std::string, std::vector<std::vector<I>>> _boundaries;
+    std::unordered_map<std::string, std::vector<element_1d_t>>   _elements_1d_type;
 
     template<class U, template<class> class Quadrature_Type>
     using quadrature = metamath::finite_element::quadrature_1d<U, Quadrature_Type>;
@@ -119,25 +119,24 @@ public:
 
     void read_from_file(const std::string& path);
 
-    void clear() noexcept;
-    void shrink_to_fit() noexcept;
-
     size_t nodes_count() const noexcept;
     const std::array<T, 2>& node(const size_t node) const noexcept;
+    const std::vector<std::array<T, 2>>& nodes() const noexcept;
 
     size_t elements_count() const noexcept;
     I node_number(const size_t element, const size_t node) const noexcept;
     size_t nodes_count(const size_t element) const noexcept;
 
     size_t boundary_groups_count() const noexcept;
-    size_t elements_count(const size_t boundary) const noexcept;
-    I node_number(const size_t boundary, const size_t element, const size_t node) const noexcept;
+    const std::vector<std::string>& boundary_names() const noexcept;
+    size_t elements_count(const std::string& boundary) const;
+    I node_number(const std::string& boundary, const size_t element, const size_t node) const noexcept;
 
-    element_1d_t element_1d_type(const size_t boundary, const size_t element) const noexcept;
+    element_1d_t element_1d_type(const std::string& boundary, const size_t element) const noexcept;
     const Finite_Element_1D_Ptr& element_1d(const element_1d_t type) const noexcept;
-    const Finite_Element_1D_Ptr& element_1d(const size_t boundary, const size_t element) const noexcept;
+    const Finite_Element_1D_Ptr& element_1d(const std::string& boundary, const size_t element) const noexcept;
     Finite_Element_1D_Ptr& element_1d(const element_1d_t type) noexcept;
-    Finite_Element_1D_Ptr& element_1d(const size_t boundary, const size_t element) noexcept;
+    Finite_Element_1D_Ptr& element_1d(const std::string& boundary, const size_t element) noexcept;
 
     element_2d_t element_2d_type(const size_t element) const noexcept;
     const Finite_Element_2D_Ptr& element_2d(const element_2d_t type) const noexcept;
@@ -157,9 +156,10 @@ template<class T, class I>
 mesh_2d<T, I>::mesh_2d(const mesh_2d& other)
     : _nodes{other._nodes}
     , _elements{other._elements}
+    , _elements_2d_type{other._elements_2d_type}
+    , _boundaries_names{other._boundaries_names}
     , _boundaries{other._boundaries}
-    , _elements_1d_type{other._elements_1d_type}
-    , _elements_2d_type{other._elements_2d_type} {}
+    , _elements_1d_type{other._elements_1d_type} {}
 
 template<class T, class I>
 void mesh_2d<T, I>::read_from_file(const std::string& path) {
@@ -172,24 +172,6 @@ void mesh_2d<T, I>::read_from_file(const std::string& path) {
 }
 
 template<class T, class I>
-void mesh_2d<T, I>::clear() noexcept {
-    _nodes.clear();
-    _elements.clear();
-    _boundaries.clear();
-    _elements_1d_type.clear();
-    _elements_2d_type.clear();
-}
-
-template<class T, class I>
-void mesh_2d<T, I>::shrink_to_fit() noexcept {
-    _nodes.shrink_to_fit();
-    _elements.shrink_to_fit();
-    _boundaries.shrink_to_fit();
-    _elements_1d_type.shrink_to_fit();
-    _elements_2d_type.shrink_to_fit();
-}
-
-template<class T, class I>
 size_t mesh_2d<T, I>::nodes_count() const noexcept {
     return _nodes.size();
 }
@@ -197,6 +179,11 @@ size_t mesh_2d<T, I>::nodes_count() const noexcept {
 template<class T, class I>
 const std::array<T, 2>& mesh_2d<T, I>::node(const size_t node) const noexcept {
     return _nodes[node];
+}
+
+template<class T, class I>
+const std::vector<std::array<T, 2>>& mesh_2d<T, I>::nodes() const noexcept {
+    return _nodes;
 }
 
 template<class T, class I>
@@ -216,22 +203,27 @@ size_t mesh_2d<T, I>::nodes_count(const size_t element) const noexcept {
 
 template<class T, class I>
 size_t mesh_2d<T, I>::boundary_groups_count() const noexcept {
-    return _boundaries.size();
+    return _boundaries_names.size();
 }
 
 template<class T, class I>
-size_t mesh_2d<T, I>::elements_count(const size_t boundary) const noexcept {
-    return _boundaries[boundary].size();
+const std::vector<std::string>& mesh_2d<T, I>::boundary_names() const noexcept {
+    return _boundaries_names;
 }
 
 template<class T, class I>
-I mesh_2d<T, I>::node_number(const size_t boundary, const size_t element, const size_t node) const noexcept {
-    return _boundaries[boundary][element][node];
+size_t mesh_2d<T, I>::elements_count(const std::string& boundary) const {
+    return _boundaries.at(boundary).size();
 }
 
 template<class T, class I>
-element_1d_t mesh_2d<T, I>::element_1d_type(const size_t boundary, const size_t element) const noexcept {
-    return _elements_1d_type[boundary][element];
+I mesh_2d<T, I>::node_number(const std::string& boundary, const size_t element, const size_t node) const noexcept {
+    return _boundaries.at(boundary)[element][node];
+}
+
+template<class T, class I>
+element_1d_t mesh_2d<T, I>::element_1d_type(const std::string& boundary, const size_t element) const noexcept {
+    return _elements_1d_type.at(boundary)[element];
 }
 
 template<class T, class I>
@@ -240,7 +232,7 @@ const typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(c
 }
 
 template<class T, class I>
-const typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const size_t boundary, const size_t element) const noexcept {
+const typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const std::string& boundary, const size_t element) const noexcept {
     return element_1d(element_1d_type(boundary, element));
 }
 
@@ -250,7 +242,7 @@ typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const e
 }
 
 template<class T, class I>
-typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const size_t boundary, const size_t element) noexcept {
+typename mesh_2d<T, I>::Finite_Element_1D_Ptr& mesh_2d<T, I>::element_1d(const std::string& boundary, const size_t element) noexcept {
     return element_1d(element_1d_type(boundary, element));
 }
 
