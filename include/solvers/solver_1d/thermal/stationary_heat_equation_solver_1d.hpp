@@ -35,11 +35,11 @@ constexpr bool is_solvable_robin_problem(const std::array<T, 2>& section, const 
 }
 
 template<class T, class I, class Right_Part, class Influence_Function>
-std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T>& nonloc_param,
-                                                  const heat_equation_parameters_1d<T>& equation_param,
+std::vector<T> stationary_heat_equation_solver_1d(const heat_equation_parameters_1d<T>& equation_param,
                                                   const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                   const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                   const Right_Part& right_part,
+                                                  const T p1,
                                                   const Influence_Function& influence_function) {
     const bool is_neumann = is_neumann_problem(boundary_condition, equation_param.alpha);
     if (is_neumann && std::abs(boundary_condition.front().val + boundary_condition.back().val) > NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>)
@@ -50,7 +50,7 @@ std::vector<T> stationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T
         throw std::domain_error{"Unsolvable Robin problem: alpha[0] == alpha[1] / ((b - a) * alpha[1] - 1)."};
 
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
-    conductivity.template calc_matrix(equation_param.lambda, nonloc_param.p1, influence_function, boundary_type(boundary_condition), is_neumann);
+    conductivity.template calc_matrix(equation_param.lambda, p1, influence_function, boundary_type(boundary_condition), is_neumann);
 
     convection_condition_1d(conductivity.matrix_inner(), boundary_type(boundary_condition), equation_param.alpha);
 

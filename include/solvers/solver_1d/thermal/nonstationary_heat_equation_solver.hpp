@@ -79,27 +79,27 @@ class _nonstationary_heat_equation_solver_1d final {
 
 public:
     template<class T, class I, class Init_Dist, class Right_Part, class Influence_Function>
-    friend void nonstationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T>& nonloc_param,
-                                                      const heat_equation_parameters_1d<T>& equation_param,
+    friend void nonstationary_heat_equation_solver_1d(const heat_equation_parameters_1d<T>& equation_param,
                                                       const nonstationary_solver_parameters_1d<T>& solver_param,
                                                       const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                       const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                       const Init_Dist& init_dist,
                                                       const Right_Part& right_part,
+                                                      const T p1,
                                                       const Influence_Function& influence_function);
 };
 
 template<class T, class I, class Init_Dist, class Right_Part, class Influence_Function>
-void nonstationary_heat_equation_solver_1d(const nonlocal_parameters_1d<T>& nonloc_param,
-                                           const heat_equation_parameters_1d<T>& equation_param,
+void nonstationary_heat_equation_solver_1d(const heat_equation_parameters_1d<T>& equation_param,
                                            const nonstationary_solver_parameters_1d<T>& solver_param,
                                            const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                            const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                            const Init_Dist& init_dist,
                                            const Right_Part& right_part,
+                                           const T p1,
                                            const Influence_Function& influence_function) {
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
-    conductivity.template calc_matrix(equation_param.lambda, nonloc_param.p1, influence_function, boundary_type(boundary_condition));
+    conductivity.template calc_matrix(equation_param.lambda, p1, influence_function, boundary_type(boundary_condition));
     convection_condition_1d(conductivity.matrix_inner(), boundary_type(boundary_condition), equation_param.alpha);
 
     heat_capacity_matrix_1d<T, I> capacity{mesh};

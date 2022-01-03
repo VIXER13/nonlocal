@@ -28,25 +28,23 @@ int main(const int argc, const char *const *const argv) {
             nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
             std::stoull(argv[2]), std::array{0., 1.});
 
-        const nonlocal::nonlocal_parameters_1d<double> nonloc_parameters = {
-            .p1 = std::stod(argv[3]),
-            .r  = std::stod(argv[4])
-        };
+        const double p1 = std::stod(argv[3]),
+                     r  = std::stod(argv[4]);
         const nonlocal::thermal::heat_equation_parameters_1d<double> equation_parameters = {
             .lambda = 1,
             .integral = 0,
             .alpha = {2., 2. / 19.}
         };
 
-        mesh->calc_neighbours_count(nonloc_parameters.r);
+        mesh->calc_neighbours_count(r);
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
-            nonloc_parameters, equation_parameters, mesh,
+            equation_parameters, mesh,
             {
                 nonlocal::thermal::boundary_condition_t::FLUX,  1.,
                 nonlocal::thermal::boundary_condition_t::FLUX, -1.,
             },
             [](const double x) noexcept { return 0; },
-            nonlocal::influence::polynomial_1d<double, 2, 1>{nonloc_parameters.r}
+            p1, nonlocal::influence::polynomial_1d<double, 2, 1>{r}
         );
         save_as_csv(argv[5], solution, mesh->section());
     } catch (const std::exception& e) {

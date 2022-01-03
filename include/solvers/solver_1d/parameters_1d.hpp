@@ -7,12 +7,6 @@
 namespace nonlocal {
 
 template<class T>
-struct nonlocal_parameters_1d final {
-    T p1 = T{1}; // Весовой параметр модели
-    T r  = T{0}; // Радиус нелокального влияния
-};
-
-template<class T>
 struct nonstationary_solver_parameters_1d final {
     std::filesystem::path save_path = std::filesystem::current_path();
     std::array<T, 2> time_interval = {0, 1};

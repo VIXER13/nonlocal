@@ -14,10 +14,8 @@ int main(const int argc, const char *const *const argv) {
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<double>>(
             nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
             std::stoull(argv[2]), std::array{0., 1.});
-        const nonlocal::nonlocal_parameters_1d<double> nonloc_parameters = {
-            .p1 = std::stod(argv[3]),
-            .r  = std::stod(argv[4])
-        };
+        const double p1 = std::stod(argv[3]),
+                     r  = std::stod(argv[4]);
         const nonlocal::thermal::heat_equation_parameters_1d<double> equation_parameters = {
             .lambda = 1,
             .alpha = {2., 2. / 19.}
@@ -29,15 +27,16 @@ int main(const int argc, const char *const *const argv) {
             .save_freq = 1
         };
 
+        mesh->calc_neighbours_count(r);
         nonlocal::thermal::nonstationary_heat_equation_solver_1d<double, int>(
-            nonloc_parameters, equation_parameters, sol_parameters, mesh,
+            equation_parameters, sol_parameters, mesh,
             {
                 nonlocal::thermal::boundary_condition_t::FLUX, [](const double) constexpr noexcept { return  1; },
                 nonlocal::thermal::boundary_condition_t::FLUX, [](const double) constexpr noexcept { return -1; }
             },
             [](const double) { return 0; },
             [](const double t, const double x) { return 0; },
-            nonlocal::influence::polynomial_1d<double, 2, 1>{nonloc_parameters.r}
+            p1, nonlocal::influence::polynomial_1d<double, 2, 1>{r}
         );
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

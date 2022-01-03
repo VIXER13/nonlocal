@@ -1,6 +1,8 @@
 #include "influence_functions_2d.hpp"
 #include "thermal/heat_equation_solver_2d.hpp"
 
+#include "thermal/thermal_conductivity_matrix_2d.hpp"
+
 int main(int argc, char** argv) {
 #ifdef MPI_USE
     MPI_Init(&argc, &argv);
@@ -18,13 +20,13 @@ int main(int argc, char** argv) {
         std::cout.precision(7);
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
-        static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
-        nonlocal::heat::equation_parameters<double, nonlocal::heat::material_t::ORTHOTROPIC> eq_parameters;
+        static const nonlocal::influence::polynomial_2d<double, 2, 1> bell{r};
+        nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
-        eq_parameters.p1 = p1;
-        eq_parameters.r  = r;
 
+
+        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999) {
             mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY);
@@ -35,6 +37,14 @@ int main(int argc, char** argv) {
             std::cout << "Average neighbours = " << mean << std::endl;
         }
 
+        nonlocal::thermal::thermal_conductivity_matrix_2d<double, int, int> fem_sol{mesh_proxy};
+
+        //const equation_parameters<T, Material>& eq_parameters, const T p1, const Influence_Function& influence_fun,
+        //             const std::vector<bool>& is_inner, const bool is_neumann
+        std::vector<bool> is_inner;
+        fem_sol.template calc_matrix(eq_parameters, p1, bell, is_inner, false);
+
+        /*
         nonlocal::heat::heat_equation_solver_2d<double, int, int> fem_sol{mesh_proxy};
 
         auto T = fem_sol.stationary(eq_parameters,
@@ -77,6 +87,7 @@ int main(int argc, char** argv) {
             nonlocal::mesh::save_as_csv("T.csv", *mesh, T.get_temperature());
             T.save_as_vtk("heat.vtk");
         }
+        */
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
 #ifdef MPI_USE

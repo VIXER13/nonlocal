@@ -1,7 +1,6 @@
-#ifndef FINITE_ELEMENT_MATRIX_BASE_HPP
-#define FINITE_ELEMENT_MATRIX_BASE_HPP
+#ifndef NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
+#define NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
 
-#include "../solvers_constants.hpp"
 #include "../solvers_utils.hpp"
 #include "mesh_1d.hpp"
 #include <eigen3/Eigen/Dense>
@@ -83,7 +82,7 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bou
     for(size_t node = 0; node < mesh()->nodes_count(); ++node)
         if (bound_cond.front() == boundary_condition_t::FIRST_KIND && node == 0 ||
             bound_cond.back () == boundary_condition_t::FIRST_KIND && node == mesh()->nodes_count()-1)
-            _matrix_inner.outerIndexPtr()[node+1] = 1;
+            matrix_inner().outerIndexPtr()[node+1] = 1;
         else {
             const auto [eL, iL, eR, iR] = mesh()->node_elements(node).named;
             const size_t e = eR == std::numeric_limits<size_t>::max() ? eL : eR,
@@ -91,14 +90,14 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bou
                          right_neighbour = theory == theory_t::NONLOCAL ? mesh()->right_neighbour(e) : e + 1;
             const bool last_node_first_kind = bound_cond.back() == boundary_condition_t::FIRST_KIND &&
                                               right_neighbour * (mesh()->element()->nodes_count() - 1) == mesh()->nodes_count()-1;
-            _matrix_inner.outerIndexPtr()[node+1] += (right_neighbour - e) * (mesh()->element()->nodes_count() - 1) - i + 1 - last_node_first_kind;
+            matrix_inner().outerIndexPtr()[node+1] += (right_neighbour - e) * (mesh()->element()->nodes_count() - 1) - i + 1 - last_node_first_kind;
         }
 
-    utils::prepare_memory(_matrix_inner);
+    utils::prepare_memory(matrix_inner());
 
-    for(const size_t i : std::views::iota(size_t{0}, size_t(_matrix_inner.rows())))
-        for(size_t j = _matrix_inner.outerIndexPtr()[i], k = i; j < _matrix_inner.outerIndexPtr()[i+1]; ++j, ++k)
-            _matrix_inner.innerIndexPtr()[j] = k;
+    for(const size_t i : std::views::iota(size_t{0}, size_t(matrix_inner().rows())))
+        for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j, ++k)
+            matrix_inner().innerIndexPtr()[j] = k;
 }
 
 template<class T, class I>
@@ -127,7 +126,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condi
                                                  const Integrate_Nonloc& integrate_rule_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
         if (col == row)
-            _matrix_inner.coeffRef(row, col) = 1;
+            matrix_inner().coeffRef(row, col) = 1;
         else if (const auto [it, flag] = matrix_bound.template try_emplace(col, integral); !flag)
             it->second += integral;
     };
@@ -136,12 +135,12 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condi
                           (const size_t row, const size_t col, const Integrate& integrate_rule, const Args&... args) {
         if (bound_cond.front() == boundary_condition_t::FIRST_KIND && (row == 0 || col == 0)) {
             if (row == 0)
-                assemble_bound(_matrix_bound.front(), row, col, integrate_rule(args...));
+                assemble_bound(matrix_bound().front(), row, col, integrate_rule(args...));
         } else if (bound_cond.back() == boundary_condition_t::FIRST_KIND && (row == last_node || col == last_node)) {
             if (row == last_node)
-                assemble_bound(_matrix_bound.back(), row, col, integrate_rule(args...));
+                assemble_bound(matrix_bound().back(), row, col, integrate_rule(args...));
         } else if (row <= col)
-            _matrix_inner.coeffRef(row, col) += integrate_rule(args...);
+            matrix_inner().coeffRef(row, col) += integrate_rule(args...);
     };
 
     mesh_run<theory_t::LOCAL>(
@@ -150,14 +149,13 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condi
         }
     );
 
-    if (theory == theory_t::NONLOCAL) {
+    if (theory == theory_t::NONLOCAL)
         mesh_run<theory_t::NONLOCAL>(
             [this, &integrate_rule_nonloc, &influence_fun, &assemble]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
                 assemble(mesh()->node_number(eL, iL), mesh()->node_number(eNL, jNL), integrate_rule_nonloc, eL, eNL, iL, jNL, influence_fun);
             }
         );
-    }
 }
 
 }
