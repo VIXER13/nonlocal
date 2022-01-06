@@ -1,5 +1,5 @@
-#ifndef SOLVERS_UTILS_HPP
-#define SOLVERS_UTILS_HPP
+#ifndef NONLOCAL_SOLVERS_UTILS_HPP
+#define NONLOCAL_SOLVERS_UTILS_HPP
 
 #include "solvers_constants.hpp"
 #include <eigen3/Eigen/Sparse>

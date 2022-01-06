@@ -32,8 +32,10 @@ public:
     ~thermal_conductivity_matrix_2d() override = default;
 
     template<material_t Material, class Influence_Function>
-    void calc_matrix(const equation_parameters<T, Material>& eq_parameters, const T p1, const Influence_Function& influence_fun,
-                     const std::vector<bool>& is_inner, const bool is_neumann = false);
+    void calc_matrix(const equation_parameters<T, Material>& eq_parameters,
+                     const std::vector<bool>& is_inner,
+                     const T p1, const Influence_Function& influence_fun,
+                     const bool is_neumann = false);
 };
 
 template<class T, class I, class Matrix_Index>
@@ -133,9 +135,8 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::neumann_problem_col_fil
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Influence_Function>
 void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equation_parameters<T, Material>& eq_parameters,
-                                                                     const T p1,
-                                                                     const Influence_Function& influence_fun,
                                                                      const std::vector<bool>& is_inner,
+                                                                     const T p1, const Influence_Function& influence_fun,
                                                                      const bool is_neumann) {
     const theory_t theory = p1 < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
     const size_t rows = _base::mesh_proxy()->last_node() - _base::mesh_proxy()->first_node() +

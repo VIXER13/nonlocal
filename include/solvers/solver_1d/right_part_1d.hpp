@@ -33,22 +33,20 @@ void boundary_condition_second_kind_1d(Vector& f, const std::array<stationary_bo
             f[ind[b]] += boundary_condition[b].val;
 }
 
-template<class T, class Function>
-T integrate_function_on_element(const mesh::mesh_1d<T>& mesh, const size_t e, const size_t i, const Function& func) {
-    T integral = T{0};
-    const auto& el = mesh.element();
-    for(const size_t q : std::views::iota(size_t{0}, el->qnodes_count()))
-        integral += el->weight(q) * el->qN(i, q) * func(mesh.quad_coord(e, q));
-    return integral * mesh.jacobian();
-}
-
 template<class T, class Vector, class Right_Part>
 void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_Part& right_part) {
-#pragma omp parallel for default(none) shared(f, mesh, right_part)
+    const auto integrate_function_on_element = [&mesh, &func = right_part](const size_t e, const size_t i) {
+        T integral = T{0};
+        const auto& el = mesh.element();
+        for(const size_t q : std::views::iota(size_t{0}, el->qnodes_count()))
+            integral += el->weight(q) * el->qN(i, q) * func(mesh.quad_coord(e, q));
+        return integral * mesh.jacobian();
+    };
+#pragma omp parallel for default(none) shared(f, mesh, integrate_function_on_element)
     for(size_t node = 0; node < mesh.nodes_count(); ++node)
         for(const auto& [e, i] : mesh.node_elements(node).arr)
             if (e != std::numeric_limits<size_t>::max())
-                f[node] += integrate_function_on_element(mesh, e, i, right_part);
+                f[node] += integrate_function_on_element(e, i);
 }
 
 }

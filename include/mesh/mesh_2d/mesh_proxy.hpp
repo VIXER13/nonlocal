@@ -100,6 +100,7 @@ public:
     size_t                                last_node                ()                                         const;
     const std::vector<I>&                 neighbors                (const size_t element)                     const;
 
+    static T jacobian(const std::array<T, 2>& J) noexcept;
     static T jacobian(const std::array<T, 4>& J) noexcept;
 
     void find_neighbours(const T r, const balancing_t balancing);
@@ -130,11 +131,8 @@ void mesh_proxy<T, I>::set_mesh(const std::shared_ptr<mesh_2d<T, I>>& mesh) {
     _quad_node_shift = quadrature_node_shits_init(*_mesh);
     _dNdX = dNdX_init(*_mesh, _quad_shifts, _jacobi_matrices, _quad_node_shift);
 
-    std::cout << "_quad_shifts_bound" << std::endl;
     _quad_shifts_bound = quadrature_shifts_bound_init(*_mesh);
-    std::cout << "_quad_coords_bound" << std::endl;
     _quad_coords_bound = approx_all_quad_nodes_bound(*_mesh, _quad_shifts_bound);
-    std::cout << "_jacobi_matrices_bound" << std::endl;
     _jacobi_matrices_bound = approx_all_jacobi_matrices_bound(*_mesh, _quad_shifts_bound);
 
     _elements_ares = approx_elements_areas(*_mesh, _quad_shifts, _jacobi_matrices);
@@ -205,6 +203,9 @@ size_t mesh_proxy<T, I>::last_node() const { return _ranges.range().back(); }
 
 template<class T, class I>
 const std::vector<I>& mesh_proxy<T, I>::neighbors(const size_t element) const { return _elements_neighbors[element]; }
+
+template<class T, class I>
+T mesh_proxy<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
 template<class T, class I>
 T mesh_proxy<T, I>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs(J[0] * J[3] - J[1] * J[2]); }
