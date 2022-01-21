@@ -3,21 +3,22 @@
 
 #include "mesh_2d.hpp"
 #include "boundary_condition_2d.hpp"
-#include "parameters_2d.hpp"
+//#include "parameters_2d.hpp"
 #include "thermal_conductivity_matrix_2d.hpp"
 #include "right_part_2d.hpp"
+#include "heat_equation_solution_2d.hpp"
 
 namespace nonlocal::thermal {
 
 template<class T, class I, class Matrix_Index, material_t Material, class Right_Part, class Influence_Function>
-std::vector<T> stationary_heat_equation_solver_2d(const equation_parameters<T, Material>& equation_param,
+solution<T, I> stationary_heat_equation_solver_2d(const equation_parameters<T, Material>& equation_param,
                                                   const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
                                                   const std::unordered_map<std::string, stationary_boundary_2d_t<boundary_condition_t, T, 1>>& boundary_condition,
                                                   const Right_Part& right_part,
                                                   const T p1,
                                                   const Influence_Function& influence_function) {
     const bool is_neumann = std::all_of(boundary_condition.cbegin(), boundary_condition.cend(),
-        [](const auto& bound) noexcept { return bound.second.cond.type == boundary_condition_t::FLUX; });
+        [](const auto& bound) constexpr noexcept { return bound.second.cond.type == boundary_condition_t::FLUX; });
 
     const std::vector<bool> is_inner = inner_nodes(mesh_proxy->mesh(), boundary_condition);
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh_proxy};
@@ -33,7 +34,7 @@ std::vector<T> stationary_heat_equation_solver_2d(const equation_parameters<T, M
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{conductivity.matrix_inner()};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
-    return std::vector<T>{temperature.cbegin(), std::next(temperature.cbegin(), mesh_proxy->mesh().nodes_count())};
+    return solution<T, I>{mesh_proxy, temperature};
 }
 
 }

@@ -2,11 +2,14 @@
 #define STRUCTURAL_SOLVER_HPP
 
 #include "finite_element_solver_base_2d.hpp"
-#include "structural_solution.hpp"
+#include "mechanical_solution.hpp"
 #include "conjugate_gradient.hpp"
 #include <functional>
 #include <algorithm>
 #include <omp.h>
+
+#include "/home/vixer/projects/nonlocal/spectra/include/Spectra/GenEigsSolver.h"
+#include "/home/vixer/projects/nonlocal/spectra/include/Spectra/MatOp/SparseGenMatProd.h"
 
 namespace nonlocal::structural {
 
@@ -53,7 +56,7 @@ public:
     ~structural_solver() override = default;
 
     template<class Influence_Function>
-    solution<T, I> stationary(const equation_parameters<T>& params, const std::vector<bound_cond<T>> &bounds_cond,
+    solution<T, I> stationary(const equation_parameters<T>& params, const std::unordered_map<std::string, bound_cond<T>> &bounds_cond,
                               const right_part<T>& right_part, const Influence_Function& influence_fun);
 };
 
@@ -199,7 +202,7 @@ void structural_solver<T, I, Matrix_Index>::temperature_condition(Eigen::Matrix<
 template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
 solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_parameters<T>& parameters,
-                                                                 const std::vector<bound_cond<T>> &bounds_cond,
+                                                                 const std::unordered_map<std::string, bound_cond<T>> &bounds_cond,
                                                                  const right_part<T>& right_part,
                                                                  const Influence_Function& influence_fun) {
     double time = omp_get_wtime();
@@ -209,7 +212,9 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
     const std::vector<bool> inner_nodes = _base::template calc_inner_nodes(bounds_cond);
     const std::array<T, 3> D = hooke_matrix(parameters);
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> K_inner(rows, cols), K_bound(rows, cols);
+    std::cout << "create_matrix_portrait" << std::endl;
     _base::template create_matrix_portrait<2>(K_inner, K_bound, inner_nodes, nonlocal_task);
+    std::cout << "calc_matrix" << std::endl;
     _base::template calc_matrix<2>(K_inner, K_bound, inner_nodes, nonlocal_task, influence_fun,
         [this, p1 = parameters.p1, &D](const size_t e, const size_t i, const size_t j) {
             using namespace metamath::function;
@@ -231,15 +236,53 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
     std::cout << "Boundary cond: " << omp_get_wtime() - time << std::endl;
 
+//    auto diag = K_inner.diagonal();
+//    T sum = 0;
+//    for(int i = 0; i < diag.size(); ++i)
+//        sum += diag[i];
+//    std::cout << "trace = " << sum << std::endl;
+
     time = omp_get_wtime();
     MPI_utils::MPI_ranges ranges = _base::mesh_proxy()->ranges();
     for(size_t rank = 0; rank < ranges.ranges().size(); ++rank)
         for(size_t& val : ranges.range(rank))
             val += val;
-    const slae::conjugate_gradient<T, Matrix_Index> solver{K_inner, ranges};
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
+
+    /*
+    Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index> KK = Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index>{K_inner.template selfadjointView<Eigen::Upper>()};
+
+    Spectra::SparseGenMatProd<double> op(KK);
+
+    // Construct eigen solver object, requesting the largest three eigenvalues
+    Spectra::GenEigsSolver<Spectra::SparseGenMatProd<double>> eigs(op, 1, 50);
+
+    // Initialize and compute
+    eigs.init();
+    //int nconv = eigs.compute(Spectra::SortRule::LargestMagn);
+
+    // Retrieve results
+    Eigen::VectorXcd evalues;
+    //if(eigs.info() == Spectra::CompInfo::Successful)
+    //    evalues = eigs.eigenvalues();
+    //std::cout << "MAX Eig = " << evalues << std::endl;
+
+    int nconv = eigs.compute(Spectra::SortRule::SmallestMagn);
+    if(eigs.info() == Spectra::CompInfo::Successful)
+        evalues = eigs.eigenvalues();
+    std::cout << "MIN Eig = " << evalues << std::endl;
+
+    std::cout << "Eigen solve: " << omp_get_wtime() - time << std::endl;
+    */
+    //return solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, f};
+
+    time = omp_get_wtime();
+
+    //const slae::conjugate_gradient<T, Matrix_Index> solver{K_inner, ranges};
+    //const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper, Eigen::IdentityPreconditioner> solver{K_inner};
+    Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
     std::cout << "iterations = " << solver.iterations() << std::endl;
-    std::cout << "residual = " << solver.residual() << std::endl;
+    //std::cout << "residual = " << solver.residual() << std::endl;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
     return solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, displacement};

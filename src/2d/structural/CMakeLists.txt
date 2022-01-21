@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.10)
 
 project(structural_2d)
 
+add_executable(thermoelastic_T thermoelasticity_T.cpp)
+target_include_directories(thermoelastic_T PUBLIC ".")
+target_link_libraries(thermoelastic_T metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+
+add_executable(thermoelastic thermoelasticity.cpp)
+target_include_directories(thermoelastic PUBLIC ".")
+target_link_libraries(thermoelastic metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+
+add_executable(serendip structural_serendip_test.cpp)
+target_include_directories(serendip PUBLIC ".")
+target_link_libraries(serendip metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+
 add_executable(nonlocal_saint_venant structural_saint_venant.cpp)
 target_include_directories(nonlocal_saint_venant PUBLIC ".")
 target_link_libraries(nonlocal_saint_venant metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)

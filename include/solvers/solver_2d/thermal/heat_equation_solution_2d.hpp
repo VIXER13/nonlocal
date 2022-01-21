@@ -3,7 +3,7 @@
 
 #include "mesh_2d.hpp"
 
-namespace nonlocal::heat {
+namespace nonlocal::thermal {
 
 template<class T, class I>
 class solution final {
@@ -33,7 +33,9 @@ template<class T, class I>
 const std::vector<T>& solution<T, I>::get_temperature() const { return _temperature; }
 
 template<class T, class I>
-T solution<T, I>::calc_energy() const { return _mesh_proxy->integrate_solution(_temperature); }
+T solution<T, I>::calc_energy() const {
+    return _mesh_proxy->integrate_solution(_temperature);
+}
 
 template<class T, class I>
 void solution<T, I>::save_as_vtk(const std::string& path) const {

@@ -1,8 +1,7 @@
 #ifndef THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
 #define THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
 
-#include "../finite_element_matrix_2d.hpp"
-#include "../parameters_2d.hpp"
+#include "finite_element_matrix_2d.hpp"
 #include "heat_equation_parameters.hpp"
 
 namespace nonlocal::thermal {
@@ -29,7 +28,7 @@ protected:
 
 public:
     explicit thermal_conductivity_matrix_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
-    ~thermal_conductivity_matrix_2d() override = default;
+    ~thermal_conductivity_matrix_2d() noexcept override = default;
 
     template<material_t Material, class Influence_Function>
     void calc_matrix(const equation_parameters<T, Material>& eq_parameters,

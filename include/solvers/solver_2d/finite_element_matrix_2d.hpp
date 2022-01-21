@@ -118,7 +118,7 @@ protected:
                      const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
-    virtual ~finite_element_matrix_2d() = default;
+    virtual ~finite_element_matrix_2d() noexcept = default;
 
     const mesh::mesh_2d<T, I>& mesh() const;
     const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const;

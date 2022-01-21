@@ -19,16 +19,16 @@ int main(int argc, char** argv) {
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         static const nonlocal::influence::polynomial_2d<double, 2, 1> bell(r);
-        nonlocal::heat::equation_parameters<double, nonlocal::heat::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
+        nonlocal::heat::equation_parameters<double, nonlocal::heat::material_t::ISOTROPIC> eq_parameters;
+        //eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
+        //eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
         eq_parameters.p1 = p1;
-        eq_parameters.r  = r;
+        eq_parameters.r[0]  = r[0];
 
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
         if (p1 < 0.999) {
-            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY);
+            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.015, nonlocal::mesh::balancing_t::MEMORY);
             double mean = 0;
             for(size_t e = 0; e < mesh->elements_count(); ++e)
                 mean += mesh_proxy->neighbors(e).size();
@@ -42,34 +42,34 @@ int main(int argc, char** argv) {
             { // Граничные условия
                 {   "Up",
                     {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return 1; },
+                        nonlocal::heat::boundary_t::TEMPERATURE,
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                     }
                 },
 
                 {   "Down",
                     {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return -1; },
+                        nonlocal::heat::boundary_t::TEMPERATURE,
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                     }
                 },
 
                 {
                     "Left",
                     {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return 0; },
+                        nonlocal::heat::boundary_t::TEMPERATURE,
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                     }
                 },
 
                 {   "Right",
                     {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return 0; },
+                        nonlocal::heat::boundary_t::TEMPERATURE,
+                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
                     }
                 }
             },
-            [](const std::array<double, 2>&) { return 0; }, // Правая часть
+            [](const std::array<double, 2>&) { return -4; }, // Правая часть
             bell // Функция влияния
         );
 

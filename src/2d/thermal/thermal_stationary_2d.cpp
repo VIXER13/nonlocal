@@ -1,7 +1,4 @@
 #include "influence_functions_2d.hpp"
-#include "thermal/heat_equation_solver_2d.hpp"
-
-//#include "thermal/thermal_conductivity_matrix_2d.hpp"
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 
 int main(int argc, char** argv) {
@@ -22,9 +19,10 @@ int main(int argc, char** argv) {
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         static const nonlocal::influence::polynomial_2d<double, 2, 1> bell{r};
-        nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
+        //nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
+        //eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
+        //eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
+        nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ISOTROPIC> eq_parameters;
 
 
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
@@ -50,7 +48,7 @@ int main(int argc, char** argv) {
                                                   const Influence_Function& influence_function
          */
 
-        auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int, int>(
+        const auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int, int>(
             eq_parameters, mesh_proxy,
             {
                 {   "Up",
@@ -86,7 +84,13 @@ int main(int argc, char** argv) {
             p1, bell
         );
 
-        nonlocal::mesh::save_as_csv("T.csv", *mesh, T);
+        if (MPI_utils::MPI_rank() == 0) {
+            std::cout << "Energy = " << T.calc_energy() << std::endl;
+            nonlocal::mesh::save_as_csv("T.csv", *mesh, T.get_temperature());
+            T.save_as_vtk("heat.vtk");
+        }
+
+        //nonlocal::mesh::save_as_csv("T.csv", *mesh, T);
 
         //const equation_parameters<T, Material>& eq_parameters, const T p1, const Influence_Function& influence_fun,
         //             const std::vector<bool>& is_inner, const bool is_neumann

@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <omp.h>
 
+#include "/home/vixer/projects/nonlocal/spectra/include/Spectra/GenEigsSolver.h"
+#include "/home/vixer/projects/nonlocal/spectra/include/Spectra/MatOp/SparseGenMatProd.h"
+
 namespace nonlocal::heat {
 
 enum class boundary_t : uint8_t {
@@ -82,7 +85,7 @@ public:
     ~heat_equation_solver_2d() override = default;
 
     template<material_t Material, class Right_Part, class Influence_Function>
-    solution<T, I> stationary(const equation_parameters<T, Material>& eq_parameters,
+    thermal::solution<T, I> stationary(const equation_parameters<T, Material>& eq_parameters,
                               const std::unordered_map<std::string, bound_cond<T>>& bounds_cond, const Right_Part& right_part,
                               const Influence_Function& influence_fun);
 
@@ -294,7 +297,7 @@ void heat_equation_solver_2d<T, I, Matrix_Index>::nonstationary_solver_logger(co
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Right_Part, class Influence_Function>
-solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equation_parameters<T, Material>& eq_parameters,
+thermal::solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equation_parameters<T, Material>& eq_parameters,
                                                                     const std::unordered_map<std::string, bound_cond<T>>& bounds_cond,
                                                                     const Right_Part& right_part,
                                                                     const Influence_Function& influence_fun) {
@@ -323,11 +326,42 @@ solution<T, I> heat_equation_solver_2d<T, I, Matrix_Index>::stationary(const equ
     _base::template integrate_right_part(f, right_partition<T, 1>{right_part});
     _base::template boundary_condition_first_kind(f, bounds_cond, K_bound);
 
-    const slae::conjugate_gradient<T, Matrix_Index> solver{K_inner, _base::mesh_proxy()->ranges()};
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+
+    double time = omp_get_wtime();
+    //Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index> KK = Eigen::SparseMatrix<T, Eigen::ColMajor, Matrix_Index>{K_inner.template selfadjointView<Eigen::Upper>()};
+
+    //Spectra::SparseGenMatProd<double> op(KK);
+
+    // Construct eigen solver object, requesting the largest three eigenvalues
+    //Spectra::GenEigsSolver<Spectra::SparseGenMatProd<double>> eigs(op, 1, 500);
+
+    // Initialize and compute
+    //eigs.init();
+    //int nconv = eigs.compute(Spectra::SortRule::LargestMagn);
+
+    // Retrieve results
+    //Eigen::VectorXcd evalues;
+    //if(eigs.info() == Spectra::CompInfo::Successful)
+    //    evalues = eigs.eigenvalues();
+    //std::cout << "MAX Eig = " << evalues << std::endl;
+
+    //int nconv = eigs.compute(Spectra::SortRule::SmallestMagn);
+    //if(eigs.info() == Spectra::CompInfo::Successful)
+    //    evalues = eigs.eigenvalues();
+    //std::cout << "MIN Eig = " << evalues << std::endl;
+
+    std::cout << "Eigen solve: " << omp_get_wtime() - time << std::endl;
+
+    time = omp_get_wtime();
+
+    //const slae::conjugate_gradient<T, Matrix_Index> solver{K_inner, _base::mesh_proxy()->ranges()};
+    //const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper, Eigen::IdentityPreconditioner> solver{K_inner};
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations = " << solver.iterations() << std::endl;
-    std::cout << "residual = " << solver.residual() << std::endl;
-    return solution<T, I>{_base::mesh_proxy(), temperature};
+    //std::cout << "residual = " << solver.residual() << std::endl;
+    return thermal::solution<T, I>{_base::mesh_proxy(), temperature};
 }
 
 template<class T, class I, class Matrix_Index>

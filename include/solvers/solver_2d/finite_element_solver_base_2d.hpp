@@ -70,6 +70,7 @@ protected:
                 if constexpr (Stage == index_stage::SHIFTS)
                     ++K.outerIndexPtr()[row - DoF * _node_shift + 1];
                 if constexpr (Stage == index_stage::NONZERO)
+                    //K.innerIndexPtr()[inner_index[i]++] = -100;
                     K.innerIndexPtr()[inner_index[i]++] = col;
                 inner[i][col] = true;
             }
@@ -313,6 +314,7 @@ void finite_element_solver_base<T, I, Matrix_Index>::calc_matrix(Eigen::SparseMa
         [this, &calc_predicate, &calc, &integrate_rule_loc](const size_t e, const size_t i, const size_t j) {
             const I glob_row = DoF * mesh().node_number(e, i),
                     glob_col = DoF * mesh().node_number(e, j);
+            //std::cout << "glob_row = " << glob_row << "  glob_col = " << glob_col << std::endl;
             if (calc_predicate(glob_row, glob_col, theory::LOCAL))
                 calc(block_t{integrate_rule_loc(e, i, j)}, glob_row, glob_col, theory::LOCAL);
         });
