@@ -33,4 +33,5 @@ add_subdirectory(include/solvers/solver_2d)
 #tests
 add_subdirectory(src/1d/thermal)
 add_subdirectory(src/2d/thermal)
-add_subdirectory(src/2d/structural)
+add_subdirectory(src/2d/mechanical)
+#add_subdirectory(src/2d/structural)

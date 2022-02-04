@@ -3,7 +3,6 @@
 
 #include "mesh_2d.hpp"
 #include "boundary_condition_2d.hpp"
-//#include "parameters_2d.hpp"
 #include "thermal_conductivity_matrix_2d.hpp"
 #include "right_part_2d.hpp"
 #include "heat_equation_solution_2d.hpp"

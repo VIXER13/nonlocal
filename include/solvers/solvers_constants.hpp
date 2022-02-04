@@ -5,6 +5,12 @@
 
 namespace nonlocal {
 
+enum class axis : uint8_t {
+    X,
+    Y,
+    Z
+};
+
 enum class boundary_condition_t : uint8_t {
     FIRST_KIND,
     SECOND_KIND,

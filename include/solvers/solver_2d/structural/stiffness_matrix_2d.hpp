@@ -6,8 +6,8 @@
 namespace nonlocal::mechanical {
 
 template<class T, class I, class Matrix_Index>
-class stiffness_matrix : public finite_element_matrix_2d<1, T, I, Matrix_Index> {
-    using _base = finite_element_matrix_2d<1, T, I, Matrix_Index>;
+class stiffness_matrix : public finite_element_matrix_2d<2, T, I, Matrix_Index> {
+    using _base = finite_element_matrix_2d<2, T, I, Matrix_Index>;
     using _base::component::X;
     using _base::component::Y;
 
@@ -62,7 +62,7 @@ std::array<T, 4> stiffness_matrix<T, I, Matrix_Index>::integrate_loc(const std::
                 dNdj = _base::mesh_proxy()->dNdX(e, j);
     std::array<T, 4> pairs = {};
     for(size_t q = 0; q < el->qnodes_count(); ++q, ++J, ++dNdi, ++dNdj) {
-        const T weight = el->weight(q) / _base::jacobian(*J);
+        const T weight = el->weight(q) / _base::mesh_proxy()->jacobian(*J);
         const std::array<T, 2> wdNdi = {weight * (*dNdi)[X], weight * (*dNdi)[Y]};
         add_to_pair(pairs, wdNdi, *dNdj);
     }
@@ -110,7 +110,7 @@ void stiffness_matrix<T, I, Matrix_Index>::calc_matrix(const std::array<T, 3>& D
         _base::template create_matrix_portrait<theory_t::LOCAL>(is_inner);
     else if (theory == theory_t::NONLOCAL)
         _base::template create_matrix_portrait<theory_t::NONLOCAL>(is_inner);
-    _base::template calc_matrix<2>(is_inner, theory, influence_fun,
+    _base::template calc_matrix(is_inner, theory, influence_fun,
         [this, p1, &D](const size_t e, const size_t i, const size_t j) {
             using namespace metamath::function;
             return p1 * integrate_loc(D, e, i, j);

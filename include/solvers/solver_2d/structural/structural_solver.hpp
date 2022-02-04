@@ -48,7 +48,7 @@ class structural_solver : public finite_element_solver_base<T, I, Matrix_Index> 
 
     template<class Influence_Function>
     void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                               const equation_parameters<T>& parameters,
+                               const mechanical::equation_parameters<T>& parameters,
                                const Influence_Function& influence_fun);
 
 public:
@@ -56,7 +56,7 @@ public:
     ~structural_solver() override = default;
 
     template<class Influence_Function>
-    solution<T, I> stationary(const equation_parameters<T>& params, const std::unordered_map<std::string, bound_cond<T>> &bounds_cond,
+    mechanical::solution<T, I> stationary(const mechanical::equation_parameters<T>& params, const std::unordered_map<std::string, bound_cond<T>> &bounds_cond,
                               const right_part<T>& right_part, const Influence_Function& influence_fun);
 };
 
@@ -167,7 +167,7 @@ std::array<T, 2> structural_solver<T, I, Matrix_Index>::integrate_temperature_no
 template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
 void structural_solver<T, I, Matrix_Index>::temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                                                  const equation_parameters<T>& parameters,
+                                                                  const mechanical::equation_parameters<T>& parameters,
                                                                   const Influence_Function& influence_fun) {
     const T nu = parameters.poisson(),
             E  = parameters.young();
@@ -201,7 +201,7 @@ void structural_solver<T, I, Matrix_Index>::temperature_condition(Eigen::Matrix<
 
 template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
-solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_parameters<T>& parameters,
+mechanical::solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const mechanical::equation_parameters<T>& parameters,
                                                                  const std::unordered_map<std::string, bound_cond<T>> &bounds_cond,
                                                                  const right_part<T>& right_part,
                                                                  const Influence_Function& influence_fun) {
@@ -285,7 +285,7 @@ solution<T, I> structural_solver<T, I, Matrix_Index>::stationary(const equation_
     //std::cout << "residual = " << solver.residual() << std::endl;
     std::cout << "System solve: " << omp_get_wtime() - time << std::endl;
 
-    return solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, displacement};
+    return mechanical::solution<T, I>{_base::mesh_proxy(), parameters, influence_fun, displacement};
 }
 
 }

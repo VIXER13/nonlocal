@@ -108,7 +108,7 @@ public:
     template<class Vector>
     T integrate_solution(const Vector& sol) const;
     template<class Vector>
-    std::array<std::vector<T>, 2> calc_gradient(const Vector& sol) const;
+    std::array<std::vector<T>, 2> gradient(const Vector& sol) const;
     std::vector<T> approx_in_quad(const std::vector<T>& x);
 };
 
@@ -547,7 +547,7 @@ T mesh_proxy<T, I>::integrate_solution(const Vector& sol) const {
 
 template<class T, class I>
 template<class Vector>
-std::array<std::vector<T>, 2> mesh_proxy<T, I>::calc_gradient(const Vector& sol) const {
+std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) const {
     if(mesh().nodes_count() != sol.size())
         throw std::logic_error{"mesh.nodes_count() != sol.size()"};
 
