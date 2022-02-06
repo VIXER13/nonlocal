@@ -9,8 +9,6 @@ namespace nonlocal::thermal {
 template<class T, class I, class Matrix_Index>
 class thermal_conductivity_matrix_2d : public finite_element_matrix_2d<1, T, I, Matrix_Index> {
     using _base = finite_element_matrix_2d<1, T, I, Matrix_Index>;
-    using _base::component::X;
-    using _base::component::Y;
 
 protected:
     T integrate_basic(const size_t e, const size_t i) const;

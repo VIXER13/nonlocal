@@ -109,7 +109,7 @@ public:
     T integrate_solution(const Vector& sol) const;
     template<class Vector>
     std::array<std::vector<T>, 2> gradient(const Vector& sol) const;
-    std::vector<T> approx_in_quad(const std::vector<T>& x);
+    std::vector<T> approx_in_quad(const std::vector<T>& x) const;
 };
 
 template<class T, class I>
@@ -575,7 +575,7 @@ std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) cons
 }
 
 template<class T, class I>
-std::vector<T> mesh_proxy<T, I>::approx_in_quad(const std::vector<T>& x) {
+std::vector<T> mesh_proxy<T, I>::approx_in_quad(const std::vector<T>& x) const {
     std::vector<T> x_in_quad(quad_shift(mesh().elements_count()), 0);
 #pragma omp parallel for default(none) shared(x, x_in_quad)
     for(size_t e = 0; e < mesh().elements_count(); ++e) {

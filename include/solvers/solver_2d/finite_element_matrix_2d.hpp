@@ -17,7 +17,6 @@ class finite_element_matrix_2d {
                                                           _matrix_bound;
 
 protected:
-    enum component : bool { X, Y };
     enum class index_stage : bool { SHIFTS, NONZERO };
 
     class indexator {

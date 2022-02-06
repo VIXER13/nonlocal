@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.17)
 project(finite_element_solver_2d)
 
 add_subdirectory(thermal)
-add_subdirectory(structural)
+add_subdirectory(mechanical)
 
 set(FINITE_ELEMENT_SOLVER_2D_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 

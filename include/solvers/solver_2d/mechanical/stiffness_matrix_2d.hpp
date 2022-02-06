@@ -8,8 +8,6 @@ namespace nonlocal::mechanical {
 template<class T, class I, class Matrix_Index>
 class stiffness_matrix : public finite_element_matrix_2d<2, T, I, Matrix_Index> {
     using _base = finite_element_matrix_2d<2, T, I, Matrix_Index>;
-    using _base::component::X;
-    using _base::component::Y;
 
 protected:
     static void add_to_pair(std::array<T, 4>& pairs, const std::array<T, 2>& wdNd, const std::array<T, 2>& dNd) noexcept;

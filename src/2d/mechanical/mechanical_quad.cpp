@@ -65,12 +65,20 @@ int main(int argc, char** argv) {
         parameters.p1 = p1;
         parameters.type = nonlocal::mechanical::calc_t::PLANE_STRESS;
 
+        parameters.thermoelasticity = true;
+        parameters.delta_temperature.resize(mesh->nodes_count());
+        parameters.alpha = 1;
+        for(size_t i = 0; i < mesh->nodes_count(); ++i) {
+            const auto& node = mesh->node(i);
+            parameters.delta_temperature[i] = node[0] + node[1];
+        }
+
         auto sol = nonlocal::mechanical::equilibrium_equation<double, int, int>(parameters, mesh_proxy,
             { // Граничные условия
                 {   "Right",
                     {
                     nonlocal::mechanical::boundary_condition_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return 4 * f2(x); },
+                    [](const std::array<double, 2>& x) { return 0; },
                     nonlocal::mechanical::boundary_condition_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
                     }
@@ -88,7 +96,7 @@ int main(int argc, char** argv) {
                 {  "Left",
                     {
                         nonlocal::mechanical::boundary_condition_t::PRESSURE,
-                        [](const std::array<double, 2>& x) { return -4 * f2(x); },
+                        [](const std::array<double, 2>& x) { return 0; },
                         nonlocal::mechanical::boundary_condition_t::PRESSURE,
                         [](const std::array<double, 2>&) { return 0; }
                     }
