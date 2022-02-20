@@ -1,7 +1,6 @@
 #ifndef STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 #define STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 
-#include "parameters_1d.hpp"
 #include "right_part_1d.hpp"
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "convection_condition_1d.hpp"

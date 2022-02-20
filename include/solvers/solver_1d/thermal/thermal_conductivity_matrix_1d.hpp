@@ -3,6 +3,7 @@
 
 #include "finite_element_matrix_1d.hpp"
 #include "boundary_condition_1d.hpp"
+#include "heat_equation_parameters_1d.hpp"
 
 namespace nonlocal::thermal {
 

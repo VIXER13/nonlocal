@@ -4,8 +4,8 @@
 #include "../../solvers_constants.hpp"
 #include <array>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 namespace nonlocal::thermal {
 
@@ -34,19 +34,6 @@ struct equation_parameters final {
             alpha[name] = T{1};
     }
 };
-
-/*
-template<class T>
-struct solver_parameters final {
-    std::string save_path; // Путь куда сохранять данные
-    std::array<T, 2> time_interval = {0, 1};
-    uintmax_t steps = 100,
-              save_freq = 1; // Частота сохранения
-    bool save_vtk = true,    // Сохранять .vtk файлы
-         save_csv = true,    // Сохранять .csv файлы в формате (x1, x2, T)
-         calc_energy = true; // Вычислять энергия при сохранении, иногда полезно для контроля расчёта
-};
-*/
 
 }
 
