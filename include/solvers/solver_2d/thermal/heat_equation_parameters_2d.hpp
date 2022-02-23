@@ -1,5 +1,5 @@
-#ifndef HEAT_EQUATION_PARAMETERS_HPP
-#define HEAT_EQUATION_PARAMETERS_HPP
+#ifndef HEAT_EQUATION_PARAMETERS_2D_HPP
+#define HEAT_EQUATION_PARAMETERS_2D_HPP
 
 #include "../../solvers_constants.hpp"
 #include <array>
@@ -10,7 +10,7 @@
 namespace nonlocal::thermal {
 
 template<class T, material_t Material>
-struct equation_parameters final {
+struct equation_parameters_2d final {
     static_assert(Material == material_t::ISOTROPIC ||
                   Material == material_t::ORTHOTROPIC,
                   "Only isotropic and orthotropic materials are supported");
@@ -25,7 +25,7 @@ struct equation_parameters final {
     T rho      = T{1};                        // Плотность материала
     T integral = T{0};                        // Интеграл от решения (для задачи Неймана)
 
-    explicit equation_parameters(const std::vector<std::string>& names = {}) noexcept {
+    explicit equation_parameters_2d(const std::vector<std::string>& names = {}) noexcept {
         if constexpr(Material == material_t::ISOTROPIC)
             lambda = T{1};
         if constexpr(Material == material_t::ORTHOTROPIC)

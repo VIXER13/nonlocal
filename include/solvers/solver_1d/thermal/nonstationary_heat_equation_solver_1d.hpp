@@ -3,10 +3,8 @@
 
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "heat_capacity_matrix_1d.hpp"
-#include "right_part_1d.hpp"
 #include "convection_condition_1d.hpp"
-#include <iostream>
-#include <fstream>
+#include "right_part_1d.hpp"
 
 namespace nonlocal::thermal {
 
@@ -81,8 +79,8 @@ template<class T, class I>
 template<class Right_Part>
 void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                             const Right_Part& right_part) {
-    _right_part.setZero();
     _time += _tau;
+    _right_part.setZero();
     const auto stationary_bound = to_stationary(boundary_condition, _time);
     boundary_condition_second_kind_1d(_right_part, stationary_bound, std::array{size_t{0}, size_t(_right_part.size() - 1)});
     integrate_right_part(_right_part, *_conductivity.mesh(), [&right_part, t = _time](const T x) { return right_part(t, x); });

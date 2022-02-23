@@ -17,7 +17,7 @@ mechanical::solution<T, I> equilibrium_equation(const mechanical::equation_param
                                                 const Right_Part& right_part,
                                                 const T p1,
                                                 const Influence_Function& influence_function) {
-    const std::vector<bool> is_inner = inner_nodes(mesh_proxy->mesh(), boundary_condition);
+    const std::vector<bool> is_inner = inner_nodes(mesh_proxy->mesh(), boundary_type(boundary_condition));
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh_proxy};
     stiffness.template calc_matrix(hooke_matrix(parameters), is_inner, p1, influence_function);
 

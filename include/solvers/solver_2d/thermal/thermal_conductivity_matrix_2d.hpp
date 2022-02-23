@@ -2,7 +2,7 @@
 #define THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
 
 #include "finite_element_matrix_2d.hpp"
-#include "heat_equation_parameters.hpp"
+#include "heat_equation_parameters_2d.hpp"
 
 namespace nonlocal::thermal {
 
@@ -13,10 +13,10 @@ class thermal_conductivity_matrix_2d : public finite_element_matrix_2d<1, T, I, 
 protected:
     T integrate_basic(const size_t e, const size_t i) const;
     template<material_t Material>
-    T integrate_loc([[maybe_unused]] const decltype(equation_parameters<T, Material>::lambda)& lambda,
+    T integrate_loc([[maybe_unused]] const decltype(equation_parameters_2d<T, Material>::lambda)& lambda,
                     const size_t e, const size_t i, const size_t j) const;
     template<material_t Material, class Influence_Function>
-    T integrate_nonloc([[maybe_unused]] const decltype(equation_parameters<T, Material>::lambda)& lambda,
+    T integrate_nonloc([[maybe_unused]] const decltype(equation_parameters_2d<T, Material>::lambda)& lambda,
                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
                        const Influence_Function& influence_function) const;
 
@@ -29,7 +29,7 @@ public:
     ~thermal_conductivity_matrix_2d() noexcept override = default;
 
     template<material_t Material, class Influence_Function>
-    void calc_matrix(const equation_parameters<T, Material>& eq_parameters,
+    void calc_matrix(const equation_parameters_2d<T, Material>& eq_parameters,
                      const std::vector<bool>& is_inner,
                      const T p1, const Influence_Function& influence_fun,
                      const bool is_neumann = false);
@@ -51,7 +51,7 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_basic(const size
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc([[maybe_unused]] const decltype(equation_parameters<T, Material>::lambda)& lambda,
+T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc([[maybe_unused]] const decltype(equation_parameters_2d<T, Material>::lambda)& lambda,
                                                                     const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el   = _base::mesh().element_2d(e);
@@ -75,7 +75,7 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc([[maybe_unus
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Influence_Function>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc([[maybe_unused]] const decltype(equation_parameters<T, Material>::lambda)& lambda,
+T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc([[maybe_unused]] const decltype(equation_parameters_2d<T, Material>::lambda)& lambda,
                                                                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
                                                                        const Influence_Function& influence_function) const {
     T integral = 0;
@@ -131,7 +131,7 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::neumann_problem_col_fil
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Influence_Function>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equation_parameters<T, Material>& eq_parameters,
+void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equation_parameters_2d<T, Material>& eq_parameters,
                                                                      const std::vector<bool>& is_inner,
                                                                      const T p1, const Influence_Function& influence_fun,
                                                                      const bool is_neumann) {

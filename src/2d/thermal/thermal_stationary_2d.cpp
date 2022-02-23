@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
         //nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
         //eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         //eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
-        nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ISOTROPIC> eq_parameters;
+        nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ISOTROPIC> eq_parameters;
 
 
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
@@ -51,42 +51,45 @@ int main(int argc, char** argv) {
         const auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int, int>(
             eq_parameters, mesh_proxy,
             {
-                {   "Up",
-                    {
-                        nonlocal::thermal::boundary_condition_t::TEMPERATURE,
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                    }
-                },
-
                 {   "Down",
                     {
-                        nonlocal::thermal::boundary_condition_t::TEMPERATURE,
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
-                    }
-                },
-
-                {
-                    "Left",
-                    {
-                        nonlocal::thermal::boundary_condition_t::TEMPERATURE,
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::thermal::boundary_condition_t::FLUX,
+                        [](const std::array<double, 2>& x) { return -100; },
                     }
                 },
 
                 {   "Right",
                     {
-                        nonlocal::thermal::boundary_condition_t::TEMPERATURE,
-                        [](const std::array<double, 2>& x) { return x[0]*x[0] + x[1]*x[1]; },
+                        nonlocal::thermal::boundary_condition_t::FLUX,
+                        [](const std::array<double, 2>& x) { return 0; },
+                    }
+                },
+
+                {
+                    "Up",
+                    {
+                        nonlocal::thermal::boundary_condition_t::FLUX,
+                        [](const std::array<double, 2>& x) { return 100; },
+                    }
+                },
+
+                {   "Left",
+                    {
+                        nonlocal::thermal::boundary_condition_t::FLUX,
+                        [](const std::array<double, 2>& x) { return 0; },
                     }
                 }
             },
-            [](const std::array<double, 2>&) { return -4; }, // Правая часть
+            [](const std::array<double, 2>&) { return 0; }, // Правая часть
             p1, bell
         );
 
         if (MPI_utils::MPI_rank() == 0) {
             std::cout << "Energy = " << T.calc_energy() << std::endl;
             nonlocal::mesh::save_as_csv("T.csv", *mesh, T.get_temperature());
+            auto [X, Y] = mesh_proxy->gradient(T.get_temperature());
+            nonlocal::mesh::save_as_csv("X.csv", *mesh, X);
+            nonlocal::mesh::save_as_csv("Y.csv", *mesh, Y);
             T.save_as_vtk("heat.vtk");
         }
 

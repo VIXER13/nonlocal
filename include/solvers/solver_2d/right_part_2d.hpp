@@ -19,12 +19,12 @@ void boundary_nodes_run(const mesh::mesh_2d<T, I>& mesh, const Callback& callbac
 
 template<class T, class I, class B, size_t DoF>
 std::vector<bool> inner_nodes(const mesh::mesh_2d<T, I>& mesh,
-                              const std::unordered_map<std::string, stationary_boundary_2d_t<B, T, DoF>>& boundary_condition) {
+                              const std::unordered_map<std::string, std::array<B, DoF>>& boundary_condition) {
     std::vector<bool> is_inner(DoF * mesh.nodes_count(), true);
     boundary_nodes_run(mesh,
         [&mesh, &boundary_condition, &is_inner](const std::string& b, const size_t el, const size_t i) {
             for(const size_t comp : std::views::iota(size_t{0}, DoF))
-                if(boundary_condition.at(b)[comp].type == B(boundary_condition_t::FIRST_KIND))
+                if(boundary_condition.at(b)[comp] == B(boundary_condition_t::FIRST_KIND))
                     is_inner[DoF * mesh.node_number(b, el, i) + comp] = false;
         });
     return is_inner;

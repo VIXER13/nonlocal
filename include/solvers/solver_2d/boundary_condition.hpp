@@ -20,7 +20,7 @@ struct boundary_condition final {
 
     std::array<boundary_pair, DoF> data;
 
-    static constexpr size_t degrees_of_freedom() { return DoF; }
+    static constexpr size_t degrees_of_freedom() noexcept { return DoF; }
 
     B type(const size_t b) const { return data[b].type; }
     const std::function<T(const std::array<T, 2>&)>& func(const size_t b) const { return data[b].func; }
