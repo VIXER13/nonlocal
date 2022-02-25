@@ -32,13 +32,12 @@ std::vector<bool> inner_nodes(const mesh::mesh_2d<T, I>& mesh,
 
 template<class B, class T, class I, size_t DoF>
 void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                      const mesh::mesh_2d<T, I>& mesh,
-                                      const std::array<size_t, 2>& first_last_nodes,
+                                      const mesh::mesh_proxy<T, I>& mesh_proxy,
                                       const std::unordered_map<std::string, stationary_boundary_2d_t<B, T, DoF>>& boundary_condition,
                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) {
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K_bound.cols());
-    boundary_nodes_run(mesh,
-        [&mesh, &boundary_condition, &x](const std::string& b, const size_t el, const size_t i) {
+    boundary_nodes_run(mesh_proxy.mesh(),
+        [&mesh = mesh_proxy.mesh(), &boundary_condition, &x](const std::string& b, const size_t el, const size_t i) {
             for(const size_t comp : std::views::iota(size_t{0}, DoF))
                 if (boundary_condition.at(b)[comp].type == B(boundary_condition_t::FIRST_KIND))
                     if (const I node = DoF * mesh.node_number(b, el, i) + comp; x[node] == 0)
@@ -48,8 +47,9 @@ void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
     f -= K_bound * x;
 
     using namespace metamath::function;
-    boundary_nodes_run(mesh,
-        [&mesh, &boundary_condition, &x, &f, first_last = DoF * first_last_nodes](const std::string& b, const size_t el, const size_t i) {
+    const std::array<size_t, 2> first_last = {DoF * mesh_proxy.first_node(), DoF * mesh_proxy.last_node()};
+    boundary_nodes_run(mesh_proxy.mesh(),
+        [&mesh = mesh_proxy.mesh(), &boundary_condition, &x, &f, &first_last](const std::string& b, const size_t el, const size_t i) {
             for(const size_t comp : std::views::iota(size_t{0}, DoF))
                 if (boundary_condition.at(b)[comp].type == B(boundary_condition_t::FIRST_KIND))
                     if (const I node = DoF * mesh.node_number(b, el, i) + comp;
@@ -74,11 +74,9 @@ T integrate_boundary_gradient(const mesh::mesh_proxy<T, I>& mesh_proxy,
 template<class B, class T, class I, size_t DoF>
 void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                        const mesh::mesh_proxy<T, I>& mesh_proxy,
-                                       const std::array<size_t, 2>& first_last_nodes,
                                        const std::unordered_map<std::string, stationary_boundary_2d_t<B, T, DoF>>& boundary_condition) {
-    using namespace metamath::function;
     const auto& mesh = mesh_proxy.mesh();
-    const std::array<size_t, 2>& first_last = DoF * first_last_nodes;
+    const std::array<size_t, 2>& first_last = {DoF * mesh_proxy.first_node(), DoF * mesh_proxy.last_node()};
     for(const std::string& b : mesh.boundary_names())
         for(const size_t comp : std::views::iota(size_t{0}, DoF))
             if(boundary_condition.at(b)[comp].type == B(boundary_condition_t::SECOND_KIND))

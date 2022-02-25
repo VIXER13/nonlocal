@@ -6,7 +6,7 @@
 namespace nonlocal::thermal {
 
 template<class T>
-struct heat_equation_parameters_1d final {
+struct equation_parameters_1d final {
     T lambda   = T{1};                     // Коэффициент теплопроводности
     T c        = T{1};                     // Коэффициент теплоёмкости
     T rho      = T{1};                     // Плотность материала

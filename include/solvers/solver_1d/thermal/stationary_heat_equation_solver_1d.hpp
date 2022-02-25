@@ -34,7 +34,7 @@ constexpr bool is_solvable_robin_problem(const std::array<T, 2>& section, const 
 }
 
 template<class T, class I, class Right_Part, class Influence_Function>
-std::vector<T> stationary_heat_equation_solver_1d(const heat_equation_parameters_1d<T>& equation_param,
+std::vector<T> stationary_heat_equation_solver_1d(const equation_parameters_1d<T>& equation_param,
                                                   const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                   const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                   const Right_Part& right_part,

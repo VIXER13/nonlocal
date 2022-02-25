@@ -1,7 +1,7 @@
 #include "influence_functions_2d.hpp"
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 
-int main(int argc, char** argv) {
+int main(const int argc, const char *const * argv) {
 #ifdef MPI_USE
     MPI_Init(&argc, &argv);
 #endif
@@ -15,73 +15,55 @@ int main(int argc, char** argv) {
     }
 
     try {
-        std::cout.precision(7);
+        std::cout.precision(20);
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
-        static const nonlocal::influence::polynomial_2d<double, 2, 1> bell{r};
-        //nonlocal::thermal::equation_parameters<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        //eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        //eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
-        nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ISOTROPIC> eq_parameters;
+        nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
+        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
+        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
 
-
-        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int>>(mesh);
+        const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
+        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int32_t>>(mesh);
         if (p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>) {
             mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY);
             double mean = 0;
-            for(size_t e = 0; e < mesh->elements_count(); ++e)
+            for(const size_t e : std::views::iota(size_t{0}, mesh->elements_count()))
                 mean += mesh_proxy->neighbors(e).size();
-            mean /= mesh->nodes_count();
-            std::cout << "Average neighbours = " << mean << std::endl;
+            std::cout << "Average neighbours = " << mean / mesh->nodes_count() << std::endl;
         }
 
-        //nonlocal::thermal::thermal_conductivity_matrix_2d<double, int, int> fem_sol{mesh_proxy};
-
-
-        /*
-         const equation_parameters<T, Material>& equation_param,
-                                                  const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                                                  const std::unordered_map<std::string, stationary_boundary_2d_t<boundary_condition_t, T, 1>>& boundary_condition,
-                                                  const Right_Part& right_part,
-                                                  const T p1,
-                                                  const Influence_Function& influence_function
-         */
-
-        const auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int, int>(
-            eq_parameters, mesh_proxy,
-            {
+        const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
+            boundary_condition = {
                 {   "Down",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const std::array<double, 2>& x) { return -100; },
+                        [](const std::array<double, 2>& x) { return 0; },
                     }
                 },
-
                 {   "Right",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
+                        [](const std::array<double, 2>& x) { return 1; },
+                    }
+                },
+                {   "Up",
+                    {
+                        nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const std::array<double, 2>& x) { return 0; },
                     }
                 },
-
-                {
-                    "Up",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const std::array<double, 2>& x) { return 100; },
-                    }
-                },
-
                 {   "Left",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const std::array<double, 2>& x) { return 0; },
+                        [](const std::array<double, 2>& x) { return -1; },
                     }
                 }
-            },
-            [](const std::array<double, 2>&) { return 0; }, // Правая часть
-            p1, bell
+            };
+
+        const auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int32_t, int32_t>(
+            eq_parameters, mesh_proxy, boundary_condition,
+            [](const std::array<double, 2>& x) { return 0; }, // Правая часть
+            p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r}
         );
 
         if (MPI_utils::MPI_rank() == 0) {
@@ -92,58 +74,6 @@ int main(int argc, char** argv) {
             nonlocal::mesh::save_as_csv("Y.csv", *mesh, Y);
             T.save_as_vtk("heat.vtk");
         }
-
-        //nonlocal::mesh::save_as_csv("T.csv", *mesh, T);
-
-        //const equation_parameters<T, Material>& eq_parameters, const T p1, const Influence_Function& influence_fun,
-        //             const std::vector<bool>& is_inner, const bool is_neumann
-        //std::vector<bool> is_inner;
-        //fem_sol.template calc_matrix(eq_parameters, p1, bell, is_inner, false);
-
-        /*
-        nonlocal::heat::heat_equation_solver_2d<double, int, int> fem_sol{mesh_proxy};
-
-        auto T = fem_sol.stationary(eq_parameters,
-            { // Граничные условия
-                {   "Up",
-                    {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return 1; },
-                    }
-                },
-
-                {   "Down",
-                    {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return -1; },
-                    }
-                },
-
-                {
-                    "Left",
-                    {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return 0; },
-                    }
-                },
-
-                {   "Right",
-                    {
-                        nonlocal::heat::boundary_t::FLOW,
-                        [](const std::array<double, 2>& x) { return 0; },
-                    }
-                }
-            },
-            [](const std::array<double, 2>&) { return 0; }, // Правая часть
-            bell // Функция влияния
-        );
-
-        if (MPI_utils::MPI_rank() == 0) {
-            std::cout << "Energy = " << T.calc_energy() << std::endl;
-            nonlocal::mesh::save_as_csv("T.csv", *mesh, T.get_temperature());
-            T.save_as_vtk("heat.vtk");
-        }
-        */
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
 #ifdef MPI_USE

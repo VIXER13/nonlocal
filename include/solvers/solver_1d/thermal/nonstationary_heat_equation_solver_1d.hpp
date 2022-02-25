@@ -24,7 +24,7 @@ public:
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature() const noexcept;
 
     template<class Init_Dist, class Influence_Function>
-    void compute(const heat_equation_parameters_1d<T>& equation_param,
+    void compute(const equation_parameters_1d<T>& equation_param,
                  const std::array<boundary_condition_t, 2> boundary_condition,
                  const Init_Dist& init_dist,
                  const T p1,
@@ -52,7 +52,7 @@ const Eigen::Matrix<T, Eigen::Dynamic, 1>& nonstationary_heat_equation_solver_1d
 
 template<class T, class I>
 template<class Init_Dist, class Influence_Function>
-void nonstationary_heat_equation_solver_1d<T, I>::compute(const heat_equation_parameters_1d<T>& equation_param,
+void nonstationary_heat_equation_solver_1d<T, I>::compute(const equation_parameters_1d<T>& equation_param,
                                                           const std::array<boundary_condition_t, 2> boundary_condition,
                                                           const Init_Dist& init_dist,
                                                           const T p1,

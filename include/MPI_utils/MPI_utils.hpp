@@ -43,6 +43,17 @@ Vector all_to_all(const Vector& sendbuf, const MPI_ranges& ranges) {
     return recvbuf;
 }
 
+template<class T>
+constexpr std::enable_if_t<std::is_floating_point_v<T>, T> reduce(T local_sum) {
+#if MPI_USE
+    T global_sum = T{0};
+    MPI_Reduce(&local_sum, &global_sum, 1, std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, 0, MPI_COMM_WORLD;)
+    return global_sum;
+#else
+    return local_sum;
+#endif
+}
+
 }
 
 #endif

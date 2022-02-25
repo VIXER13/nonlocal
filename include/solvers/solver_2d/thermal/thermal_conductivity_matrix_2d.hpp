@@ -29,7 +29,7 @@ public:
     ~thermal_conductivity_matrix_2d() noexcept override = default;
 
     template<material_t Material, class Influence_Function>
-    void calc_matrix(const equation_parameters_2d<T, Material>& eq_parameters,
+    void calc_matrix(const decltype(equation_parameters_2d<T, Material>::lambda)& lambda,
                      const std::vector<bool>& is_inner,
                      const T p1, const Influence_Function& influence_fun,
                      const bool is_neumann = false);
@@ -131,7 +131,7 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::neumann_problem_col_fil
 
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Influence_Function>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equation_parameters_2d<T, Material>& eq_parameters,
+void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const decltype(equation_parameters_2d<T, Material>::lambda)& lambda,
                                                                      const std::vector<bool>& is_inner,
                                                                      const T p1, const Influence_Function& influence_fun,
                                                                      const bool is_neumann) {
@@ -145,16 +145,16 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equat
 
     T factor_loc = p1, factor_nonloc = T{1} - p1;
     if constexpr (Material == material_t::ISOTROPIC) {
-        factor_loc *= eq_parameters.lambda;
-        factor_nonloc *= eq_parameters.lambda;
+        factor_loc *= lambda;
+        factor_nonloc *= lambda;
     }
     _base::template calc_matrix(is_inner, theory, influence_fun,
-        [this, factor_loc, &lambda = eq_parameters.lambda](const size_t e, const size_t i, const size_t j) {
+        [this, factor_loc, &lambda = lambda](const size_t e, const size_t i, const size_t j) {
             return factor_loc * integrate_loc<Material>(lambda, e, i, j);
         },
-        [this, factor_nonloc, &lambda = eq_parameters.lambda]
+        [this, factor_nonloc, &lambda = lambda]
         (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
-                return factor_nonloc * integrate_nonloc<Material>(lambda, eL, eNL, iL, jNL, influence_function);
+            return factor_nonloc * integrate_nonloc<Material>(lambda, eL, eNL, iL, jNL, influence_function);
         });
     if (is_neumann)
         neumann_problem_col_fill();

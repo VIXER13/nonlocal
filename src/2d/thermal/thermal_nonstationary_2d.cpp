@@ -62,7 +62,7 @@ int main(int argc, char** argv) {
             mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.05, nonlocal::mesh::balancing_t::MEMORY); // 0.05 это некая гарантированная добавка
             // Нужна, чтобы все квадратурные узлы, которые попадают под зону влияния были учтены.
             double mean = 0;
-            for(size_t e = 0; e < mesh->elements_count(); ++e)
+            for(const size_t e : std::views::iota(size_t{0}, mesh->elements_count()))
                 mean += mesh_proxy->neighbors(e).size();
             std::cout << "Average neighbours = " << mean / mesh->elements_count() << std::endl;
         }
@@ -72,26 +72,25 @@ int main(int argc, char** argv) {
                 {   "Down",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const double t, const std::array<double, 2>& x) { return -100; },
+                        [](const double t, const std::array<double, 2>& x) { return 0; },
                     }
                 },
                 {   "Right",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const double t, const std::array<double, 2>& x) { return 0; },
+                        [](const double t, const std::array<double, 2>& x) { return 1; },
                     }
                 },
-                {
-                    "Up",
+                {   "Up",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const double t, const std::array<double, 2>& x) { return 100; },
+                        [](const double t, const std::array<double, 2>& x) { return 0; },
                     }
                 },
                 {   "Left",
                     {
                         nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const double t, const std::array<double, 2>& x) { return 0; },
+                        [](const double t, const std::array<double, 2>& x) { return -1; },
                     }
                 }
         };

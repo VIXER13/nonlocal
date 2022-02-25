@@ -17,9 +17,7 @@ public:
     explicit heat_capacity_matrix_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
     ~heat_capacity_matrix_2d() noexcept override = default;
 
-    template<material_t Material>
-    void calc_matrix(const equation_parameters_2d<T, Material>& eq_parameters,
-                     const std::vector<bool>& is_inner);
+    void calc_matrix(const T c, const T rho, const std::vector<bool>& is_inner);
 };
 
 template<class T, class I, class Matrix_Index>
@@ -37,9 +35,7 @@ T heat_capacity_matrix_2d<T, I, Matrix_Index>::integrate_basic_pair(const size_t
 }
 
 template<class T, class I, class Matrix_Index>
-template<material_t Material>
-void heat_capacity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equation_parameters_2d<T, Material>& eq_parameters,
-                                                              const std::vector<bool>& is_inner) {
+void heat_capacity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const T c, const T rho, const std::vector<bool>& is_inner) {
     const size_t rows = _base::mesh_proxy()->last_node() - _base::mesh_proxy()->first_node(),
                  cols = _base::mesh().nodes_count();
     _base::matrix_inner().resize(rows, cols);
@@ -47,9 +43,7 @@ void heat_capacity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const equation_par
     _base::template create_matrix_portrait<theory_t::LOCAL>(is_inner);
     static constexpr auto NO_INFLUENCE = []() constexpr noexcept {};
     _base::template calc_matrix(is_inner, theory_t::LOCAL, NO_INFLUENCE,
-        [this, factor = eq_parameters.c * eq_parameters.rho](const size_t e, const size_t i, const size_t j) {
-            return factor * integrate_basic_pair(e, i, j);
-        },
+        [this, factor = c * rho](const size_t e, const size_t i, const size_t j) { return factor * integrate_basic_pair(e, i, j); },
         [](const size_t, const size_t, const size_t, const size_t, const decltype(NO_INFLUENCE)) constexpr noexcept { return T{0}; }
     );
 }

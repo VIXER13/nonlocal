@@ -9,6 +9,13 @@
 
 namespace nonlocal::thermal {
 
+template<class T, class I>
+bool is_solvable_neumann_problem(const mesh::mesh_proxy<T, I>& mesh_proxy, const Eigen::Matrix<T, Eigen::Dynamic, 1>& f) {
+    const T sum = std::accumulate(std::next(f.begin(), mesh_proxy.first_node()),
+                                  std::next(f.begin(), mesh_proxy.last_node ()), T{0});
+    return std::abs(MPI_utils::reduce(sum)) < NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>;
+}
+
 template<class T, class I, class Matrix_Index, material_t Material, class Right_Part, class Influence_Function>
 solution<T, I> stationary_heat_equation_solver_2d(const equation_parameters_2d<T, Material>& equation_param,
                                                   const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
@@ -18,18 +25,20 @@ solution<T, I> stationary_heat_equation_solver_2d(const equation_parameters_2d<T
                                                   const Influence_Function& influence_function) {
     const bool is_neumann = std::all_of(boundary_condition.cbegin(), boundary_condition.cend(),
         [](const auto& bound) constexpr noexcept { return bound.second.condition.type == boundary_condition_t::FLUX; });
+    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh_proxy->mesh().nodes_count() + is_neumann);
+    boundary_condition_second_kind_2d(f, *mesh_proxy, boundary_condition);
+
+    if (is_neumann) {
+        if (!is_solvable_neumann_problem(*mesh_proxy, f))
+            throw std::domain_error{"Unsolvable Neumann problem: contour integral != 0."};
+        f[f.size()-1] = equation_param.integral;
+    }
 
     const std::vector<bool> is_inner = inner_nodes(mesh_proxy->mesh(), boundary_type(boundary_condition));
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh_proxy};
-    conductivity.template calc_matrix(equation_param, is_inner, p1, influence_function, is_neumann);
-
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(conductivity.matrix_inner().cols());
-    const std::array<size_t, 2> first_last_nodes = {mesh_proxy->first_node(), mesh_proxy->last_node()};
+    conductivity.template calc_matrix<Material>(equation_param.lambda, is_inner, p1, influence_function, is_neumann);
     integrate_right_part<1>(f, *mesh_proxy, right_part);
-    boundary_condition_second_kind_2d(f, *mesh_proxy, first_last_nodes, boundary_condition);
-    boundary_condition_first_kind_2d(f, mesh_proxy->mesh(), first_last_nodes, boundary_condition, conductivity.matrix_bound());
-    if (is_neumann)
-        f[f.size()-1] = equation_param.integral;
+    boundary_condition_first_kind_2d(f, *mesh_proxy, boundary_condition, conductivity.matrix_bound());
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{conductivity.matrix_inner()};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);

@@ -30,7 +30,7 @@ int main(const int argc, const char *const *const argv) {
 
         const double p1 = std::stod(argv[3]),
                      r  = std::stod(argv[4]);
-        const nonlocal::thermal::heat_equation_parameters_1d<double> equation_parameters = {
+        const nonlocal::thermal::equation_parameters_1d<double> equation_parameters = {
             .lambda = 1,
             .integral = 0,
             .alpha = {2., 2. / 19.}

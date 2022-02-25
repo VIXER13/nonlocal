@@ -21,14 +21,13 @@ struct boundary_condition_2d_t final {
     std::conditional_t<DoF == 1, node, std::array<node, DoF>> condition;
 
     node& operator[]([[maybe_unused]] const size_t i) noexcept {
-        if constexpr (DoF == 1)
-            return condition;
-        else
-            return condition[i];
+        if constexpr (DoF == 1) return condition;
+        else                    return condition[i];
     }
 
     const node& operator[]([[maybe_unused]] const size_t i) const noexcept {
-        return (*this)[i];
+        if constexpr (DoF == 1) return condition;
+        else                    return condition[i];
     }
 };
 
