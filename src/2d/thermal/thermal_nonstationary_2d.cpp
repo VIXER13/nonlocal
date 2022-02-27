@@ -70,26 +70,22 @@ int main(int argc, char** argv) {
         const std::unordered_map<std::string, nonlocal::nonstationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
             boundary_conditions = {
                 {   "Down",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const double t, const std::array<double, 2>& x) { return 0; },
                     }
                 },
                 {   "Right",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const double t, const std::array<double, 2>& x) { return 1; },
                     }
                 },
                 {   "Up",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const double t, const std::array<double, 2>& x) { return 0; },
                     }
                 },
                 {   "Left",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const double t, const std::array<double, 2>& x) { return -1; },
                     }
                 }
@@ -101,7 +97,8 @@ int main(int argc, char** argv) {
                        p1, bell);
         logger(argv[5], solver.temperature(), eq_parameters, *mesh_proxy, 0);
         for(const uintmax_t step : std::views::iota(1, 101)) {
-            solver.calc_step(boundary_conditions, [](const double t, const std::array<double, 2>& x) constexpr noexcept { return 0; });
+            solver.calc_step(eq_parameters.alpha, boundary_conditions,
+                [](const double t, const std::array<double, 2>& x) constexpr noexcept { return 0; });
             logger(argv[5], solver.temperature(), eq_parameters, *mesh_proxy, step);
         }
     } catch(const std::exception& e) {

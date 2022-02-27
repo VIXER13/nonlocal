@@ -33,17 +33,16 @@ int main(const int argc, const char *const *const argv) {
         const nonlocal::thermal::equation_parameters_1d<double> equation_parameters = {
             .lambda = 1,
             .integral = 0,
-            .alpha = {2., 2. / 19.}
+            .alpha = {1, 5}
         };
 
         mesh->calc_neighbours_count(r);
-        auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
+        const auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
             equation_parameters, mesh,
-            {
-                nonlocal::thermal::boundary_condition_t::FLUX,  1.,
-                nonlocal::thermal::boundary_condition_t::FLUX, -1.,
+            {   nonlocal::thermal::boundary_condition_t::CONVECTION, -1.,
+                nonlocal::thermal::boundary_condition_t::CONVECTION,  1.,
             },
-            [](const double x) noexcept { return 0; },
+            [](const double x) constexpr noexcept { return 0; },
             p1, nonlocal::influence::polynomial_1d<double, 2, 1>{r}
         );
         save_as_csv(argv[5], solution, mesh->section());

@@ -28,8 +28,7 @@ template<class B, class T, class Vector>
 void boundary_condition_second_kind_1d(Vector& f, const std::array<stationary_boundary_1d_t<B, T>, 2>& boundary_condition,
                                        const std::array<size_t, 2>& ind) {
     for(const size_t b : std::views::iota(size_t{0}, boundary_condition.size()))
-        if (utils::to_general_condition(boundary_condition[b].type) == boundary_condition_t::SECOND_KIND ||
-            utils::to_general_condition(boundary_condition[b].type) == boundary_condition_t::THIRD_KIND)
+        if (utils::to_general_condition(boundary_condition[b].type) == boundary_condition_t::SECOND_KIND)
             f[ind[b]] += boundary_condition[b].val;
 }
 

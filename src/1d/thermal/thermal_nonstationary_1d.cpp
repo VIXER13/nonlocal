@@ -52,7 +52,8 @@ int main(const int argc, const char *const *const argv) {
         );
         save_step(argv[5], solver.temperature(), *mesh, 0);
         for(const uintmax_t step : std::views::iota(1, 101)) {
-            solver.calc_step(boundary_condition, [](const double t, const double x) constexpr noexcept { return 0; });
+            solver.calc_step(equation_parameters.alpha, boundary_condition,
+                             [](const double t, const double x) constexpr noexcept { return 0; });
             save_step(argv[5], solver.temperature(), *mesh, step);
         }
     } catch (const std::exception& e) {

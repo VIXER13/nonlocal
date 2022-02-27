@@ -38,7 +38,8 @@ solution<T, I> stationary_heat_equation_solver_2d(const equation_parameters_2d<T
     const std::vector<bool> is_inner = inner_nodes(mesh_proxy->mesh(), bounds_types);
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh_proxy};
     conductivity.template calc_matrix<Material>(equation_param.lambda, is_inner, p1, influence_function, is_neumann);
-    convection_condition_2d(conductivity.matrix_inner(), *mesh_proxy, bounds_types, equation_param.alpha);
+    convection_condition_matrix_part_2d(conductivity.matrix_inner(), *mesh_proxy, bounds_types, equation_param.alpha);
+    convection_condition_right_part_2d(f, *mesh_proxy, boundary_condition, equation_param.alpha);
     integrate_right_part<1>(f, *mesh_proxy, right_part);
     boundary_condition_first_kind_2d(f, *mesh_proxy, boundary_condition, conductivity.matrix_bound());
 

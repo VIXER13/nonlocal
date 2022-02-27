@@ -22,8 +22,8 @@ int main(const int argc, const char *const * argv) {
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
         eq_parameters.alpha = {
-            {"Right", 1},
-            {"Left", 5}
+            {"Right", 5},
+            {"Left",  1}
         };
 
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
@@ -39,27 +39,23 @@ int main(const int argc, const char *const * argv) {
         const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
             boundary_condition = {
                 {   "Down",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const std::array<double, 2>& x) { return 0; },
                     }
                 },
                 {   "Right",
-                    {
-                        nonlocal::thermal::boundary_condition_t::CONVECTION,
-                        [](const std::array<double, 2>& x) { return 1; },
+                    {   nonlocal::thermal::boundary_condition_t::CONVECTION,
+                        [](const std::array<double, 2>& x) { return 1.; },
                     }
                 },
                 {   "Up",
-                    {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
                         [](const std::array<double, 2>& x) { return 0; },
                     }
                 },
                 {   "Left",
-                    {
-                        nonlocal::thermal::boundary_condition_t::CONVECTION,
-                        [](const std::array<double, 2>& x) { return -1; },
+                    {   nonlocal::thermal::boundary_condition_t::CONVECTION,
+                        [](const std::array<double, 2>& x) { return -1.; },
                     }
                 }
             };

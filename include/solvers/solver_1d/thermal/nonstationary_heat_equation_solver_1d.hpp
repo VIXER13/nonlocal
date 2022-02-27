@@ -31,7 +31,8 @@ public:
                  const Influence_Function& influence_function);
 
     template<class Right_Part>
-    void calc_step(const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
+    void calc_step(const std::array<T, 2>& alpha,
+                   const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                    const Right_Part& right_part);
 };
 
@@ -58,7 +59,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const equation_paramet
                                                           const T p1,
                                                           const Influence_Function& influence_function) {
     _conductivity.template calc_matrix(equation_param.lambda, p1, influence_function, boundary_condition);
-    convection_condition_1d(_conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
+    convection_condition_matrix_part_1d(_conductivity.matrix_inner(), boundary_condition, equation_param.alpha);
     _capacity.calc_matrix(equation_param.c, equation_param.rho, boundary_condition);
 
     _conductivity.matrix_inner() *= _tau;
@@ -77,12 +78,14 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const equation_paramet
 
 template<class T, class I>
 template<class Right_Part>
-void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
+void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const std::array<T, 2>& alpha,
+                                                            const std::array<nonstatinary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                             const Right_Part& right_part) {
     _time += _tau;
     _right_part.setZero();
     const auto stationary_bound = to_stationary(boundary_condition, _time);
     boundary_condition_second_kind_1d(_right_part, stationary_bound, std::array{size_t{0}, size_t(_right_part.size() - 1)});
+    convection_condition_right_part_1d(_right_part, stationary_bound, alpha);
     integrate_right_part(_right_part, *_conductivity.mesh(), [&right_part, t = _time](const T x) { return right_part(t, x); });
     _right_part *= _tau;
     _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
