@@ -21,6 +21,10 @@ int main(const int argc, const char *const * argv) {
         nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
+        eq_parameters.alpha = {
+            {"Right", 1},
+            {"Left", 5}
+        };
 
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int32_t>>(mesh);
@@ -42,7 +46,7 @@ int main(const int argc, const char *const * argv) {
                 },
                 {   "Right",
                     {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                        nonlocal::thermal::boundary_condition_t::CONVECTION,
                         [](const std::array<double, 2>& x) { return 1; },
                     }
                 },
@@ -54,7 +58,7 @@ int main(const int argc, const char *const * argv) {
                 },
                 {   "Left",
                     {
-                        nonlocal::thermal::boundary_condition_t::FLUX,
+                        nonlocal::thermal::boundary_condition_t::CONVECTION,
                         [](const std::array<double, 2>& x) { return -1; },
                     }
                 }

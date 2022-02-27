@@ -79,7 +79,8 @@ void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
     const std::array<size_t, 2>& first_last = {DoF * mesh_proxy.first_node(), DoF * mesh_proxy.last_node()};
     for(const std::string& b : mesh.boundary_names())
         for(const size_t comp : std::views::iota(size_t{0}, DoF))
-            if(boundary_condition.at(b)[comp].type == B(boundary_condition_t::SECOND_KIND))
+            if(boundary_condition.at(b)[comp].type == B(boundary_condition_t::SECOND_KIND) ||
+               boundary_condition.at(b)[comp].type == B(boundary_condition_t::THIRD_KIND))
                 for(const size_t e : std::views::iota(size_t{0}, mesh.elements_count(b)))
                     for(const size_t i : std::views::iota(size_t{0}, mesh.element_1d(b, e)->nodes_count()))
                         if(const I node = DoF * mesh.node_number(b, e, i) + comp;

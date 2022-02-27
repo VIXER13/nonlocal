@@ -1,6 +1,7 @@
 #ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
 #define NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
 
+#include "convection_condition_2d.hpp"
 #include "thermal_conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
 #include "right_part_2d.hpp"
@@ -25,7 +26,7 @@ public:
 
     template<material_t Material, class Init_Dist, class Influence_Function>
     void compute(const equation_parameters_2d<T, Material>& equation_param,
-                 const std::unordered_map<std::string, std::array<boundary_condition_t, 1>>& boundary_condition,
+                 const std::unordered_map<std::string, std::array<boundary_condition_t, 1>>& boundary_types,
                  const Init_Dist& init_dist,
                  const T p1,
                  const Influence_Function& influence_function);
@@ -53,13 +54,14 @@ const Eigen::Matrix<T, Eigen::Dynamic, 1>& nonstationary_heat_equation_solver_2d
 template<class T, class I, class Matrix_Index>
 template<material_t Material, class Init_Dist, class Influence_Function>
 void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const equation_parameters_2d<T, Material>& equation_param,
-                                                                        const std::unordered_map<std::string, std::array<boundary_condition_t, 1>>& boundary_condition,
+                                                                        const std::unordered_map<std::string, std::array<boundary_condition_t, 1>>& boundary_types,
                                                                         const Init_Dist& init_dist,
                                                                         const T p1,
                                                                         const Influence_Function& influence_function) {
     const auto& mesh = _conductivity.mesh_proxy()->mesh();
-    const std::vector<bool> is_inner = inner_nodes(mesh, boundary_condition);
+    const std::vector<bool> is_inner = inner_nodes(mesh, boundary_types);
     _conductivity.template calc_matrix<Material>(equation_param.lambda, is_inner, p1, influence_function);
+    convection_condition_2d(_conductivity.matrix_inner(), *_conductivity.mesh_proxy(), boundary_types, equation_param.alpha);
     _capacity.calc_matrix(equation_param.c, equation_param.rho, is_inner);
 
     _conductivity.matrix_inner() *= _tau;
