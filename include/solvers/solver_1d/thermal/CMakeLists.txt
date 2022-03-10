@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 project(heat_equation_solver_1d)
 
 set(HEAT_EQUATION_SOLVER_1D_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})

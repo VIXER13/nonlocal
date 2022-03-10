@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 project(finite_element_quadrature)
 
 set(FINITE_ELEMENT_QUADRATURE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 project(finite_element_solver_1d)
 
 add_subdirectory(thermal)
