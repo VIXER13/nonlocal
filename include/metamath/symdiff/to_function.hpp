@@ -17,7 +17,7 @@ class _to_array_of_functions {
 
     template<class T, size_t N, class Tuple, size_t... I>
     static std::array<std::function<T(const std::array<T, N>&)>, sizeof...(I)>
-    to_array_of_functions(const Tuple& expressions, const std::index_sequence<I...>&) {
+    to_array_of_functions(const Tuple& expressions, const std::index_sequence<I...>) {
         return {to_function<T, N>(std::get<I>(expressions))...};
     }
 

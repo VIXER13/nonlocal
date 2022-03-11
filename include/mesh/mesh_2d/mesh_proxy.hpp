@@ -26,10 +26,9 @@ class mesh_proxy final {
     std::vector<I>                              _quad_node_shift;           // Квадратурные сдвиги помноженные на количество узлов.
     std::vector<std::array<T, 2>>               _dNdX;                      // Массив с вычисленными глобальными производными
 
-    std::vector<std::vector<I>>                 _quad_shifts_bound;         // Квадратурные сдвиги для граничных элементов.
-    std::vector<std::vector<std::array<T, 2>>>  _quad_coords_bound,         // Координаты квадратурных узлов на границе.
-                                                _jacobi_matrices_bound;     // Матрицы Якоби на границе.
-
+    std::unordered_map<std::string_view, std::vector<I>>                _quad_shifts_bound;     // Квадратурные сдвиги для граничных элементов.
+    std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> _quad_coords_bound,     // Координаты квадратурных узлов на границе.
+                                                                        _jacobi_matrices_bound; // Матрицы Якоби на границе.
     std::vector<T>                              _elements_ares;
     std::vector<std::array<T, 4>>               _jacobi_matrices_nodes;     // Матрицы Якоби вычисленные в узлах сетки.
 
@@ -50,10 +49,10 @@ class mesh_proxy final {
                                                      const std::vector<std::array<T, 4>>& jacobi_matrices,
                                                      const std::vector<I>& quad_element_shift);
 
-    static std::vector<std::vector<I>>                quadrature_shifts_bound_init    (const mesh_2d<T, I>& mesh);
-    static void                                       check_shifts                    (const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts);
-    static std::vector<std::vector<std::array<T, 2>>> approx_all_quad_nodes_bound     (const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts);
-    static std::vector<std::vector<std::array<T, 2>>> approx_all_jacobi_matrices_bound(const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts);
+    static std::unordered_map<std::string_view, std::vector<I>>                quadrature_shifts_bound_init    (const mesh_2d<T, I>& mesh);
+    static void                                                                check_shifts                    (const mesh_2d<T, I>& mesh, const std::unordered_map<std::string_view, std::vector<I>>& quad_shifts);
+    static std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> approx_all_quad_nodes_bound     (const mesh_2d<T, I>& mesh, const std::unordered_map<std::string_view, std::vector<I>>& quad_shifts);
+    static std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> approx_all_jacobi_matrices_bound(const mesh_2d<T, I>& mesh, const std::unordered_map<std::string_view, std::vector<I>>& quad_shifts);
 
     static std::vector<T> approx_elements_areas(const mesh_2d<T, I>& mesh,
                                                 const std::vector<I>& quad_shifts,
@@ -71,7 +70,7 @@ class mesh_proxy final {
                                         const std::vector<std::array<T, 2>>& centres,
                                         const std::unordered_set<I>& elements, const T r);
 
-    I quad_shift(const size_t bound, const size_t element) const;
+    I quad_shift(const std::string_view bound, const size_t element) const;
     I quad_node_shift(const size_t element, const size_t i) const;
 
 public:
@@ -94,21 +93,23 @@ public:
     quad_coord_iterator                   quad_coord               (const size_t element)                     const;
     jacobi_matrix_iterator                jacobi_matrix            (const size_t element)                     const;
     dNdX_iterator                         dNdX                     (const size_t element, const size_t i)     const;
-    quad_coord_bound_iterator             quad_coord               (const size_t bound, const size_t element) const;
-    jacobi_matrix_bound_iterator          jacobi_matrix            (const size_t bound, const size_t element) const;
+    quad_coord_bound_iterator             quad_coord               (const std::string_view bound, const size_t element) const;
+    jacobi_matrix_bound_iterator          jacobi_matrix            (const std::string_view bound, const size_t element) const;
     MPI_utils::MPI_ranges                 ranges                   ()                                         const;
     size_t                                first_node               ()                                         const;
     size_t                                last_node                ()                                         const;
     const std::vector<I>&                 neighbors                (const size_t element)                     const;
 
+    static T jacobian(const std::array<T, 2>& J) noexcept;
     static T jacobian(const std::array<T, 4>& J) noexcept;
 
     void find_neighbours(const T r, const balancing_t balancing);
 
     template<class Vector>
     T integrate_solution(const Vector& sol) const;
-    std::array<std::vector<T>, 2> calc_gradient(const std::vector<T>& sol) const;
-    std::vector<T> approx_in_quad(const std::vector<T>& x);
+    template<class Vector>
+    std::array<std::vector<T>, 2> gradient(const Vector& sol) const;
+    std::vector<T> approx_in_quad(const std::vector<T>& x) const;
 };
 
 template<class T, class I>
@@ -169,16 +170,16 @@ typename mesh_proxy<T, I>::jacobi_matrix_iterator mesh_proxy<T, I>::jacobi_matri
 }
 
 template<class T, class I>
-I mesh_proxy<T, I>::quad_shift(const size_t bound, const size_t element) const { return _quad_shifts_bound[bound][element]; }
+I mesh_proxy<T, I>::quad_shift(const std::string_view bound, const size_t element) const { return _quad_shifts_bound.at(bound)[element]; }
 
 template<class T, class I>
-typename mesh_proxy<T, I>::quad_coord_bound_iterator mesh_proxy<T, I>::quad_coord(const size_t bound, const size_t element) const {
-    return std::next(_quad_coords_bound[bound].cbegin(), quad_shift(bound, element));
+typename mesh_proxy<T, I>::quad_coord_bound_iterator mesh_proxy<T, I>::quad_coord(const std::string_view bound, const size_t element) const {
+    return std::next(_quad_coords_bound.at(bound).cbegin(), quad_shift(bound, element));
 }
 
 template<class T, class I>
-typename mesh_proxy<T, I>::jacobi_matrix_bound_iterator mesh_proxy<T, I>::jacobi_matrix(const size_t bound, const size_t element) const {
-    return std::next(_jacobi_matrices_bound[bound].cbegin(), quad_shift(bound, element));
+typename mesh_proxy<T, I>::jacobi_matrix_bound_iterator mesh_proxy<T, I>::jacobi_matrix(const std::string_view bound, const size_t element) const {
+    return std::next(_jacobi_matrices_bound.at(bound).cbegin(), quad_shift(bound, element));
 }
 
 template<class T, class I>
@@ -202,6 +203,9 @@ size_t mesh_proxy<T, I>::last_node() const { return _ranges.range().back(); }
 
 template<class T, class I>
 const std::vector<I>& mesh_proxy<T, I>::neighbors(const size_t element) const { return _elements_neighbors[element]; }
+
+template<class T, class I>
+T mesh_proxy<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
 
 template<class T, class I>
 T mesh_proxy<T, I>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs(J[0] * J[3] - J[1] * J[2]); }
@@ -355,57 +359,60 @@ std::vector<std::array<T, 2>> mesh_proxy<T, I>::dNdX_init(const mesh_2d<T, I>& m
 }
 
 template<class T, class I>
-std::vector<std::vector<I>> mesh_proxy<T, I>::quadrature_shifts_bound_init(const mesh_2d<T, I>& mesh) {
-    std::vector<std::vector<I>> quad_shifts(mesh.boundary_groups_count());
-    for(size_t b = 0; b < mesh.boundary_groups_count(); ++b) {
-        quad_shifts[b].resize(mesh.elements_count(b) + 1);
-        quad_shifts[b][0] = 0;
-        for(size_t e = 0; e < mesh.elements_count(b); ++e)
-            quad_shifts[b][e+1] = quad_shifts[b][e] + mesh.element_1d(b, e)->qnodes_count();
+std::unordered_map<std::string_view, std::vector<I>> mesh_proxy<T, I>::quadrature_shifts_bound_init(const mesh_2d<T, I>& mesh) {
+    std::unordered_map<std::string_view, std::vector<I>> quad_shifts(mesh.boundary_groups_count());
+    for(const std::string& bound : mesh.boundary_names()) {
+        auto& shifts = quad_shifts[bound];
+        shifts.resize(mesh.elements_count(bound) + 1);
+        shifts[0] = 0;
+        for(size_t e = 0; e < mesh.elements_count(bound); ++e)
+            shifts[e+1] = shifts[e] + mesh.element_1d(bound, e)->qnodes_count();
     }
     return quad_shifts;
 }
 
 template<class T, class I>
-void mesh_proxy<T, I>::check_shifts(const mesh_2d<T, I>& mesh, const std::vector<std::vector<I>>& quad_shifts) {
+void mesh_proxy<T, I>::check_shifts(const mesh_2d<T, I>& mesh, const std::unordered_map<std::string_view, std::vector<I>>& quad_shifts) {
     if(mesh.boundary_groups_count() != quad_shifts.size())
         throw std::logic_error{"The number of boundary groups does not match the number of shifts groups."};
-    for(size_t b = 0; b < mesh.boundary_groups_count(); ++b)
-        if(mesh.elements_count(b)+1 != quad_shifts[b].size())
+    for(const std::string& bound : mesh.boundary_names())
+        if(mesh.elements_count(bound)+1 != quad_shifts.at(bound).size())
             throw std::logic_error{"Quadrature shifts on bound are incorrect size."};
 }
 
 template<class T, class I>
-std::vector<std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_quad_nodes_bound(const mesh_2d<T, I>& mesh,
-                                                                                         const std::vector<std::vector<I>>& quad_shifts) {
+std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_quad_nodes_bound(const mesh_2d<T, I>& mesh,
+                                                                                                                  const std::unordered_map<std::string_view, std::vector<I>>& quad_shifts) {
     check_shifts(mesh, quad_shifts);
-    std::vector<std::vector<std::array<T, 2>>> quad_coords(mesh.boundary_groups_count());
-    for(size_t b = 0; b < quad_coords.size(); ++b) {
-        quad_coords[b].resize(quad_shifts[b].back(), std::array<T, 2>{});
-        for(size_t e = 0; e < mesh.elements_count(b); ++e) {
-            const auto& el = mesh.element_1d(b, e);
+    std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> quad_coords(mesh.boundary_groups_count());
+    for(const std::string& bound : mesh.boundary_names()) {
+        auto& coords = quad_coords[bound];
+        coords.resize(quad_shifts.at(bound).back(), std::array<T, 2>{});
+        for(size_t e = 0; e < mesh.elements_count(bound); ++e) {
+            const auto& el = mesh.element_1d(bound, e);
             for(size_t q = 0; q < el->qnodes_count(); ++q)
                 for(size_t i = 0; i < el->nodes_count(); ++i)
                     for(size_t comp = 0; comp < 2; ++comp)
-                        quad_coords[b][quad_shifts[b][e]+q][comp] += mesh.node(mesh.node_number(b, e, i))[comp] * el->qN(i, q);
+                        coords[quad_shifts.at(bound)[e]+q][comp] += mesh.node(mesh.node_number(bound, e, i))[comp] * el->qN(i, q);
         }
     }
     return quad_coords;
 }
 
 template<class T, class I>
-std::vector<std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_jacobi_matrices_bound(const mesh_2d<T, I>& mesh,
-                                                                                              const std::vector<std::vector<I>>& quad_shifts) {
+std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> mesh_proxy<T, I>::approx_all_jacobi_matrices_bound(const mesh_2d<T, I>& mesh,
+                                                                                                                       const std::unordered_map<std::string_view, std::vector<I>>& quad_shifts) {
     check_shifts(mesh, quad_shifts);
-    std::vector<std::vector<std::array<T, 2>>> jacobi_matrices(mesh.boundary_groups_count());
-    for(size_t b = 0; b < jacobi_matrices.size(); ++b) {
-        jacobi_matrices[b].resize(quad_shifts[b].back(), std::array<T, 2>{});
-        for(size_t e = 0; e < mesh.elements_count(b); ++e) {
-            const auto& el = mesh.element_1d(b, e);
+    std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> jacobi_matrices(mesh.boundary_groups_count());
+    for(const std::string& bound : mesh.boundary_names()) {
+        auto& matrices = jacobi_matrices[bound];
+        matrices.resize(quad_shifts.at(bound).back(), std::array<T, 2>{});
+        for(size_t e = 0; e < mesh.elements_count(bound); ++e) {
+            const auto& el = mesh.element_1d(bound, e);
             for(size_t q = 0; q < el->qnodes_count(); ++q)
                 for(size_t i = 0; i < el->nodes_count(); ++i)
                     for(size_t comp = 0; comp < 2; ++comp)
-                        jacobi_matrices[b][quad_shifts[b][e]+q][comp] += mesh.node(mesh.node_number(b, e, i))[comp] * el->qNxi(i, q);
+                        matrices[quad_shifts.at(bound)[e]+q][comp] += mesh.node(mesh.node_number(bound, e, i))[comp] * el->qNxi(i, q);
         }
     }
     return jacobi_matrices;
@@ -539,7 +546,8 @@ T mesh_proxy<T, I>::integrate_solution(const Vector& sol) const {
 }
 
 template<class T, class I>
-std::array<std::vector<T>, 2> mesh_proxy<T, I>::calc_gradient(const std::vector<T>& sol) const {
+template<class Vector>
+std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) const {
     if(mesh().nodes_count() != sol.size())
         throw std::logic_error{"mesh.nodes_count() != sol.size()"};
 
@@ -567,7 +575,7 @@ std::array<std::vector<T>, 2> mesh_proxy<T, I>::calc_gradient(const std::vector<
 }
 
 template<class T, class I>
-std::vector<T> mesh_proxy<T, I>::approx_in_quad(const std::vector<T>& x) {
+std::vector<T> mesh_proxy<T, I>::approx_in_quad(const std::vector<T>& x) const {
     std::vector<T> x_in_quad(quad_shift(mesh().elements_count()), 0);
 #pragma omp parallel for default(none) shared(x, x_in_quad)
     for(size_t e = 0; e < mesh().elements_count(); ++e) {

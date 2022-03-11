@@ -26,10 +26,10 @@ public:
     }
 };
 
-template<class T, intmax_t p, intmax_t q>
+template<class T, uintmax_t P, uintmax_t Q>
 class polynomial_1d final {
-    static_assert(p > 0, "Parameter p must be greater than 0.");
-    static_assert(q > 0, "Parameter q must be greater than 0.");
+    static_assert(P > 0, "Parameter P must be greater than 0.");
+    static_assert(Q > 0, "Parameter Q must be greater than 0.");
 
     T _r, _norm;
 
@@ -38,7 +38,7 @@ public:
 
     void set_radius(const T r) noexcept {
         _r = r;
-        _norm = T{p} / (2 * _r * std::beta(T{1} / T{p}, T{q + 1}));
+        _norm = P / (2 * _r * std::beta(T{1} / P, Q + T{1}));
     }
 
     T radius() const noexcept { return _r; }
@@ -46,8 +46,8 @@ public:
 
     T operator()(const T x, const T y) const noexcept {
         const T h = std::abs(x - y);
-        using metamath::function::power;
-        return h < _r ? _norm * power<q>(T{1} - power<p>(h / _r)) : T{0};
+        using metamath::function::power_u;
+        return h < _r ? _norm * power_u<Q>(1 - power_u<P>(h / _r)) : 0;
     }
 };
 
@@ -60,7 +60,7 @@ public:
 
     void set_radius(const T r) noexcept {
         _r = r;
-        _norm = T{1} / (_r * std::sqrt(T{2} * M_PI));
+        _norm = 1 / (_r * std::sqrt(2 * T{M_PI}));
         _disp_mul = -T{0.5} / (_r * _r);
     }
 
@@ -68,8 +68,8 @@ public:
     T norm() const noexcept { return _norm; }
 
     T operator()(const T x, const T y) const noexcept {
-        using metamath::function::power;
-        return _norm * std::exp(_disp_mul * power<2>(x - y));
+        using metamath::function::power_u;
+        return _norm * std::exp(_disp_mul * power_u<2>(x - y));
     }
 };
 

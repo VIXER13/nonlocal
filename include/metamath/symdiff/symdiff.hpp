@@ -5,5 +5,6 @@
 #include "functions/symdiff_functions.hpp"
 #include "derivative.hpp"
 #include "to_function.hpp"
+#include "make_variables.hpp"
 
 #endif

@@ -3,7 +3,7 @@
 
 #include "mesh_2d.hpp"
 
-namespace nonlocal::structural {
+namespace nonlocal::mechanical {
 
 enum class calc_t : bool { PLANE_STRESS, PLANE_STRAIN };
 
@@ -27,7 +27,7 @@ struct equation_parameters final {
 // arr[1] arr[0]   0
 //   0      0    arr[2]
 template<class T>
-std::array<T, 3> hooke_matrix(const equation_parameters<T>& parameters) noexcept {
+constexpr std::array<T, 3> hooke_matrix(const equation_parameters<T>& parameters) noexcept {
     const T nu = parameters.poisson(),
             E  = parameters.young();
     return {       E / (1 - nu*nu),

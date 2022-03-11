@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 project(nonlocalMPI)
 
@@ -18,7 +18,7 @@ if(OPENMP_FOUND)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-O2)
 
 #libraries
@@ -33,4 +33,4 @@ add_subdirectory(include/solvers/solver_2d)
 #tests
 add_subdirectory(src/1d/thermal)
 add_subdirectory(src/2d/thermal)
-add_subdirectory(src/2d/structural)
+add_subdirectory(src/2d/mechanical)

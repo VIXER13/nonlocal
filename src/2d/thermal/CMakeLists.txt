@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 project(thermal_2d)
 
-add_executable(nonlocal_stationary_2d thermal_stationary_orthotropic_quad.cpp)
-target_include_directories(nonlocal_stationary_2d PUBLIC ".")
-target_link_libraries(nonlocal_stationary_2d metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+add_executable(thermal_stationary_2d thermal_stationary_2d.cpp)
+target_include_directories(thermal_stationary_2d PUBLIC ".")
+target_link_libraries(thermal_stationary_2d metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
 
-add_executable(nonlocal_nonstationary_2d thermal_nonstationary_orthotropic_quad.cpp)
-target_include_directories(nonlocal_nonstationary_2d PUBLIC ".")
-target_link_libraries(nonlocal_nonstationary_2d metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+add_executable(thermal_nonstationary_2d thermal_nonstationary_2d.cpp)
+target_include_directories(thermal_nonstationary_2d PUBLIC ".")
+target_link_libraries(thermal_nonstationary_2d metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)

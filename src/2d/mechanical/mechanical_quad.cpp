@@ -1,12 +1,12 @@
 #include "influence_functions_2d.hpp"
-#include "structural_solver.hpp"
+#include "equilibrium_equation_2d.hpp"
 
 namespace {
 
 template<class T>
 void save_raw_data(const std::string& path,
                    const nonlocal::mesh::mesh_2d<T>& msh,
-                   const nonlocal::structural::solution<T, int>& sol) {
+                   const nonlocal::mechanical::solution<T, int>& sol) {
     std::ofstream eps11{path + "/eps11.csv"},
             eps22{path + "/eps22.csv"},
             eps12{path + "/eps12.csv"},
@@ -58,44 +58,61 @@ int main(int argc, char** argv) {
             mesh_proxy->find_neighbours(r + 0.025, nonlocal::mesh::balancing_t::MEMORY);
         }
 
-        nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
-        nonlocal::structural::equation_parameters<double> parameters;
+        //nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
+        nonlocal::mechanical::equation_parameters<double> parameters;
         parameters.nu = 0.3;
         parameters.E = 21;
         parameters.p1 = p1;
-        parameters.type = nonlocal::structural::calc_t::PLANE_STRESS;
+        parameters.type = nonlocal::mechanical::calc_t::PLANE_STRESS;
 
-        auto sol = fem_sol.stationary(parameters,
+        parameters.thermoelasticity = true;
+        parameters.delta_temperature.resize(mesh->nodes_count());
+        parameters.alpha = 1;
+        for(size_t i = 0; i < mesh->nodes_count(); ++i) {
+            const auto& node = mesh->node(i);
+            parameters.delta_temperature[i] = node[0] + node[1];
+        }
+
+        auto sol = nonlocal::mechanical::equilibrium_equation<double, int, int>(parameters, mesh_proxy,
             { // Граничные условия
-                {  // Right
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return 4 * f2(x); },
-                    nonlocal::structural::boundary_t::PRESSURE,
+                {   "Right",
+                    {
+                    nonlocal::mechanical::boundary_condition_t::PRESSURE,
+                    [](const std::array<double, 2>& x) { return 0; },
+                    nonlocal::mechanical::boundary_condition_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
+                    }
                 },
 
-                {   // Horizontal
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
-                    [](const std::array<double, 2>&) { return 0; }
+                {   "Horizontal",
+                    {
+                        nonlocal::mechanical::boundary_condition_t::PRESSURE,
+                        [](const std::array<double, 2>&) { return 0; },
+                        nonlocal::mechanical::boundary_condition_t::DISPLACEMENT,
+                        [](const std::array<double, 2>&) { return 0; }
+                    }
                 },
 
-                { // Left
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return -4 * f2(x); },
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>&) { return 0; }
+                {  "Left",
+                    {
+                        nonlocal::mechanical::boundary_condition_t::PRESSURE,
+                        [](const std::array<double, 2>& x) { return 0; },
+                        nonlocal::mechanical::boundary_condition_t::PRESSURE,
+                        [](const std::array<double, 2>&) { return 0; }
+                    }
                 },
 
-                {   // Vertical
-                    nonlocal::structural::boundary_t::DISPLACEMENT,
-                    [](const std::array<double, 2>&) { return 0; },
-                    nonlocal::structural::boundary_t::PRESSURE,
-                    [](const std::array<double, 2>&) { return 0; }
+                {   "Vertical",
+                    {
+                        nonlocal::mechanical::boundary_condition_t::DISPLACEMENT,
+                        [](const std::array<double, 2>&) { return 0; },
+                        nonlocal::mechanical::boundary_condition_t::PRESSURE,
+                        [](const std::array<double, 2>&) { return 0; }
+                    }
                 }
             },
-            {}, // Правая часть
+            [](const std::array<double, 2>&) { return std::array<double, 2>{}; }, // Правая часть
+            p1,
             bell // Функция влияния
         );
 

@@ -20,7 +20,7 @@ class _derivative {
     }
 
     template<uintmax_t... Vars, class Tuple, size_t... I>
-    static constexpr auto derivative_tuple_impl(const Tuple& expressions, const std::index_sequence<I...>&) {
+    static constexpr auto derivative_tuple_impl(const Tuple& expressions, const std::index_sequence<I...>) {
         return std::make_tuple(derivative_impl<Vars...>(std::get<I>(expressions))...);
     }
 

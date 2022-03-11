@@ -1,6 +1,9 @@
 #ifndef METAMATH_OPERATORS_HPP
 #define METAMATH_OPERATORS_HPP
 
+#include <type_traits>
+#include <stddef.h>
+
 namespace metamath::function {
 
 template<class Container>
@@ -21,7 +24,7 @@ template<class T, class Container>
 std::enable_if_t<std::is_arithmetic_v<T>, Container> operator*(const T& val, const Container& container) {
     Container new_container = container;
     new_container *= val;
-    return std::move(new_container);
+    return new_container;
 }
 
 template<class Container, class T>
@@ -40,7 +43,7 @@ template<class Container, class T>
 std::enable_if_t<std::is_arithmetic_v<T>, Container> operator/(const Container& container, const T& val) {
     Container new_container = container;
     new_container /= val;
-    return std::move(container);
+    return container;
 }
 
 }

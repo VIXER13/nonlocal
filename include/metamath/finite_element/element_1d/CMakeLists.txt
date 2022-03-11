@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 project(finite_element_1d)
 
 set(FINITE_ELEMENT_1D_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
