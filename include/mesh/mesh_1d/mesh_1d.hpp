@@ -28,11 +28,12 @@ template<class T>
 class mesh_1d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
-    using Finite_Element_1D_Ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<T>>;
+    using finite_element_1d = metamath::finite_element::element_1d_integrate_base<T>;
+    using finite_element_1d_ptr = std::unique_ptr<finite_element_1d>;
 
-    static Finite_Element_1D_Ptr make_default_element();
+    static finite_element_1d_ptr make_default_element();
 
-    Finite_Element_1D_Ptr _element = make_default_element();
+    finite_element_1d_ptr _element = make_default_element();
     std::array<T, 2> _section = {T{-1}, T{1}};
     size_t _elements_count = 1, _nodes_count = 2;
     T _step = (_section.back() - _section.front()) / _elements_count,
@@ -41,9 +42,9 @@ class mesh_1d final {
     size_t _neighbours_count;
 
 public:
-    explicit mesh_1d(Finite_Element_1D_Ptr&& element, const size_t elements_count = 1, const std::array<T, 2> section = {T{-1}, T{1}});
+    explicit mesh_1d(finite_element_1d_ptr&& element, const size_t elements_count = 1, const std::array<T, 2> section = {T{-1}, T{1}});
 
-    const Finite_Element_1D_Ptr& element() const noexcept;
+    const finite_element_1d& element() const noexcept;
     const std::array<T, 2>& section() const noexcept;
     size_t elements_count() const noexcept;
     size_t nodes_count() const noexcept;
@@ -61,14 +62,14 @@ public:
 };
 
 template<class T>
-typename mesh_1d<T>::Finite_Element_1D_Ptr mesh_1d<T>::make_default_element() {
+typename mesh_1d<T>::finite_element_1d_ptr mesh_1d<T>::make_default_element() {
     using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss1>;
     using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::linear>;
     return std::make_unique<element_1d>(quadrature{});
 }
 
 template<class T>
-mesh_1d<T>::mesh_1d(Finite_Element_1D_Ptr&& element, const size_t elements_count, const std::array<T, 2> section)
+mesh_1d<T>::mesh_1d(finite_element_1d_ptr&& element, const size_t elements_count, const std::array<T, 2> section)
     : _element{std::move(element)}
     , _elements_count{elements_count}
     , _section{section}
@@ -81,7 +82,7 @@ mesh_1d<T>::mesh_1d(Finite_Element_1D_Ptr&& element, const size_t elements_count
 }
 
 template<class T>
-const typename mesh_1d<T>::Finite_Element_1D_Ptr& mesh_1d<T>::element() const noexcept { return _element; }
+const typename mesh_1d<T>::finite_element_1d& mesh_1d<T>::element() const noexcept { return *_element; }
 
 template<class T>
 const std::array<T, 2>& mesh_1d<T>::section() const noexcept { return _section; }
@@ -104,7 +105,7 @@ template<class T>
 T mesh_1d<T>::quad_coord(const size_t e, const size_t q) const noexcept { return _step * e + _quad_coord_loc[q]; }
 
 template<class T>
-size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const noexcept { return e * (element()->nodes_count()-1) + i; }
+size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const noexcept { return e * (element().nodes_count()-1) + i; }
 
 template<class T>
 bool mesh_1d<T>::is_boundary_node(const size_t node) const noexcept { return !node || node == nodes_count()-1; }

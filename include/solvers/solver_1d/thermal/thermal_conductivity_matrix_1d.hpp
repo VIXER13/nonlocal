@@ -41,8 +41,8 @@ template<class T, class I>
 T thermal_conductivity_matrix_1d<T, I>::integrate_basic(const size_t e, const size_t i) const {
     T integral = T{0};
     const auto& el = _base::mesh()->element();
-    for(const size_t q : std::views::iota(size_t{0}, el->qnodes_count()))
-        integral += el->weight(q) * el->qN(i, q);
+    for(const size_t q : std::views::iota(size_t{0}, el.qnodes_count()))
+        integral += el.weight(q) * el.qN(i, q);
     return integral * _base::mesh()->jacobian();
 }
 
@@ -50,8 +50,8 @@ template<class T, class I>
 T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     const auto& el = _base::mesh()->element();
-    for(const size_t q : std::views::iota(size_t{0}, el->qnodes_count()))
-        integral += el->weight(q) * el->qNxi(i, q) * el->qNxi(j, q);
+    for(const size_t q : std::views::iota(size_t{0}, el.qnodes_count()))
+        integral += el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q);
     return integral / _base::mesh()->jacobian();
 }
 
@@ -62,14 +62,14 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const 
                                                          const Influence_Function& influence_function) const {
     T integral = T{0};
     const auto& el = _base::mesh()->element();
-    for(const size_t qL : std::views::iota(size_t{0}, el->qnodes_count())) {
+    for(const size_t qL : std::views::iota(size_t{0}, el.qnodes_count())) {
         T inner_integral = T{0};
         const T qcoordL = _base::mesh()->quad_coord(eL, qL);
-        for(const size_t qNL : std::views::iota(size_t{0}, el->qnodes_count())) {
+        for(const size_t qNL : std::views::iota(size_t{0}, el.qnodes_count())) {
             const T qcoordNL = _base::mesh()->quad_coord(eNL, qNL);
-            inner_integral += el->weight(qNL) * influence_function(qcoordL, qcoordNL) * el->qNxi(jNL, qNL);
+            inner_integral += el.weight(qNL) * influence_function(qcoordL, qcoordNL) * el.qNxi(jNL, qNL);
         }
-        integral += el->weight(qL) * el->qNxi(iL, qL) * inner_integral;
+        integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
     }
     return integral;
 }

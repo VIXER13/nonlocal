@@ -29,8 +29,8 @@ template<class T, class I>
 T heat_capacity_matrix_1d<T, I>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     const auto& el = _base::mesh()->element();
-    for(const size_t q : std::views::iota(size_t{0}, el->qnodes_count()))
-        integral += el->weight(q) * el->qN(i, q) * el->qN(j, q);
+    for(const size_t q : std::views::iota(size_t{0}, el.qnodes_count()))
+        integral += el.weight(q) * el.qN(i, q) * el.qN(j, q);
     return integral * _base::mesh()->jacobian();
 }
 
