@@ -13,10 +13,10 @@ T integrate_solution(const mesh::mesh_1d<T>& mesh, const Vector& x) {
     T integral = 0;
     const auto& el = mesh.element();
     for(const size_t e : std::views::iota(size_t{0}, mesh.elements_count()))
-        for(const size_t i : std::views::iota(size_t{0}, el.nodes_count() - (e != mesh.elements_count()-1)))
+        for(const size_t i : std::views::iota(size_t{0}, el.nodes_count()))
             for(const size_t q : std::views::iota(size_t{0}, el.qnodes_count()))
-                integral += el.weight(q) * el.qN(i, q) * x[mesh.node_number(e, i)] * mesh.jacobian();
-    return integral;
+                integral += el.weight(q) * el.qN(i, q) * x[mesh.node_number(e, i)];
+    return integral * mesh.jacobian();
 }
 
 template<class T, class Vector>

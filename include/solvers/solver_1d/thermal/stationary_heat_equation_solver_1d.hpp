@@ -4,7 +4,7 @@
 #include "right_part_1d.hpp"
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "convection_condition_1d.hpp"
-
+#include "conjugate_gradient.hpp"
 #include <iostream>
 
 namespace nonlocal::thermal {
@@ -39,7 +39,8 @@ std::vector<T> stationary_heat_equation_solver_1d(const equation_parameters_1d<T
                                                   const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
                                                   const Right_Part& right_part,
                                                   const T p1,
-                                                  const Influence_Function& influence_function) {
+                                                  const Influence_Function& influence_function,
+                                                  const Eigen::Matrix<T, Eigen::Dynamic, 1>& x0 = {}) {
     const bool is_neumann = is_neumann_problem(boundary_condition, equation_param.alpha);
     if (is_neumann && std::abs(boundary_condition.front().val + boundary_condition.back().val) > NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>)
         throw std::domain_error{"Unsolvable Neumann problem: left_flow + right_flow != 0."};
@@ -60,8 +61,23 @@ std::vector<T> stationary_heat_equation_solver_1d(const equation_parameters_1d<T
     if (is_neumann)
         f[f.size()-1] = equation_param.integral;
 
-    const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{conductivity.matrix_inner()};
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    const double time = omp_get_wtime();
+    //MPI_utils::MPI_ranges ranges;
+    //ranges.range().back() = mesh->nodes_count();
+    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
+    const slae::conjugate_gradient<T, I> solver{conductivity.matrix_inner()};
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
+    if(x0.size() == f.size()) {
+        std::cout << "x0.size() == f.size()" << std::endl;
+        temperature = solver.solve(f, std::optional{x0});
+        //temperature = solver.template solveWithGuess(f, x0);
+    } else {
+        std::cout << "x0.size() != f.size()" << std::endl;
+        temperature = solver.solve(f);
+    }
+
+    std::cout << "SLAE: " << omp_get_wtime() - time << std::endl;
+    std::cout << "iterations: " << solver.iterations() << std::endl;
     return std::vector<T>{temperature.cbegin(), std::next(temperature.cbegin(), mesh->nodes_count())};
 }
 

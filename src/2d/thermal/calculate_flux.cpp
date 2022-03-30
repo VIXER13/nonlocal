@@ -1,13 +1,29 @@
 #include "influence_functions_2d.hpp"
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 
+namespace {
+
+template<class T>
+std::vector<T> read_solution(const std::string& path, const size_t nodes_count) {
+    std::string str;
+    std::ifstream file{path};
+    std::vector<T> temperature(nodes_count);
+    for(T& val : temperature) {
+        file >> str;
+        val = std::stod(str.substr(str.rfind(',') + 1));
+    }
+    return temperature;
+}
+
+}
+
 int main(int argc, char** argv) {
 #ifdef MPI_USE
     MPI_Init(&argc, &argv);
 #endif
 
     if(argc < 5) {
-        std::cerr << "Input format [program name] <path to mesh> <r1> <r2> <p1>" << std::endl;
+        std::cerr << "Input format [program name] <path to mesh> <path to solution> <r1> <r2> <p1>" << std::endl;
 #ifdef MPI_USE
         MPI_Finalize();
 #endif
@@ -16,14 +32,14 @@ int main(int argc, char** argv) {
 
     try {
         std::cout.precision(20);
-        const double p1 = std::stod(argv[4]);
-        const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
+        const double p1 = std::stod(argv[5]);
+        const std::array<double, 2> r = {std::stod(argv[3]), std::stod(argv[4])};
         nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
         eq_parameters.alpha = {
-            {"Right", 1},
-            {"Left",  1}
+                {"Right", 1},
+                {"Left",  1}
         };
 
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
@@ -36,40 +52,16 @@ int main(int argc, char** argv) {
             std::cout << "Average neighbours = " << mean / mesh->nodes_count() << std::endl;
         }
 
-        const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
-            boundary_condition = {
-//                {   "Down",
-//                    {   nonlocal::thermal::boundary_condition_t::FLUX,
-//                        [](const std::array<double, 2>& x) { return 0; },
-//                    }
-//                },
-                {   "Right",
-                    {   nonlocal::thermal::boundary_condition_t::CONVECTION,
-                        [](const std::array<double, 2>& x) { return 0.; },
-                    }
-                },
-//                {   "Up",
-//                    {   nonlocal::thermal::boundary_condition_t::FLUX,
-//                        [](const std::array<double, 2>& x) { return 0; },
-//                    }
-//                },
-                {   "Left",
-                    {   nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const std::array<double, 2>& x) { return 0.; },
-                    }
-                }
-            };
-
-        auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int32_t, int64_t>(
-            eq_parameters, mesh_proxy, boundary_condition,
-            [](const std::array<double, 2>& x) { return -2; }, // Правая часть
-            p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r}
-        );
-
+        const auto temperature = read_solution<double>(argv[2], mesh->nodes_count());
+        nonlocal::thermal::solution<double, int> T{mesh_proxy, eq_parameters,
+                                                   p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r},
+                                                   temperature};
         if (MPI_utils::MPI_rank() == 0) {
             std::cout << "Energy = " << T.calc_energy() << std::endl;
             nonlocal::mesh::save_as_csv("T.csv", *mesh, T.temperature());
+            double time = omp_get_wtime();
             T.calc_flux();
+            std::cout << "calc_flux: " << omp_get_wtime() - time << std::endl;
             const auto& [X, Y] = T.flux();
             nonlocal::mesh::save_as_csv("X.csv", *mesh, X);
             nonlocal::mesh::save_as_csv("Y.csv", *mesh, Y);

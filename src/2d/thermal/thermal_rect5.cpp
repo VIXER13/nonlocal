@@ -22,14 +22,16 @@ int main(int argc, char** argv) {
         eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
         eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
         eq_parameters.alpha = {
-            {"Right", 1},
+            {"Right", 5},
             {"Left",  1}
         };
 
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int32_t>>(mesh);
         if (p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>) {
-            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.0036, nonlocal::mesh::balancing_t::MEMORY);
+            const double time = omp_get_wtime();
+            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.015, nonlocal::mesh::balancing_t::MEMORY);
+            std::cout << "find neighbours time: " << omp_get_wtime() - time << std::endl;
             double mean = 0;
             for(const size_t e : std::views::iota(size_t{0}, mesh->elements_count()))
                 mean += mesh_proxy->neighbors(e).size();
@@ -37,33 +39,23 @@ int main(int argc, char** argv) {
         }
 
         const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
-            boundary_condition = {
-//                {   "Down",
-//                    {   nonlocal::thermal::boundary_condition_t::FLUX,
-//                        [](const std::array<double, 2>& x) { return 0; },
-//                    }
-//                },
-                {   "Right",
-                    {   nonlocal::thermal::boundary_condition_t::CONVECTION,
-                        [](const std::array<double, 2>& x) { return 0.; },
+                boundary_condition = {
+                {   "Up",
+                    {   nonlocal::thermal::boundary_condition_t::FLUX,
+                        [](const std::array<double, 2>& x) { return 1.; },
                     }
                 },
-//                {   "Up",
-//                    {   nonlocal::thermal::boundary_condition_t::FLUX,
-//                        [](const std::array<double, 2>& x) { return 0; },
-//                    }
-//                },
-                {   "Left",
+                {   "Down",
                     {   nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const std::array<double, 2>& x) { return 0.; },
+                        [](const std::array<double, 2>& x) { return -2.; },
                     }
                 }
-            };
+        };
 
         auto T = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int32_t, int64_t>(
-            eq_parameters, mesh_proxy, boundary_condition,
-            [](const std::array<double, 2>& x) { return -2; }, // Правая часть
-            p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r}
+                eq_parameters, mesh_proxy, boundary_condition,
+                [](const std::array<double, 2>& x) { return 0; }, // Правая часть
+                p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r}
         );
 
         if (MPI_utils::MPI_rank() == 0) {

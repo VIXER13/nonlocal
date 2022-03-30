@@ -45,7 +45,7 @@ void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_P
     for(size_t node = 0; node < mesh.nodes_count(); ++node)
         for(const auto& [e, i] : mesh.node_elements(node).arr)
             if (e != std::numeric_limits<size_t>::max())
-                f[node] += integrate_function_on_element(e, i);
+                f[node] -= integrate_function_on_element(e, i);
 }
 
 }
