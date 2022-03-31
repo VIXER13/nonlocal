@@ -13,20 +13,24 @@ class solution final {
     std::array<std::vector<T>, 2> _flux;
     std::array<T, 2> _lambda = {1, 1};
     T _p1 = T{1};
-    std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)> _influence_fun;
+    std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>
+        _influence_fun = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{}; };
 
     void calc_local_flux();
     void calc_nonlocal_flux();
 
 public:
+    explicit solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
+
     template<material_t Material, class Influence_Function, class Vector>
     explicit solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
                       const equation_parameters_2d<T, Material>& parameters,
                       const T p1, const Influence_Function& influence_fun,
                       const Vector& temperature);
 
-    const std::vector<T>& temperature() const;
-    const std::array<std::vector<T>, 2>& flux() const;
+    const std::vector<T>& temperature() const noexcept;
+    const std::array<std::vector<T>, 2>& flux() const noexcept;
+    const std::shared_ptr<mesh::mesh_proxy<T, I>> mesh_proxy() const noexcept;
 
     T calc_energy() const;
 
@@ -34,6 +38,12 @@ public:
 
     void save_as_vtk(const std::string& path) const;
 };
+
+template<class T, class I>
+solution<T, I>::solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy)
+    : _mesh_proxy{mesh_proxy} {
+    _temperature.resize(_mesh_proxy->mesh().nodes_count(), 0);
+}
 
 template<class T, class I>
 template<material_t Material, class Influence_Function, class Vector>
@@ -54,13 +64,18 @@ solution<T, I>::solution(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_pro
 }
 
 template<class T, class I>
-const std::vector<T>& solution<T, I>::temperature() const {
+const std::vector<T>& solution<T, I>::temperature() const noexcept {
     return _temperature;
 }
 
 template<class T, class I>
-const std::array<std::vector<T>, 2>& solution<T, I>::flux() const {
+const std::array<std::vector<T>, 2>& solution<T, I>::flux() const noexcept {
     return _flux;
+}
+
+template<class T, class I>
+const std::shared_ptr<mesh::mesh_proxy<T, I>> solution<T, I>::mesh_proxy() const noexcept {
+    return _mesh_proxy;
 }
 
 template<class T, class I>
@@ -122,8 +137,23 @@ void solution<T, I>::calc_flux() {
 
 template<class T, class I>
 void solution<T, I>::save_as_vtk(const std::string& path) const {
-    mesh::save_as_vtk(path, _mesh_proxy->mesh(), _temperature);
-    mesh::save_as_vtk(path + "Y.vtk", _mesh_proxy->mesh(), _flux[Y]);
+    static constexpr std::string_view data_type = std::is_same_v<T, float> ? "float" : "double";
+    std::ofstream fout{path};
+    fout.precision(std::numeric_limits<T>::max_digits10);
+
+    _mesh_proxy->mesh().save_as_vtk(fout);
+
+    fout << "POINT_DATA " << _mesh_proxy->mesh().nodes_count() << '\n';
+    fout << "SCALARS Temperature " << data_type << " 1\n"
+         << "LOOKUP_TABLE default\n";
+    for(const T val : _temperature)
+        fout << val << '\n';
+
+    if (!_flux[X].empty() && !_flux[Y].empty()) {
+        fout << "VECTORS Flux " << data_type << '\n';
+        for (size_t i = 0; i < _mesh_proxy->mesh().nodes_count(); ++i)
+            fout << _flux[X][i] << ' ' << _flux[Y][i] << " 0\n";
+    }
 }
 
 }

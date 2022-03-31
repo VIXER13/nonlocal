@@ -3,16 +3,16 @@
 
 #include <eigen3/Eigen/Sparse>
 #include <omp.h>
-#include <optional>
 #include <iostream>
+#include <optional>
 
 namespace nonlocal::slae {
 
 template<class T>
 struct conjugate_gradient_parameters final {
-    T tolerance = 1e-10;
+    T tolerance = 1e-15;
     uintmax_t max_iterations = 10000;
-    size_t threads_count = omp_get_max_threads();
+    int threads_count = omp_get_num_procs();
 };
 
 template<class T, class I>
@@ -37,12 +37,14 @@ public:
 
     T tolerance() const noexcept;
     uintmax_t max_iterations() const noexcept;
+    int threads_count() const noexcept;
 
     T residual() const noexcept;
     uintmax_t iterations() const noexcept;
 
     void set_tolerance(const T tolerance) noexcept;
     void set_max_iterations(const uintmax_t max_iterations) noexcept;
+    void set_threads_count(const int threads_count) noexcept;
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> solve(const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
                                               const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0 = std::nullopt) const;
@@ -88,6 +90,11 @@ uintmax_t conjugate_gradient<T, I>::max_iterations() const noexcept {
 }
 
 template<class T, class I>
+int conjugate_gradient<T, I>::threads_count() const noexcept {
+    return _parameters.threads_count;
+}
+
+template<class T, class I>
 T conjugate_gradient<T, I>::residual() const noexcept {
     return _residual;
 }
@@ -108,6 +115,11 @@ void conjugate_gradient<T, I>::set_max_iterations(const uintmax_t max_iterations
 }
 
 template<class T, class I>
+void conjugate_gradient<T, I>::set_threads_count(const int threads_count) noexcept {
+    _parameters.threads_count = threads_count;
+}
+
+template<class T, class I>
 void conjugate_gradient<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z) const {
     for(size_t i = 1; i < _threaded_z.cols(); ++i)
         _threaded_z.col(0) += _threaded_z.col(i);
@@ -117,7 +129,7 @@ void conjugate_gradient<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z)
 template<class T, class I>
 void conjugate_gradient<T, I>::matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& z,
                                                      const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) const {
-#pragma omp parallel default(none) shared(p)
+#pragma omp parallel default(none) shared(p) num_threads(_parameters.threads_count)
 {
     const I thread = omp_get_thread_num();
     _threaded_z.col(thread).setZero();
@@ -145,7 +157,6 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I>::solve(const Eigen:
     const T b_norm = b_full.norm();
     _iteration = 0;
     _residual = std::sqrt(r_squaredNorm) / b_norm;
-    std::cout << _iteration << " " << _residual << std::endl;
     while(_iteration < _parameters.max_iterations && _residual > _parameters.tolerance) {
         matrix_vector_product(z, p);
         const T nu = r_squaredNorm / p.dot(z);
@@ -156,9 +167,7 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I>::solve(const Eigen:
         p = r + mu * p;
         ++_iteration;
         _residual = std::sqrt(r_squaredNorm) / b_norm;
-        //std::cout << _iteration << " " << _residual << std::endl;
     }
-    std::cout << _iteration << " " << _residual << std::endl;
     return x;
 }
 

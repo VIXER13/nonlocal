@@ -6,10 +6,6 @@ add_executable(calculate_flux calculate_flux.cpp)
 target_include_directories(calculate_flux PUBLIC ".")
 target_link_libraries(calculate_flux metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
 
-add_executable(thermal_rect5 thermal_rect5.cpp)
-target_include_directories(thermal_rect5 PUBLIC ".")
-target_link_libraries(thermal_rect5 metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
-
 add_executable(thermal_stationary_2d thermal_stationary_2d.cpp)
 target_include_directories(thermal_stationary_2d PUBLIC ".")
 target_link_libraries(thermal_stationary_2d metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)

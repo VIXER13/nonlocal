@@ -92,21 +92,6 @@ void mesh_2d<T, I>::save_as_vtk(std::ofstream& mesh_file) const {
 }
 
 template<class T, class I, class Vector>
-void save_as_vtk(const std::string& path, const mesh_2d<T, I>& mesh, const Vector& x) {
-    if (x.size() != mesh.nodes_count())
-        throw std::logic_error{"Mesh nodes count and x.size() have different sizes."};
-    std::ofstream fout{path};
-    fout.precision(std::numeric_limits<T>::max_digits10);
-    mesh.save_as_vtk(fout);
-    static constexpr std::string_view data_type = std::is_same_v<T, float> ? "float" : "double";
-    fout << "POINT_DATA " << mesh.nodes_count() << '\n';
-    fout << "SCALARS Temperature " << data_type << " 1\n"
-         << "LOOKUP_TABLE default\n";
-    for(size_t i = 0; i < mesh.nodes_count(); ++i)
-        fout << x[i] << '\n';
-}
-
-template<class T, class I, class Vector>
 void save_as_csv(const std::string& path, const mesh_2d<T, I>& mesh, const Vector& x) {
     if (x.size() != mesh.nodes_count())
         throw std::logic_error{"Mesh nodes count and x.size() have different sizes."};
