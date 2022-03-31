@@ -89,8 +89,8 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bou
                          i = iR == std::numeric_limits<size_t>::max() ? iL : iR,
                          right_neighbour = theory == theory_t::NONLOCAL ? mesh()->right_neighbour(e) : e + 1;
             const bool last_node_first_kind = bound_cond.back() == boundary_condition_t::FIRST_KIND &&
-                                              right_neighbour * (mesh()->element()->nodes_count() - 1) == mesh()->nodes_count()-1;
-            matrix_inner().outerIndexPtr()[node+1] += (right_neighbour - e) * (mesh()->element()->nodes_count() - 1) - i + 1 - last_node_first_kind;
+                                              right_neighbour * (mesh()->element().nodes_count() - 1) == mesh()->nodes_count()-1;
+            matrix_inner().outerIndexPtr()[node+1] += (right_neighbour - e) * (mesh()->element().nodes_count() - 1) - i + 1 - last_node_first_kind;
         }
 
     utils::prepare_memory(matrix_inner());
@@ -108,11 +108,11 @@ void finite_element_matrix_1d<T, I>::mesh_run(const Callback& callback) const {
         for(const auto& [eL, iL] : mesh()->node_elements(node).arr)
             if(eL != std::numeric_limits<size_t>::max()) {
                 if constexpr (Theory == theory_t::LOCAL)
-                    for(const size_t jL : std::views::iota(size_t{0}, mesh()->element()->nodes_count()))
+                    for(const size_t jL : std::views::iota(size_t{0}, mesh()->element().nodes_count()))
                         callback(eL, iL, jL);
                 if constexpr (Theory == theory_t::NONLOCAL)
                     for(const size_t eNL : std::views::iota(mesh()->left_neighbour(eL), mesh()->right_neighbour(eL)))
-                        for(const size_t jNL : std::views::iota(size_t{0}, mesh()->element()->nodes_count()))
+                        for(const size_t jNL : std::views::iota(size_t{0}, mesh()->element().nodes_count()))
                             callback(eL, eNL, iL, jNL);
             }
 }

@@ -1,16 +1,18 @@
 #ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
 #define NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
 
+#include "conjugate_gradient.hpp"
 #include "convection_condition_2d.hpp"
-#include "thermal_conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
-#include "right_part_2d.hpp"
 #include "heat_equation_solution_2d.hpp"
+#include "right_part_2d.hpp"
+#include "thermal_conductivity_matrix_2d.hpp"
 
 namespace nonlocal::thermal {
 
 template<class T, class I, class Matrix_Index>
 class nonstationary_heat_equation_solver_2d final {
+    std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
     heat_capacity_matrix_2d<T, I, Matrix_Index> _capacity;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
@@ -72,8 +74,10 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const eq
         if(!is_inner[i])
             _conductivity.matrix_inner().coeffRef(i, i) = T{1};
 
-    for(const size_t i : std::views::iota(size_t{0},mesh.nodes_count()))
+    for(const size_t i : std::views::iota(size_t{0}, mesh.nodes_count()))
         _temperature_prev[i] = init_dist(mesh.node(i));
+
+    slae_solver = std::make_unique<slae::conjugate_gradient<T, Matrix_Index>>(_conductivity.matrix_inner());
 }
 
 template<class T, class I, class Matrix_Index>
@@ -93,8 +97,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(
     _right_part *= _tau;
     _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
     boundary_condition_first_kind_2d(_right_part, *mesh_proxy, stationary_bound, _conductivity.matrix_bound());
-    const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{_conductivity.matrix_inner()};
-    _temperature_curr = solver.template solveWithGuess(_right_part, _temperature_prev);
+    _temperature_curr = slae_solver->solve(_right_part, _temperature_prev);
 }
 
 }

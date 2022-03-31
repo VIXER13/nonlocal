@@ -30,11 +30,11 @@ std::vector<bool> inner_nodes(const mesh::mesh_2d<T, I>& mesh,
     return is_inner;
 }
 
-template<class B, class T, class I, size_t DoF>
+template<class B, class T, class I, class Matrix_Index, size_t DoF>
 void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                       const mesh::mesh_proxy<T, I>& mesh_proxy,
                                       const std::unordered_map<std::string, stationary_boundary_2d_t<B, T, DoF>>& boundary_condition,
-                                      const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K_bound) {
+                                      const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound) {
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(K_bound.cols());
     boundary_nodes_run(mesh_proxy.mesh(),
         [&mesh = mesh_proxy.mesh(), &boundary_condition, &x](const std::string& b, const size_t el, const size_t i) {
