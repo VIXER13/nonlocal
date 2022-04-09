@@ -19,12 +19,12 @@ bool is_solvable_neumann_problem(const mesh::mesh_proxy<T, I>& mesh_proxy, const
 }
 
 template<class T, class I, class Matrix_Index, material_t Material, class Right_Part, class Influence_Function>
-solution<T, I> stationary_heat_equation_solver_2d(const equation_parameters_2d<T, Material>& equation_param,
-                                                  const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                                                  const std::unordered_map<std::string, stationary_boundary_2d_t<boundary_condition_t, T, 1>>& boundary_condition,
-                                                  const Right_Part& right_part,
-                                                  const T p1,
-                                                  const Influence_Function& influence_function) {
+heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const equation_parameters_2d<T, Material>& equation_param,
+                                                                   const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
+                                                                   const std::unordered_map<std::string, stationary_boundary_2d_t<boundary_condition_t, T, 1>>& boundary_condition,
+                                                                   const Right_Part& right_part,
+                                                                   const T p1,
+                                                                   const Influence_Function& influence_function) {
     const auto bounds_types = boundary_type(boundary_condition);
     const bool is_neumann = std::all_of(bounds_types.cbegin(), bounds_types.cend(),
         [](const auto& bound) constexpr noexcept { return bound.second.front() == boundary_condition_t::FLUX; });
@@ -53,7 +53,7 @@ solution<T, I> stationary_heat_equation_solver_2d(const equation_parameters_2d<T
     const auto temperature = solver.solve(f);
     std::cout << "Slae solve time: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations: " << solver.iterations() << std::endl;
-    return solution<T, I>{mesh_proxy, equation_param, p1, influence_function, temperature};
+    return heat_equation_solution_2d<T, I>{mesh_proxy, equation_param, p1, influence_function, temperature};
 }
 
 }

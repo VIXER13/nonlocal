@@ -4,7 +4,7 @@
 namespace {
 
 template<class T, class I>
-void logger(const nonlocal::thermal::solution<T, I>& solution, const std::string& path, const uintmax_t step) {
+void logger(const nonlocal::thermal::heat_equation_solution_2d<T, I>& solution, const std::string& path, const uintmax_t step) {
     std::cout << "step = " << step << std::endl;
     std::cout << "Energy = " << solution.calc_energy() << std::endl;
     solution.save_as_vtk(path + '/' + std::to_string(step) + ".vtk");
@@ -74,11 +74,11 @@ int main(int argc, char** argv) {
         solver.compute(eq_parameters, nonlocal::boundary_type(boundary_conditions),
                        [](const std::array<double, 2>&) constexpr noexcept { return 0; },
                        p1, influence_function);
-        logger(nonlocal::thermal::solution<double, int>{mesh_proxy}, argv[5], 0);
+        logger(nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy}, argv[5], 0);
         for(const uintmax_t step : std::views::iota(1, 101)) {
             solver.calc_step(eq_parameters.alpha, boundary_conditions,
                 [](const double t, const std::array<double, 2>& x) constexpr noexcept { return 0; });
-            auto solution = nonlocal::thermal::solution{mesh_proxy, eq_parameters, p1, influence_function, solver.temperature()};
+            auto solution = nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy, eq_parameters, p1, influence_function, solver.temperature()};
             solution.calc_flux();
             logger(solution, argv[5], step);
         }
