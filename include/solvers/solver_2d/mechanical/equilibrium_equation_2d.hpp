@@ -6,12 +6,12 @@
 #include "boundary_condition_2d.hpp"
 #include "stiffness_matrix_2d.hpp"
 #include "right_part_2d.hpp"
-#include "mechanical_solution.hpp"
+#include "mechanical_solution_2d.hpp"
 
 namespace nonlocal::mechanical {
 
 template<class T, class I, class Matrix_Index, class Right_Part, class Influence_Function>
-mechanical::solution<T, I> equilibrium_equation(const mechanical::equation_parameters<T>& parameters,
+mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const mechanical::equation_parameters<T>& parameters,
                                                 const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
                                                 const std::unordered_map<std::string, stationary_boundary_2d_t<boundary_condition_t, T, 2>>& boundary_condition,
                                                 const Right_Part& right_part,
@@ -30,7 +30,7 @@ mechanical::solution<T, I> equilibrium_equation(const mechanical::equation_param
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor>, Eigen::Upper> solver{stiffness.matrix_inner()};
     const Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver.solve(f);
-    return solution<T, I>{mesh_proxy, parameters, influence_function, displacement};
+    return mechanical_solution_2d<T, I>{mesh_proxy, parameters.p1, influence_function, parameters, displacement};
 }
 
 }

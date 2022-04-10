@@ -42,9 +42,8 @@ int main(int argc, char** argv) {
         }
 
         const auto temperature = read_solution<double>(argv[2], mesh->nodes_count());
-        nonlocal::thermal::heat_equation_solution_2d<double, int32_t> T{mesh_proxy, eq_parameters,
-                                                                        p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r},
-                                                                        temperature};
+        nonlocal::thermal::heat_equation_solution_2d<double, int32_t> T{mesh_proxy, p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r},
+                                                                        eq_parameters, temperature};
         T.calc_flux();
         std::cout << "Energy = " << T.calc_energy() << std::endl;
         T.save_as_vtk("heat.vtk");

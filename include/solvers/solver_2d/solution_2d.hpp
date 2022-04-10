@@ -19,14 +19,17 @@ private:
     const Influence_Function _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{}; };
 
 protected:
-    void save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const;
-    void save_vectors(std::ofstream& output, const std::array<std::vector<T>, 2>& vec, const std::string_view name) const;
-
-public:
     explicit solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
     explicit solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
                          const T local_weight, const Influence_Function& influence_function);
 
+    template<class Callback>
+    void calc_nonlocal(const Callback& callback) const;
+
+    void save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const;
+    void save_vectors(std::ofstream& output, const std::array<std::vector<T>, 2>& vec, const std::string_view name) const;
+
+public:
     virtual ~solution_2d() noexcept = default;
 
     const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const noexcept;
@@ -60,6 +63,22 @@ T solution_2d<T, I>::local_weight() const noexcept {
 template<class T, class I>
 const typename solution_2d<T, I>::Influence_Function& solution_2d<T, I>::influence_function() const noexcept {
     return _influence_function;
+}
+
+template<class T, class I>
+template<class Callback>
+void solution_2d<T, I>::calc_nonlocal(const Callback& callback) const {
+    std::vector<bool> neighbors(mesh_proxy()->mesh().elements_count(), true);
+#pragma omp parallel for default(none) firstprivate(neighbors, callback)
+    for(size_t node = mesh_proxy()->first_node(); node < mesh_proxy()->last_node(); ++node) {
+        std::fill(neighbors.begin(), neighbors.end(), true);
+        for(const I eL : mesh_proxy()->nodes_elements_map(node))
+            for(const I eNL : mesh_proxy()->neighbors(eL))
+                if (neighbors[eNL]) {
+                    callback(eNL, node);
+                    neighbors[eNL] = false;
+                }
+    }
 }
 
 template<class T, class I>

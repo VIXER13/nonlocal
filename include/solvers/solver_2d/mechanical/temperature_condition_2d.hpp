@@ -2,7 +2,7 @@
 #define NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
 
 #include "mesh_2d.hpp"
-#include "mechanical_solution.hpp"
+#include "mechanical_solution_2d.hpp"
 #include "../solvers_utils.hpp"
 #include <eigen3/Eigen/Dense>
 

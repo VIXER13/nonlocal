@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
         for(const uintmax_t step : std::views::iota(1, 101)) {
             solver.calc_step(eq_parameters.alpha, boundary_conditions,
                 [](const double t, const std::array<double, 2>& x) constexpr noexcept { return 0; });
-            auto solution = nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy, eq_parameters, p1, influence_function, solver.temperature()};
+            auto solution = nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy, p1, influence_function, eq_parameters, solver.temperature()};
             solution.calc_flux();
             logger(solution, argv[5], step);
         }

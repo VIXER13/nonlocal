@@ -53,7 +53,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const equatio
     const auto temperature = solver.solve(f);
     std::cout << "Slae solve time: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations: " << solver.iterations() << std::endl;
-    return heat_equation_solution_2d<T, I>{mesh_proxy, equation_param, p1, influence_function, temperature};
+    return heat_equation_solution_2d<T, I>{mesh_proxy, p1, influence_function, equation_param, temperature};
 }
 
 }

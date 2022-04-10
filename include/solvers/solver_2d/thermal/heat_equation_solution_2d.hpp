@@ -22,10 +22,8 @@ public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
     template<material_t Material, class Vector>
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                                       const equation_parameters_2d<T, Material>& parameters,
                                        const T local_weight, const Influence_Function& influence_function,
-                                       const Vector& temperature);
-
+                                       const equation_parameters_2d<T, Material>& parameters, const Vector& temperature);
     ~heat_equation_solution_2d() noexcept override = default;
 
     const std::vector<T>& temperature() const noexcept;
@@ -46,9 +44,8 @@ heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr
 template<class T, class I>
 template<material_t Material, class Vector>
 heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                                                           const equation_parameters_2d<T, Material>& parameters,
                                                            const T local_weight, const Influence_Function& influence_function,
-                                                           const Vector& temperature)
+                                                           const equation_parameters_2d<T, Material>& parameters, const Vector& temperature)
     : _base{mesh_proxy, local_weight, influence_function}
     , _temperature{temperature.cbegin(), std::next(temperature.cbegin(), mesh_proxy->mesh().nodes_count())} {
     if constexpr (Material == material_t::ISOTROPIC)
@@ -95,30 +92,23 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_nonlo
         _base::mesh_proxy()->approx_in_quad(_flux[1])
     };
     calc_local_flux();
-    std::vector<bool> neighbors(_base::mesh_proxy()->mesh().elements_count(), false);
-#pragma omp parallel for default(none) shared(nonlocal_factor, gradient_in_quads) firstprivate(neighbors)
-    for(size_t node = _base::mesh_proxy()->first_node(); node < _base::mesh_proxy()->last_node(); ++node) {
-        std::fill(neighbors.begin(), neighbors.end(), false);
-        for(const I eL : _base::mesh_proxy()->nodes_elements_map(node))
-            for(const I eNL : _base::mesh_proxy()->neighbors(eL))
-                neighbors[eNL] = true;
-        std::array<T, 2> nonlocal_integral = {};
-        for(size_t e = 0; e < _base::mesh_proxy()->mesh().elements_count(); ++e)
-            if (neighbors[e]) {
-                const auto& eNL = _base::mesh_proxy()->mesh().element_2d(e);
-                auto qshift     = _base::mesh_proxy()->quad_shift(e);
-                auto qcoord     = _base::mesh_proxy()->quad_coord(e);
-                auto J          = _base::mesh_proxy()->jacobi_matrix(e);
-                for(size_t q = 0; q < eNL->qnodes_count(); ++q, ++qshift, ++qcoord, ++J) {
-                    const T influence_weight = eNL->weight(q) * _base::mesh_proxy()->jacobian(*J) *
-                                               _base::influence_function()(*qcoord, _base::mesh_proxy()->mesh().node(node));
-                    nonlocal_integral[X] += influence_weight * gradient_in_quads[X][qshift];
-                    nonlocal_integral[Y] += influence_weight * gradient_in_quads[Y][qshift];
-                }
+    _base::template calc_nonlocal(
+        [this, &gradient_in_quads, &nonlocal_factor](const size_t e, const size_t node) {
+            std::array<T, 2> integral = {};
+            auto J = _base::mesh_proxy()->jacobi_matrix(e);
+            auto qshift = _base::mesh_proxy()->quad_shift(e);
+            auto qcoord = _base::mesh_proxy()->quad_coord(e);
+            const auto& eNL = _base::mesh_proxy()->mesh().element_2d(e);
+            for(size_t q = 0; q < eNL->qnodes_count(); ++q, ++qshift, ++qcoord, ++J) {
+                const T influence_weight = eNL->weight(q) * _base::mesh_proxy()->jacobian(*J) *
+                                           _base::influence_function()(*qcoord, _base::mesh_proxy()->mesh().node(node));
+                integral[X] += influence_weight * gradient_in_quads[X][qshift];
+                integral[Y] += influence_weight * gradient_in_quads[Y][qshift];
             }
-        _flux[X][node] += nonlocal_factor[X] * nonlocal_integral[X];
-        _flux[Y][node] += nonlocal_factor[Y] * nonlocal_integral[Y];
-    }
+            _flux[X][node] += nonlocal_factor[X] * integral[X];
+            _flux[Y][node] += nonlocal_factor[Y] * integral[Y];
+        }
+    );
     return flux();
 }
 
