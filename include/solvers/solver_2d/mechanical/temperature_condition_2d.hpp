@@ -43,7 +43,7 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
         f[2 * node + Y] += p1 * integral[Y];
     }
 
-    if (parameters.p1 < MAX_NONLOCAL_WEIGHT<T>) {
+    if (p1 < MAX_NONLOCAL_WEIGHT<T>) {
         const auto integrate_temperature_nonloc = [&mesh_proxy](const std::array<std::vector<T>, 2>& temperature_eps,
                                                                 const size_t eL, const size_t eNL, const size_t iL,
                                                                 const Influence_Function& influence_function) {

@@ -56,7 +56,8 @@ template<class Vector>
 mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
                                                      const T local_weight, const Influence_Function& influence_function,
                                                      const equation_parameters<T>& parameters, const Vector& displacement)
-    : _base{mesh_proxy, local_weight, influence_function} {
+    : _base{mesh_proxy, local_weight, influence_function}
+    , _parameters{parameters} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(_base::mesh_proxy()->mesh().nodes_count(), 0);
     for(const size_t i : std::views::iota(size_t{0}, _base::mesh_proxy()->mesh().nodes_count())) {
@@ -120,33 +121,19 @@ void mechanical_solution_2d<T, I>::collect_solution() {
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::strain_and_stress_loc() {
+    auto [du1dx1, du1dx2] = _base::mesh_proxy()->gradient(displacement()[X]);
+    auto [du2dx1, du2dx2] = _base::mesh_proxy()->gradient(displacement()[Y]);
+    _strain[_11] = std::move(du1dx1);
+    _strain[_22] = std::move(du2dx2);
+    _strain[_12].resize(_base::mesh_proxy()->mesh().nodes_count());
+    for(std::vector<T>& stress : _stress)
+        stress.resize(_base::mesh_proxy()->mesh().nodes_count());
     const std::array<T, 3> D = hooke_matrix(_parameters);
-#pragma omp parallel for default(none) shared(D)
-    for(size_t node = _base::mesh_proxy()->first_node(); node < _base::mesh_proxy()->last_node(); ++node) {
-        T node_area = T{0};
-        for(const I e : _base::mesh_proxy()->nodes_elements_map(node)) {
-            const auto& el = _base::mesh_proxy()->mesh().element_2d(e);
-            const size_t i = _base::mesh_proxy()->global_to_local_numbering(e).find(node)->second;
-            const std::array<T, 4>& J = _base::mesh_proxy()->jacobi_matrix_node(node);
-            const T jac = _base::mesh_proxy()->jacobian(J);
-            for(size_t j = 0; j < el->nodes_count(); ++j) {
-                const T Nxi  = el->Nxi (j, el->node(i)) * _base::mesh_proxy()->element_area(e), // TODO: optimize Nxi and Neta calculations
-                Neta = el->Neta(j, el->node(i)) * _base::mesh_proxy()->element_area(e);
-                const std::array<T, 2> dx = {( J[3] * Nxi - J[2] * Neta) / jac,
-                                             (-J[1] * Nxi + J[0] * Neta) / jac};
-                const size_t adj_node = _base::mesh_proxy()->mesh().node_number(e, j);
-                _strain[_11][node] += dx[X] * displacement()[X][adj_node];
-                _strain[_22][node] += dx[Y] * displacement()[Y][adj_node];
-                _strain[_12][node] += dx[X] * displacement()[Y][adj_node] + dx[Y] * displacement()[X][adj_node];
-            }
-            node_area += _base::mesh_proxy()->element_area(e);
-        }
-        _strain[_11][node] /=     node_area;
-        _strain[_22][node] /=     node_area;
-        _strain[_12][node] /= 2 * node_area;
-        _stress[_11][node] += D[_11] * _strain[_11][node] + D[_22] * _strain[_22][node];
-        _stress[_22][node] += D[_22] * _strain[_11][node] + D[_11] * _strain[_22][node];
-        _stress[_12][node] += D[_12] * _strain[_12][node];
+    for(const size_t node : std::views::iota(_base::mesh_proxy()->first_node(), _base::mesh_proxy()->last_node())) {
+        _strain[_12][node] = 0.5 * (du1dx2[node] + du2dx1[node]);
+        _stress[_11][node] = D[_11] * _strain[_11][node] + D[_22] * _strain[_22][node];
+        _stress[_22][node] = D[_22] * _strain[_11][node] + D[_11] * _strain[_22][node];
+        _stress[_12][node] = D[_12] * _strain[_12][node];
     }
 }
 
@@ -181,10 +168,6 @@ void mechanical_solution_2d<T, I>::stress_nonloc() {
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
-    for(std::vector<T>& strain : _strain)
-        strain.resize(_base::mesh_proxy()->mesh().nodes_count(), 0);
-    for(std::vector<T>& stress : _stress)
-        stress.resize(_base::mesh_proxy()->mesh().nodes_count(), 0);
     strain_and_stress_loc();
     if(_base::local_weight() < MAX_NONLOCAL_WEIGHT<T>) {
         using namespace metamath::function;

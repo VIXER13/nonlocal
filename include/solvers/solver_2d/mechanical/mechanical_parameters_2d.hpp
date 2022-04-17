@@ -11,11 +11,9 @@ enum class calc_t : bool { PLANE_STRESS, PLANE_STRAIN };
 template<class T>
 struct equation_parameters final {
     calc_t type = calc_t::PLANE_STRESS;
-    T nu    = 0, // Коэффициент Пуассона
-    E     = 0, // Модуль Юнга
-    alpha = 0, // Коэффициент линейного расширения
-    p1    = 0, // Весовой параметр модели
-    r     = 0; // Длины полуосей области нелокального влияния
+    T nu    = 0.3; // Коэффициент Пуассона
+    T E     = 210; // Модуль Юнга
+    T alpha = 13e-6; // Коэффициент линейного расширения
     bool thermoelasticity = false; // Учитывать температурные деформации
     std::vector<T> delta_temperature; // Разница температур: T - T0
 
