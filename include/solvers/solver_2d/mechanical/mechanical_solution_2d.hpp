@@ -121,16 +121,20 @@ void mechanical_solution_2d<T, I>::collect_solution() {
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::strain_and_stress_loc() {
-    auto [du1dx1, du1dx2] = _base::mesh_proxy()->gradient(displacement()[X]);
-    auto [du2dx1, du2dx2] = _base::mesh_proxy()->gradient(displacement()[Y]);
-    _strain[_11] = std::move(du1dx1);
-    _strain[_22] = std::move(du2dx2);
-    _strain[_12].resize(_base::mesh_proxy()->mesh().nodes_count());
+    {
+        auto [du1dx1, du1dx2] = _base::mesh_proxy()->gradient(displacement()[X]);
+        auto [du2dx1, du2dx2] = _base::mesh_proxy()->gradient(displacement()[Y]);
+        _strain[_11] = std::move(du1dx1);
+        _strain[_22] = std::move(du2dx2);
+        _strain[_12] = std::move(du1dx2);
+        for(const size_t node : std::views::iota(_base::mesh_proxy()->first_node(), _base::mesh_proxy()->last_node()))
+            _strain[_12][node] = 0.5 * (_strain[_12][node] + du2dx1[node]);
+    }
+
+    const std::array<T, 3> D = hooke_matrix(_parameters);
     for(std::vector<T>& stress : _stress)
         stress.resize(_base::mesh_proxy()->mesh().nodes_count());
-    const std::array<T, 3> D = hooke_matrix(_parameters);
     for(const size_t node : std::views::iota(_base::mesh_proxy()->first_node(), _base::mesh_proxy()->last_node())) {
-        _strain[_12][node] = 0.5 * (du1dx2[node] + du2dx1[node]);
         _stress[_11][node] = D[_11] * _strain[_11][node] + D[_22] * _strain[_22][node];
         _stress[_22][node] = D[_22] * _strain[_11][node] + D[_11] * _strain[_22][node];
         _stress[_12][node] = D[_12] * _strain[_12][node];
@@ -190,6 +194,14 @@ void mechanical_solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
         _base::save_scalars(output, stress()[_11], "stress11");
         _base::save_scalars(output, stress()[_22], "stress22");
         _base::save_scalars(output, stress()[_12], "stress12");
+
+        std::vector<T> mises(_base::mesh_proxy()->mesh().nodes_count(), 0);
+        for(size_t i = 0; i < mises.size(); ++i)
+            mises[i] = std::sqrt(stress()[_11][i] * stress()[_11][i] -
+                                 stress()[_11][i] * stress()[_22][i] +
+                                 stress()[_22][i] * stress()[_22][i] +
+                             3 * stress()[_12][i] * stress()[_12][i]);
+        _base::save_scalars(output, mises, "mises");
     }
 }
 
