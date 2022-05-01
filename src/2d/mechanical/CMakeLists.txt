@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(mechanical_2d)
 
+add_executable(mechanical_T mechanical_T.cpp)
+target_include_directories(mechanical_T PUBLIC ".")
+target_link_libraries(mechanical_T metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+
 add_executable(mechanical_circle mechanical_circle.cpp)
 target_include_directories(mechanical_circle PUBLIC ".")
 target_link_libraries(mechanical_circle metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
