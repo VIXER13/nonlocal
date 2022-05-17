@@ -506,6 +506,7 @@ T mesh_proxy<T, I>::integrate_solution(const Vector& sol) const {
     return integral;
 }
 
+/*
 template<class T, class I>
 template<class Vector>
 std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) const {
@@ -530,6 +531,47 @@ std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) cons
             }
             dx[node] += dx_loc * element_area(e) / el->qnodes_count();
             dy[node] += dy_loc * element_area(e) / el->qnodes_count();
+            node_area += element_area(e);
+        }
+        dx[node] /= node_area;
+        dy[node] /= node_area;
+    }
+    return {std::move(dx), std::move(dy)};
+}
+*/
+
+template<class T, class I>
+template<class Vector>
+std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) const {
+    if(mesh().nodes_count() != sol.size())
+        throw std::logic_error{"mesh.nodes_count() != sol.size()"};
+
+    std::vector<T> dx(sol.size(), 0), dy(sol.size(), 0);
+#pragma omp parallel for default(none) shared(dx, dy, sol)
+    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+        T node_area = T{0};
+        const std::array<T, 2>& node_coord = mesh().node(node);
+        for(const I e : nodes_elements_map(node)) {
+            const auto& el = mesh().element_2d(e);
+            auto qnode = quad_coord(e);
+            size_t nearest_quadrature = 0;
+            T length = std::numeric_limits<T>::max();
+            for(size_t q = 0; q < el->qnodes_count(); ++q, ++qnode)
+                if (const T curr_length = utils::distance(node_coord, *qnode); length > curr_length) {
+                    length = curr_length;
+                    nearest_quadrature = q;
+                }
+
+            T dx_loc = 0, dy_loc = 0;
+            for(size_t j = 0; j < el->nodes_count(); ++j) {
+                const auto dN = std::next(dNdX(e, j), nearest_quadrature);
+                dx_loc += (*dN)[0] * sol[mesh().node_number(e, j)];
+                dy_loc += (*dN)[1] * sol[mesh().node_number(e, j)];
+            }
+            const auto J = std::next(jacobi_matrix(e), nearest_quadrature);
+            const T jac = jacobian(*J);
+            dx[node] += dx_loc * element_area(e) / jac;
+            dy[node] += dy_loc * element_area(e) / jac;
             node_area += element_area(e);
         }
         dx[node] /= node_area;

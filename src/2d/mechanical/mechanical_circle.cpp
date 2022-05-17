@@ -82,6 +82,15 @@ int main(int argc, char** argv) {
                     }
                 },
 
+//                {   "Left",
+//                    {
+//                    nonlocal::mechanical::boundary_condition_t::PRESSURE,
+//                    [](const std::array<double, 2>& x) { return -1; },
+//                    nonlocal::mechanical::boundary_condition_t::PRESSURE,
+//                    [](const std::array<double, 2>&) { return 0; }
+//                    }
+//                },
+
                 {   "Horizontal",
                     {
                         nonlocal::mechanical::boundary_condition_t::PRESSURE,
