@@ -174,7 +174,7 @@ template<class T, class I>
 void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
     strain_and_stress_loc();
     if(_base::local_weight() < MAX_NONLOCAL_WEIGHT<T>) {
-        using namespace metamath::function;
+        using namespace metamath::functions;
         for(std::vector<T>& stress : _stress)
             stress *= _base::local_weight();
         collect_solution<collect::ONLY_STRAIN>();

@@ -46,7 +46,7 @@ void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 
     f -= K_bound * x;
 
-    using namespace metamath::function;
+    using namespace metamath::functions;
     const std::array<size_t, 2> first_last = {DoF * mesh_proxy.first_node(), DoF * mesh_proxy.last_node()};
     boundary_nodes_run(mesh_proxy.mesh(),
         [&mesh = mesh_proxy.mesh(), &boundary_condition, &x, &f, &first_last](const std::string& b, const size_t el, const size_t i) {
@@ -95,7 +95,7 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const mesh::me
         auto J = mesh_proxy.jacobi_matrix(e);
         auto qcoord = mesh_proxy.quad_coord(e);
         for(size_t q = 0; q < el->qnodes_count(); ++q, ++J) {
-            using namespace metamath::function;
+            using namespace metamath::functions;
             integral += el->weight(q) * el->qN(i, q) * mesh_proxy.jacobian(*J) * func(*qcoord);
         }
         return integral;

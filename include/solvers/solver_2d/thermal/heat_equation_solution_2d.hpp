@@ -76,7 +76,7 @@ bool heat_equation_solution_2d<T, I>::is_flux_calculated() const noexcept {
 
 template<class T, class I>
 const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_local_flux() {
-    using namespace metamath::function;
+    using namespace metamath::functions;
     const std::array<T, 2> local_factor = _base::local_weight() * _lambda;
     _flux[X] *= local_factor[X];
     _flux[Y] *= local_factor[Y];
@@ -85,7 +85,7 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_local
 
 template<class T, class I>
 const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_nonlocal_flux() {
-    using namespace metamath::function;
+    using namespace metamath::functions;
     const std::array<T, 2> nonlocal_factor = (T{1} - _base::local_weight()) * _lambda;
     const std::array<std::vector<T>, 2> gradient_in_quads{
         _base::mesh_proxy()->approx_in_quad(_flux[0]),

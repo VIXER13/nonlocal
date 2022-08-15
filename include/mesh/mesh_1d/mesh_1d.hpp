@@ -36,8 +36,8 @@ class mesh_1d final {
     finite_element_1d_ptr _element = make_default_element();
     std::array<T, 2> _section = {T{-1}, T{1}};
     size_t _elements_count = 1, _nodes_count = 2;
-    T _step = (_section.back() - _section.front()) / _elements_count,
-      _jacobian = T{2} / _step;
+    T _step = (_section.back() - _section.front()) / _elements_count;
+    T _jacobian = T{2} / _step;
     std::vector<T> _quad_coord_loc;
     size_t _neighbours_count;
 
@@ -63,8 +63,8 @@ public:
 
 template<class T>
 typename mesh_1d<T>::finite_element_1d_ptr mesh_1d<T>::make_default_element() {
-    using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss1>;
-    using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::linear>;
+    using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, 1>;
+    using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, 1>;
     return std::make_unique<element_1d>(quadrature{});
 }
 
@@ -78,7 +78,7 @@ mesh_1d<T>::mesh_1d(finite_element_1d_ptr&& element, const size_t elements_count
     , _jacobian{_step / (_element->boundary(metamath::finite_element::side_1d::RIGHT) - _element->boundary(metamath::finite_element::side_1d::LEFT))}
     , _quad_coord_loc(_element->qnodes_count()) {
     for(size_t q = 0; q < _quad_coord_loc.size(); ++q)
-        _quad_coord_loc[q] = (_element->quadrature()->node(q)[0] - _element->boundary(metamath::finite_element::side_1d::LEFT)) * _jacobian;
+        _quad_coord_loc[q] = (_element->quadrature().node(q) - _element->boundary(metamath::finite_element::side_1d::LEFT)) * _jacobian;
 }
 
 template<class T>

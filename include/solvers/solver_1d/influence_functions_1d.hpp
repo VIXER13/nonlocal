@@ -46,8 +46,8 @@ public:
 
     T operator()(const T x, const T y) const noexcept {
         const T h = std::abs(x - y);
-        using metamath::function::power_u;
-        return h < _r ? _norm * power_u<Q>(1 - power_u<P>(h / _r)) : 0;
+        using metamath::functions::power;
+        return h < _r ? _norm * power<Q>(1 - power<P>(h / _r)) : 0;
     }
 };
 
@@ -68,8 +68,8 @@ public:
     T norm() const noexcept { return _norm; }
 
     T operator()(const T x, const T y) const noexcept {
-        using metamath::function::power_u;
-        return _norm * std::exp(_disp_mul * power_u<2>(x - y));
+        using metamath::functions::power;
+        return _norm * std::exp(_disp_mul * power<2>(x - y));
     }
 };
 

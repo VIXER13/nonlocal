@@ -394,7 +394,7 @@ std::vector<std::array<T, 2>> mesh_proxy<T, I>::approx_centres_of_elements(const
         const auto& el = mesh.element_2d(e);
         const T x0 = is_trinagle(mesh.element_2d_type(e)) ? T{1}/T{3} : T{0};
         for(size_t node = 0; node < el->nodes_count(); ++node) {
-            using namespace metamath::function;
+            using namespace metamath::functions;
             centres[e] += mesh.node(mesh.node_number(e, node)) * el->N(node, {x0, x0});
         }
     }
@@ -505,40 +505,6 @@ T mesh_proxy<T, I>::integrate_solution(const Vector& sol) const {
     }
     return integral;
 }
-
-/*
-template<class T, class I>
-template<class Vector>
-std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) const {
-    if(mesh().nodes_count() != sol.size())
-        throw std::logic_error{"mesh.nodes_count() != sol.size()"};
-
-    std::vector<T> dx(sol.size(), 0), dy(sol.size(), 0);
-#pragma omp parallel for default(none) shared(dx, dy, sol)
-    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        T node_area = T{0};
-        for(const I e : nodes_elements_map(node)) {
-            const auto& el = mesh().element_2d(e);
-            T dx_loc = 0, dy_loc = 0;
-            for(size_t j = 0; j < el->nodes_count(); ++j) {
-                auto dN = dNdX(e, j);
-                auto J = jacobi_matrix(e);
-                for(size_t q = 0; q < el->qnodes_count(); ++q, ++dN, ++J) {
-                    const T jac = jacobian(*J);
-                    dx_loc += (*dN)[0] * sol[mesh().node_number(e, j)] / jac;
-                    dy_loc += (*dN)[1] * sol[mesh().node_number(e, j)] / jac;
-                }
-            }
-            dx[node] += dx_loc * element_area(e) / el->qnodes_count();
-            dy[node] += dy_loc * element_area(e) / el->qnodes_count();
-            node_area += element_area(e);
-        }
-        dx[node] /= node_area;
-        dy[node] /= node_area;
-    }
-    return {std::move(dx), std::move(dy)};
-}
-*/
 
 template<class T, class I>
 template<class Vector>

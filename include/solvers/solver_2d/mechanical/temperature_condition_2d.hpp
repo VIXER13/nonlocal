@@ -18,7 +18,7 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
             E  = parameters.young();
     const T factor = parameters.alpha * E / (T{2} * (T{1} - nu));
     const std::array<std::vector<T>, 2> gradient = mesh_proxy.template gradient(parameters.delta_temperature);
-    using namespace metamath::function;
+    using namespace metamath::functions;
     const std::array<std::vector<T>, 2> temperature_eps = { factor * mesh_proxy.approx_in_quad(gradient[0]),
                                                             factor * mesh_proxy.approx_in_quad(gradient[1]) };
 
