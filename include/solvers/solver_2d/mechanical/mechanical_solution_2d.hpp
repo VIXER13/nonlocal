@@ -10,9 +10,9 @@ namespace nonlocal::mechanical {
 template<class T, class I>
 class mechanical_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
-    using Influence_Function = typename solution_2d<T, I>::Influence_Function;
+    using typename solution_2d<T, I>::influence_function_t;
 
-    enum : size_t { _11, _22, _12, COMPONENTS_COUNT };
+    enum : size_t { _11, _22, _12 };
     enum class collect : bool { ONLY_STRAIN, WITH_STRESS };
 
     std::array<std::vector<T>, 2> _displacement;
@@ -21,14 +21,15 @@ class mechanical_solution_2d : public solution_2d<T, I> {
 
     template<collect Type>
     void collect_solution();
-    void strain_and_stress_loc();
-    void stress_nonloc();
+    std::array<std::vector<T>, 3> strains_in_quadratures() const;
+    void strain_and_stress_loc(const std::array<std::vector<T>, 3>& strains_in_quads);
+    void stress_nonloc(const std::array<std::vector<T>, 3>& strains_in_quads);
 
 public:
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
     template<class Vector>
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                                    const T local_weight, const Influence_Function& influence_function,
+                                    const T local_weight, const influence_function_t& influence_function,
                                     const equation_parameters<T>& parameters, const Vector& displacement);
     ~mechanical_solution_2d() noexcept override = default;
 
@@ -38,7 +39,7 @@ public:
 
     T calc_energy() const;
     bool is_strain_and_stress_calculated() const noexcept;
-    void calc_strain_and_stress();
+    std::pair<const std::array<std::vector<T>, 3>&, const std::array<std::vector<T>, 3>&> calc_strain_and_stress();
 
     void save_as_vtk(std::ofstream& output) const override;
     void save_as_vtk(const std::string& path) const;
@@ -54,15 +55,15 @@ mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh:
 template<class T, class I>
 template<class Vector>
 mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                                                     const T local_weight, const Influence_Function& influence_function,
+                                                     const T local_weight, const influence_function_t& influence_function,
                                                      const equation_parameters<T>& parameters, const Vector& displacement)
     : _base{mesh_proxy, local_weight, influence_function}
     , _parameters{parameters} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(_base::mesh_proxy()->mesh().nodes_count(), 0);
     for(const size_t i : std::views::iota(size_t{0}, _base::mesh_proxy()->mesh().nodes_count())) {
-        _displacement[X][i] = displacement[2 * i];
-        _displacement[Y][i] = displacement[2 * i + 1];
+        _displacement[X][i] = displacement[2 * i + X];
+        _displacement[Y][i] = displacement[2 * i + Y];
     }
 }
 
@@ -92,7 +93,7 @@ T mechanical_solution_2d<T, I>::calc_energy() const {
                 auto J = J_start;
                 for(size_t q = 0; q < el->qnodes_count(); ++q, ++J) {
                     const size_t node = _base::mesh_proxy()->mesh().node_number(e, i);
-                    integral += el->weight(q) * el->qN(i, q) * _base::mesh_proxy()->jacobian(*J) *
+                    integral += el->weight(q) * el->qN(i, q) * mesh::jacobian(*J) *
                                 (    strain()[_11][node] * stress()[_11][node] +
                                      strain()[_22][node] * stress()[_22][node] +
                                  2 * strain()[_12][node] * stress()[_12][node]);
@@ -120,67 +121,75 @@ void mechanical_solution_2d<T, I>::collect_solution() {
 }
 
 template<class T, class I>
-void mechanical_solution_2d<T, I>::strain_and_stress_loc() {
-    {
-        auto [du1dx1, du1dx2] = _base::mesh_proxy()->gradient(displacement()[X]);
-        auto [du2dx1, du2dx2] = _base::mesh_proxy()->gradient(displacement()[Y]);
-        _strain[_11] = std::move(du1dx1);
-        _strain[_22] = std::move(du2dx2);
-        _strain[_12] = std::move(du1dx2);
-        for(const size_t node : std::views::iota(_base::mesh_proxy()->first_node(), _base::mesh_proxy()->last_node()))
-            _strain[_12][node] = 0.5 * (_strain[_12][node] + du2dx1[node]);
+std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratures() const {
+    auto [strain11_in_quad, strain12_in_quad] = mesh::approximate_gradient_in_qnodes(*_base::mesh_proxy(), displacement()[X]);
+    auto [strain21_in_quad, strain22_in_quad] = mesh::approximate_gradient_in_qnodes(*_base::mesh_proxy(), displacement()[Y]);
+    for(size_t q = 0; q < strain12_in_quad.size(); ++q)
+        strain12_in_quad[q] = 0.5 * (strain12_in_quad[q] + strain21_in_quad[q]);
+    return {std::move(strain11_in_quad), std::move(strain22_in_quad), std::move(strain12_in_quad)};
+}
+
+template<class T, class I>
+void mechanical_solution_2d<T, I>::strain_and_stress_loc(const std::array<std::vector<T>, 3>& strains_in_quads) {
+    for(size_t i = 0; i < _strain.size(); ++i) {
+        _strain[i] = mesh::from_qnodes_to_nodes(*_base::mesh_proxy(), strains_in_quads[i]);
+        _stress[i].resize(_strain[i].size());
     }
 
-    const std::array<T, 3> D = hooke_matrix(_parameters);
-    for(std::vector<T>& stress : _stress)
-        stress.resize(_base::mesh_proxy()->mesh().nodes_count());
-    for(const size_t node : std::views::iota(_base::mesh_proxy()->first_node(), _base::mesh_proxy()->last_node())) {
-        _stress[_11][node] = D[_11] * _strain[_11][node] + D[_22] * _strain[_22][node];
-        _stress[_22][node] = D[_22] * _strain[_11][node] + D[_11] * _strain[_22][node];
+    using namespace metamath::functions;
+    const std::array<T, 3> D = _base::local_weight() * hooke_matrix(_parameters);
+    for(const size_t node : std::views::iota(size_t{0}, _base::mesh_proxy()->mesh().nodes_count())) {
+        const T strain11 = _strain[_11][node] - (_parameters.is_thermoelasticity ? _parameters.thermal_expansion * _parameters.delta_temperature[node] : T{0});
+        const T strain22 = _strain[_22][node] - (_parameters.is_thermoelasticity ? _parameters.thermal_expansion * _parameters.delta_temperature[node] : T{0});
+        _stress[_11][node] = D[_11] * strain11 + D[_22] * strain22;
+        _stress[_22][node] = D[_22] * strain11 + D[_11] * strain22;
         _stress[_12][node] = D[_12] * _strain[_12][node];
     }
 }
 
 template<class T, class I>
-void mechanical_solution_2d<T, I>::stress_nonloc() {
-    const std::array<std::vector<T>, 3> strains_in_quads{
-        _base::mesh_proxy()->approx_in_quad(_strain[0]),
-        _base::mesh_proxy()->approx_in_quad(_strain[1]),
-        _base::mesh_proxy()->approx_in_quad(_strain[2])
-    };
-    const std::array<T, 3> D = hooke_matrix(_parameters);
+void mechanical_solution_2d<T, I>::stress_nonloc(const std::array<std::vector<T>, 3>& strains_in_quads) {
+    using namespace metamath::functions;
+    const T nonlocal_weight = T{1} - _base::local_weight();
+    const std::array<T, 3> D = nonlocal_weight * hooke_matrix(_parameters);
     _base::template calc_nonlocal(
-        [this, &strains_in_quads, &D, nonlocal_weight = 1 - _base::local_weight()](const size_t e, const size_t node) {
+        [this, &strains_in_quads, &D](const size_t e, const size_t node) {
             std::array<T, 3> integral = {};
             auto J = _base::mesh_proxy()->jacobi_matrix(e);
             auto qshift = _base::mesh_proxy()->quad_shift(e);
             auto qcoord = _base::mesh_proxy()->quad_coord(e);
             const auto& eNL = _base::mesh_proxy()->mesh().element_2d(e);
             for(size_t q = 0; q < eNL->qnodes_count(); ++q, ++qshift, ++qcoord, ++J) {
-                const T influence_weight = eNL->weight(q) * _base::mesh_proxy()->jacobian(*J) *
+                const T influence_weight = eNL->weight(q) * mesh::jacobian(*J) *
                                            _base::influence_function()(*qcoord, _base::mesh_proxy()->mesh().node(node));
                 integral[_11] += influence_weight * (D[_11] * strains_in_quads[_11][qshift] + D[_22] * strains_in_quads[_22][qshift]);
                 integral[_22] += influence_weight * (D[_22] * strains_in_quads[_11][qshift] + D[_11] * strains_in_quads[_22][qshift]);
                 integral[_12] += influence_weight *  D[_12] * strains_in_quads[_12][qshift];
             }
-            _stress[_11][node] += nonlocal_weight * integral[_11];
-            _stress[_22][node] += nonlocal_weight * integral[_22];
-            _stress[_12][node] += nonlocal_weight * integral[_12];
+            _stress[_11][node] += integral[_11];
+            _stress[_22][node] += integral[_22];
+            _stress[_12][node] += integral[_12];
         }
     );
 }
 
 template<class T, class I>
-void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
-    strain_and_stress_loc();
-    if(_base::local_weight() < MAX_NONLOCAL_WEIGHT<T>) {
-        using namespace metamath::functions;
-        for(std::vector<T>& stress : _stress)
-            stress *= _base::local_weight();
-        collect_solution<collect::ONLY_STRAIN>();
-        stress_nonloc();
+std::pair<const std::array<std::vector<T>, 3>&, const std::array<std::vector<T>, 3>&>
+mechanical_solution_2d<T, I>::calc_strain_and_stress() {
+    if (!is_strain_and_stress_calculated()) {
+        std::array<std::vector<T>, 3> strains_in_quads = strains_in_quadratures();
+        strain_and_stress_loc(strains_in_quads);
+        if(_base::local_weight() < MAX_NONLOCAL_WEIGHT<T>) {
+            using namespace metamath::functions;
+            const std::vector<T> temperature_strains_in_qnodes =
+                _parameters.thermal_expansion * mesh::approximate_in_qnodes(*_base::mesh_proxy(), _parameters.delta_temperature);
+            strains_in_quads[_11] -= temperature_strains_in_qnodes;
+            strains_in_quads[_22] -= temperature_strains_in_qnodes;
+            stress_nonloc(strains_in_quads);
+        }
+        //collect_solution<collect::WITH_STRESS>();
     }
-    collect_solution<collect::WITH_STRESS>();
+    return {strain(), stress()};
 }
 
 template<class T, class I>

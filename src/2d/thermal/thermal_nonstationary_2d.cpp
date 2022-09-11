@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
         static const nonlocal::influence::polynomial_2d<double, 2, 1> influence_function(r);
 
         nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
-        eq_parameters.rho = 1;
-        eq_parameters.c = 1;
+        eq_parameters.thermal_conductivity[0] = r[0] / std::max(r[0], r[1]);
+        eq_parameters.thermal_conductivity[1] = r[1] / std::max(r[0], r[1]);
+        eq_parameters.density = 1;
+        eq_parameters.heat_capacity = 1;
         const double tau = 0.01;
 
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
                        p1, influence_function);
         logger(nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy}, argv[5], 0);
         for(const uintmax_t step : std::views::iota(1, 101)) {
-            solver.calc_step(eq_parameters.alpha, boundary_conditions,
+            solver.calc_step(eq_parameters.heat_transfer, boundary_conditions,
                 [](const double t, const std::array<double, 2>& x) constexpr noexcept { return 0; });
             auto solution = nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy, p1, influence_function, eq_parameters, solver.temperature()};
             solution.calc_flux();

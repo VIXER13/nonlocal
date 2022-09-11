@@ -59,9 +59,9 @@ int main(int argc, char** argv) {
         }
 
         nonlocal::mechanical::equation_parameters<double> parameters;
-        parameters.nu = 0.3;
-        parameters.E = 420;
-        parameters.type = nonlocal::mechanical::calc_t::PLANE_STRESS;
+        parameters.poissons_ratio = 0.3;
+        parameters.young_modulus = 420;
+        parameters.task = nonlocal::mechanical::task_2d_t::PLANE_STRESS;
 
 //        parameters.thermoelasticity = true;
 //        parameters.delta_temperature.resize(mesh->nodes_count());

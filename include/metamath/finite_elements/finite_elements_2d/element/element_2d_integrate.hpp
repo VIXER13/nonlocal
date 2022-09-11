@@ -10,19 +10,22 @@ template<class T, template<class, auto...> class Element_Type, auto... Args>
 class element_2d_integrate : public element_2d_integrate_base<T>,
                              public element_2d<T, Element_Type, Args...> {
 protected:
-    using element_t = element_2d<T, Element_Type, Args...>;
-    using element_2d_integrate_base<T>::_weights;
-    using element_2d_integrate_base<T>::_qN;
-    using element_2d_integrate_base<T>::_qNxi;
-    using element_2d_integrate_base<T>::_qNeta;
+    using element_2d_t = element_2d<T, Element_Type, Args...>;
+    using element_integrate_2d_t = element_2d_integrate_base<T>;
+    using element_integrate_2d_t::_nearest_qnode;
+    using element_integrate_2d_t::_weights;
+    using element_integrate_2d_t::_qN;
+    using element_integrate_2d_t::_qNxi;
+    using element_integrate_2d_t::_qNeta;
 
 public:
-    using element_2d_integrate_base<T>::qnodes_count;
-    using element_2d_integrate_base<T>::nodes_count;
-    using element_t::N;
-    using element_t::Nxi;
-    using element_t::Neta;
-    using element_t::boundary;
+    using element_integrate_2d_t::qnodes_count;
+    using element_integrate_2d_t::nodes_count;
+    using element_2d_t::N;
+    using element_2d_t::Nxi;
+    using element_2d_t::Neta;
+    using element_2d_t::node;
+    using element_2d_t::boundary;
 
     explicit element_2d_integrate(const quadrature_1d_base<T>& quadrature) {
         set_quadrature(quadrature, quadrature);
@@ -52,16 +55,25 @@ public:
             }
         }
 
-        _qN.resize(element_t::nodes_count() * qnodes_count());
-        _qNxi.resize(element_t::nodes_count() * qnodes_count());
-        _qNeta.resize(element_t::nodes_count() * qnodes_count());
-        for(size_t i = 0; i < nodes_count(); ++i)
+        _nearest_qnode.resize(element_2d_t::nodes_count());
+        _qN.resize(element_2d_t::nodes_count() * qnodes_count());
+        _qNxi.resize(element_2d_t::nodes_count() * qnodes_count());
+        _qNeta.resize(element_2d_t::nodes_count() * qnodes_count());
+        for(size_t i = 0; i < nodes_count(); ++i) {
+            size_t nearest_quadrature = 0;
+            T length = std::numeric_limits<T>::max();
             for(size_t j = 0; j < quadrature_x.nodes_count(); ++j)
                 for(size_t k = 0; k < quadrature_y.nodes_count(); ++k) {
                     _qN   [i*qnodes_count() + j*quadrature_y.nodes_count() + k] = N   (i, {x[j], y[k]});
                     _qNxi [i*qnodes_count() + j*quadrature_y.nodes_count() + k] = Nxi (i, {x[j], y[k]});
                     _qNeta[i*qnodes_count() + j*quadrature_y.nodes_count() + k] = Neta(i, {x[j], y[k]});
+                    if (const T curr_length = functions::distance(node(i), {x[j], y[k]}); length > curr_length) {
+                        length = curr_length;
+                        nearest_quadrature = j*quadrature_y.nodes_count() + k;
+                    }
                 }
+            _nearest_qnode[i] = nearest_quadrature;
+        }
     }
 };
 

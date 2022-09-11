@@ -30,7 +30,7 @@ T heat_capacity_matrix_2d<T, I, Matrix_Index>::integrate_basic_pair(const size_t
     const auto& el = _base::mesh().element_2d(e);
           auto  J  = _base::mesh_proxy()->jacobi_matrix(e);
     for(size_t q = 0; q < el->nodes_count(); ++q, ++J)
-        integral += el->weight(q) * el->qN(i, q) * el->qN(j, q) * _base::mesh_proxy()->jacobian(*J);
+        integral += el->weight(q) * el->qN(i, q) * el->qN(j, q) * mesh::jacobian(*J);
     return integral;
 }
 

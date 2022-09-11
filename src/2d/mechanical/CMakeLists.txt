@@ -13,3 +13,7 @@ target_link_libraries(mechanical_circle metamath_lib mesh_2d_lib slae_solver_lib
 add_executable(mechanical_quad mechanical_quad.cpp)
 target_include_directories(mechanical_quad PUBLIC ".")
 target_link_libraries(mechanical_quad metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)
+
+add_executable(thermomechanic thermomechanic.cpp)
+target_include_directories(thermomechanic PUBLIC ".")
+target_link_libraries(thermomechanic metamath_lib mesh_2d_lib slae_solver_lib finite_element_solver_2d_lib MPI_utils_lib)

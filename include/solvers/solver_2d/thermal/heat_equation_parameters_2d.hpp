@@ -19,19 +19,19 @@ struct equation_parameters_2d final {
         Material == material_t::ISOTROPIC,
         T,
         std::array<T, 2>
-    > lambda;                                 // Коэффициент теплопроводности
-    std::unordered_map<std::string, T> alpha; // Коэффициент теплоотдачи
-    T c        = T{1};                        // Коэффициент теплоёмкости
-    T rho      = T{1};                        // Плотность материала
-    T integral = T{0};                        // Интеграл от решения (для задачи Неймана)
+    > thermal_conductivity;
+    std::unordered_map<std::string, T> heat_transfer;
+    T heat_capacity = T{1};
+    T density = T{1};
+    T integral = T{0}; // Solution integral for Neumann problem
 
     explicit equation_parameters_2d(const std::vector<std::string>& names = {}) noexcept {
         if constexpr(Material == material_t::ISOTROPIC)
-            lambda = T{1};
+            thermal_conductivity = T{1};
         if constexpr(Material == material_t::ORTHOTROPIC)
-            lambda.fill(T{1});
+            thermal_conductivity.fill(T{1});
         for(const std::string& name : names)
-            alpha[name] = T{1};
+            heat_transfer[name] = T{1};
     }
 };
 

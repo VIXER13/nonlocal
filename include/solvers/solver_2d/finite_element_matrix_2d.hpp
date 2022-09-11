@@ -186,7 +186,7 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const Callback&
 #pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
     for(size_t node = mesh_proxy()->first_node(); node < mesh_proxy()->last_node(); ++node) {
         for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
-            const size_t iL = mesh_proxy()->global_to_local_numbering(eL).find(node)->second;
+            const size_t iL = mesh_proxy()->global_to_local_numbering(eL, node);
             if constexpr (Theory == theory_t::LOCAL)
                 for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
                     callback(eL, iL, jL);

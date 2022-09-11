@@ -60,7 +60,7 @@ std::array<T, 4> stiffness_matrix<T, I, Matrix_Index>::integrate_loc(const std::
                 dNdj = _base::mesh_proxy()->dNdX(e, j);
     std::array<T, 4> pairs = {};
     for(size_t q = 0; q < el->qnodes_count(); ++q, ++J, ++dNdi, ++dNdj) {
-        const T weight = el->weight(q) / _base::mesh_proxy()->jacobian(*J);
+        const T weight = el->weight(q) / mesh::jacobian(*J);
         const std::array<T, 2> wdNdi = {weight * (*dNdi)[X], weight * (*dNdi)[Y]};
         add_to_pair(pairs, wdNdi, *dNdj);
     }

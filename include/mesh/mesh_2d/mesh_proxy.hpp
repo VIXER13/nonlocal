@@ -2,7 +2,6 @@
 #define MESH_PROXY_HPP
 
 #include "mesh_container_2d.hpp"
-#include "utils.hpp"
 #include "MPI_utils.hpp"
 #include <unordered_set>
 #include <unordered_map>
@@ -11,6 +10,16 @@
 namespace nonlocal::mesh {
 
 enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
+
+template<class T>
+constexpr T jacobian(const std::array<T, 2>& J) noexcept {
+    return std::sqrt(J[0] * J[0] + J[1] * J[1]);
+}
+
+template<class T>
+constexpr T jacobian(const std::array<T, 4>& J) noexcept {
+    return std::abs(J[0] * J[3] - J[1] * J[2]);
+}
 
 template<class T, class I>
 class mesh_proxy final {
@@ -81,7 +90,7 @@ public:
 
     const mesh_2d<T, I>&                  mesh                     ()                                         const;
     const std::vector<I>&                 nodes_elements_map       (const size_t node)                        const;
-    const std::unordered_map<I, uint8_t>& global_to_local_numbering(const size_t element)                     const;
+    size_t                                global_to_local_numbering(const size_t element, const size_t node)  const;
     T                                     element_area             (const size_t element)                     const;
     I                                     quad_shift               (const size_t element)                     const;
     quad_coord_iterator                   quad_coord               (const size_t element)                     const;
@@ -94,16 +103,7 @@ public:
     size_t                                last_node                ()                                         const;
     const std::vector<I>&                 neighbors                (const size_t element)                     const;
 
-    static T jacobian(const std::array<T, 2>& J) noexcept;
-    static T jacobian(const std::array<T, 4>& J) noexcept;
-
     void find_neighbours(const T r, const balancing_t balancing);
-
-    template<class Vector>
-    T integrate_solution(const Vector& sol) const;
-    template<class Vector>
-    std::array<std::vector<T>, 2> gradient(const Vector& sol) const;
-    std::vector<T> approx_in_quad(const std::vector<T>& x) const;
 };
 
 template<class T, class I>
@@ -141,7 +141,9 @@ template<class T, class I>
 const std::vector<I>& mesh_proxy<T, I>::nodes_elements_map(const size_t node) const { return _nodes_elements_map[node]; }
 
 template<class T, class I>
-const std::unordered_map<I, uint8_t>& mesh_proxy<T, I>::global_to_local_numbering(const size_t element) const { return _global_to_local_numbering[element]; }
+size_t mesh_proxy<T, I>::global_to_local_numbering(const size_t element, const size_t node) const {
+    return _global_to_local_numbering[element].find(node)->second;
+}
 
 template<class T, class I>
 T mesh_proxy<T, I>::element_area(const size_t element) const { return _elements_ares[element]; }
@@ -193,12 +195,6 @@ size_t mesh_proxy<T, I>::last_node() const { return _ranges.range().back(); }
 
 template<class T, class I>
 const std::vector<I>& mesh_proxy<T, I>::neighbors(const size_t element) const { return _elements_neighbors[element]; }
-
-template<class T, class I>
-T mesh_proxy<T, I>::jacobian(const std::array<T, 2>& J) noexcept { return std::sqrt(J[0] * J[0] + J[1] * J[1]); }
-
-template<class T, class I>
-T mesh_proxy<T, I>::jacobian(const std::array<T, 4>& J) noexcept { return std::abs(J[0] * J[3] - J[1] * J[2]); }
 
 template<class T, class I>
 std::vector<std::vector<I>> mesh_proxy<T, I>::node_elements_map_init(const mesh_2d<T, I>& mesh) {
@@ -411,7 +407,7 @@ void mesh_proxy<T, I>::find_elements_neighbors(std::vector<std::vector<I>>& elem
         if (elements_neighbors[eL].empty()) {
             elements_neighbors[eL].reserve(mesh.elements_count());
             for(size_t eNL = 0; eNL < mesh.elements_count(); ++eNL)
-                if(utils::distance(centres[eL], centres[eNL]) < r)
+                if(metamath::functions::distance(centres[eL], centres[eNL]) < r)
                     elements_neighbors[eL].push_back(eNL);
             elements_neighbors[eL].shrink_to_fit();
         }
@@ -486,77 +482,6 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
                 _elements_neighbors[e].shrink_to_fit();
             }
     }
-}
-
-template<class T, class I>
-template<class Vector>
-T mesh_proxy<T, I>::integrate_solution(const Vector& sol) const {
-    if(mesh().nodes_count() != size_t(sol.size()))
-        throw std::logic_error{"mesh.nodes_count() != T.size()"};
-
-    T integral = 0;
-    for(size_t e = 0; e < mesh().elements_count(); ++e) {
-        const auto& el = mesh().element_2d(e);
-        auto J = jacobi_matrix(e);
-        for(size_t q = 0; q < el->qnodes_count(); ++q, ++J)
-            for(size_t i = 0; i < el->nodes_count(); ++i) {
-                integral += el->weight(q) * el->qN(i, q) * sol[mesh().node_number(e, i)] * jacobian(*J);
-        }
-    }
-    return integral;
-}
-
-template<class T, class I>
-template<class Vector>
-std::array<std::vector<T>, 2> mesh_proxy<T, I>::gradient(const Vector& sol) const {
-    if(mesh().nodes_count() != sol.size())
-        throw std::logic_error{"mesh.nodes_count() != sol.size()"};
-
-    std::vector<T> dx(sol.size(), 0), dy(sol.size(), 0);
-#pragma omp parallel for default(none) shared(dx, dy, sol)
-    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        T node_area = T{0};
-        const std::array<T, 2>& node_coord = mesh().node(node);
-        for(const I e : nodes_elements_map(node)) {
-            const auto& el = mesh().element_2d(e);
-            auto qnode = quad_coord(e);
-            size_t nearest_quadrature = 0;
-            T length = std::numeric_limits<T>::max();
-            for(size_t q = 0; q < el->qnodes_count(); ++q, ++qnode)
-                if (const T curr_length = utils::distance(node_coord, *qnode); length > curr_length) {
-                    length = curr_length;
-                    nearest_quadrature = q;
-                }
-
-            T dx_loc = 0, dy_loc = 0;
-            for(size_t j = 0; j < el->nodes_count(); ++j) {
-                const auto dN = std::next(dNdX(e, j), nearest_quadrature);
-                dx_loc += (*dN)[0] * sol[mesh().node_number(e, j)];
-                dy_loc += (*dN)[1] * sol[mesh().node_number(e, j)];
-            }
-            const auto J = std::next(jacobi_matrix(e), nearest_quadrature);
-            const T jac = jacobian(*J);
-            dx[node] += dx_loc * element_area(e) / jac;
-            dy[node] += dy_loc * element_area(e) / jac;
-            node_area += element_area(e);
-        }
-        dx[node] /= node_area;
-        dy[node] /= node_area;
-    }
-    return {std::move(dx), std::move(dy)};
-}
-
-template<class T, class I>
-std::vector<T> mesh_proxy<T, I>::approx_in_quad(const std::vector<T>& x) const {
-    std::vector<T> x_in_quad(quad_shift(mesh().elements_count()), 0);
-#pragma omp parallel for default(none) shared(x, x_in_quad)
-    for(size_t e = 0; e < mesh().elements_count(); ++e) {
-        const auto& el = mesh().element_2d(e);
-        for(size_t q = 0, shift = quad_shift(e); q < el->qnodes_count(); ++q, ++shift)
-            for(size_t i = 0; i < el->nodes_count(); ++i)
-                x_in_quad[shift] += x[mesh().node_number(e, i)] * el->qN(i, q);
-    }
-    return x_in_quad;
 }
 
 }

@@ -30,7 +30,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const mechanical::
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix_inner().cols());
     integrate_right_part<2>(f, *mesh_proxy, right_part);
     boundary_condition_second_kind_2d(f, *mesh_proxy, boundary_condition);
-    if (parameters.thermoelasticity)
+    if (parameters.is_thermoelasticity)
         temperature_condition(f, *mesh_proxy, parameters, p1, influence_function);
     boundary_condition_first_kind_2d(f, *mesh_proxy, boundary_condition, stiffness.matrix_bound());
 

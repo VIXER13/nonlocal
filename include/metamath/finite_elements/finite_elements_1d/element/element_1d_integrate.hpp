@@ -11,6 +11,7 @@ class element_1d_integrate : public element_1d_integrate_base<T>,
                              public element_1d<T, Element_Type, Args...> {
     using element_1d_t = element_1d<T, Element_Type, Args...>;
     using element_integrate_1d_t = element_1d_integrate_base<T>;
+    using element_integrate_1d_t::_nearest_qnode;
     using element_integrate_1d_t::_quadrature;
     using element_integrate_1d_t::_weights;
     using element_integrate_1d_t::_qN;
@@ -20,6 +21,7 @@ public:
     using element_integrate_1d_t::qnodes_count;
     using element_integrate_1d_t::nodes_count;
     using element_1d_t::boundary;
+    using element_1d_t::node;
     using element_1d_t::N;
     using element_1d_t::Nxi;
 
@@ -37,13 +39,22 @@ public:
             _weights[q] = quadrature.weight(q) * jacobian;
         }
 
+        _nearest_qnode.resize(element_1d_t::nodes_count());
         _qN  .resize(element_1d_t::nodes_count() * qnodes_count());
         _qNxi.resize(element_1d_t::nodes_count() * qnodes_count());
-        for(size_t i = 0; i < nodes_count(); ++i)
+        for(size_t i = 0; i < nodes_count(); ++i) {
+            size_t nearest_quadrature = 0;
+            T length = std::numeric_limits<T>::max();
             for(size_t q = 0; q < qnodes_count(); ++q) {
                 _qN  [i*qnodes_count() + q] = N  (i, xi[q]);
                 _qNxi[i*qnodes_count() + q] = Nxi(i, xi[q]);
+                if (const T curr_length = std::abs(xi[q] - node(i)); length > curr_length) {
+                    length = curr_length;
+                    nearest_quadrature = q;
+                }
             }
+            _nearest_qnode[i] = nearest_quadrature;
+        }
     }
 };
 

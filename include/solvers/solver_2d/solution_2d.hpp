@@ -9,19 +9,19 @@ namespace nonlocal {
 template<class T, class I>
 class solution_2d {
 protected:
-    using Influence_Function = std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>;
+    using influence_function_t = std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>;
 
 private:
     static constexpr std::string_view vtk_data_type = std::is_same_v<T, float> ? "float" : "double";
 
     const std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
     const T _local_weight = T{1};
-    const Influence_Function _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{}; };
+    const influence_function_t _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{}; };
 
 protected:
     explicit solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
     explicit solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                         const T local_weight, const Influence_Function& influence_function);
+                         const T local_weight, const influence_function_t& influence_function);
 
     template<class Callback>
     void calc_nonlocal(const Callback& callback) const;
@@ -34,7 +34,7 @@ public:
 
     const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const noexcept;
     T local_weight() const noexcept;
-    const Influence_Function& influence_function() const noexcept;
+    const influence_function_t& influence_function() const noexcept;
 
     virtual void save_as_vtk(std::ofstream& output) const;
 };
@@ -45,7 +45,7 @@ solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& me
 
 template<class T, class I>
 solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
-                               const T local_weight, const Influence_Function& influence_function)
+                               const T local_weight, const influence_function_t& influence_function)
     : _mesh_proxy{mesh_proxy}
     , _local_weight{local_weight}
     , _influence_function{influence_function} {}
@@ -61,7 +61,7 @@ T solution_2d<T, I>::local_weight() const noexcept {
 }
 
 template<class T, class I>
-const typename solution_2d<T, I>::Influence_Function& solution_2d<T, I>::influence_function() const noexcept {
+const typename solution_2d<T, I>::influence_function_t& solution_2d<T, I>::influence_function() const noexcept {
     return _influence_function;
 }
 
