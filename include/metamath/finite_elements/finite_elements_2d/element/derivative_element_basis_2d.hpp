@@ -17,7 +17,7 @@ protected:
     using element_t::basis;
     using element_t::nodes;
 
-    static_assert(std::tuple_size<decltype(basis)>::value == nodes.size(), "The number of functions and nodes does not match.");
+    static_assert(std::tuple_size_v<decltype(basis)> == nodes.size(), "The number of functions and nodes does not match.");
 
     static inline const std::array<std::function<T(const std::array<T, Parameters_Count>&)>, nodes.size()>
         N    = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(basis)),
