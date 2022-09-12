@@ -2,7 +2,7 @@
 #define NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
 
 #include "mesh_2d.hpp"
-#include "mechanical_solution.hpp"
+#include "mechanical_solution_2d.hpp"
 #include "../solvers_utils.hpp"
 #include <eigen3/Eigen/Dense>
 
@@ -14,73 +14,67 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                            const mechanical::equation_parameters<T>& parameters,
                            const T p1,
                            const Influence_Function& influence_function) {
-    const T nu = parameters.poisson(),
-            E  = parameters.young();
-    const T factor = parameters.alpha * E / (T{2} * (T{1} - nu));
-    const std::array<std::vector<T>, 2> gradient = mesh_proxy.template gradient(parameters.delta_temperature);
-    using namespace metamath::function;
-    const std::array<std::vector<T>, 2> temperature_eps = { factor * mesh_proxy.approx_in_quad(gradient[0]),
-                                                            factor * mesh_proxy.approx_in_quad(gradient[1]) };
+    const T factor = parameters.thermal_expansion * parameters.E() / (T{1} - parameters.nu());
+    using namespace metamath::functions;
+    const std::vector<T> temperature_in_qnodes = factor * mesh::approximate_in_qnodes(mesh_proxy, parameters.delta_temperature);
 
-    const auto integrate_temperature_loc = [&mesh_proxy](const std::array<std::vector<T>, 2>& temperature_eps, const size_t e, const size_t i) {
+    const auto integrate_temperature_loc = [&mesh_proxy, &temperature_in_qnodes](const size_t e, const size_t i) {
         std::array<T, 2> integral = {};
-        const auto& el  = mesh_proxy.mesh().element_2d(e);
-              auto  dNd = mesh_proxy.dNdX(e, i);
-        for(size_t q = 0, quad_shift = mesh_proxy.quad_shift(e); q < el->qnodes_count(); ++q, ++dNd, ++quad_shift)
-            for(size_t comp = 0; comp < 2; ++comp)
-                integral[comp] += el->weight(q) * temperature_eps[comp][quad_shift] * (*dNd)[comp];
+        auto dNd = mesh_proxy.dNdX(e, i);
+        auto J = mesh_proxy.jacobi_matrix(e);
+        const auto& el = mesh_proxy.mesh().element_2d(e);
+        for(size_t q = 0, qshift = mesh_proxy.quad_shift(e); q < el->qnodes_count(); ++q, ++dNd, ++qshift, ++J)
+            for(const size_t comp : std::ranges::iota_view{0, 2})
+                integral[comp] += el->weight(q) * (*dNd)[comp] * temperature_in_qnodes[qshift];
         return integral;
     };
 
-#pragma omp parallel for default(none) shared(f, temperature_eps, p1, mesh_proxy, integrate_temperature_loc)
+#pragma omp parallel for default(none) shared(f, p1, mesh_proxy, integrate_temperature_loc)
     for(size_t node = mesh_proxy.first_node(); node < mesh_proxy.last_node(); ++node) {
         std::array<T, 2> integral = {};
-        for(const I e : mesh_proxy.nodes_elements_map(node)) {
-            const size_t i = mesh_proxy.global_to_local_numbering(e).find(node)->second;
-            integral += integrate_temperature_loc(temperature_eps, e, i);
-        }
-        f[2 * node + X] += p1 * integral[X];
-        f[2 * node + Y] += p1 * integral[Y];
+        for(const I e : mesh_proxy.nodes_elements_map(node))
+            integral += integrate_temperature_loc(e, mesh_proxy.global_to_local_numbering(e, node));
+        for(const size_t comp : std::ranges::iota_view{0, 2})
+            f[2 * node + comp] += integral[comp];
     }
 
-    if (parameters.p1 < MAX_NONLOCAL_WEIGHT<T>) {
-        const auto integrate_temperature_nonloc = [&mesh_proxy](const std::array<std::vector<T>, 2>& temperature_eps,
-                                                                const size_t eL, const size_t eNL, const size_t iL,
-                                                                const Influence_Function& influence_function) {
+    if (p1 < MAX_NONLOCAL_WEIGHT<T>) {
+        const auto integrate_temperature_nonloc = [&mesh_proxy, &temperature_in_qnodes, &influence_function](const size_t eL, const size_t eNL, const size_t iL) {
             std::array<T, 2> integral = {};
-            const auto& elL            = mesh_proxy.mesh().element_2d(eL ),
-                      & elNL           = mesh_proxy.mesh().element_2d(eNL);
-                  auto  dNdL           = mesh_proxy.dNdX(eL, iL);
-                  auto  qcoordL        = mesh_proxy.quad_coord(eL);
-            const auto  qcoordNL_begin = mesh_proxy.quad_coord(eNL);
-            const auto  JNL_begin      = mesh_proxy.jacobi_matrix(eNL);
-            const size_t quad_shiftNL_begin = mesh_proxy.quad_shift(eNL);
+            auto dNdL = mesh_proxy.dNdX(eL, iL);
+            auto qcoordL = mesh_proxy.quad_coord(eL);
+            const auto& elL = mesh_proxy.mesh().element_2d(eL);
+            const auto& elNL = mesh_proxy.mesh().element_2d(eNL);
+            const auto JNL_begin = mesh_proxy.jacobi_matrix(eNL);
+            const auto qcoordNL_begin = mesh_proxy.quad_coord(eNL);
+            const size_t qshiftNL_begin = mesh_proxy.quad_shift(eNL);
             for(size_t qL = 0; qL < elL->qnodes_count(); ++qL, ++qcoordL, ++dNdL) {
                 auto JNL = JNL_begin;
+                T inner_integral = T{0};
                 auto qcoordNL = qcoordNL_begin;
-                std::array<T, 2> inner_integral = {};
-                for(size_t qNL = 0, quad_shiftNL = quad_shiftNL_begin; qNL < elNL->qnodes_count(); ++qNL, ++JNL, ++qcoordNL, ++quad_shiftNL) {
-                    const T weight = elNL->weight(qNL) * influence_function(*qcoordL, *qcoordNL) * mesh_proxy.jacobian(*JNL);
-                    inner_integral[X] += weight * temperature_eps[X][quad_shiftNL];
-                    inner_integral[Y] += weight * temperature_eps[Y][quad_shiftNL];
+                for(size_t qNL = 0, qshiftNL = qshiftNL_begin; qNL < elNL->qnodes_count(); ++qNL, ++JNL, ++qcoordNL, ++qshiftNL) {
+                    const T weight = elNL->weight(qNL) * influence_function(*qcoordL, *qcoordNL) * mesh::jacobian(*JNL);
+                    inner_integral += weight * temperature_in_qnodes[qshiftNL];
                 }
-                integral[X] += elL->weight(qL) * (*dNdL)[X] * inner_integral[X];
-                integral[Y] += elL->weight(qL) * (*dNdL)[Y] * inner_integral[Y];
+                inner_integral *= elL->weight(qL);
+                for(const size_t comp : std::ranges::iota_view{0, 2})
+                    integral[comp] += inner_integral * (*dNdL)[comp];
             }
             return integral;
         };
 
+        f *= p1;
         const T p2 = T{1} - p1;
-#pragma omp parallel for default(none) shared(f, temperature_eps, p2, mesh_proxy, integrate_temperature_nonloc) firstprivate(influence_function)
+#pragma omp parallel for default(none) shared(f, p2, mesh_proxy) firstprivate(integrate_temperature_nonloc)
         for(size_t node = mesh_proxy.first_node(); node < mesh_proxy.last_node(); ++node) {
             std::array<T, 2> integral = {};
             for(const I eL : mesh_proxy.nodes_elements_map(node)) {
-                const size_t iL = mesh_proxy.global_to_local_numbering(eL).find(node)->second;
+                const size_t iL = mesh_proxy.global_to_local_numbering(eL, node);
                 for(const I eNL : mesh_proxy.neighbors(eL))
-                    integral += integrate_temperature_nonloc(temperature_eps, eL, eNL, iL, influence_function);
+                    integral += integrate_temperature_nonloc(eL, eNL, iL);
             }
-            f[2 * node + X] += p2 * integral[X];
-            f[2 * node + Y] += p2 * integral[Y];
+            for(const size_t comp : std::ranges::iota_view{0, 2})
+                f[2 * node + comp] += integral[comp];
         }
     }
 }

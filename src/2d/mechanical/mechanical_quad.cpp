@@ -6,7 +6,7 @@ namespace {
 template<class T>
 void save_raw_data(const std::string& path,
                    const nonlocal::mesh::mesh_2d<T>& msh,
-                   const nonlocal::mechanical::solution<T, int>& sol) {
+                   const nonlocal::mechanical::mechanical_solution_2d<T, int>& sol) {
     std::ofstream eps11{path + "/eps11.csv"},
             eps22{path + "/eps22.csv"},
             eps12{path + "/eps12.csv"},
@@ -14,12 +14,12 @@ void save_raw_data(const std::string& path,
             sigma22{path + "/sigma22.csv"},
             sigma12{path + "/sigma12.csv"};
     for(size_t i = 0; i < msh.nodes_count(); ++i) {
-        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[0][i] << std::endl;
-        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[1][i] << std::endl;
-        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strains()[2][i] << std::endl;
-        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [0][i] << std::endl;
-        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [1][i] << std::endl;
-        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress() [2][i] << std::endl;
+        eps11   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strain()[0][i] << std::endl;
+        eps22   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strain()[1][i] << std::endl;
+        eps12   << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.strain()[2][i] << std::endl;
+        sigma11 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress()[0][i] << std::endl;
+        sigma22 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress()[1][i] << std::endl;
+        sigma12 << msh.node(i)[0] << "," << msh.node(i)[1] << "," << sol.stress()[2][i] << std::endl;
     }
 }
 
@@ -58,27 +58,25 @@ int main(int argc, char** argv) {
             mesh_proxy->find_neighbours(r + 0.025, nonlocal::mesh::balancing_t::MEMORY);
         }
 
-        //nonlocal::structural::structural_solver<double, int, long long> fem_sol{mesh_proxy};
         nonlocal::mechanical::equation_parameters<double> parameters;
-        parameters.nu = 0.3;
-        parameters.E = 21;
-        parameters.p1 = p1;
-        parameters.type = nonlocal::mechanical::calc_t::PLANE_STRESS;
+        parameters.poissons_ratio = 0.3;
+        parameters.young_modulus = 420;
+        parameters.task = nonlocal::mechanical::task_2d_t::PLANE_STRESS;
 
-        parameters.thermoelasticity = true;
-        parameters.delta_temperature.resize(mesh->nodes_count());
-        parameters.alpha = 1;
-        for(size_t i = 0; i < mesh->nodes_count(); ++i) {
-            const auto& node = mesh->node(i);
-            parameters.delta_temperature[i] = node[0] + node[1];
-        }
+//        parameters.thermoelasticity = true;
+//        parameters.delta_temperature.resize(mesh->nodes_count());
+//        parameters.alpha = 1;
+//        for(size_t i = 0; i < mesh->nodes_count(); ++i) {
+//            const auto& node = mesh->node(i);
+//            parameters.delta_temperature[i] = node[0] + node[1];
+//        }
 
-        auto sol = nonlocal::mechanical::equilibrium_equation<double, int, int>(parameters, mesh_proxy,
+        auto sol = nonlocal::mechanical::equilibrium_equation<double, int, int64_t>(parameters, mesh_proxy,
             { // Граничные условия
                 {   "Right",
                     {
                     nonlocal::mechanical::boundary_condition_t::PRESSURE,
-                    [](const std::array<double, 2>& x) { return 0; },
+                    [](const std::array<double, 2>& x) { return 1; },
                     nonlocal::mechanical::boundary_condition_t::PRESSURE,
                     [](const std::array<double, 2>&) { return 0; }
                     }
@@ -96,7 +94,7 @@ int main(int argc, char** argv) {
                 {  "Left",
                     {
                         nonlocal::mechanical::boundary_condition_t::PRESSURE,
-                        [](const std::array<double, 2>& x) { return 0; },
+                        [](const std::array<double, 2>& x) { return -1; },
                         nonlocal::mechanical::boundary_condition_t::PRESSURE,
                         [](const std::array<double, 2>&) { return 0; }
                     }

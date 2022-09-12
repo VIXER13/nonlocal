@@ -28,8 +28,8 @@ int main(int argc, char** argv) {
         const double p1 = std::stod(argv[5]);
         const std::array<double, 2> r = {std::stod(argv[3]), std::stod(argv[4])};
         nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
+        eq_parameters.thermal_conductivity[0] = r[0] / std::max(r[0], r[1]);
+        eq_parameters.thermal_conductivity[1] = r[1] / std::max(r[0], r[1]);
 
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
         auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int32_t>>(mesh);
@@ -42,9 +42,8 @@ int main(int argc, char** argv) {
         }
 
         const auto temperature = read_solution<double>(argv[2], mesh->nodes_count());
-        nonlocal::thermal::solution<double, int32_t> T{mesh_proxy, eq_parameters,
-                                                       p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r},
-                                                       temperature};
+        nonlocal::thermal::heat_equation_solution_2d<double, int32_t> T{mesh_proxy, p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r},
+                                                                        eq_parameters, temperature};
         T.calc_flux();
         std::cout << "Energy = " << T.calc_energy() << std::endl;
         T.save_as_vtk("heat.vtk");

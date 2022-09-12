@@ -1,9 +1,0 @@
-cmake_minimum_required(VERSION 3.16)
-project(symdiff_functions)
-
-set(SYMDIFF_FUNCTIONS_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_library(symdiff_functions_lib INTERFACE)
-target_sources(symdiff_functions_lib INTERFACE symdiff_functions.hpp)
-target_include_directories(symdiff_functions_lib INTERFACE ${SYMDIFF_FUNCTIONS_LIB_DIR})
-target_link_libraries(symdiff_functions_lib INTERFACE functions_lib)

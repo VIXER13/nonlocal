@@ -5,7 +5,7 @@
 
 namespace nonlocal {
 
-enum axis : uint8_t {
+enum axis : size_t {
     X,
     Y,
     Z

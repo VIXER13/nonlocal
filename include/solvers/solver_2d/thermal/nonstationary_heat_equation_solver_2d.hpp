@@ -34,7 +34,7 @@ public:
                  const Influence_Function& influence_function);
 
     template<class Right_Part>
-    void calc_step(const std::unordered_map<std::string, T>& alpha,
+    void calc_step(const std::unordered_map<std::string, T>& heat_transfer,
                    const std::unordered_map<std::string, nonstationary_boundary_2d_t<boundary_condition_t, T, 1>>& boundary_condition,
                    const Right_Part& right_part);
 };
@@ -63,9 +63,9 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const eq
                                                                         const Influence_Function& influence_function) {
     const auto& mesh = _conductivity.mesh_proxy()->mesh();
     const std::vector<bool> is_inner = inner_nodes(mesh, boundary_types);
-    _conductivity.template calc_matrix<Material>(equation_param.lambda, is_inner, p1, influence_function);
-    convection_condition_matrix_part_2d(_conductivity.matrix_inner(), *_conductivity.mesh_proxy(), boundary_types, equation_param.alpha);
-    _capacity.calc_matrix(equation_param.c, equation_param.rho, is_inner);
+    _conductivity.template calc_matrix<Material>(equation_param.thermal_conductivity, is_inner, p1, influence_function);
+    convection_condition_matrix_part_2d(_conductivity.matrix_inner(), *_conductivity.mesh_proxy(), boundary_types, equation_param.heat_transfer);
+    _capacity.calc_matrix(equation_param.heat_capacity, equation_param.density, is_inner);
 
     _conductivity.matrix_inner() *= _tau;
     _conductivity.matrix_bound() *= _tau;
@@ -83,7 +83,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const eq
 template<class T, class I, class Matrix_Index>
 template<class Right_Part>
 void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(
-    const std::unordered_map<std::string, T>& alpha,
+    const std::unordered_map<std::string, T>& heat_transfer,
     const std::unordered_map<std::string, nonstationary_boundary_2d_t<boundary_condition_t, T, 1>>& boundary_condition,
     const Right_Part& right_part) {
     _temperature_prev.swap(_temperature_curr);
@@ -92,7 +92,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(
     const auto& mesh_proxy = _conductivity.mesh_proxy();
     const auto stationary_bound = to_stationary(boundary_condition, _time);
     boundary_condition_second_kind_2d(_right_part, *mesh_proxy, stationary_bound);
-    convection_condition_right_part_2d(_right_part, *mesh_proxy, stationary_bound, alpha);
+    convection_condition_right_part_2d(_right_part, *mesh_proxy, stationary_bound, heat_transfer);
     integrate_right_part<1>(_right_part, *mesh_proxy, [&right_part, t = _time](const std::array<T, 2>& x) { return right_part(t, x); });
     _right_part *= _tau;
     _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;

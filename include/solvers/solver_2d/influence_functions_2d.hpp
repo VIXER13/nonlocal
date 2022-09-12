@@ -14,13 +14,13 @@ class _superellipse_region {
 
     template<uintmax_t N, class T>
     static T norm_pow(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
-        using metamath::function::power_u;
+        using metamath::functions::power;
         if constexpr (N % 2)
-            return power_u<N>(std::abs(x[0] - y[0]) / r[0]) +
-                   power_u<N>(std::abs(x[1] - y[1]) / r[1]);
+            return power<N>(std::abs(x[0] - y[0]) / r[0]) +
+                   power<N>(std::abs(x[1] - y[1]) / r[1]);
         else
-            return power_u<N>((x[0] - y[0]) / r[0]) +
-                   power_u<N>((x[1] - y[1]) / r[1]);
+            return power<N>((x[0] - y[0]) / r[0]) +
+                   power<N>((x[1] - y[1]) / r[1]);
     }
 
 public:
@@ -48,7 +48,7 @@ public:
     void set_radius(const T& r) noexcept { set_radius(std::array{r, r}); }
     void set_radius(const std::array<T, 2>& r) noexcept {
         _r = r;
-        using metamath::function::power;
+        using metamath::functions::power;
         _norm = std::tgamma(1 + T{2} / N) / (4 * r[0] * r[1] * power<2>(std::tgamma(1 + T{1} / N)));
     }
 
@@ -84,11 +84,11 @@ public:
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
         const T h = _superellipse_region::norm_pow<N>(x, y, _r);
-        using metamath::function::power_u;
+        using metamath::functions::power;
         if constexpr (P % N) // TODO: Optimize std::pow
-            return h < 1 ? _norm * power_u<Q>(1 - std::pow(h, T{P} / N)) : 0;
+            return h < 1 ? _norm * power<Q>(1 - std::pow(h, T{P} / N)) : 0;
         else
-            return h < 1 ? _norm * power_u<Q>(1 - power_u<P / N>(h)) : 0;
+            return h < 1 ? _norm * power<Q>(1 - power<P / N>(h)) : 0;
     }
 };
 
@@ -113,7 +113,7 @@ public:
     T norm() const noexcept { return _norm; }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
-        using metamath::function::power;
+        using metamath::functions::power;
         return _norm * std::exp(_disp_mul[0] * power<2>(x[0] - y[0]) +
                                 _disp_mul[1] * power<2>(x[1] - y[1]));
     }

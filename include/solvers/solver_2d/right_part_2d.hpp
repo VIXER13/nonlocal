@@ -46,7 +46,7 @@ void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 
     f -= K_bound * x;
 
-    using namespace metamath::function;
+    using namespace metamath::functions;
     const std::array<size_t, 2> first_last = {DoF * mesh_proxy.first_node(), DoF * mesh_proxy.last_node()};
     boundary_nodes_run(mesh_proxy.mesh(),
         [&mesh = mesh_proxy.mesh(), &boundary_condition, &x, &f, &first_last](const std::string& b, const size_t el, const size_t i) {
@@ -67,7 +67,7 @@ T integrate_boundary_gradient(const mesh::mesh_proxy<T, I>& mesh_proxy,
     auto qcoord = mesh_proxy.quad_coord(b, e);
     auto J      = mesh_proxy.jacobi_matrix(b, e);
     for(size_t q = 0; q < be->qnodes_count(); ++q, ++qcoord, ++J)
-        integral += be->weight(q) * be->qN(i, q) * boundary_gradient(*qcoord) * mesh_proxy.jacobian(*J);
+        integral += be->weight(q) * be->qN(i, q) * boundary_gradient(*qcoord) * mesh::jacobian(*J);
     return integral;
 }
 
@@ -95,8 +95,8 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const mesh::me
         auto J = mesh_proxy.jacobi_matrix(e);
         auto qcoord = mesh_proxy.quad_coord(e);
         for(size_t q = 0; q < el->qnodes_count(); ++q, ++J) {
-            using namespace metamath::function;
-            integral += el->weight(q) * el->qN(i, q) * mesh_proxy.jacobian(*J) * func(*qcoord);
+            using namespace metamath::functions;
+            integral += el->weight(q) * el->qN(i, q) * mesh::jacobian(*J) * func(*qcoord);
         }
         return integral;
     };
@@ -104,7 +104,7 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& f, const mesh::me
 #pragma omp parallel for default(none) shared(f, mesh_proxy, integrate_function)
     for(size_t node = mesh_proxy.first_node(); node < mesh_proxy.last_node(); ++node)
         for(const I e : mesh_proxy.nodes_elements_map(node)) {
-            const size_t i = mesh_proxy.global_to_local_numbering(e).find(node)->second;
+            const size_t i = mesh_proxy.global_to_local_numbering(e, node);
             const std::array<T, DoF> integral = {integrate_function(e, i)};
             for(const size_t comp : std::ranges::iota_view(size_t{0}, DoF))
                 f[DoF * (node - mesh_proxy.first_node()) + comp] += integral[comp];

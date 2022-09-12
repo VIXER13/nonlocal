@@ -4,7 +4,7 @@
 namespace {
 
 template<class T, class I>
-void logger(const nonlocal::thermal::solution<T, I>& solution, const std::string& path, const uintmax_t step) {
+void logger(const nonlocal::thermal::heat_equation_solution_2d<T, I>& solution, const std::string& path, const uintmax_t step) {
     std::cout << "step = " << step << std::endl;
     std::cout << "Energy = " << solution.calc_energy() << std::endl;
     solution.save_as_vtk(path + '/' + std::to_string(step) + ".vtk");
@@ -38,10 +38,10 @@ int main(int argc, char** argv) {
         static const nonlocal::influence::polynomial_2d<double, 2, 1> influence_function(r);
 
         nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
-        eq_parameters.rho = 1;
-        eq_parameters.c = 1;
+        eq_parameters.thermal_conductivity[0] = r[0] / std::max(r[0], r[1]);
+        eq_parameters.thermal_conductivity[1] = r[1] / std::max(r[0], r[1]);
+        eq_parameters.density = 1;
+        eq_parameters.heat_capacity = 1;
         const double tau = 0.01;
 
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
@@ -74,11 +74,11 @@ int main(int argc, char** argv) {
         solver.compute(eq_parameters, nonlocal::boundary_type(boundary_conditions),
                        [](const std::array<double, 2>&) constexpr noexcept { return 0; },
                        p1, influence_function);
-        logger(nonlocal::thermal::solution<double, int>{mesh_proxy}, argv[5], 0);
+        logger(nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy}, argv[5], 0);
         for(const uintmax_t step : std::views::iota(1, 101)) {
-            solver.calc_step(eq_parameters.alpha, boundary_conditions,
+            solver.calc_step(eq_parameters.heat_transfer, boundary_conditions,
                 [](const double t, const std::array<double, 2>& x) constexpr noexcept { return 0; });
-            auto solution = nonlocal::thermal::solution{mesh_proxy, eq_parameters, p1, influence_function, solver.temperature()};
+            auto solution = nonlocal::thermal::heat_equation_solution_2d<double, int32_t>{mesh_proxy, p1, influence_function, eq_parameters, solver.temperature()};
             solution.calc_flux();
             logger(solution, argv[5], step);
         }

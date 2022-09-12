@@ -49,38 +49,9 @@ class mesh_2d final {
     std::vector<std::vector<I>>   _elements;
     std::vector<element_2d_t>     _elements_2d_type;
 
-    std::vector<std::string>                                          _boundaries_names;
+    std::vector<std::string>                                     _boundaries_names;
     std::unordered_map<std::string, std::vector<std::vector<I>>> _boundaries;
     std::unordered_map<std::string, std::vector<element_1d_t>>   _elements_1d_type;
-
-    template<class U, template<class> class Quadrature_Type>
-    using quadrature = metamath::finite_element::quadrature_1d<U, Quadrature_Type>;
-    template<class U>
-    using gauss1 = metamath::finite_element::gauss1<U>;
-    template<class U>
-    using gauss2 = metamath::finite_element::gauss2<U>;
-    template<class U>
-    using gauss3 = metamath::finite_element::gauss3<U>;
-
-    template<class U, template<class> class Element_Type>
-    using element_1d_integrate = metamath::finite_element::element_1d_integrate<U, Element_Type>;
-    template<class U>
-    using linear = metamath::finite_element::linear<U>;
-    template<class U>
-    using quadratic = metamath::finite_element::quadratic<U>;
-
-    template<class U, template<class> class Element_Type>
-    using element_2d_integrate = metamath::finite_element::element_2d_integrate<U, Element_Type>;
-    template<class U>
-    using triangle = metamath::finite_element::triangle<U>;
-    template<class U>
-    using quadratic_triangle = metamath::finite_element::quadratic_triangle<U>;
-    template<class U>
-    using bilinear = metamath::finite_element::bilinear<U>;
-    template<class U>
-    using quadratic_serendipity = metamath::finite_element::quadratic_serendipity<U>;
-    template<class U>
-    using quadratic_lagrange = metamath::finite_element::quadratic_lagrange<U>;
 
     template<size_t... K, class Stream>
     void read_element(Stream& mesh_file, std::vector<I>& element);
@@ -95,17 +66,36 @@ public:
     using Finite_Element_2D_Ptr = std::unique_ptr<metamath::finite_element::element_2d_integrate_base<T>>;
 
 private:
+    template<class U, template<class, auto...> class Quadrature_Type, auto... Args>
+    using quadrature = metamath::finite_element::quadrature_1d<U, Quadrature_Type, Args...>;
+    template<class U, size_t N>
+    using gauss = metamath::finite_element::gauss<U, N>;
+
+    template<class U, template<class, auto...> class Element_Type, auto... Args>
+    using element_1d_integrate = metamath::finite_element::element_1d_integrate<U, Element_Type, Args...>;
+    template<class U, size_t N>
+    using lagrangian_element_1d = metamath::finite_element::lagrangian_element_1d<U, N>;
+
+    template<class U, template<class, auto...> class Element_Type, auto... Args>
+    using element_2d_integrate = metamath::finite_element::element_2d_integrate<U, Element_Type, Args...>;
+    template<class U, size_t Order>
+    using triangle = metamath::finite_element::triangle<U, Order>;
+    template<class U, size_t Order>
+    using serendipity = metamath::finite_element::serendipity<U, Order>;
+    template<class U, size_t N, size_t M>
+    using lagrangian_element_2d = metamath::finite_element::lagrangian_element_2d<U, N, M>;
+
     static std::array<Finite_Element_1D_Ptr, 2> make_default_1d_elements() {
-        return { std::make_unique<element_1d_integrate<T,    linear>>(quadrature<T, gauss1>{}),
-                 std::make_unique<element_1d_integrate<T, quadratic>>(quadrature<T, gauss2>{}) };
+        return { std::make_unique<element_1d_integrate<T, lagrangian_element_1d, 1>>(quadrature<T, gauss, 1>{}),
+                 std::make_unique<element_1d_integrate<T, lagrangian_element_1d, 2>>(quadrature<T, gauss, 2>{}) };
     }
 
     static std::array<Finite_Element_2D_Ptr, 5> make_default_2d_elements() {
-        return { std::make_unique<element_2d_integrate<T,              triangle>>(quadrature<T, gauss1>{}),
-                 std::make_unique<element_2d_integrate<T,    quadratic_triangle>>(quadrature<T, gauss2>{}),
-                 std::make_unique<element_2d_integrate<T,              bilinear>>(quadrature<T, gauss2>{}),
-                 std::make_unique<element_2d_integrate<T, quadratic_serendipity>>(quadrature<T, gauss3>{}),
-                 std::make_unique<element_2d_integrate<T,    quadratic_lagrange>>(quadrature<T, gauss3>{}) };
+        return { std::make_unique<element_2d_integrate<T, triangle, 1>>(quadrature<T, gauss, 1>{}),
+                 std::make_unique<element_2d_integrate<T, triangle, 2>>(quadrature<T, gauss, 2>{}),
+                 std::make_unique<element_2d_integrate<T, serendipity, 1>>(quadrature<T, gauss, 2>{}),
+                 std::make_unique<element_2d_integrate<T, serendipity, 2>>(quadrature<T, gauss, 3>{}),
+                 std::make_unique<element_2d_integrate<T, lagrangian_element_2d, 2, 2>>(quadrature<T, gauss, 3>{}) };
     }
 
     // Наиболее употребительные одномерные и двумерные элементы

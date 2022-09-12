@@ -1,9 +1,9 @@
 #ifndef METAMATH_HPP
 #define METAMATH_HPP
 
-#include "constants/constants.hpp"
+#include "utils/metamath_utils.hpp"
 #include "functions/functions.hpp"
-#include "symdiff/symdiff.hpp"
-#include "finite_element/finite_element.hpp"
+#include "symbolic/symbolic.hpp"
+#include "finite_elements/finite_elements.hpp"
 
 #endif

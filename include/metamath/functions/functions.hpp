@@ -1,11 +1,9 @@
-#ifndef METAMATHTEST_FUNCTIONS_HPP
-#define METAMATHTEST_FUNCTIONS_HPP
+#ifndef METAMATH_FUNCTIONS_HPP
+#define METAMATH_FUNCTIONS_HPP
 
+#include "distance.hpp"
+#include "factorial.hpp"
 #include "operators.hpp"
 #include "power.hpp"
-//#include "hermite.hpp"
-//#include "laguerre.hpp"
-//#include "legendre.hpp"
-//#include "chebyshev.hpp"
 
 #endif

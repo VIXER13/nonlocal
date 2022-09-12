@@ -40,10 +40,10 @@ int main(const int argc, const char *const *const argv) {
         mesh->calc_neighbours_count(r);
         const auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<double, int>(
             equation_parameters, mesh,
-            {   nonlocal::thermal::boundary_condition_t::TEMPERATURE,  1.,
-                nonlocal::thermal::boundary_condition_t::TEMPERATURE, -1.,
+            {   nonlocal::thermal::boundary_condition_t::TEMPERATURE, 0,
+                nonlocal::thermal::boundary_condition_t::TEMPERATURE, 1.,
             },
-            [](const double x) constexpr noexcept { return 0.; },
+            [](const double x) constexpr noexcept { return 2; },
             p1, nonlocal::influence::polynomial_1d<double, 2, 1>{r}
         );
         std::cout << "integral = " << nonlocal::utils::integrate_solution(*mesh, solution) << std::endl;

@@ -19,9 +19,9 @@ int main(int argc, char** argv) {
         const double p1 = std::stod(argv[4]);
         const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.lambda[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.lambda[1] = r[1] / std::max(r[0], r[1]);
-        eq_parameters.alpha = {
+        eq_parameters.thermal_conductivity[0] = r[0] / std::max(r[0], r[1]);
+        eq_parameters.thermal_conductivity[1] = r[1] / std::max(r[0], r[1]);
+        eq_parameters.heat_transfer = {
             {"Right", 1},
             {"Left",  1}
         };

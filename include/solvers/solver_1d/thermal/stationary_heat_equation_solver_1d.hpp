@@ -4,7 +4,6 @@
 #include "right_part_1d.hpp"
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "convection_condition_1d.hpp"
-#include "conjugate_gradient.hpp"
 #include <iostream>
 
 namespace nonlocal::thermal {
@@ -62,20 +61,8 @@ std::vector<T> stationary_heat_equation_solver_1d(const equation_parameters_1d<T
         f[f.size()-1] = equation_param.integral;
 
     const double time = omp_get_wtime();
-    //MPI_utils::MPI_ranges ranges;
-    //ranges.range().back() = mesh->nodes_count();
-    //Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
-    const slae::conjugate_gradient<T, I> solver{conductivity.matrix_inner()};
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
-    if(x0.size() == f.size()) {
-        std::cout << "x0.size() == f.size()" << std::endl;
-        temperature = solver.solve(f, std::optional{x0});
-        //temperature = solver.template solveWithGuess(f, x0);
-    } else {
-        std::cout << "x0.size() != f.size()" << std::endl;
-        temperature = solver.solve(f);
-    }
-
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
     std::cout << "SLAE: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations: " << solver.iterations() << std::endl;
     return std::vector<T>{temperature.cbegin(), std::next(temperature.cbegin(), mesh->nodes_count())};
