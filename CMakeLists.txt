@@ -24,6 +24,7 @@ add_compile_options(-O2)
 #libraries
 add_subdirectory(include/MPI_utils)
 add_subdirectory(include/metamath)
+add_subdirectory(include/constants)
 add_subdirectory(include/mesh/mesh_1d)
 add_subdirectory(include/mesh/mesh_2d)
 add_subdirectory(include/solvers/slae)

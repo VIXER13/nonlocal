@@ -104,6 +104,7 @@ public:
     const std::vector<I>&                 neighbors                (const size_t element)                     const;
 
     void find_neighbours(const T r, const balancing_t balancing);
+    void renumber_nodes(const std::vector<I>& permutation);
 };
 
 template<class T, class I>
@@ -482,6 +483,13 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
                 _elements_neighbors[e].shrink_to_fit();
             }
     }
+}
+
+template<class T, class I>
+void mesh_proxy<T, I>::renumber_nodes(const std::vector<I>& permutation) {
+    _mesh->renumber_nodes(permutation);
+    _nodes_elements_map = node_elements_map_init(*_mesh);
+    _global_to_local_numbering = global_to_local_numbering_init(*_mesh);
 }
 
 }

@@ -5,5 +5,6 @@
 #include "save_results.hpp"
 #include "su2_parser.hpp"
 #include "mehs_2d_utils.hpp"
+#include "cuthill_mckee.hpp"
 
 #endif

@@ -134,6 +134,8 @@ public:
     Finite_Element_2D_Ptr& element_2d(const element_2d_t type) noexcept;
     Finite_Element_2D_Ptr& element_2d(const size_t number) noexcept;
 
+    void renumber_nodes(const std::vector<I>& permutation);
+
     void save_as_vtk(std::ofstream& mesh_file) const;
 };
 
@@ -259,6 +261,23 @@ typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const e
 template<class T, class I>
 typename mesh_2d<T, I>::Finite_Element_2D_Ptr& mesh_2d<T, I>::element_2d(const size_t number) noexcept {
     return element_2d(element_2d_type(number));
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::renumber_nodes(const std::vector<I>& permutation) {
+    std::vector<std::array<T, 2>> nodes(_nodes.size());
+    for(size_t i = 0; i < nodes.size(); ++i)
+        nodes[permutation[i]] = _nodes[i];
+    _nodes = std::move(nodes);
+
+    for(std::vector<I>& element : _elements)
+        for(I& node : element)
+            node = permutation[node];
+
+    for(auto& [_, boundary_group] : _boundaries)
+        for(std::vector<I>& element : boundary_group)
+            for(I& node : element)
+                node = permutation[node];
 }
 
 }

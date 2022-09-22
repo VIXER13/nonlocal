@@ -1,15 +1,9 @@
 #ifndef NONLOCAL_SOLVERS_CONSTANTS_HPP
 #define NONLOCAL_SOLVERS_CONSTANTS_HPP
 
-#include <cstdint>
+#include "nonlocal_constants.hpp"
 
 namespace nonlocal {
-
-enum axis : size_t {
-    X,
-    Y,
-    Z
-};
 
 enum class boundary_condition_t : uint8_t {
     FIRST_KIND,
@@ -23,14 +17,6 @@ enum class material_t : uint8_t {
     ORTHOTROPIC,
     ANISOTROPIC
 };
-
-enum class theory_t : uint8_t {
-    LOCAL,
-    NONLOCAL
-};
-
-template<class T>
-inline constexpr T MAX_NONLOCAL_WEIGHT = T{0.999};
 
 namespace thermal {
 
