@@ -1,8 +1,6 @@
 #ifndef METAMATH_POWER_HPP
 #define METAMATH_POWER_HPP
 
-#include <concepts>
-#include <cinttypes>
 #include <type_traits>
 
 namespace metamath::functions {

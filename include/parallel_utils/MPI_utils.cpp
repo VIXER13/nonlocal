@@ -1,6 +1,6 @@
 #include "MPI_utils.hpp"
 
-namespace MPI_utils {
+namespace parallel_utils {
 
 int MPI_rank() noexcept {
     int rank = 0;

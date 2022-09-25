@@ -15,7 +15,7 @@ template<class T, class I>
 bool is_solvable_neumann_problem(const mesh::mesh_proxy<T, I>& mesh_proxy, const Eigen::Matrix<T, Eigen::Dynamic, 1>& f) {
     const T sum = std::accumulate(std::next(f.begin(), mesh_proxy.first_node()),
                                   std::next(f.begin(), mesh_proxy.last_node ()), T{0});
-    return std::abs(MPI_utils::reduce(sum)) < NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>;
+    return std::abs(parallel_utils::reduce(sum)) < NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>;
 }
 
 template<class T, class I, class Matrix_Index, material_t Material, class Right_Part, class Influence_Function>
@@ -48,8 +48,11 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const equatio
     integrate_right_part<1>(f, *mesh_proxy, right_part);
     boundary_condition_first_kind_2d(f, *mesh_proxy, boundary_condition, conductivity.matrix_bound());
 
+    int threads_count = 1;
+#pragma omp parallel
+{   threads_count = omp_get_num_threads(); }
     time = omp_get_wtime();
-    const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
+    const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner(), {.threads_count = threads_count}};
     const auto temperature = solver.solve(f);
     std::cout << "Slae solve time: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations: " << solver.iterations() << std::endl;

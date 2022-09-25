@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
 
         sol.calc_strain_and_stress();
 
-        if (MPI_utils::MPI_rank() == 0) {
+        if (parallel_utils::MPI_rank() == 0) {
             std::cout << "Energy = " << sol.calc_energy() << std::endl;
             using namespace std::string_literals;
             sol.save_as_vtk(argv[4] + "/structural.vtk"s);

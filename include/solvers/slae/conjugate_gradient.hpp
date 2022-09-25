@@ -1,8 +1,9 @@
 #ifndef NONLOCAL_CONJUGATE_GRADIENT_HPP
 #define NONLOCAL_CONJUGATE_GRADIENT_HPP
 
+#include "OMP_utils.hpp"
+
 #include <eigen3/Eigen/Sparse>
-#include <omp.h>
 #include <iostream>
 #include <optional>
 
@@ -10,9 +11,9 @@ namespace nonlocal::slae {
 
 template<class T>
 struct conjugate_gradient_parameters final {
-    T tolerance = 1e-15;
+    T tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
     uintmax_t max_iterations = 10000;
-    int threads_count = omp_get_num_procs();
+    int threads_count = parallel_utils::threads_count();
 };
 
 template<class T, class I>
@@ -68,7 +69,7 @@ std::vector<std::array<size_t, 2>> conjugate_gradient<T, I>::distribute_rows(con
     threads_ranges.front().front() = 0;
     for(size_t row = 0, thread_sum = 0, curr_thread = 0; row < size_t(A.rows()); ++row) {
         thread_sum += A.outerIndexPtr()[row + 1] - A.outerIndexPtr()[row];
-        if (thread_sum > mean_count) {
+        if (thread_sum > mean_count || row == A.rows()-1) {
             thread_sum = 0;
             threads_ranges[curr_thread].back() = row;
             ++curr_thread;

@@ -114,10 +114,10 @@ template<class T, class I>
 template<typename mechanical_solution_2d<T, I>::collect Type>
 void mechanical_solution_2d<T, I>::collect_solution() {
     for(std::vector<T>& strain : _strain)
-        strain = MPI_utils::all_to_all<T>(strain, _base::mesh_proxy()->ranges());
+        strain = parallel_utils::all_to_all<T>(strain, _base::mesh_proxy()->ranges());
     if constexpr (Type == collect::WITH_STRESS)
         for(std::vector<T>& stress : _stress)
-            stress = MPI_utils::all_to_all<T>(stress, _base::mesh_proxy()->ranges());
+            stress = parallel_utils::all_to_all<T>(stress, _base::mesh_proxy()->ranges());
 }
 
 template<class T, class I>

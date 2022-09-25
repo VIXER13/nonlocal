@@ -26,11 +26,11 @@ int main(int argc, char** argv) {
             {"Left",  1}
         };
 
-        const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double>>(argv[1]);
-        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int32_t>>(mesh);
+        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double, int64_t>>(argv[1]);
+        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int64_t>>(mesh);
         if (p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>) {
             const double time = omp_get_wtime();
-            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.015, nonlocal::mesh::balancing_t::MEMORY);
+            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.005, nonlocal::mesh::balancing_t::MEMORY);
             std::cout << "find neighbours: " << omp_get_wtime() - time << std::endl;
             double mean = 0;
             for(const size_t e : std::views::iota(size_t{0}, mesh->elements_count()))
@@ -41,24 +41,24 @@ int main(int argc, char** argv) {
         const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
             boundary_condition = {
                 {   "Right",
-                    {   nonlocal::thermal::boundary_condition_t::FLUX,
+                    {   nonlocal::thermal::boundary_condition_t::TEMPERATURE,
                         [](const std::array<double, 2>& x) { return 1.; },
                     }
                 },
                 {   "Left",
-                    {   nonlocal::thermal::boundary_condition_t::FLUX,
-                        [](const std::array<double, 2>& x) { return -1.; },
+                    {   nonlocal::thermal::boundary_condition_t::TEMPERATURE,
+                        [](const std::array<double, 2>& x) { return -1; },
                     }
                 }
             };
 
-        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int32_t, int32_t>(
+        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int64_t, int64_t>(
             eq_parameters, mesh_proxy, boundary_condition,
             [](const std::array<double, 2>& x) { return 0; }, // Правая часть
             p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r}
         );
 
-        if (MPI_utils::MPI_rank() == 0) {
+        if (parallel_utils::MPI_rank() == 0) {
             solution.calc_flux();
             std::cout << "Energy = " << solution.calc_energy() << std::endl;
             solution.save_as_vtk("heat.vtk");

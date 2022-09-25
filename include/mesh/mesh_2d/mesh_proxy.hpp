@@ -40,7 +40,7 @@ class mesh_proxy final {
                                                                         _jacobi_matrices_bound; // Матрицы Якоби на границе.
     std::vector<T>                              _elements_ares;
 
-    MPI_utils::MPI_ranges                       _ranges;                    // С какого и по какой узлы распределена обработка данных между процессами
+    parallel_utils::MPI_ranges                  _ranges;                    // С какого и по какой узлы распределена обработка данных между процессами
 
     std::vector<std::vector<I>>                 _elements_neighbors;        // Массив с номерами ближайших соседей.
 
@@ -98,7 +98,7 @@ public:
     dNdX_iterator                         dNdX                     (const size_t element, const size_t i)     const;
     quad_coord_bound_iterator             quad_coord               (const std::string_view bound, const size_t element) const;
     jacobi_matrix_bound_iterator          jacobi_matrix            (const std::string_view bound, const size_t element) const;
-    MPI_utils::MPI_ranges                 ranges                   ()                                         const;
+    parallel_utils::MPI_ranges            ranges                   ()                                         const;
     size_t                                first_node               ()                                         const;
     size_t                                last_node                ()                                         const;
     const std::vector<I>&                 neighbors                (const size_t element)                     const;
@@ -186,7 +186,7 @@ typename mesh_proxy<T, I>::dNdX_iterator mesh_proxy<T, I>::dNdX(const size_t ele
 }
 
 template<class T, class I>
-MPI_utils::MPI_ranges mesh_proxy<T, I>::ranges() const { return _ranges; }
+parallel_utils::MPI_ranges mesh_proxy<T, I>::ranges() const { return _ranges; }
 
 template<class T, class I>
 size_t mesh_proxy<T, I>::first_node() const { return _ranges.range().front(); }
@@ -378,7 +378,7 @@ std::unordered_map<std::string_view, std::vector<std::array<T, 2>>> mesh_proxy<T
 
 template<class T, class I>
 void mesh_proxy<T, I>::first_last_node_init() {
-    for(size_t rank = 0, size = MPI_utils::MPI_size(); rank < size; ++rank)
+    for(size_t rank = 0, size = parallel_utils::MPI_size(); rank < size; ++rank)
         _ranges.range(rank) = { mesh().nodes_count() / size *  rank,
                                 mesh().nodes_count() / size * (rank+1) + (rank == size-1) * mesh().nodes_count() % size };
 }
@@ -424,7 +424,7 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
             elements.insert(e);
     find_elements_neighbors(_elements_neighbors, *_mesh, centres, elements, r);
 
-    if (MPI_utils::MPI_size() > 1 && balancing != balancing_t::NO) {
+    if (parallel_utils::MPI_size() > 1 && balancing != balancing_t::NO) {
         std::vector<int> data_count_per_nodes(mesh().nodes_count(), 0);
         switch(balancing) {
             case balancing_t::MEMORY: {
@@ -458,10 +458,10 @@ void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
                 throw std::invalid_argument{"Unknown balancing type"};
         }
 
-        data_count_per_nodes = MPI_utils::all_to_all<int>(data_count_per_nodes, _ranges);
+        data_count_per_nodes = parallel_utils::all_to_all<int>(data_count_per_nodes, _ranges);
 
         size_t sum = 0, curr_rank = 0;
-        const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / MPI_utils::MPI_size();
+        const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / parallel_utils::MPI_size();
         for(size_t node = 0; node < data_count_per_nodes.size(); ++node) {
             sum += data_count_per_nodes[node];
             if (sum > mean) {

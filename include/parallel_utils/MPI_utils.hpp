@@ -7,7 +7,7 @@
     #include <mpi.h>
 #endif
 
-namespace MPI_utils {
+namespace parallel_utils {
 
 int MPI_rank() noexcept;
 int MPI_size() noexcept;
@@ -25,6 +25,7 @@ public:
 
 template<class U, class Vector>
 Vector all_to_all(const Vector& sendbuf, const MPI_ranges& ranges) {
+#if MPI_USE
     std::vector<int> sendcounts(MPI_size(),        sizeof(U) * (ranges.range().back() - ranges.range().front())),
                      sdispls   (sendcounts.size(), sizeof(U) *  ranges.range().front()),
                      recvcounts(sendcounts.size()), rdispls(sendcounts.size());
@@ -32,7 +33,6 @@ Vector all_to_all(const Vector& sendbuf, const MPI_ranges& ranges) {
         recvcounts[i] = sizeof(U) * (ranges.range(i).back() - ranges.range(i).front());
         rdispls[i]    = sizeof(U) *  ranges.range(i).front();
     }
-#if MPI_USE
     Vector recvbuf(sendbuf.size()); // for old version mpich, when strict sendbuf and recvbuf don't support
     // double cast also for old mpich version
     MPI_Alltoallv(const_cast<void*>(static_cast<const void*>(sendbuf.data())), sendcounts.data(), sdispls.data(), MPI_BYTE,

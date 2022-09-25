@@ -139,7 +139,7 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const declt
                                                                      const bool is_neumann) {
     const theory_t theory = p1 < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
     const size_t rows = _base::mesh_proxy()->last_node() - _base::mesh_proxy()->first_node() +
-                        (is_neumann && MPI_utils::MPI_rank() == MPI_utils::MPI_size() - 1),
+                        (is_neumann && parallel_utils::MPI_rank() == parallel_utils::MPI_size() - 1),
                  cols = _base::mesh().nodes_count() + is_neumann;
     _base::matrix_inner().resize(rows, cols);
     _base::matrix_bound().resize(rows, cols);

@@ -154,9 +154,6 @@ class _cuthill_mckee final {
                     permutation[neighbour] = curr_index++;
             }
             std::swap(curr_layer, next_layer);
-            for(const I i : permutation)
-                std::cout << i << ' ';
-            std::cout << std::endl;
         }
         return permutation;
     }

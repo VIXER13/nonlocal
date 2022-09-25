@@ -1,10 +1,10 @@
 #ifndef NONLOCAL_INFLUENCE_FUNCTIONS_2D_HPP
 #define NONLOCAL_INFLUENCE_FUNCTIONS_2D_HPP
 
-// В данном модуле описаны различные возмоные функции виляния
-
 #include "power.hpp"
+
 #include <array>
+#include <cinttypes>
 #include <cmath>
 
 namespace nonlocal::influence {

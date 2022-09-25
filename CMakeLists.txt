@@ -22,7 +22,7 @@ set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-O2)
 
 #libraries
-add_subdirectory(include/MPI_utils)
+add_subdirectory(include/parallel_utils)
 add_subdirectory(include/metamath)
 add_subdirectory(include/constants)
 add_subdirectory(include/mesh/mesh_1d)
