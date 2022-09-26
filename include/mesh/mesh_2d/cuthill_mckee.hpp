@@ -20,6 +20,10 @@ class _cuthill_mckee final {
         explicit initializer_base(const size_t size)
             : _is_include(size, false) {}
 
+        size_t nodes_count() const noexcept {
+            return _is_include.size();
+        }
+
         bool check_neighbour(const size_t node, const size_t neighbour) {
             const bool result = node != neighbour && !_is_include[neighbour];
             if (result)
@@ -35,15 +39,12 @@ class _cuthill_mckee final {
 
     template<class I>
     class shifts_initializer final : public initializer_base {
-        const size_t _size = 0;
-
     public:
         explicit shifts_initializer(const size_t size)
-            : initializer_base{size}
-            , _size{size} {}
+            : initializer_base{size} {}
 
         std::vector<I> init_data_vector() const {
-            return std::vector<I>(_size + 1, 0);
+            return std::vector<I>(nodes_count() + 1, 0);
         }
 
         void add(std::vector<I>& shifts, const size_t node, const size_t neighbour) {
@@ -146,12 +147,12 @@ class _cuthill_mckee final {
             for(const I node : curr_layer) {
                 std::multimap<I, I> neighbours;
                 for(I shift = graph.shifts[node]; shift < graph.shifts[node+1]; ++shift)
-                    if (const I neighbour_node = graph.indices[shift]; permutation[neighbour_node] == -1) {
-                        next_layer.emplace(neighbour_node);
+                    if (const I neighbour_node = graph.indices[shift]; permutation[neighbour_node] == -1)
                         neighbours.emplace(graph.neighbours_count(neighbour_node), neighbour_node);
-                    }
-                for(const auto [_, neighbour] : neighbours)
+                for(const auto [_, neighbour] : neighbours) {
+                    next_layer.emplace(neighbour);
                     permutation[neighbour] = curr_index++;
+                }
             }
             std::swap(curr_layer, next_layer);
         }
