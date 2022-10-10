@@ -113,7 +113,12 @@ int main(int argc, char** argv) {
             std::cout << "Average neighbours = " << mean / mesh->nodes_count() << std::endl;
         }
 
-        const std::vector<double> temperature(mesh->nodes_count(), 1);
+        //const std::vector<double> temperature(mesh->nodes_count(), 1000.);
+        std::vector<double> temperature(mesh->nodes_count());
+        for(size_t i = 0; i < temperature.size(); ++i)
+            temperature[i] = mesh->node(i)[0];
+
+
         auto mechanical_sol = mechanic(mesh_proxy, temperature, p1, bell);
         mechanical_sol.calc_strain_and_stress();
 

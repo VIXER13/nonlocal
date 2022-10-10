@@ -12,10 +12,10 @@ nonlocal::thermal::heat_equation_solution_2d<T, I> thermal(
     const T p1,
     const Influence_Function& influence_function) {
     static constexpr T r = T{1};
-    static constexpr T A = T{100};
+    static constexpr T A = T{1000};
     nonlocal::thermal::equation_parameters_2d<T, nonlocal::material_t::ISOTROPIC> params;
     params.thermal_conductivity = 1;
-    params.integral = 100 * metamath::functions::power<2>(std::erf(T{3} / (std::numbers::sqrt2_v<T> * r)));
+    params.integral = 1000 * metamath::functions::power<2>(std::erf(T{3} / std::sqrt(2)));
     std::cout << "integral = " << params.integral << std::endl;
 
     const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, T, 1>>

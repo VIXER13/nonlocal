@@ -48,12 +48,14 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const equatio
     integrate_right_part<1>(f, *mesh_proxy, right_part);
     boundary_condition_first_kind_2d(f, *mesh_proxy, boundary_condition, conductivity.matrix_bound());
 
-    int threads_count = 1;
-#pragma omp parallel
-{   threads_count = omp_get_num_threads(); }
-    time = omp_get_wtime();
-    const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner(), {.threads_count = threads_count}};
+    const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
     const auto temperature = solver.solve(f);
+    // const Eigen::ConjugateGradient<
+    //     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, 
+    //     Eigen::Upper,
+    //     Eigen::IncompleteCholesky<double, Eigen::Upper, Eigen::NaturalOrdering<Matrix_Index>>
+    // > solver{conductivity.matrix_inner()};
+    // const Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
     std::cout << "Slae solve time: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations: " << solver.iterations() << std::endl;
     return heat_equation_solution_2d<T, I>{mesh_proxy, p1, influence_function, equation_param, temperature};

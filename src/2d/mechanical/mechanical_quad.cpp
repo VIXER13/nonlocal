@@ -71,6 +71,9 @@ int main(int argc, char** argv) {
 //            parameters.delta_temperature[i] = node[0] + node[1];
 //        }
 
+        const auto permutations = nonlocal::mesh::cuthill_mckee(*mesh_proxy, p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>);
+        mesh_proxy->renumber_nodes(permutations);
+
         auto sol = nonlocal::mechanical::equilibrium_equation<double, int, int64_t>(parameters, mesh_proxy,
             { // Граничные условия
                 {   "Right",

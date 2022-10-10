@@ -38,6 +38,9 @@ int main(int argc, char** argv) {
             std::cout << "Average neighbours = " << mean / mesh->nodes_count() << std::endl;
         }
 
+        const auto permutations = nonlocal::mesh::cuthill_mckee(*mesh_proxy, p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>);
+        mesh_proxy->renumber_nodes(permutations);
+
         const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
             boundary_condition = {
                 {   "Right",

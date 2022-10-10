@@ -91,7 +91,7 @@ class _cuthill_mckee final {
 
     template<theory_t Theory, class T, class I, class Initializer>
     static void init_vector(const mesh_proxy<T, I>& mesh, Initializer&& initializer) {
-#pragma omp parallel for default(none) shared(mesh) firstprivate(initializer)
+#pragma omp parallel for default(none) shared(mesh) firstprivate(initializer) schedule(dynamic)
         for(size_t node = mesh.first_node(); node < mesh.last_node(); ++node) {
             initializer.reset_include();
             for(const I eL : mesh.nodes_elements_map(node)) {

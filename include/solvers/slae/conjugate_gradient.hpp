@@ -25,8 +25,8 @@ class conjugate_gradient final {
     mutable uintmax_t _iteration = 0;
     mutable T _residual = 0;
 
-    static std::vector<std::array<size_t, 2>> distribute_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
-                                                              const size_t threads_count);
+    static std::vector<std::array<size_t, 2>> 
+    distribute_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A, const size_t threads_count);
 
     void reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z) const;
     void matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& z,
@@ -45,7 +45,7 @@ public:
 
     void set_tolerance(const T tolerance) noexcept;
     void set_max_iterations(const uintmax_t max_iterations) noexcept;
-    void set_threads_count(const int threads_count) noexcept;
+    void set_threads_count(const int threads_count);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> solve(const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
                                               const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0 = std::nullopt) const;
@@ -55,13 +55,13 @@ template<class T, class I>
 conjugate_gradient<T, I>::conjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
                                              const conjugate_gradient_parameters<T>& parameters)
     : _A{A}
-    , _parameters{parameters}
-    , _threads_ranges{distribute_rows(A, _parameters.threads_count)}
-    , _threaded_z(A.cols(), _parameters.threads_count) {}
+    , _parameters{parameters} {
+        set_threads_count(_parameters.threads_count);
+    }
 
 template<class T, class I>
-std::vector<std::array<size_t, 2>> conjugate_gradient<T, I>::distribute_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A,
-                                                                             const size_t threads_count) {
+std::vector<std::array<size_t, 2>> 
+conjugate_gradient<T, I>::distribute_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& A, const size_t threads_count) {
     if (threads_count < 0)
         throw std::logic_error{"Threads count must be greater than 0."};
     const size_t mean_count = A.nonZeros() / threads_count;
@@ -69,7 +69,7 @@ std::vector<std::array<size_t, 2>> conjugate_gradient<T, I>::distribute_rows(con
     threads_ranges.front().front() = 0;
     for(size_t row = 0, thread_sum = 0, curr_thread = 0; row < size_t(A.rows()); ++row) {
         thread_sum += A.outerIndexPtr()[row + 1] - A.outerIndexPtr()[row];
-        if (thread_sum > mean_count || row == A.rows()-1) {
+        if (curr_thread < threads_count && (thread_sum >= mean_count || row == A.rows() - 1)) {
             thread_sum = 0;
             threads_ranges[curr_thread].back() = row;
             ++curr_thread;
@@ -116,14 +116,19 @@ void conjugate_gradient<T, I>::set_max_iterations(const uintmax_t max_iterations
 }
 
 template<class T, class I>
-void conjugate_gradient<T, I>::set_threads_count(const int threads_count) noexcept {
+void conjugate_gradient<T, I>::set_threads_count(const int threads_count) {
     _parameters.threads_count = threads_count;
+    if (_parameters.threads_count > _A.rows())
+        _parameters.threads_count = _A.rows();
+    _threaded_z.resize(_A.rows(), _parameters.threads_count);
+    _threads_ranges = distribute_rows(_A, _parameters.threads_count);
 }
 
 template<class T, class I>
 void conjugate_gradient<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z) const {
     for(size_t i = 1; i < _threaded_z.cols(); ++i)
-        _threaded_z.col(0) += _threaded_z.col(i);
+        _threaded_z.block(_threads_ranges[i].front(), 0, z.size() - _threads_ranges[i].front(), 1) += 
+        _threaded_z.block(_threads_ranges[i].front(), i, z.size() - _threads_ranges[i].front(), 1);
     z = _threaded_z.col(0);
 }
 

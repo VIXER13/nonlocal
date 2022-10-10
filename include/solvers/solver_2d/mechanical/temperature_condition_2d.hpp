@@ -74,7 +74,7 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                     integral += integrate_temperature_nonloc(eL, eNL, iL);
             }
             for(const size_t comp : std::ranges::iota_view{0, 2})
-                f[2 * node + comp] += integral[comp];
+                f[2 * node + comp] += p2 * integral[comp];
         }
     }
 }

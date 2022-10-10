@@ -13,8 +13,8 @@ class finite_element_matrix_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
 
     std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
-    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _matrix_inner,
-                                                          _matrix_bound;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _matrix_inner;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _matrix_bound;
 
 protected:
     enum class index_stage : bool { SHIFTS, NONZERO };
@@ -100,7 +100,7 @@ protected:
             }
         }
     }
-
+    
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
 
     template<theory_t Theory>
