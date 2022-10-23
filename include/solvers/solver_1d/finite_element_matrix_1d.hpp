@@ -3,11 +3,135 @@
 
 #include "../solvers_utils.hpp"
 #include "mesh_1d.hpp"
-#include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 
 namespace nonlocal {
 
+template<class T, class I>
+class finite_element_matrix_1d {
+    std::shared_ptr<mesh::mesh_1d<T>> _mesh;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I> _matrix_inner;
+    std::array<std::unordered_map<size_t, T>, 2> _matrix_bound;
+
+protected:
+    explicit finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
+
+    void calc_shifts(const std::array<bool, 2> is_first_kind);
+    void init_indices();
+    void create_matrix_portrait(const std::array<bool, 2> is_first_kind);
+
+    template<class Callback>
+    void mesh_run(const std::vector<theory_t>& theory, const Callback& callback) const;
+
+public:
+    virtual ~finite_element_matrix_1d() = default;
+
+    const mesh::mesh_1d<T>& mesh() const noexcept;
+    const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix_inner() noexcept;
+    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix_inner() const noexcept;
+    std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() noexcept;
+    const std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() const noexcept;
+
+    void clear_matrix();
+};
+
+template<class T, class I>
+finite_element_matrix_1d<T, I>::finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
+    : _mesh{mesh} {}
+
+template<class T, class I>
+const mesh::mesh_1d<T>& finite_element_matrix_1d<T, I>::mesh() const noexcept {
+    return *_mesh;
+}
+
+template<class T, class I>
+const std::shared_ptr<mesh::mesh_1d<T>>& finite_element_matrix_1d<T, I>::mesh_ptr() const noexcept {
+    return _mesh;
+}
+
+template<class T, class I>
+Eigen::SparseMatrix<T, Eigen::RowMajor, I>& finite_element_matrix_1d<T, I>::matrix_inner() noexcept {
+    return _matrix_inner;
+}
+
+template<class T, class I>
+const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& finite_element_matrix_1d<T, I>::matrix_inner() const noexcept {
+    return _matrix_inner;
+}
+
+template<class T, class I>
+std::array<std::unordered_map<size_t, T>, 2>& finite_element_matrix_1d<T, I>::matrix_bound() noexcept {
+    return _matrix_bound;
+}
+
+template<class T, class I>
+const std::array<std::unordered_map<size_t, T>, 2>& finite_element_matrix_1d<T, I>::matrix_bound() const noexcept {
+    return _matrix_bound;
+}
+
+template<class T, class I>
+void finite_element_matrix_1d<T, I>::clear_matrix() {
+    _matrix_inner = {};
+    _matrix_bound = {};
+}
+
+template<class T, class I>
+void finite_element_matrix_1d<T, I>::calc_shifts(const std::array<bool, 2> is_first_kind) {
+    const size_t element_nodes = mesh().element().nodes_count() - 1;
+    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+        if (bound_cond.front() && node == 0 || bound_cond.back () && node == mesh()->nodes_count() - 1)
+            matrix_inner().outerIndexPtr()[node + 1] = 1;
+        else {
+            const auto [left, right] = mesh().node_elements(node);
+            const auto [e, i] = right ? *right : *left;
+            const size_t neighbour = mesh().neighbours(e).end();
+            const bool is_last_first_kind = bound_cond.back() == boundary_condition_t::FIRST_KIND &&
+                                            neighbour * element_nodes == mesh().nodes_count() - 1;
+            matrix_inner().outerIndexPtr()[node + 1] = (neighbour - e) * element_nodes - i + 1 - is_last_first_kind;
+        }
+    }
+}
+
+template<class T, class I>
+void finite_element_matrix_1d<T, I>::init_indices() {
+    for(const size_t i : std::views::iota(size_t{0}, size_t(matrix_inner().rows())))
+        for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j, ++k)
+            matrix_inner().innerIndexPtr()[j] = k;
+}
+
+template<class T, class I>
+void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bool, 2> is_first_kind) {
+    calc_shifts(is_first_kind);
+    utils::accumulate_shifts(matrix_inner());
+    std::cout << "Non-zero elements count: " << matrix_inner().outerIndexPtr()[matrix_inner().rows()] << std::endl;
+    utils::allocate_matrix(matrix_inner());
+    init_indices();
+}
+
+template<class T, class I>
+template<class Callback>
+void finite_element_matrix_1d<T, I>::mesh_run(const std::vector<theory_t>& theory, const Callback& callback) const {
+    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+        const auto [left, right] = mesh().node_elements(node);
+        for(const auto node_data : {left, right})
+            if (node_data) {
+                const auto& [eL, iL] = node_data.value();
+                const size_t segment = mesh().segment_number(eL);
+                if (theory[segment] == theory_t::LOCAL)
+                    for(const size_t jL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
+                        callback(eL, iL, jL);
+                else if (theory[segment] == theory_t::NONLOCAL)
+                    for(const size_t eNL : mesh().neighbours(eL))
+                        for(const size_t jNL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
+                            callback(eL, eNL, iL, jNL);
+                else
+                    throw std::runtime_error{"Unknown theory type."};
+            }
+    }
+}
+
+/*
 template<class T, class I>
 class finite_element_matrix_1d {
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
@@ -157,6 +281,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<boundary_condi
             }
         );
 }
+*/
 
 }
 
