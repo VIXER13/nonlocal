@@ -1,7 +1,9 @@
 #ifndef NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
 #define NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
 
+#include "../equation_parameters.hpp"
 #include "../solvers_utils.hpp"
+
 #include "mesh_1d.hpp"
 #include <eigen3/Eigen/Sparse>
 
@@ -20,8 +22,13 @@ protected:
     void init_indices();
     void create_matrix_portrait(const std::array<bool, 2> is_first_kind);
 
-    template<class Callback>
-    void mesh_run(const std::vector<theory_t>& theory, const Callback& callback) const;
+    template<theory_t Theory, class Callback>
+    void mesh_run(const size_t segment, const Callback& callback) const;
+    template<template<class, auto...> class Physical, auto... Args, class Integrate_Loc, class Integrate_Nonloc>
+    void calc_matrix(const std::array<bool, 2> is_first_kind,
+                     const std::vector<equation_parameters<1, T, Physical, Args...>>& parameters,
+                     const Integrate_Loc& integrate_rule_loc,
+                     const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
     virtual ~finite_element_matrix_1d() = default;
@@ -80,14 +87,13 @@ template<class T, class I>
 void finite_element_matrix_1d<T, I>::calc_shifts(const std::array<bool, 2> is_first_kind) {
     const size_t element_nodes = mesh().element().nodes_count() - 1;
     for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        if (bound_cond.front() && node == 0 || bound_cond.back () && node == mesh()->nodes_count() - 1)
+        if (is_first_kind.front() && node == 0 || is_first_kind.back() && node == mesh()->nodes_count() - 1)
             matrix_inner().outerIndexPtr()[node + 1] = 1;
         else {
             const auto [left, right] = mesh().node_elements(node);
             const auto [e, i] = right ? *right : *left;
             const size_t neighbour = mesh().neighbours(e).end();
-            const bool is_last_first_kind = bound_cond.back() == boundary_condition_t::FIRST_KIND &&
-                                            neighbour * element_nodes == mesh().nodes_count() - 1;
+            const bool is_last_first_kind = is_first_kind.back() && neighbour * element_nodes == mesh().nodes_count() - 1;
             matrix_inner().outerIndexPtr()[node + 1] = (neighbour - e) * element_nodes - i + 1 - is_last_first_kind;
         }
     }
@@ -110,24 +116,82 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<boo
 }
 
 template<class T, class I>
-template<class Callback>
-void finite_element_matrix_1d<T, I>::mesh_run(const std::vector<theory_t>& theory, const Callback& callback) const {
-    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        const auto [left, right] = mesh().node_elements(node);
-        for(const auto node_data : {left, right})
+template<theory_t Theory, class Callback>
+void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callback& callback) const {
+    static constexpr auto check_segment =
+        [](const left_right_element& node_elements, const std::ranges::iota_view<size_t, size_t> segment_nodes) constexpr noexcept {
+            auto [left, right] = node_elements;
+            if (node == segment_nodes.front())
+                left = std::nullopt;
+            else if (node == segment_nodes.back())
+                right = std::nullopt;
+            return {left, right};
+        };
+
+    const auto segment_nodes = mesh().segment_nodes(segment);
+    for(const size_t node : segment_nodes) {
+        for(const auto node_data : check_segment(mesh().node_elements(node), segment_nodes))
             if (node_data) {
                 const auto& [eL, iL] = node_data.value();
-                const size_t segment = mesh().segment_number(eL);
-                if (theory[segment] == theory_t::LOCAL)
+                if constexpr (Theory == theory_t::LOCAL)
                     for(const size_t jL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
                         callback(eL, iL, jL);
-                else if (theory[segment] == theory_t::NONLOCAL)
+                if constexpr (Theory == theory_t::NONLOCAL)
                     for(const size_t eNL : mesh().neighbours(eL))
                         for(const size_t jNL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
                             callback(eL, eNL, iL, jNL);
-                else
-                    throw std::runtime_error{"Unknown theory type."};
-            }
+            }            
+    }
+}
+
+template<class T, class I>
+template<template<class, auto...> class Physical, auto... Args, class Integrate_Loc, class Integrate_Nonloc>
+void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<bool, 2> is_first_kind,
+                                                 const std::vector<equation_parameters<1, T, Physical, Args...>>& parameters,
+                                                 const Integrate_Loc& integrate_rule_loc,
+                                                 const Integrate_Nonloc& integrate_rule_nonloc) {
+    const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
+        if (col == row)
+            matrix_inner().coeffRef(row, col) = T{1};
+        else if (const auto [it, flag] = matrix_bound.template try_emplace(col, integral); !flag)
+            it->second += integral;
+    };
+
+    const auto assemble = [this, is_first_kind, &assemble_bound, last_node = mesh()->nodes_count() - 1]
+                          <class Integrate, class... Args>
+                          (const size_t row, const size_t col, const Integrate& , const Args&... args) {
+        if (is_first_kind.front() && (row == 0 || col == 0)) {
+            if (row == 0)
+                assemble_bound(matrix_bound().front(), row, col, integrate_rule(args...));
+        } else if (is_first_kind.back() && (row == last_node || col == last_node)) {
+            if (row == last_node)
+                assemble_bound(matrix_bound().back(), row, col, integrate_rule(args...));
+        } else if (row <= col)
+            matrix_inner().coeffRef(row, col) += integrate_rule(args...);
+    };
+
+    for(const size_t segment : std::ranges::iota_views{size_t{0}, mesh().segments_count()}) {
+        const auto& parameter = parameters[segment];
+        switch (is_nonlocal(parameters[segment].model.local_weight)) {
+            case theory_t::LOCAL:
+                mesh_run<theory_t::LOCAL>(segment,
+                    [this, integrate_rule_loc, &parameter, &assemble](const size_t e, const size_t i, const size_t j) {
+                        assemble(mesh()->node_number(e, i), mesh()->node_number(e, j), integrate_rule_loc, parameter, e, i, j);
+                    }
+                );
+            break;
+
+            case theory_t::NONLOCAL:
+                mesh_run<theory_t::NONLOCAL>(segment,
+                    [this, &integrate_rule_nonloc, &parameter, &assemble](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+                        assemble(mesh()->node_number(eL, iL), mesh()->node_number(eNL, jNL), integrate_rule_nonloc, parameter, eL, eNL, iL, jNL);
+                    }
+                );
+            break;
+            
+            default:
+                throw std::runtime_error{"Unknown theory type."};
+        }
     }
 }
 
