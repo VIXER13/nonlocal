@@ -6,6 +6,7 @@
 
 #include "mesh_1d.hpp"
 #include <eigen3/Eigen/Sparse>
+#include <iostream>
 
 namespace nonlocal {
 
@@ -40,7 +41,7 @@ public:
     std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() noexcept;
     const std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() const noexcept;
 
-    void clear_matrix();
+    void clear();
 };
 
 template<class T, class I>
@@ -78,30 +79,31 @@ const std::array<std::unordered_map<size_t, T>, 2>& finite_element_matrix_1d<T, 
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::clear_matrix() {
+void finite_element_matrix_1d<T, I>::clear() {
     _matrix_inner = {};
     _matrix_bound = {};
 }
 
 template<class T, class I>
 void finite_element_matrix_1d<T, I>::calc_shifts(const std::array<bool, 2> is_first_kind) {
-    const size_t element_nodes = mesh().element().nodes_count() - 1;
+    const size_t last_node = mesh().nodes_count() - 1;
+    const size_t nodes_in_element = mesh().element().nodes_count() - 1;
     for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        if (is_first_kind.front() && node == 0 || is_first_kind.back() && node == mesh()->nodes_count() - 1)
+        if (is_first_kind.front() && node == 0 || is_first_kind.back() && node == last_node)
             matrix_inner().outerIndexPtr()[node + 1] = 1;
         else {
             const auto [left, right] = mesh().node_elements(node);
-            const auto [e, i] = right ? *right : *left;
-            const size_t neighbour = mesh().neighbours(e).end();
-            const bool is_last_first_kind = is_first_kind.back() && neighbour * element_nodes == mesh().nodes_count() - 1;
-            matrix_inner().outerIndexPtr()[node + 1] = (neighbour - e) * element_nodes - i + 1 - is_last_first_kind;
+            const auto [e, i] = right ? right : left;
+            const size_t neighbour = *mesh().neighbours(e).end();
+            const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
+            matrix_inner().outerIndexPtr()[node + 1] = (neighbour - e) * nodes_in_element - i + 1 - is_last_first_kind;
         }
     }
 }
 
 template<class T, class I>
 void finite_element_matrix_1d<T, I>::init_indices() {
-    for(const size_t i : std::views::iota(size_t{0}, size_t(matrix_inner().rows())))
+    for(const size_t i : std::ranges::iota_view(size_t{0}, size_t(matrix_inner().rows())))
         for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j, ++k)
             matrix_inner().innerIndexPtr()[j] = k;
 }
@@ -118,21 +120,21 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<boo
 template<class T, class I>
 template<theory_t Theory, class Callback>
 void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callback& callback) const {
-    static constexpr auto check_segment =
-        [](const left_right_element& node_elements, const std::ranges::iota_view<size_t, size_t> segment_nodes) constexpr noexcept {
-            auto [left, right] = node_elements;
+    const auto correct_node_data =
+        [this](const size_t node, const std::ranges::iota_view<size_t, size_t> segment_nodes) constexpr noexcept {
+            auto node_elements = mesh().node_elements(node).to_array();
             if (node == segment_nodes.front())
-                left = std::nullopt;
+                node_elements.front() = std::nullopt;
             else if (node == segment_nodes.back())
-                right = std::nullopt;
-            return {left, right};
+                node_elements.back() = std::nullopt;
+            return node_elements;
         };
 
     const auto segment_nodes = mesh().segment_nodes(segment);
     for(const size_t node : segment_nodes) {
-        for(const auto node_data : check_segment(mesh().node_elements(node), segment_nodes))
+        for(const auto node_data : correct_node_data(node, segment_nodes))
             if (node_data) {
-                const auto& [eL, iL] = node_data.value();
+                const auto& [eL, iL] = node_data;
                 if constexpr (Theory == theory_t::LOCAL)
                     for(const size_t jL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
                         callback(eL, iL, jL);
@@ -157,9 +159,9 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<bool, 2> is_fi
             it->second += integral;
     };
 
-    const auto assemble = [this, is_first_kind, &assemble_bound, last_node = mesh()->nodes_count() - 1]
-                          <class Integrate, class... Args>
-                          (const size_t row, const size_t col, const Integrate& , const Args&... args) {
+    const auto assemble = [this, is_first_kind, &assemble_bound, last_node = mesh().nodes_count() - 1]
+                          <class Integrate, class... Model_Args>
+                          (const size_t row, const size_t col, const Integrate& integrate_rule, const Model_Args&... args) {
         if (is_first_kind.front() && (row == 0 || col == 0)) {
             if (row == 0)
                 assemble_bound(matrix_bound().front(), row, col, integrate_rule(args...));
@@ -170,13 +172,13 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<bool, 2> is_fi
             matrix_inner().coeffRef(row, col) += integrate_rule(args...);
     };
 
-    for(const size_t segment : std::ranges::iota_views{size_t{0}, mesh().segments_count()}) {
+    for(const size_t segment : std::ranges::iota_view{size_t{0}, mesh().segments_count()}) {
         const auto& parameter = parameters[segment];
         switch (is_nonlocal(parameters[segment].model.local_weight)) {
             case theory_t::LOCAL:
                 mesh_run<theory_t::LOCAL>(segment,
                     [this, integrate_rule_loc, &parameter, &assemble](const size_t e, const size_t i, const size_t j) {
-                        assemble(mesh()->node_number(e, i), mesh()->node_number(e, j), integrate_rule_loc, parameter, e, i, j);
+                        assemble(mesh().node_number(e, i), mesh().node_number(e, j), integrate_rule_loc, parameter, e, i, j);
                     }
                 );
             break;
@@ -184,7 +186,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<bool, 2> is_fi
             case theory_t::NONLOCAL:
                 mesh_run<theory_t::NONLOCAL>(segment,
                     [this, &integrate_rule_nonloc, &parameter, &assemble](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                        assemble(mesh()->node_number(eL, iL), mesh()->node_number(eNL, jNL), integrate_rule_nonloc, parameter, eL, eNL, iL, jNL);
+                        assemble(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL), integrate_rule_nonloc, parameter, eL, eNL, iL, jNL);
                     }
                 );
             break;
@@ -200,7 +202,7 @@ template<class T, class I>
 class finite_element_matrix_1d {
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> _matrix_inner;
-    std::array<std::unordered_map<size_t, T>, 2> _matrix_bound;
+    std::array<std::unordered_map<size_t, T>, 2> _matrix_bound;Ы
 
 protected:
     explicit finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);

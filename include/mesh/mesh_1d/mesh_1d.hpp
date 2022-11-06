@@ -5,17 +5,35 @@
 
 #include <cstdlib>
 #include <memory>
-#include <optional>
 #include <numeric>
-#include <ranges>
 
 namespace nonlocal::mesh {
 
 struct left_right_element final {
     struct node_element final {
-        size_t element, node;
-    };
-    std::optional<node_element> left, right;
+        metamath::types::optional_integer<size_t> element = std::nullopt;
+        size_t node = 0;
+
+        constexpr node_element() noexcept = default;
+        constexpr node_element(const std::nullopt_t) noexcept {}
+        constexpr node_element(const size_t e, const size_t i) noexcept
+            : element{e}
+            , node{i} {}
+
+        node_element& operator=(const std::nullopt_t) noexcept {
+            element = std::nullopt;
+            node = 0;
+            return *this;
+        }
+
+        constexpr explicit operator bool() const noexcept {
+            return bool(element);
+        }
+    } left, right;
+
+    constexpr std::array<node_element, 2> to_array() const noexcept {
+        return {left, right};
+    }
 };
 
 template<class T>
@@ -48,6 +66,7 @@ public:
     size_t nodes_count() const noexcept;
     size_t nodes_count(const size_t segment) const noexcept;
     size_t segment_number(const size_t e) const noexcept;
+    size_t node_number(const size_t e, const size_t i) const noexcept;
     std::ranges::iota_view<size_t, size_t> segment_elements(const size_t segment) const noexcept;
     std::ranges::iota_view<size_t, size_t> segment_nodes(const size_t segment) const noexcept;
     std::ranges::iota_view<size_t, size_t> neighbours(const size_t e) const noexcept;
@@ -116,6 +135,11 @@ size_t mesh_1d<T>::segment_number(const size_t e) const noexcept {
 }
 
 template<class T>
+size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const noexcept {
+    return e * (element().nodes_count() - 1) + i;
+}
+
+template<class T>
 std::ranges::iota_view<size_t, size_t> mesh_1d<T>::segment_elements(const size_t segment) const noexcept {
     return {segment ? _segments[segment - 1].elements : 0, _segments[segment].elements};
 }
@@ -145,20 +169,20 @@ left_right_element mesh_1d<T>::node_elements(const size_t node) const noexcept {
     using data = left_right_element::node_element;
 
     if (!node)
-        return {.left  = data{.element = 0, .node = 0},
+        return {.left  = data{0, 0},
                 .right = std::nullopt};
 
     const size_t elements_nodes_count = element().nodes_count() - 1;
     if (node == nodes_count() - 1)
         return {.left  = std::nullopt, 
-                .right = data{.element = elements_count() - 1, .node = elements_nodes_count}};
+                .right = data{elements_count() - 1, elements_nodes_count}};
 
     const auto [e, i] = std::div(int64_t(node), int64_t(elements_nodes_count));
     if (i)
-        return {.left  = data{.element = e, .node = i},
+        return {.left  = data(e, i),
                 .right = std::nullopt};
-    return {.left  = data{.element = e - 1, .node = elements_nodes_count},
-            .right = data{.element = e,     .node = 0}};
+    return {.left  = data(e - 1, elements_nodes_count),
+            .right = data(e,     0)};
 }
 
 template<class T>

@@ -9,7 +9,7 @@
 namespace nonlocal {
 
 template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
-class equation_parameters final {
+struct equation_parameters final {
     static_assert(Dimension > 0, "Dimension must be non-zero.");
     Physical<T, Args...> physical;
     struct final {

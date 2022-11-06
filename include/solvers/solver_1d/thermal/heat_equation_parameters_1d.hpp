@@ -6,12 +6,18 @@
 namespace nonlocal::thermal {
 
 template<class T>
-struct equation_parameters_1d final {
-    T lambda   = T{1};                     // Коэффициент теплопроводности
-    T c        = T{1};                     // Коэффициент теплоёмкости
-    T rho      = T{1};                     // Плотность материала
-    T integral = T{0};                     // Интеграл от решения (для задачи Неймана)
-    std::array<T, 2> alpha = {T{0}, T{0}}; // Коэффициент теплоотдачи на левой и правой границах
+struct stationary_equation_parameters_1d final {
+    T conductivity = T{1};
+    T energy = T{0};
+    std::array<T, 2> transfer = {T{0}, T{0}};
+};
+
+template<class T>
+struct nonstationary_equation_parameters_1d final {
+    T conductivity = T{1};
+    T capacity = T{1};
+    T density = T{1};
+    std::array<T, 2> transfer = {T{0}, T{0}};
 };
 
 }
