@@ -20,7 +20,7 @@ template<class T>
 inline constexpr T MAX_NONLOCAL_WEIGHT = T{0.999};
 
 template<class T>
-constexpr theory_t is_nonlocal(const T local_weight) noexcept {
+constexpr theory_t theory_type(const T local_weight) noexcept {
     return local_weight < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
 }
 

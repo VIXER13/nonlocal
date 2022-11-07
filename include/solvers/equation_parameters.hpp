@@ -4,6 +4,7 @@
 #include "nonlocal_constants.hpp"
 
 #include <array>
+#include <vector>
 #include <functional>
 
 namespace nonlocal {
@@ -18,6 +19,14 @@ struct equation_parameters final {
         T local_weight = T{1};
     } model;
 };
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::vector<theory_t> theories_types(const std::vector<equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::vector<theory_t> theories(parameters.size());
+    for(const size_t i : std::ranges::iota_view{size_t{0}, parameters.size()})
+        theories[i] = theory_type(parameters[i].model.local_weight);
+    return theories;
+}
 
 }
 

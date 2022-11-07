@@ -130,7 +130,7 @@ size_t mesh_1d<T>::nodes_count(const size_t segment) const noexcept {
 template<class T>
 size_t mesh_1d<T>::segment_number(const size_t e) const noexcept {
     size_t segment = 0;
-    for(; _segments[segment + 1].elements < e; ++segment);
+    for(; _segments[segment].elements <= e; ++segment);
     return segment;
 }
 

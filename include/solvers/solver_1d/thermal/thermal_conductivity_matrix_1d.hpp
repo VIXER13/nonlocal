@@ -22,7 +22,6 @@ protected:
                        const size_t iL, const size_t jNL) const;
 
     void neumann_problem_col_fill();
-
     void create_matrix_portrait(const std::array<bool, 2> is_first_kind, const bool is_neumann);
 
 public:
@@ -65,7 +64,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const equation_paramete
                                                          const size_t eL, const size_t eNL,
                                                          const size_t iL, const size_t jNL) const {
     T integral = T{0};
-    const auto& el = _base::mesh().element();
+    // const auto& el = _base::mesh().element();
     // for(const size_t qL : std::views::iota(size_t{0}, el.qnodes_count())) {
     //     T inner_integral = T{0};
     //     const T qcoordL = _base::mesh().quad_coord(eL, qL);
@@ -105,18 +104,18 @@ template<class T, class I>
 template<template<class, auto...> class Physical, auto... Args>
 void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const std::vector<equation_parameters<1, T, Physical, Args...>>& parameters,
                                                        const std::array<bool, 2> is_first_kind, const bool is_neumann) {
+    if (parameters.size() != _base::mesh().segments_count())
+        throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
     _base::clear();
     const size_t matrix_size = _base::mesh().nodes_count() + is_neumann;
     _base::matrix_inner().resize(matrix_size, matrix_size);
     create_matrix_portrait(is_first_kind, is_neumann);
-    _base::template calc_matrix(is_first_kind, parameters,
-        [this](const equation_parameters<1, T, Physical, Args...>& parameters, 
-               const size_t e, const size_t i, const size_t j) {
-            return integrate_loc(parameters, e, i, j);
+    _base::template calc_matrix(is_first_kind, theories_types(parameters),
+        [this, &parameters](const size_t segment, const size_t e, const size_t i, const size_t j) {
+            return integrate_loc(parameters[segment], e, i, j);
         },
-        [this](const equation_parameters<1, T, Physical, Args...>& parameters, 
-               const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            return integrate_nonloc(parameters, eL, eNL, iL, jNL);
+        [this, &parameters](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            return integrate_nonloc(parameters[segment], eL, eNL, iL, jNL);
         }
     );
     if (is_neumann)

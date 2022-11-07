@@ -41,7 +41,7 @@ template<class T, class I>
 void allocate_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
     K.data().resize(K.outerIndexPtr()[K.rows()]);
     for(const size_t i : std::views::iota(size_t{0}, size_t(K.outerIndexPtr()[K.rows()]))) {
-        K.innerIndexPtr()[i] = K.cols()-1;
+        K.innerIndexPtr()[i] = 0;
         K.valuePtr()[i] = T{0};
     }
 }
