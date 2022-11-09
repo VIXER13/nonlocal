@@ -2,9 +2,12 @@
 #define MESH_1D_UTILS_HPP
 
 #include "mesh_1d.hpp"
-#include <ranges>
 
-namespace nonlocal::utils {
+#include <ranges>
+#include <fstream>
+#include <filesystem>
+
+namespace nonlocal::mesh::utils {
 
 template<class T, std::ranges::random_access_range Vector>
 T integrate(const mesh::mesh_1d<T>& mesh, const Vector& x) {
@@ -105,6 +108,19 @@ std::vector<T> gradient(const mesh::mesh_1d<T>& mesh, const Vector& x) {
                 dx[node] += mesh.element().Nxi(j, coord) * x[mesh.node_number(e, j)] / mesh.jacobian();
         }
     return dx;
+}
+
+template<class T, std::ranges::random_access_range Vector>
+void save_as_csv(const mesh::mesh_1d<T>& mesh, const Vector& x, const std::filesystem::path& path) {
+    if (mesh.nodes_count() != x.size())
+        throw std::logic_error{"The result cannot be saved because the mesh nodes number and elements in the vector do not match."};
+    std::ofstream csv{path};
+    for(const size_t segment : std::ranges::iota_view{size_t{0}, mesh.segments_count()}) {
+        const auto nodes = mesh.segment_nodes(segment);
+        for(const size_t node : std::ranges::iota_view{nodes.front(), nodes.back()}) // exclude last node
+            csv << mesh.node_coord(node) << ',' << x[node] << '\n';
+    }
+    csv << mesh.length() << ',' << x[x.size() - 1] << '\n';
 }
 
 }

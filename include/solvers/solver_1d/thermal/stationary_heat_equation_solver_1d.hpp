@@ -5,12 +5,15 @@
 #include "heat_equation_parameters_1d.hpp"
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "right_part_1d.hpp"
-
-//#include "thermal_conductivity_matrix_1d.hpp"
-//#include "convection_condition_1d.hpp"
-//#include <iostream>
+#include "heat_equation_solution_1d.hpp"
 
 namespace nonlocal::thermal {
+
+template<class T>
+struct stationary_equation_parameters_1d final {
+    T conductivity = T{1};
+    std::array<T, 2> transfer = {T{0}, T{0}};
+};
 
 template<class T>
 constexpr bool is_neumann_problem(const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
@@ -37,10 +40,10 @@ constexpr bool is_solvable_robin_problem(const std::array<T, 2>& section, const 
 }
 
 template<class T, class I, class Right_Part>
-std::vector<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                  const std::vector<equation_parameters<1, T, stationary_equation_parameters_1d>>& parameters,
-                                                  const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
-                                                  const Right_Part& right_part, const T energy = T{0}) {
+heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                                                const std::vector<equation_parameters<1, T, stationary_equation_parameters_1d>>& parameters,
+                                                                const std::array<stationary_boundary_1d_t<boundary_condition_t, T>, 2>& boundary_condition,
+                                                                const Right_Part& right_part, const T energy = T{0}) {
     const bool is_neumann = false;
     //const bool is_neumann = is_neumann_problem(boundary_condition, equation_param.alpha);
     //if (is_neumann && std::abs(boundary_condition.front().val + boundary_condition.back().val) > NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR<T>)
@@ -64,18 +67,18 @@ std::vector<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::me
         is_neumann
     );
     //convection_condition_matrix_part_1d(conductivity.matrix_inner(), boundary_type(boundary_condition), equation_param.alpha);
-    std::cout << "Matrix calc: " << omp_get_wtime() - time << std::endl;
+    std::cout << "Matrix time: " << omp_get_wtime() - time << std::endl;
 
     boundary_condition_first_kind_1d(f, boundary_condition, conductivity.matrix_bound());
-    //if (is_neumann)
-    //    f[f.size()-1] = equation_param.integral;
+    if (is_neumann)
+        f[f.size()-1] = energy;
 
     time = omp_get_wtime();
     Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
-    std::cout << "SLAE: " << omp_get_wtime() - time << std::endl;
+    std::cout << "SLAE time: " << omp_get_wtime() - time << std::endl;
     std::cout << "iterations: " << solver.iterations() << std::endl;
-    return std::vector<T>{temperature.cbegin(), std::next(temperature.cbegin(), mesh->nodes_count())};
+    return heat_equation_solution_1d<T>{mesh, parameters, temperature};
 }
 
 /*

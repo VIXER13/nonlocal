@@ -5,7 +5,9 @@
 #include "../solvers_utils.hpp"
 
 #include "mesh_1d.hpp"
+
 #include <eigen3/Eigen/Sparse>
+
 #include <iostream>
 
 namespace nonlocal {

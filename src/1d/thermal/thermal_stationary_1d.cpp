@@ -10,14 +10,6 @@ namespace {
 using T = double;
 using I = int64_t;
 
-template<class Vector>
-void save_as_csv(const std::string& path, const Vector& x, const std::array<T, 2>& section) {
-    std::ofstream csv{path};
-    const T h = (section.back() - section.front()) / (x.size() - 1);
-    for(size_t i = 0; i < x.size(); ++i)
-        csv << section.front() +  i * h << ',' << x[i] << '\n';
-}
-
 }
 
 int main(const int argc, const char *const *const argv) {
@@ -31,10 +23,10 @@ int main(const int argc, const char *const *const argv) {
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
             nonlocal::make_element<T>(nonlocal::element_type::QUADRATIC),
             std::vector{
-                nonlocal::mesh::segment_data{.length = 0.25, .elements = 100},
-                nonlocal::mesh::segment_data{.length = 0.25, .elements = 100},
-                nonlocal::mesh::segment_data{.length = 0.25, .elements = 100},
-                nonlocal::mesh::segment_data{.length = 0.25, .elements = 100}
+                nonlocal::mesh::segment_data{.length = 0.05, .elements = 100},
+                nonlocal::mesh::segment_data{.length = 0.45, .elements = 100},
+                nonlocal::mesh::segment_data{.length = 0.15, .elements = 100},
+                nonlocal::mesh::segment_data{.length = 0.35, .elements = 100}
             }
         );
 
@@ -65,7 +57,7 @@ int main(const int argc, const char *const *const argv) {
             [](const T x) constexpr noexcept { return 0; }
         );
         //std::cout << "integral = " << nonlocal::utils::integrate(*mesh, solution) << std::endl;
-        save_as_csv("Tsegmented.csv", solution, {T{0}, T{1}});
+        nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), "./Tsegmented.csv");
 
         if (argc == 7) {
             //const auto flux = nonlocal::utils::calc_flux(*mesh, solution, p1, influence_function);

@@ -51,18 +51,6 @@ int main(const int argc, const char *const *const argv) {
             std::cout << "bounds = [" << bounds.front() << ',' << bounds.back() << ']' << std::endl;
             std::cout << std::endl;
         }
-
-        std::cout.precision(2);
-        using parameter_t = nonlocal::equation_parameters<1, T, nonlocal::thermal::stationary_equation_parameters_1d>;
-        nonlocal::thermal::thermal_conductivity_matrix_1d<T, I> matrix{mesh};
-        matrix.calc_matrix(std::vector{
-                parameter_t{},
-                parameter_t{},
-                parameter_t{}
-            }, 
-            {true, false}
-        );
-        std::cout << Eigen::MatrixXd{matrix.matrix_inner()} << std::endl;
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

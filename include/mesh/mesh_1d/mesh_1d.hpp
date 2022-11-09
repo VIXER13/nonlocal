@@ -1,6 +1,8 @@
 #ifndef MESH_1D_HPP
 #define MESH_1D_HPP
 
+#include <iostream>
+
 #include "metamath.hpp"
 
 #include <cstdlib>
@@ -74,8 +76,9 @@ public:
 
     T length() const noexcept;
     T length(const size_t segment) const noexcept;
-    T step(const size_t segment) const noexcept;    
+    T step(const size_t segment) const noexcept;
     T jacobian(const size_t segment) const noexcept;
+    T node_coord(const size_t node) const noexcept;
     std::array<T, 2> bounds(const size_t segment) const noexcept;
 
     void find_neighbours(const std::vector<T>& radii);
@@ -130,7 +133,8 @@ size_t mesh_1d<T>::nodes_count(const size_t segment) const noexcept {
 template<class T>
 size_t mesh_1d<T>::segment_number(const size_t e) const noexcept {
     size_t segment = 0;
-    for(; _segments[segment].elements <= e; ++segment);
+    while(_segments[segment].elements <= e)
+        ++segment;
     return segment;
 }
 
@@ -204,6 +208,17 @@ template<class T>
 T mesh_1d<T>::jacobian(const size_t segment) const noexcept {
     using enum metamath::finite_element::side_1d;
     return step(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
+}
+
+template<class T>
+T mesh_1d<T>::node_coord(const size_t node) const noexcept {
+    size_t segment = 0, accumulated_nodes = nodes_count(segment) - 1;
+    while(node >= accumulated_nodes)
+        accumulated_nodes += nodes_count(++segment) - 1;
+    const T left_bound = segment ? _segments[segment - 1].length : T{0};
+    const T distance_between_nodes = length(segment) / (nodes_count(segment) - 1);
+    const size_t node_number_in_segment = segment ? node + nodes_count(segment) - accumulated_nodes - 1 : node;
+    return left_bound + node_number_in_segment * distance_between_nodes;
 }
 
 template<class T>

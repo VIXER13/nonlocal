@@ -6,13 +6,6 @@
 namespace nonlocal::thermal {
 
 template<class T>
-struct stationary_equation_parameters_1d final {
-    T conductivity = T{1};
-    T energy = T{0};
-    std::array<T, 2> transfer = {T{0}, T{0}};
-};
-
-template<class T>
 struct nonstationary_equation_parameters_1d final {
     T conductivity = T{1};
     T capacity = T{1};
