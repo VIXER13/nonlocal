@@ -2,6 +2,7 @@
 #define NONLOCAL_CONSTANTS_HPP
 
 #include <cstdint>
+#include <concepts>
 
 namespace nonlocal {
 
@@ -16,12 +17,17 @@ enum class theory_t : bool {
     NONLOCAL
 };
 
-template<class T>
+template<std::floating_point T>
 inline constexpr T MAX_NONLOCAL_WEIGHT = T{0.999};
 
-template<class T>
+template<std::floating_point T>
 constexpr theory_t theory_type(const T local_weight) noexcept {
     return local_weight < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
+}
+
+template<std::floating_point T>
+constexpr T nonlocal_weight(const T local_weight) noexcept {
+    return T{1} - local_weight;
 }
 
 }

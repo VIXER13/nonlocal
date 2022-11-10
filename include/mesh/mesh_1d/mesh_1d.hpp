@@ -76,9 +76,10 @@ public:
 
     T length() const noexcept;
     T length(const size_t segment) const noexcept;
-    T step(const size_t segment) const noexcept;
+    T element_length(const size_t segment) const noexcept;
     T jacobian(const size_t segment) const noexcept;
     T node_coord(const size_t node) const noexcept;
+    T qnode_coord(const size_t e, const size_t q) const noexcept;
     std::array<T, 2> bounds(const size_t segment) const noexcept;
 
     void find_neighbours(const std::vector<T>& radii);
@@ -200,14 +201,14 @@ T mesh_1d<T>::length(const size_t segment) const noexcept {
 }
 
 template<class T>
-T mesh_1d<T>::step(const size_t segment) const noexcept {
+T mesh_1d<T>::element_length(const size_t segment) const noexcept {
     return length(segment) / elements_count(segment);
 }
 
 template<class T>
 T mesh_1d<T>::jacobian(const size_t segment) const noexcept {
     using enum metamath::finite_element::side_1d;
-    return step(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
+    return element_length(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
 }
 
 template<class T>
@@ -222,6 +223,16 @@ T mesh_1d<T>::node_coord(const size_t node) const noexcept {
 }
 
 template<class T>
+T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const noexcept {
+    const size_t segment = segment_number(e);
+    using enum metamath::finite_element::side_1d;
+    const auto [left_bound, _] = bounds(segment);
+    const size_t first_segment_element = segment_elements(segment).front();
+    const T qnode_coord_loc = element().quadrature().node(q) - element().boundary(LEFT) * jacobian(segment);
+    return left_bound + element_length(segment) * (e - first_segment_element) + qnode_coord_loc;
+}
+
+template<class T>
 std::array<T, 2> mesh_1d<T>::bounds(const size_t segment) const noexcept {
     return {segment ? _segments[segment - 1].length : T{0}, _segments[segment].length};
 }
@@ -231,7 +242,7 @@ void mesh_1d<T>::find_neighbours(const std::vector<T>& radii) {
     if (radii.size() != _neighbours_count.size())
         throw std::runtime_error{"The number of radii does not match the number of segments."};
     for(const size_t segment : std::ranges::iota_view{size_t{0}, segments_count()})
-        _neighbours_count[segment] = radii[segment] / step(segment) + 1;
+        _neighbours_count[segment] = radii[segment] / element_length(segment) + 1;
 }
 
 

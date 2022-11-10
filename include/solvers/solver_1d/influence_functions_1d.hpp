@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
 #define NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
 
-#include "power.hpp"
+#include "metamath.hpp"
 #include <cmath>
 
 namespace nonlocal::influence {
