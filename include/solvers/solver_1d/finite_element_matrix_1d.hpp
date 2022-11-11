@@ -88,17 +88,16 @@ template<class T, class I>
 void finite_element_matrix_1d<T, I>::calc_shifts(const std::array<bool, 2> is_first_kind) {
     const size_t last_node = mesh().nodes_count() - 1;
     const size_t nodes_in_element = mesh().element().nodes_count() - 1;
+#pragma omp parallel for default(none) shared(is_first_kind, last_node, nodes_in_element)
     for(size_t node = 0; node < mesh().nodes_count(); ++node) {
         if (is_first_kind.front() && node == 0 || is_first_kind.back() && node == last_node)
             matrix_inner().outerIndexPtr()[node + 1] = 1;
         else {
             const auto [left, right] = mesh().node_elements(node);
             const auto [e, i] = right ? right : left;
-            size_t neighbour = mesh().neighbours(e).back();
-            if (e == neighbour)
-                ++neighbour;
+            const size_t neighbour = *mesh().neighbours(e).end();
             const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
-            matrix_inner().outerIndexPtr()[node + 1] = (neighbour - e) * nodes_in_element - i + 1 - is_last_first_kind;
+            matrix_inner().outerIndexPtr()[node + 1] += (neighbour - e) * nodes_in_element + 1 - i - is_last_first_kind;
         }
     }
 }
@@ -114,7 +113,7 @@ template<class T, class I>
 void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bool, 2> is_first_kind) {
     calc_shifts(is_first_kind);
     utils::accumulate_shifts(matrix_inner());
-    std::cout << "Non-zero elements count: " << matrix_inner().outerIndexPtr()[matrix_inner().rows()] << std::endl;
+    std::cout << "Non-zero elements count: " << matrix_inner().nonZeros() << std::endl;
     utils::allocate_matrix(matrix_inner());
     init_indices();
 }
@@ -133,7 +132,8 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
         };
 
     const auto segment_nodes = mesh().segment_nodes(segment);
-    for(const size_t node : segment_nodes) {
+#pragma omp parallel for default(none) shared(correct_node_data, segment_nodes) firstprivate(callback)
+    for(size_t node = segment_nodes.front(); node < *segment_nodes.end(); ++node) {
         for(const auto node_data : correct_node_data(node, segment_nodes))
             if (node_data) {
                 const auto& [eL, iL] = node_data;
@@ -142,8 +142,9 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
                         callback(eL, iL, jL);
                 if constexpr (Theory == theory_t::NONLOCAL)
                     for(const size_t eNL : mesh().neighbours(eL))
-                        for(const size_t jNL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
+                        for(const size_t jNL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()}) {
                             callback(eL, eNL, iL, jNL);
+                        }
             }            
     }
 }

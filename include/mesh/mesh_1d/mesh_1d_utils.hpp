@@ -1,5 +1,5 @@
-#ifndef MESH_1D_UTILS_HPP
-#define MESH_1D_UTILS_HPP
+#ifndef NONLOCAL_MESH_1D_UTILS_HPP
+#define NONLOCAL_MESH_1D_UTILS_HPP
 
 #include "mesh_1d.hpp"
 
