@@ -10,7 +10,7 @@ namespace nonlocal {
 template<class T>
 class solution_1d {
     const std::shared_ptr<mesh::mesh_1d<T>> _mesh;
-    const std::vector<model_parameters<1, T>>& _models;
+    const std::vector<model_parameters<1, T>> _models;
 
 protected:
     explicit solution_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,

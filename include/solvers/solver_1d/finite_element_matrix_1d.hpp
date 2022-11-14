@@ -104,7 +104,7 @@ void finite_element_matrix_1d<T, I>::calc_shifts(const std::array<bool, 2> is_fi
 
 template<class T, class I>
 void finite_element_matrix_1d<T, I>::init_indices() {
-    for(const size_t i : std::ranges::iota_view{size_t{0}, size_t(matrix_inner().rows())})
+    for(const size_t i : std::ranges::iota_view{0u, size_t(matrix_inner().rows())})
         for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j, ++k)
             matrix_inner().innerIndexPtr()[j] = k;
 }
@@ -131,18 +131,18 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
             return node_elements;
         };
 
-    const auto segment_nodes = mesh().segment_nodes(segment);
+    const auto segment_nodes = mesh().nodes(segment);
 #pragma omp parallel for default(none) shared(correct_node_data, segment_nodes) firstprivate(callback)
     for(size_t node = segment_nodes.front(); node < *segment_nodes.end(); ++node) {
         for(const auto node_data : correct_node_data(node, segment_nodes))
             if (node_data) {
                 const auto& [eL, iL] = node_data;
                 if constexpr (Theory == theory_t::LOCAL)
-                    for(const size_t jL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()})
+                    for(const size_t jL : std::ranges::iota_view{0u, mesh().element().nodes_count()})
                         callback(eL, iL, jL);
                 if constexpr (Theory == theory_t::NONLOCAL)
                     for(const size_t eNL : mesh().neighbours(eL))
-                        for(const size_t jNL : std::ranges::iota_view{size_t{0}, mesh().element().nodes_count()}) {
+                        for(const size_t jNL : std::ranges::iota_view{0u, mesh().element().nodes_count()}) {
                             callback(eL, eNL, iL, jNL);
                         }
             }            
@@ -173,7 +173,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<bool, 2> is_fi
             matrix_inner().coeffRef(row, col) += integrate_rule(args...);
     };
 
-    for(const size_t segment : std::ranges::iota_view{size_t{0}, mesh().segments_count()})
+    for(const size_t segment : mesh().segments())
         switch (theories[segment]) {
             case theory_t::NONLOCAL:
                 mesh_run<theory_t::NONLOCAL>(segment,

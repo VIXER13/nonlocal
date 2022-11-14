@@ -1,7 +1,6 @@
 #ifndef STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 #define STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 
-#include "heat_equation_parameters_1d.hpp"
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "right_part_1d.hpp"
 #include "boundary_condition_first_kind_1d.hpp"
@@ -71,7 +70,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     );
     std::cout << "Matrix time: " << omp_get_wtime() - time << std::endl;
 
-    const std::array<size_t, 2> indices = {0, size_t(conductivity.matrix_inner().cols() - 1)};
+    const std::array<size_t, 2> indices = {0, mesh->nodes_count() - 1};
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count() + is_neumann);
     integrate_right_part(f, *mesh, right_part);
     for(const size_t b : std::ranges::iota_view{size_t{0}, boundary_condition.size()}) {
@@ -80,11 +79,17 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         boundary_condition_first_kind_1d<T>(f, conductivity.matrix_bound()[b], *boundary_condition[b], indices[b]);
     }
     if (is_neumann)
-        f[f.size()-1] = energy;
+        f[f.size() - 1] = energy;
 
     time = omp_get_wtime();
-    Eigen::SimplicialCholesky<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper, Eigen::NaturalOrdering<I>> solver{conductivity.matrix_inner()};
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature = solver.solve(f);
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
+    if (is_neumann) {
+        const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
+        temperature = solver.solve(f);
+    } else {
+        const Eigen::SimplicialCholesky<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper, Eigen::NaturalOrdering<I>> solver{conductivity.matrix_inner()};
+        temperature = solver.solve(f);
+    }
     std::cout << "SLAE time: " << omp_get_wtime() - time << std::endl;
     return heat_equation_solution_1d<T>{mesh, parameters, temperature};
 }

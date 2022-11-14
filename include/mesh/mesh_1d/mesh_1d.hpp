@@ -7,6 +7,8 @@
 #include <memory>
 #include <numeric>
 
+#include <iostream>
+
 namespace nonlocal::mesh {
 
 struct left_right_element final {
@@ -30,6 +32,10 @@ struct left_right_element final {
             return bool(element);
         }
     } left, right;
+
+    constexpr size_t count() const noexcept {
+        return bool(left) + bool(right);
+    }
 
     constexpr std::array<node_element, 2> to_array() const noexcept {
         return {left, right};
@@ -67,8 +73,11 @@ public:
     size_t nodes_count(const size_t segment) const noexcept;
     size_t segment_number(const size_t e) const noexcept;
     size_t node_number(const size_t e, const size_t i) const noexcept;
-    std::ranges::iota_view<size_t, size_t> segment_elements(const size_t segment) const noexcept;
-    std::ranges::iota_view<size_t, size_t> segment_nodes(const size_t segment) const noexcept;
+    std::ranges::iota_view<size_t, size_t> segments() const noexcept;
+    std::ranges::iota_view<size_t, size_t> elements() const noexcept;
+    std::ranges::iota_view<size_t, size_t> nodes() const noexcept;
+    std::ranges::iota_view<size_t, size_t> elements(const size_t segment) const noexcept;
+    std::ranges::iota_view<size_t, size_t> nodes(const size_t segment) const noexcept;
     std::ranges::iota_view<size_t, size_t> neighbours(const size_t e) const noexcept;
     left_right_element node_elements(const size_t node) const noexcept;
 
@@ -92,7 +101,7 @@ mesh_1d<T>::mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_d
 template<class T>
 std::vector<segment_data<T>> mesh_1d<T>::accumulate(const std::vector<segment_data<T>>& segments) {
     std::vector<segment_data<T>> accumulated = segments;
-    for(const size_t i : std::ranges::iota_view{size_t{1}, accumulated.size()}) {
+    for(const size_t i : std::ranges::iota_view{1u, accumulated.size()}) {
         accumulated[i].length += accumulated[i - 1].length;
         accumulated[i].elements += accumulated[i - 1].elements;
     }
@@ -143,14 +152,29 @@ size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const noexcept {
 }
 
 template<class T>
-std::ranges::iota_view<size_t, size_t> mesh_1d<T>::segment_elements(const size_t segment) const noexcept {
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::segments() const noexcept {
+    return {size_t{0}, segments_count()};
+}
+
+template<class T>
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::elements() const noexcept {
+    return {size_t{0}, elements_count()};
+}
+
+template<class T>
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes() const noexcept {
+    return {size_t{0}, nodes_count()};
+}
+
+template<class T>
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::elements(const size_t segment) const noexcept {
     return {segment ? _segments[segment - 1].elements : 0, _segments[segment].elements};
 }
 
 template<class T>
-std::ranges::iota_view<size_t, size_t> mesh_1d<T>::segment_nodes(const size_t segment) const noexcept {
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes(const size_t segment) const noexcept {
     const size_t elements_nodes_count = element().nodes_count() - 1;
-    const std::ranges::iota_view<size_t, size_t> elements = segment_elements(segment);
+    const std::ranges::iota_view<size_t, size_t> elements = mesh_1d<T>::elements(segment);
     return {elements_nodes_count * elements.front(), elements_nodes_count * (elements.back() + 1) + 1};
 }
 
@@ -212,7 +236,7 @@ T mesh_1d<T>::jacobian(const size_t segment) const noexcept {
 template<class T>
 T mesh_1d<T>::node_coord(const size_t node) const noexcept {
     size_t segment = 0, accumulated_nodes = nodes_count(segment) - 1;
-    while(node >= accumulated_nodes)
+    while(node >= accumulated_nodes && segment < segments_count() - 1)
         accumulated_nodes += nodes_count(++segment) - 1;
     const T left_bound = segment ? _segments[segment - 1].length : T{0};
     const T distance_between_nodes = length(segment) / (nodes_count(segment) - 1);
@@ -222,11 +246,11 @@ T mesh_1d<T>::node_coord(const size_t node) const noexcept {
 
 template<class T>
 T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const noexcept {
-    const size_t segment = segment_number(e);
     using enum metamath::finite_element::side_1d;
+    const size_t segment = segment_number(e);
     const auto [left_bound, _] = bounds(segment);
-    const size_t first_segment_element = segment_elements(segment).front();
-    const T qnode_coord_loc = element().quadrature().node(q) - element().boundary(LEFT) * jacobian(segment);
+    const size_t first_segment_element = elements(segment).front();
+    const T qnode_coord_loc = (element().quadrature().node(q) - element().boundary(LEFT)) * jacobian(segment);
     return left_bound + element_length(segment) * (e - first_segment_element) + qnode_coord_loc;
 }
 
@@ -239,7 +263,7 @@ template<class T>
 void mesh_1d<T>::find_neighbours(const std::vector<T>& radii) {
     if (radii.size() != _neighbours_count.size())
         throw std::runtime_error{"The number of radii does not match the number of segments."};
-    for(const size_t segment : std::ranges::iota_view{size_t{0}, segments_count()})
+    for(const size_t segment : std::ranges::iota_view{0u, segments_count()})
         _neighbours_count[segment] = std::round(radii[segment] / element_length(segment));
 }
 

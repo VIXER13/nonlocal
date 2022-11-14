@@ -33,14 +33,14 @@ std::vector<boundary_condition_t> to_general_condition(const std::vector<B>& con
 
 template<class T, class I>
 void accumulate_shifts(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
-    for(const size_t i : std::views::iota(size_t{0}, size_t(K.rows())))
+    for(const size_t i : std::ranges::iota_view{0u, size_t(K.rows())})
         K.outerIndexPtr()[i+1] += K.outerIndexPtr()[i];
 }
 
 template<class T, class I>
 void allocate_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
     K.data().resize(K.outerIndexPtr()[K.rows()]);
-    for(const size_t i : std::views::iota(size_t{0}, size_t(K.outerIndexPtr()[K.rows()]))) {
+    for(const size_t i : std::ranges::iota_view{0u, size_t(K.nonZeros())}) {
         K.innerIndexPtr()[i] = 0;
         K.valuePtr()[i] = T{0};
     }

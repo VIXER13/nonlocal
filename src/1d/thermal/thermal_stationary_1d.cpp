@@ -16,7 +16,7 @@ int main(const int argc, const char *const *const argv) {
     try {
         std::cout.precision(3);
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
-            nonlocal::make_element<T>(nonlocal::element_type::QUBIC),
+            nonlocal::make_element<T>(nonlocal::element_type::QUADRATIC),
             std::vector<nonlocal::mesh::segment_data<T>>{
                 {.length = 0.25, .elements = 100},
                 {.length = 0.25, .elements = 100},
@@ -50,7 +50,7 @@ int main(const int argc, const char *const *const argv) {
         if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL)
             mesh->find_neighbours(radii);
 
-        const auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
+        auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
             mesh, parameters,
             {
                 std::make_unique<nonlocal::thermal::stationary_flux_1d<T>>(1.),
@@ -58,7 +58,9 @@ int main(const int argc, const char *const *const argv) {
             },
             [](const T x) constexpr noexcept { return 0; }
         );
+        std::cout << "integral = " << nonlocal::mesh::utils::integrate(*mesh, solution.temperature()) << std::endl;
         nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), "./T05.csv");
+        nonlocal::mesh::utils::save_as_csv(*mesh, solution.calc_flux(), "./flux.csv");
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
