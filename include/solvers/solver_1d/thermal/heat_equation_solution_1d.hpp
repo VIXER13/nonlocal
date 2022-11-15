@@ -9,6 +9,7 @@ namespace nonlocal::thermal {
 template<class T>
 class heat_equation_solution_1d : public solution_1d<T> {
     using _base = solution_1d<T>;
+    using _base::mesh;
 
     const std::vector<T> _temperature;
     const std::vector<T> _conductivity;
@@ -26,6 +27,7 @@ public:
 
     const std::vector<T>& temperature() const noexcept;
     const std::vector<T>& flux() const;
+    T conductivity(const size_t segment) const noexcept;
 
     bool is_flux_calculated() const noexcept;
     const std::vector<T>& calc_flux();
@@ -60,44 +62,52 @@ const std::vector<T>& heat_equation_solution_1d<T>::flux() const {
 }
 
 template<class T>
+T heat_equation_solution_1d<T>::conductivity(const size_t segment) const noexcept {
+    return _conductivity[segment];
+}
+
+template<class T>
 bool heat_equation_solution_1d<T>::is_flux_calculated() const noexcept {
     return _flux;
 }
 
 template<class T>
 const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
-    const std::vector<T> gradient = mesh::utils::gradient_in_qnodes(_base::mesh(), temperature());
-    _flux = mesh::utils::from_qnodes_to_nodes(_base::mesh(), gradient);
-    std::vector<T> flux(_flux->size(), T{0});
-    //auto& flux = *_flux;
-    for(const size_t segment : _base::mesh().segments()) {
-        const auto segment_nodes = _base::mesh().nodes(segment);
-        for(const size_t node : segment_nodes)
-           flux[node] -= _base::model(segment).local_weight * _conductivity[segment] * (*_flux)[node];
+    const auto& el = mesh().element();
+    const auto quadratures = std::ranges::iota_view{0u, el.qnodes_count()};
+    std::vector<T> gradient = mesh::utils::gradient_in_qnodes(mesh(), temperature());
 
-        if (theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL) {
-            const auto& el = _base::mesh().element();
-            const T jacobian = _base::mesh().jacobian(segment);
-            std::vector<T> nonlocal_flux(segment_nodes.size(), T{0});
-            for(const size_t eL : _base::mesh().elements(segment))
-                for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()}) {
-                    const size_t node = _base::mesh().node_number(eL, i);
-                    const T node_coord = _base::mesh().node_coord(node);
-                    for(const size_t eNL : _base::mesh().neighbours(eL)) {
-                        const size_t qshift = eNL * el.qnodes_count();
-                        for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-                            const T influence_weight = _base::model(segment).influence(node_coord, _base::mesh().qnode_coord(eNL, q));
-                            nonlocal_flux[node - segment_nodes.front()] += el.weight(q) * influence_weight * gradient[qshift + q] * jacobian;
+    for(const size_t segment : mesh().segments()) {
+        const auto segment_elements = mesh().elements(segment);
+        const theory_t theory = theory_type(_base::model(segment).local_weight);
+        std::vector<T> gradient_nonlocal(theory == theory_t::NONLOCAL ? mesh().elements_count(segment) * el.qnodes_count() : 0, T{0});
+
+        if (theory == theory_t::NONLOCAL) {
+            for(const size_t eL : segment_elements) {
+                const size_t qshiftL = (eL - segment_elements.front()) * el.qnodes_count();
+                for(const size_t eNL : mesh().neighbours(eL)) {
+                    const size_t qshiftNL = eNL * el.qnodes_count();
+                    for(const size_t qL : quadratures)
+                        for(const size_t qNL : quadratures) {
+                            const T influence_weight = _base::model(segment).influence(mesh().qnode_coord(eL,  qL), 
+                                                                                       mesh().qnode_coord(eNL, qNL));
+                            gradient_nonlocal[qshiftL + qL] -= el.weight(qNL) * influence_weight * gradient[qshiftNL + qNL];
                         }
-                    }
                 }
-            const T nonloc_weight = nonlocal_weight(_base::model(segment).local_weight) * _conductivity[segment];
-            for(const size_t node : segment_nodes) {
-                flux[node] -= nonloc_weight * nonlocal_flux[node - segment_nodes.front()] / _base::mesh().node_elements(node).count();
             }
+            using namespace metamath::functions;
+            gradient_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * conductivity(segment) * mesh().jacobian(segment);
+        }
+
+        const size_t qshiftNL = el.qnodes_count() * segment_elements.front();
+        for(const size_t qshiftL : std::ranges::iota_view{qshiftNL, el.qnodes_count() * *segment_elements.end()}) {
+            gradient[qshiftL] *= -_base::model(segment).local_weight * conductivity(segment);
+            if (theory == theory_t::NONLOCAL)
+                gradient[qshiftL] += gradient_nonlocal[qshiftL - qshiftNL];
         }
     }
-    _flux = flux;
+
+    _flux = mesh::utils::from_qnodes_to_nodes(mesh(), gradient);
     return *_flux;
 }
 

@@ -7,8 +7,6 @@
 #include <memory>
 #include <numeric>
 
-#include <iostream>
-
 namespace nonlocal::mesh {
 
 struct left_right_element final {

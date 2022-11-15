@@ -18,10 +18,10 @@ int main(const int argc, const char *const *const argv) {
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
             nonlocal::make_element<T>(nonlocal::element_type::QUADRATIC),
             std::vector<nonlocal::mesh::segment_data<T>>{
+                {.length = 0.15, .elements = 100},
                 {.length = 0.25, .elements = 100},
-                {.length = 0.25, .elements = 100},
-                {.length = 0.25, .elements = 100},
-                {.length = 0.25, .elements = 100}
+                {.length = 0.35, .elements = 100},
+                {.length = 0.15, .elements = 100}
             }
         );
         const std::vector<T> radii = {
