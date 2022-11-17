@@ -13,6 +13,9 @@ using I = int64_t;
 }
 
 int main(const int argc, const char *const *const argv) {
+
+std::cout << "Hello, World!" << std::endl;
+
     try {
         std::cout.precision(3);
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
