@@ -34,7 +34,7 @@ std::cout << "Hello, World!" << std::endl;
             0.
         };
         const T p1 = 0.5;
-        std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::stationary_equation_parameters_1d>> parameters;
+        std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>> parameters;
         for(const auto [conductivity, radius, local_weight] : {std::tuple{ 1., radii[0], p1 }, 
                                                                std::tuple{ 7., radii[1], 1. },
                                                                std::tuple{ 3., radii[2], p1 },

@@ -1,7 +1,6 @@
 #ifndef NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
 #define NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
 
-#include "../equation_parameters.hpp"
 #include "../solvers_utils.hpp"
 
 #include "mesh_1d.hpp"

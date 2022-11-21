@@ -9,7 +9,6 @@ namespace nonlocal::thermal {
 template<class T>
 class heat_equation_solution_1d : public solution_1d<T> {
     using _base = solution_1d<T>;
-    using _base::mesh;
 
     const std::vector<T> _temperature;
     const std::vector<T> _conductivity;
@@ -19,6 +18,8 @@ class heat_equation_solution_1d : public solution_1d<T> {
     static std::vector<T> get_conductivity(const std::vector<Parameter>& parameters);
     
 public:
+    using _base::mesh;
+
     template<class Parameter, class Vector>
     explicit heat_equation_solution_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                        const std::vector<Parameter>& parameters,
