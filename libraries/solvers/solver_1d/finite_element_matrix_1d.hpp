@@ -20,14 +20,14 @@ class finite_element_matrix_1d {
 protected:
     explicit finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
 
-    void calc_shifts(const std::array<bool, 2> is_first_kind);
+    void calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind);
     void init_indices();
-    void create_matrix_portrait(const std::array<bool, 2> is_first_kind);
+    void create_matrix_portrait(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind);
 
     template<theory_t Theory, class Callback>
     void mesh_run(const size_t segment, const Callback& callback) const;
     template<class Integrate_Loc, class Integrate_Nonloc>
-    void calc_matrix(const std::array<bool, 2> is_first_kind, const std::vector<theory_t>& theories,
+    void calc_matrix(const std::vector<theory_t>& theories,   const std::array<bool, 2> is_first_kind,
                      const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
@@ -84,17 +84,17 @@ void finite_element_matrix_1d<T, I>::clear() {
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::calc_shifts(const std::array<bool, 2> is_first_kind) {
+void finite_element_matrix_1d<T, I>::calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind) {
     const size_t last_node = mesh().nodes_count() - 1;
     const size_t nodes_in_element = mesh().element().nodes_count() - 1;
-#pragma omp parallel for default(none) shared(is_first_kind, last_node, nodes_in_element)
+#pragma omp parallel for default(none) shared(theories, is_first_kind, last_node, nodes_in_element)
     for(size_t node = 0; node < mesh().nodes_count(); ++node) {
         if (is_first_kind.front() && node == 0 || is_first_kind.back() && node == last_node)
             matrix_inner().outerIndexPtr()[node + 1] = 1;
         else {
             const auto [left, right] = mesh().node_elements(node);
             const auto [e, i] = right ? right : left;
-            const size_t neighbour = *mesh().neighbours(e).end();
+            const size_t neighbour = theories[mesh().segment_number(e)] == theory_t::LOCAL ? e + 1 : *mesh().neighbours(e).end();
             const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
             matrix_inner().outerIndexPtr()[node + 1] += (neighbour - e) * nodes_in_element + 1 - i - is_last_first_kind;
         }
@@ -109,8 +109,9 @@ void finite_element_matrix_1d<T, I>::init_indices() {
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::array<bool, 2> is_first_kind) {
-    calc_shifts(is_first_kind);
+void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::vector<theory_t>& theories,
+                                                            const std::array<bool, 2> is_first_kind) {
+    calc_shifts(theories, is_first_kind);
     utils::accumulate_shifts(matrix_inner());
     std::cout << "Non-zero elements count: " << matrix_inner().nonZeros() << std::endl;
     utils::allocate_matrix(matrix_inner());
@@ -150,7 +151,7 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
 
 template<class T, class I>
 template<class Integrate_Loc, class Integrate_Nonloc>
-void finite_element_matrix_1d<T, I>::calc_matrix(const std::array<bool, 2> is_first_kind, const std::vector<theory_t>& theories,
+void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind,
                                                  const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
         if (col == row)

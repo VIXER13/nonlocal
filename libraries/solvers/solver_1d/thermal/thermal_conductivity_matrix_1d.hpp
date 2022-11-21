@@ -24,7 +24,8 @@ protected:
                        const Influence_Function& influence) const;
 
     void neumann_problem_col_fill();
-    void create_matrix_portrait(const std::array<bool, 2> is_first_kind, const bool is_neumann);
+    void create_matrix_portrait(const std::vector<theory_t>& theories,
+                                const std::array<bool, 2> is_first_kind, const bool is_neumann);
 
 public:
     explicit thermal_conductivity_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
@@ -103,11 +104,12 @@ void thermal_conductivity_matrix_1d<T, I>::neumann_problem_col_fill() {
 }
 
 template<class T, class I>
-void thermal_conductivity_matrix_1d<T, I>::create_matrix_portrait(const std::array<bool, 2> is_first_kind, const bool is_neumann) {
+void thermal_conductivity_matrix_1d<T, I>::create_matrix_portrait(const std::vector<theory_t>& theories,
+                                                                  const std::array<bool, 2> is_first_kind, const bool is_neumann) {
     if (is_neumann)
         for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix_inner().rows())})
             _base::matrix_inner().outerIndexPtr()[row + 1] = 1;
-    _base::create_matrix_portrait(is_first_kind);
+    _base::create_matrix_portrait(theories, is_first_kind);
     if (is_neumann)
         for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix_inner().rows())})
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().nodes_count();
@@ -121,8 +123,9 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const std::vector<equatio
     _base::clear();
     const size_t matrix_size = _base::mesh().nodes_count() + is_neumann;
     _base::matrix_inner().resize(matrix_size, matrix_size);
-    create_matrix_portrait(is_first_kind, is_neumann);
-    _base::template calc_matrix(is_first_kind, theories_types(parameters),
+    const std::vector<theory_t> theories = theories_types(parameters);
+    create_matrix_portrait(theories, is_first_kind, is_neumann);
+    _base::template calc_matrix(theories, is_first_kind,
         [this, factors = local_factors(parameters)](const size_t segment, const size_t e, const size_t i, const size_t j) {
             return factors[segment] * integrate_loc(e, i, j);
         },
