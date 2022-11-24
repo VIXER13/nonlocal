@@ -55,9 +55,9 @@ int main(const int argc, const char *const *const argv) {
         if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL)
             mesh->find_neighbours(radii);
 
-        const std::array<std::unique_ptr<nonlocal::thermal::stationary_thermal_boundary_condition_1d>, 2> boundary_condition = {
-            std::make_unique<nonlocal::thermal::stationary_flux_1d<T>>(1.),
-            std::make_unique<nonlocal::thermal::stationary_flux_1d<T>>(-1.)
+        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2> boundary_condition = {
+            std::make_unique<nonlocal::thermal::flux_1d<T>>(1.),
+            std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.)
         };
 
         nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, tau};

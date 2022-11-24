@@ -11,15 +11,15 @@
 namespace nonlocal::thermal {
 
 template<class T>
-constexpr bool is_neumann_problem(const std::array<std::unique_ptr<stationary_thermal_boundary_condition_1d>, 2>& boundary_condition) noexcept {
-    return dynamic_cast<stationary_flux_1d<T>*>(boundary_condition.front().get()) &&
-           dynamic_cast<stationary_flux_1d<T>*>(boundary_condition.back ().get());
+constexpr bool is_neumann_problem(const std::array<std::unique_ptr<thermal_boundary_condition_1d>, 2>& boundary_condition) noexcept {
+    return dynamic_cast<flux_1d<T>*>(boundary_condition.front().get()) &&
+           dynamic_cast<flux_1d<T>*>(boundary_condition.back ().get());
 }
 
 template<class T, class I, class Right_Part>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                                 const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                                                                const std::array<std::unique_ptr<stationary_thermal_boundary_condition_1d>, 2>& boundary_condition,
+                                                                const std::array<std::unique_ptr<thermal_boundary_condition_1d>, 2>& boundary_condition,
                                                                 const Right_Part& right_part, 
                                                                 const T energy = T{0}) {
     const bool is_neumann = is_neumann_problem<T>(boundary_condition);
@@ -27,8 +27,8 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     double time = omp_get_wtime();
     conductivity.template calc_matrix(
         parameters,
-        { bool(dynamic_cast<stationary_temperature_1d<T>*>(boundary_condition.front().get())),
-          bool(dynamic_cast<stationary_temperature_1d<T>*>(boundary_condition.back ().get())) },
+        { bool(dynamic_cast<temperature_1d<T>*>(boundary_condition.front().get())),
+          bool(dynamic_cast<temperature_1d<T>*>(boundary_condition.back ().get())) },
         is_neumann
     );
     std::cout << "Matrix time: " << omp_get_wtime() - time << std::endl;

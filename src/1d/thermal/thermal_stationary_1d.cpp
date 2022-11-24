@@ -56,8 +56,8 @@ std::cout << "Hello, World!" << std::endl;
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
             mesh, parameters,
             {
-                std::make_unique<nonlocal::thermal::stationary_flux_1d<T>>(1.),
-                std::make_unique<nonlocal::thermal::stationary_flux_1d<T>>(-1.)
+                std::make_unique<nonlocal::thermal::flux_1d<T>>(1.),
+                std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.)
             },
             [](const T x) constexpr noexcept { return 0; }
         );

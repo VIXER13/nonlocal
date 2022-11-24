@@ -29,11 +29,11 @@ public:
 
     template<class Init_Dist>
     void compute(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                 const std::array<std::unique_ptr<stationary_thermal_boundary_condition_1d>, 2>& boundary_condition,
+                 const std::array<std::unique_ptr<thermal_boundary_condition_1d>, 2>& boundary_condition,
                  const Init_Dist& init_dist);
 
     template<class Right_Part>
-    void calc_step(const std::array<std::unique_ptr<stationary_thermal_boundary_condition_1d>, 2>& boundary_condition,
+    void calc_step(const std::array<std::unique_ptr<thermal_boundary_condition_1d>, 2>& boundary_condition,
                    const Right_Part& right_part);
 };
 
@@ -59,11 +59,11 @@ const Eigen::Matrix<T, Eigen::Dynamic, 1>& nonstationary_heat_equation_solver_1d
 template<class T, class I>
 template<class Init_Dist>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                                                          const std::array<std::unique_ptr<stationary_thermal_boundary_condition_1d>, 2>& boundary_condition,
+                                                          const std::array<std::unique_ptr<thermal_boundary_condition_1d>, 2>& boundary_condition,
                                                           const Init_Dist& init_dist) {
     const std::array<bool, 2> is_first_kind = {
-        bool(dynamic_cast<stationary_temperature_1d<T>*>(boundary_condition.front().get())),
-        bool(dynamic_cast<stationary_temperature_1d<T>*>(boundary_condition.back ().get()))
+        bool(dynamic_cast<temperature_1d<T>*>(boundary_condition.front().get())),
+        bool(dynamic_cast<temperature_1d<T>*>(boundary_condition.back ().get()))
     };
     _capacity.calc_matrix(parameters, is_first_kind);
     _conductivity.template calc_matrix(parameters, is_first_kind);
@@ -84,13 +84,13 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equa
         for(auto& [_, val] : matrix_part)
             val *= time_step();
 
-    for(const size_t i : std::ranges::iota_view(0u, _conductivity.mesh().nodes_count()))
-        _temperature_prev[i] = init_dist(_conductivity.mesh().node_coord(i));
+    for(const size_t i : std::ranges::iota_view{0u, _conductivity.mesh().nodes_count()})
+        _temperature_curr[i] = init_dist(_conductivity.mesh().node_coord(i));
 }
 
 template<class T, class I>
 template<class Right_Part>
-void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const std::array<std::unique_ptr<stationary_thermal_boundary_condition_1d>, 2>& boundary_condition,
+void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const std::array<std::unique_ptr<thermal_boundary_condition_1d>, 2>& boundary_condition,
                                                             const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);

@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_1D_HPP
 #define NONLOCAL_HEAT_EQUATION_SOLUTION_1D_HPP
 
-#include "../solution_1d.hpp"
+#include "solution_1d.hpp"
 #include "mesh_1d_utils.hpp"
 
 namespace nonlocal::thermal {
