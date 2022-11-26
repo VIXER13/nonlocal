@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_STIFFNESS_MATRIX_2D_HPP
 #define NONLOCAL_STIFFNESS_MATRIX_2D_HPP
 
-#include "../finite_element_matrix_2d.hpp"
+#include "finite_element_matrix_2d.hpp"
 
 namespace nonlocal::mechanical {
 
