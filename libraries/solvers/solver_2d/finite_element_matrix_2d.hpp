@@ -173,8 +173,11 @@ template<size_t DoF, class T, class I, class Matrix_Index>
 template<theory_t Theory>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(const std::vector<bool>& is_inner) {
     mesh_index<index_stage::SHIFTS, Theory>(is_inner);
-    utils::prepare_memory(matrix_inner());
-    utils::prepare_memory(matrix_bound());
+    utils::accumulate_shifts(matrix_inner());
+    utils::accumulate_shifts(matrix_bound());
+    std::cout << "Non-zero elements count: " << matrix_inner().nonZeros() + matrix_bound().nonZeros() << std::endl;
+    utils::allocate_matrix(matrix_inner());
+    utils::allocate_matrix(matrix_bound());
     mesh_index<index_stage::NONZERO, Theory>(is_inner);
     utils::sort_indices(matrix_inner());
     utils::sort_indices(matrix_bound());
