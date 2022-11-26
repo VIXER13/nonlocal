@@ -2,59 +2,74 @@
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
 #include "influence_functions_1d.hpp"
 #include <iostream>
-#include <fstream>
 
 namespace {
 
-template<class Vector>
-void save_step(const std::string& path, const Vector& vec, const nonlocal::mesh::mesh_1d<double>& mesh, const uintmax_t step) {
+using T = double;
+using I = int64_t;
+
+void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const std::filesystem::path& folder, const uintmax_t step) {
     using namespace std::literals;
-    std::ofstream csv{path + "/"s + std::to_string(step) + ".csv"};
-    csv.precision(std::numeric_limits<double>::max_digits10);
-    const double h = (mesh.section().back() - mesh.section().front()) / (mesh.nodes_count() - 1);
-    for(const size_t i : std::views::iota(size_t{0}, mesh.nodes_count()))
-        csv << mesh.section().front() + i * h << ',' << vec[i] << '\n';
+    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), folder / ("T" + std::to_string(step) + ".csv"));
+    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), folder / ("Flux" + std::to_string(step) + ".csv"));
 }
 
 }
 
 int main(const int argc, const char *const *const argv) {
-    if (argc < 6) {
-        std::cerr << "run format: program_name <element_type> <elements_count> <p1> <r> <save_path>" << std::endl;
-        return EXIT_FAILURE;
-    }
-
     try {
         std::cout.precision(3);
-        const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<double>>(
-            nonlocal::make_element<double>(nonlocal::element_type(std::stoi(argv[1]))),
-            std::stoull(argv[2]), std::array{0., 1.});
-        const double p1 = std::stod(argv[3]),
-                     r  = std::stod(argv[4]);
-        const double tau = 0.01;
-        const nonlocal::thermal::equation_parameters_1d<double> equation_parameters = {
-            .lambda = 1,
-            .alpha = {2., 2. / 19.}
-        };
-
-        const std::array<nonlocal::nonstatinary_boundary_1d_t<nonlocal::thermal::boundary_condition_t, double>, 2>
-            boundary_condition = {
-                nonlocal::thermal::boundary_condition_t::FLUX, [](const double) constexpr noexcept { return  1; },
-                nonlocal::thermal::boundary_condition_t::FLUX, [](const double) constexpr noexcept { return -1; }
-        };
-
-        mesh->calc_neighbours_count(r);
-        nonlocal::thermal::nonstationary_heat_equation_solver_1d<double, int> solver{mesh, tau};
-        solver.compute(equation_parameters,
-            nonlocal::boundary_type(boundary_condition),
-            [](const double) constexpr noexcept { return 0; },
-            p1, nonlocal::influence::polynomial_1d<double, 2, 1>{r}
+        const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
+            nonlocal::make_element<T>(nonlocal::element_type::QUADRATIC),
+            std::vector<nonlocal::mesh::segment_data<T>>{
+                {.length = 0.15, .elements = 100},
+                {.length = 0.25, .elements = 100},
+                {.length = 0.35, .elements = 100},
+                {.length = 0.15, .elements = 100}
+            }
         );
-        save_step(argv[5], solver.temperature(), *mesh, 0);
-        for(const uintmax_t step : std::views::iota(1, 101)) {
-            solver.calc_step(equation_parameters.alpha, boundary_condition,
-                             [](const double t, const double x) constexpr noexcept { return 0; });
-            save_step(argv[5], solver.temperature(), *mesh, step);
+        const std::vector<T> radii = {
+            0.05, 
+            0., 
+            0.1, 
+            0.
+        };
+        const T p1 = 0.5;
+        const T tau = 0.001;
+        std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>> parameters;
+        for(const auto [conductivity, radius, local_weight] : {std::tuple{ 1., radii[0], p1 }, 
+                                                               std::tuple{ 7., radii[1], 1. },
+                                                               std::tuple{ 3., radii[2], p1 },
+                                                               std::tuple{10., radii[3], 1. }
+                                                               }) {
+            parameters.push_back({
+                .physical = {
+                    .conductivity = conductivity
+                },
+                .model = {
+                    .influence = nonlocal::influence::polynomial_1d<T, 1, 1>{radius},
+                    .local_weight = local_weight
+                }
+            });
+        }
+        if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL)
+            mesh->find_neighbours(radii);
+
+        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2> boundary_condition = {
+            std::make_unique<nonlocal::thermal::flux_1d<T>>(1.),
+            std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.)
+        };
+
+        nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, tau};
+        solver.compute(
+            parameters,
+            boundary_condition,
+            [](const double) constexpr noexcept { return 0; }
+        );
+        save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", 0);
+        for(const uintmax_t step : std::ranges::iota_view{1u, 101u}) {
+            solver.calc_step(boundary_condition, [](const double x) constexpr noexcept { return 0; });
+            save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", step);
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

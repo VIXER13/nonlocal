@@ -1,0 +1,54 @@
+#ifndef NONLOCAL_EQUATION_PARAMETERS_HPP
+#define NONLOCAL_EQUATION_PARAMETERS_HPP
+
+#include "nonlocal_constants.hpp"
+
+#include <algorithm>
+#include <array>
+#include <vector>
+#include <functional>
+
+namespace nonlocal {
+
+template<size_t Dimension, class T>
+struct model_parameters final {
+    static_assert(Dimension > 0, "Dimension must be non-zero.");
+    using arg = std::conditional_t<Dimension == 1, T, std::array<T, Dimension>>;
+    std::function<T(const arg&, const arg&)> influence = [](const arg&, const arg&) constexpr noexcept { return T{100}; };
+    T local_weight = T{1};
+};
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+struct equation_parameters final {
+    Physical<T, Args...> physical;
+    model_parameters<Dimension, T> model;
+};
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::vector<model_parameters<Dimension, T>> get_models(const std::vector<equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::vector<model_parameters<Dimension, T>> models(parameters.size());
+    std::transform(parameters.cbegin(), parameters.cend(), models.begin(),
+                  [](const equation_parameters<Dimension, T, Physical, Args...>& parameter) { return parameter.model; });
+    return models;
+}
+
+template<size_t Dimension, class T>
+std::vector<theory_t> theories_types(const std::vector<model_parameters<Dimension, T>>& models) {
+    std::vector<theory_t> theories(models.size());
+    std::transform(models.cbegin(), models.cend(), theories.begin(), 
+                   [](const model_parameters<Dimension, T>& model) { return theory_type(model.local_weight); } );
+    return theories;
+}
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::vector<theory_t> theories_types(const std::vector<equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::vector<theory_t> theories(parameters.size());
+    std::transform(parameters.cbegin(), parameters.cend(), theories.begin(), 
+                   [](const equation_parameters<Dimension, T, Physical, Args...>& parameter)
+                   { return theory_type(parameter.model.local_weight); } );
+    return theories;
+}
+
+}
+
+#endif

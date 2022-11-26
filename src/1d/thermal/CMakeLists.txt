@@ -4,8 +4,12 @@ project(thermal_1d)
 
 add_executable(thermal_stationary_1d thermal_stationary_1d.cpp)
 target_include_directories(thermal_stationary_1d PUBLIC ".")
-target_link_libraries(thermal_stationary_1d metamath_lib nonlocal_constants_lib mesh_1d_lib finite_element_solver_1d_lib parallel_utils_lib)
+target_link_libraries(thermal_stationary_1d metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
 
 add_executable(thermal_nonstationary_1d thermal_nonstationary_1d.cpp)
 target_include_directories(thermal_nonstationary_1d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_1d metamath_lib nonlocal_constants_lib mesh_1d_lib finite_element_solver_1d_lib parallel_utils_lib)
+target_link_libraries(thermal_nonstationary_1d metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
+
+add_executable(mesh_1d_test mesh_1d_test.cpp)
+target_include_directories(mesh_1d_test PUBLIC ".")
+target_link_libraries(mesh_1d_test metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
