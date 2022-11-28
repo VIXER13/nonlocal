@@ -2,6 +2,7 @@
 #define NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
 
 #include "boundary_conditions_1d.hpp"
+#include "../../solvers_constants.hpp"
 
 namespace nonlocal::thermal {
 
@@ -20,7 +21,7 @@ public:
     T temperature = T{0};
 
     explicit temperature_1d(const T value) noexcept
-        : temperature(value) {}
+        : temperature{value} {}
     ~temperature_1d() noexcept override = default;
 
     T operator()() const override {
@@ -47,31 +48,41 @@ template<class T>
 class convection_1d : public second_kind_1d<T>
                     , public thermal_boundary_condition_1d {
 public:
+    //Convection
     T heat_transfer = T{0};
     T ambient_temperature = T{0};
 
-    explicit convection_1d(const T transfer, const T temperature)
-        : heat_transfer{transfer}
-        , ambient_temperature{temperature} {}
+    //Radiation
+    T emissivity = T{0};
+    T bound_temperature_pow_4 = T{0};
+    T time_step = T{0};
+
+    //Falling flux
+    T absorption = T{0};
+    T flux = T{0};
+
+    //Summary of influences 
+    T matrix_val = T{0};
+    T rhs_val = T{0};
+
+    explicit convection_1d(const T transfer, const T temperature,
+                           const T emis = T{0}, const T temp = T{0}, const T tau = T{0},
+                           const T absorp = T{0}, const T fl = T{0})
+        : heat_transfer{transfer}, ambient_temperature{temperature},
+          emissivity{emis * STEFAN_BOLTZMANN_CONSTANT<T>}, bound_temperature{temp}, time_step{tau},
+          absorption{absorp}, flux{fl} 
+          {
+            matrix_val = 4 * time_step * emissivity * power<3>(bound_temperature);
+            rhs_val = heat_transfer * ambient_temperature - emissivity * power<4>(bound_temperature) + absorption * flux;
+          }
     ~convection_1d() noexcept override = default;
 
     T operator()() const override {
-        return heat_transfer * ambient_temperature;
+        return rhs_val;
     }
-};
 
-template<class T>
-class radiation_1d : public second_kind_1d<T>
-                   , public thermal_boundary_condition_1d {
-public:
-    // parameters
-
-    explicit radiation_1d(/*init params*/) {}
-    ~radiation_1d() noexcept override = default;
-
-    T operator()() const override {
-        // What goes to the right part
-        return 0;
+    T operator[]() const override {
+        return matrix_val;
     }
 };
 

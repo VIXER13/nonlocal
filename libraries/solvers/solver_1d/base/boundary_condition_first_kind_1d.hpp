@@ -17,7 +17,7 @@ void boundary_condition_first_kind_1d(Vector& f,
     if (const auto* const condition_ptr = dynamic_cast<const first_kind_1d<T>*>(&boundary_condition)) {
         const auto& condition = *condition_ptr;
         for(const auto& [i, val] : matrix_bound)
-            f[i] -= val * condition();
+            f[i] += val * condition();
         f[index] = condition();
     }
 }

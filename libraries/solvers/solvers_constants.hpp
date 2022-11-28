@@ -23,8 +23,12 @@ namespace thermal {
 enum class boundary_condition_t : uint8_t {
     TEMPERATURE = uint8_t(nonlocal::boundary_condition_t::FIRST_KIND),
     FLUX = uint8_t(nonlocal::boundary_condition_t::SECOND_KIND),
-    CONVECTION = uint8_t(nonlocal::boundary_condition_t::THIRD_KIND)
+    CONVECTION = uint8_t(nonlocal::boundary_condition_t::THIRD_KIND),
+    RADIATION = uint8_t(nonlocal::boundary_condition_t::FOURTH_KIND)
 };
+
+template<class T>
+inline constexpr T STEFAN_BOLTZMANN_CONSTANT = T{5.67036713e-8};
 
 template<class T>
 inline constexpr T NEUMANN_PROBLEM_MAX_BOUNDARY_ERROR = std::is_same_v<T, float> ? T{1e-5} : T{1e-10};
