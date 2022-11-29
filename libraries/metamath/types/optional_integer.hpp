@@ -1,3 +1,6 @@
+#ifndef METAMATH_OPTIONAL_INTEGER_HPP
+#define METAMATH_OPTIONAL_INTEGER_HPP
+
 #include <concepts>
 #include <cstdint>
 #include <climits>
@@ -45,3 +48,5 @@ public:
 };
 
 }
+
+#endif

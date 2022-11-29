@@ -13,7 +13,7 @@ class _operators final {
     constexpr explicit _operators() noexcept = default;
 
     template<std::ranges::random_access_range Container>
-    static void check_containers(Container& lhs, const Container& rhs, const std::string& operation_name);
+    static void check_containers(const Container& lhs, const Container& rhs, const std::string& operation_name);
 
     template<class Operation, std::ranges::random_access_range Container>
     static Container sum(const Container& lhs, const Container& rhs);
@@ -57,7 +57,7 @@ public:
 };
 
 template<std::ranges::random_access_range Container>
-void _operators::check_containers(Container& lhs, const Container& rhs, const std::string& operation_name) {
+void _operators::check_containers(const Container& lhs, const Container& rhs, const std::string& operation_name) {
     if (lhs.size() != rhs.size())
         throw std::logic_error{"Error in " + operation_name + ". " +
                                "Containers sizes do not match: lhs.size() == " + std::to_string(lhs.size()) +

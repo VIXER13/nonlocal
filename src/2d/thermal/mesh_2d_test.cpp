@@ -1,4 +1,5 @@
 #include <iostream>
+#include "mesh_2d.hpp"
 #include "su2_parser.hpp"
 
 namespace {
@@ -6,11 +7,7 @@ namespace {
 using T = double;
 using I = int64_t;
 
-}
-
-int main(int argc, char** argv) {
-    nonlocal::mesh::mesh_container_2d<double, int64_t> mesh{argv[1]};
-
+void test_mesh(const nonlocal::mesh::mesh_container_2d<T, I>& mesh) {
     std::cout << "groups_names_1d: ";
     for(const std::string& name : mesh.groups_names_1d())
         std::cout << name << ' ';
@@ -30,6 +27,13 @@ int main(int argc, char** argv) {
     //     const auto& coord = mesh.node_coord(node);
     //     std::cout << "node = " << node << " x = " << coord[0] << " y = " << coord[1] << std::endl;
     // }
+}
+
+}
+
+int main(int argc, char** argv) {
+    nonlocal::mesh::mesh_2d<T, I> mesh{argv[1]};
+    test_mesh(mesh.container());
 
     return 0;
 }

@@ -6,6 +6,8 @@ set(MESH_2D_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 add_library(mesh_2d_lib INTERFACE)
 target_sources(mesh_2d_lib INTERFACE 
     elements_set.hpp
+    mesh_2d.hpp
+    mesh_container_2d_utils.hpp
     mesh_container_2d.hpp
     su2_parser.hpp
     vtk_elements_set.hpp
