@@ -9,6 +9,6 @@ target_sources(mesh_1d_lib INTERFACE
     mesh_1d_utils.hpp
 )
 target_include_directories(mesh_1d_lib INTERFACE ${MESH_1D_LIB_DIR})
-target_link_libraries(metamath_lib INTERFACE
+target_link_libraries(mesh_1d_lib INTERFACE
     metamath_lib
 )

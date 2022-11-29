@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(thermal_2d)
 
+add_executable(mesh_2d_test mesh_2d_test.cpp)
+target_include_directories(mesh_2d_test PUBLIC ".")
+target_link_libraries(mesh_2d_test metamath_lib mesh_2d_lib)
+
 add_executable(calculate_flux calculate_flux.cpp)
 target_include_directories(calculate_flux PUBLIC ".")
 target_link_libraries(calculate_flux metamath_lib nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
