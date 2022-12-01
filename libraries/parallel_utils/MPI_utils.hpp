@@ -3,24 +3,24 @@
 
 #include <array>
 #include <vector>
+#include <ranges>
 #if MPI_USE
     #include <mpi.h>
 #endif
 
 namespace parallel_utils {
 
-int MPI_rank() noexcept;
-int MPI_size() noexcept;
+int MPI_rank();
+int MPI_size();
 
 class MPI_ranges final {
-    std::vector<std::array<size_t, 2>> _ranges;
+    std::vector<std::ranges::iota_view<size_t, size_t>> _ranges;
 
 public:
-    MPI_ranges();
+    eplxicit MPI_ranges(const size_t size = 0);
 
-    const std::vector<std::array<size_t, 2>>& ranges() const noexcept;
-    const std::array<size_t, 2>& range(const size_t rank = MPI_rank()) const noexcept;
-    std::array<size_t, 2>& range(const size_t rank = MPI_rank()) noexcept;
+    std::ranges::iota_view<size_t, size_t> get(const size_t process = MPI_rank()) const;
+    void set(const std::ranges::iota_view<size_t, size_t> range, const size_t process = MPI_rank());
 };
 
 template<class U, class Vector>

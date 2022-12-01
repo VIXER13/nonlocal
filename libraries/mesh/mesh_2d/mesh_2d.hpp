@@ -3,6 +3,8 @@
 
 #include "mesh_container_2d_utils.hpp"
 
+#include "MPI_utils.hpp"
+
 namespace nonlocal::mesh {
 
 enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
@@ -19,7 +21,7 @@ constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
 
 template<class T, class I>
 class mesh_2d final {
-    std::unique_ptr<mesh_container_2d<T, I>> _mesh;
+    mesh_container_2d<T, I> _mesh;
 
     std::vector<std::vector<I>> _node_elements;
     std::vector<std::unordered_map<I, uint8_t>> _global_to_local;
@@ -28,32 +30,51 @@ class mesh_2d final {
     std::vector<std::array<T, 2>> _quad_coords;
     std::vector<metamath::types::square_matrix<T, 2>> _jacobi_matrices;
 
+    std::vector<I> _quad_node_shift;
+    std::vector<std::array<T, 2>> _derivatives;
+
+    parallel_utils::MPI_ranges _MPI_ranges;
+
+    std::vector<std::vector<I>> _elements_neighbors;
+
 public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
 
     const mesh_container_2d<T, I>& container() const;
     
     const std::vector<I>& elements(const size_t node) const;
-    size_t global_to_local(const size_t element, const size_t node) const;
+    size_t global_to_local(const size_t e, const size_t node) const;
 
-    size_t quad_shift(const size_t element) const;
+    size_t quad_shift(const size_t e) const;
     size_t quad_coord(const size_t qshift) const;
     const metamath::types::square_matrix<T, 2>& jacobi_matrix(const size_t qshift) const;
+
+    size_t quad_node_shift(const size_t e, const size_t i) const;
+    const std::array<T, 2>& derivatives(const size_t e, const size_t i, const size_t q) const;
+
+    const parallel_utils::MPI_ranges& MPI_ranges() const noexcept;
+    std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel_utils::MPI_rank()) const;
+
+    const std::vector<I>& neighbours(const size_t e) const;
 };
 
 template<class T, class I>
 mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh)
-    : _mesh{std::make_unique<mesh_container_2d<T, I>>(path_to_mesh)}
+    : _mesh{path_to_mesh}
     , _node_elements{utils::node_elements_2d(container())}
     , _global_to_local{utils::global_to_local(container())}
-    , _quad_shifts{utils::quadrature_shifts_2d(container())}
+    , _quad_shifts{utils::elements_quadrature_shifts_2d(container())}
     , _quad_coords{utils::approx_all_quad_nodes(container(), _quad_shifts)}
     , _jacobi_matrices{utils::approx_all_jacobi_matrices(container(), _quad_shifts)}
+    , _quad_node_shift{utils::element_node_shits_quadrature_shifts_2d(container())}
+    , _derivatives{utils::derivatives_in_quad(container(), _quad_shifts, _quad_node_shift, _jacobi_matrices)}
+    , _MPI_ranges{container().nodes_count()}
+    , _elements_neighbors(container().elements_2d_count())
 {}
 
 template<class T, class I>
 const mesh_container_2d<T, I>& mesh_2d<T, I>::container() const {
-    return *_mesh;
+    return _mesh;
 }
 
 template<class T, class I>
@@ -62,13 +83,13 @@ const std::vector<I>& mesh_2d<T, I>::elements(const size_t node) const {
 }
 
 template<class T, class I>
-size_t mesh_2d<T, I>::global_to_local(const size_t element, const size_t node) const {
-    return _global_to_local[element].at(node);
+size_t mesh_2d<T, I>::global_to_local(const size_t e, const size_t node) const {
+    return _global_to_local[e].at(node);
 }
 
 template<class T, class I>
-size_t mesh_2d<T, I>::quad_shift(const size_t element) const {
-    return _quad_shifts[element];
+size_t mesh_2d<T, I>::quad_shift(const size_t e) const {
+    return _quad_shifts[e];
 }
 
 template<class T, class I>
@@ -81,11 +102,30 @@ const metamath::types::square_matrix<T, 2>& mesh_2d<T, I>::jacobi_matrix(const s
     _jacobi_matrices[qshift];
 }
 
+template<class T, class I>
+size_t mesh_2d<T, I>::quad_node_shift(const size_t e, const size_t i) const {
+    return _quad_node_shift[e] + i * container().element_2d(e).qnodes_count();
+}
 
+template<class T, class I>
+const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t e, const size_t i, const size_t q) const {
+    return _derivatives[quad_node_shift(e, i) + q];
+}
 
+template<class T, class I>
+const parallel_utils::MPI_ranges& mesh_2d<T, I>::MPI_ranges() const noexcept {
+    return _MPI_ranges;
+}
 
+template<class T, class I>
+std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::process_nodes(const size_t process) const {
+    return _MPI_ranges.get(process);
+}
 
-
+template<class T, class I>
+const std::vector<I>& neighbours(const size_t e) const {
+    return _elements_neighbors[e];
+}
 
 
 /*
