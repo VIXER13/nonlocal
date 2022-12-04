@@ -12,7 +12,7 @@ void radiation_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                              const thermal_boundary_condition_1d& boundary_condition,
                              const size_t index) {
     if (const auto* const condition = dynamic_cast<const convection_1d<T>*>(&boundary_condition))
-        matrix.coeffRef(index, index) += condition[];
+        matrix.coeffRef(index, index) += condition -> matrix_value();
 }
 
 }

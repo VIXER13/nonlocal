@@ -3,6 +3,8 @@
 
 #include "boundary_conditions_1d.hpp"
 #include "../../solvers_constants.hpp"
+#include <cmath>
+//#include "../../../metamath.hpp"
 
 namespace nonlocal::thermal {
 
@@ -54,35 +56,29 @@ public:
 
     //Radiation
     T emissivity = T{0};
-    T bound_temperature_pow_4 = T{0};
+    T bound_temperature = T{0};
     T time_step = T{0};
 
     //Falling flux
     T absorption = T{0};
     T flux = T{0};
 
-    //Summary of influences 
-    T matrix_val = T{0};
-    T rhs_val = T{0};
+
 
     explicit convection_1d(const T transfer, const T temperature,
                            const T emis = T{0}, const T temp = T{0}, const T tau = T{0},
                            const T absorp = T{0}, const T fl = T{0})
         : heat_transfer{transfer}, ambient_temperature{temperature},
           emissivity{emis * STEFAN_BOLTZMANN_CONSTANT<T>}, bound_temperature{temp}, time_step{tau},
-          absorption{absorp}, flux{fl} 
-          {
-            matrix_val = 4 * time_step * emissivity * power<3>(bound_temperature);
-            rhs_val = heat_transfer * ambient_temperature - emissivity * power<4>(bound_temperature) + absorption * flux;
-          }
+          absorption{absorp}, flux{fl} {}
     ~convection_1d() noexcept override = default;
 
     T operator()() const override {
-        return rhs_val;
+        return heat_transfer * ambient_temperature - emissivity * std::pow(3, bound_temperature) + absorption * flux;
     }
 
-    T operator[]() const override {
-        return matrix_val;
+    T matrix_value() const {
+        return 4 * time_step * emissivity * std::pow(4, bound_temperature);
     }
 };
 

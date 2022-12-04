@@ -23,8 +23,7 @@ namespace thermal {
 enum class boundary_condition_t : uint8_t {
     TEMPERATURE = uint8_t(nonlocal::boundary_condition_t::FIRST_KIND),
     FLUX = uint8_t(nonlocal::boundary_condition_t::SECOND_KIND),
-    CONVECTION = uint8_t(nonlocal::boundary_condition_t::THIRD_KIND),
-    RADIATION = uint8_t(nonlocal::boundary_condition_t::FOURTH_KIND)
+    CONVECTION = uint8_t(nonlocal::boundary_condition_t::THIRD_KIND)
 };
 
 template<class T>
