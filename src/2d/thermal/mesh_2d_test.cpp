@@ -1,6 +1,7 @@
 #include <iostream>
 #include "mesh_2d.hpp"
-#include "su2_parser.hpp"
+#include "thermal_conductivity_matrix_2d.hpp"
+#include "influence_functions_2d.hpp"
 
 namespace {
 
@@ -32,8 +33,18 @@ void test_mesh(const nonlocal::mesh::mesh_container_2d<T, I>& mesh) {
 }
 
 int main(int argc, char** argv) {
-    nonlocal::mesh::mesh_2d<T, I> mesh{argv[1]};
-    test_mesh(mesh.container());
+    std::cout.precision(2);
+    auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
+    test_mesh(mesh->container());
+
+    //const auto process_nodes = mesh->process_nodes();
+    //std::cout << process_nodes.front() << " " << process_nodes.back() << std::endl;
+
+    //nonlocal::thermal::equation_parameters_2d<T, nonlocal::material_t::ISOTROPIC> param;
+    nonlocal::thermal::thermal_conductivity_matrix_2d<T, I, I> matrix{mesh};
+    matrix.compute({1.}, nonlocal::material_t::ISOTROPIC, std::vector<bool>(mesh->container().nodes_count(), true), 1., nonlocal::influence::constant_2d<T>{1}, true);
+    std::cout << Eigen::MatrixXd{matrix.matrix_inner()} << std::endl;
+
 
     return 0;
 }

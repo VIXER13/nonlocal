@@ -94,7 +94,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const 
 
 template<class T, class I>
 void thermal_conductivity_matrix_1d<T, I>::neumann_problem_col_fill() {
-    #pragma omp parallel for default(none)
+#pragma omp parallel for default(none)
     for(size_t node = 0; node < _base::mesh().nodes_count(); ++node) {
         T& val = _base::matrix_inner().coeffRef(node, _base::mesh().nodes_count());
         for(const auto& [e, i] : _base::mesh().node_elements(node).to_array())

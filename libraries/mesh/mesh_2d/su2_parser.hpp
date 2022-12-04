@@ -1,8 +1,6 @@
 #ifndef NONLOCAL_MESH_SU2_PARSER_HPP
 #define NONLOCAL_MESH_SU2_PARSER_HPP
 
-#include "mesh_container_2d.hpp"
-
 namespace nonlocal::mesh {
 
 template<class T, class I>

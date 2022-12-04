@@ -2,7 +2,9 @@
 #define NONLOCAL_FINITE_ELEMENT_MATRIX_2D_HPP
 
 #include "../solvers_utils.hpp"
+
 #include "mesh_2d.hpp"
+
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 
@@ -12,13 +14,14 @@ template<size_t DoF, class T, class I, class Matrix_Index>
 class finite_element_matrix_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
 
-    std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
+    std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _matrix_inner;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _matrix_bound;
 
 protected:
     enum class index_stage : bool { SHIFTS, NONZERO };
 
+    // TODO: indexator refactoring
     class indexator {
         const std::vector<bool>& _inner_nodes;
         const size_t _node_shift;
@@ -85,23 +88,24 @@ protected:
 
     template<index_stage Stage, theory_t Theory>
     void mesh_index(const std::vector<bool>& inner_nodes) {
-        indexator ind{matrix_inner(), matrix_bound(), inner_nodes, mesh_proxy()->first_node()};
-#pragma omp parallel for default(none) firstprivate(ind) schedule(dynamic)
-        for(size_t node = mesh_proxy()->first_node(); node < mesh_proxy()->last_node(); ++node) {
+        const auto process_nodes = mesh().process_nodes();
+        indexator ind{matrix_inner(), matrix_bound(), inner_nodes, process_nodes.front()};
+#pragma omp parallel for default(none) shared(process_nodes) firstprivate(ind) schedule(dynamic)
+        for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
             ind.fill(node);
-            for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
+            for(const I eL : mesh().elements(node)) {
                 if constexpr (Theory == theory_t::LOCAL)
-                    for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
-                        ind.template index<Stage>(node, mesh().node_number(eL, jL));
+                    for(const size_t jL : std::ranges::iota_view{0u, mesh().container().nodes_count(eL)})
+                        ind.template index<Stage>(node, mesh().container().node_number(eL, jL));
                 if constexpr (Theory == theory_t::NONLOCAL)
-                    for(const I eNL : mesh_proxy()->neighbors(eL))
-                        for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)
-                            ind.template index<Stage>(node, mesh().node_number(eNL, jNL));
+                    for(const I eNL : mesh().neighbours(eL))
+                        for(const size_t jNL : std::ranges::iota_view{0u, mesh().container().nodes_count(eNL)})
+                            ind.template index<Stage>(node, mesh().container().node_number(eNL, jNL));
             }
         }
     }
     
-    explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
+    explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
     template<theory_t Theory>
     void create_matrix_portrait(const std::vector<bool>& is_inner);
@@ -120,36 +124,31 @@ public:
     virtual ~finite_element_matrix_2d() noexcept = default;
 
     const mesh::mesh_2d<T, I>& mesh() const;
-    const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const;
+    const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner();
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner() const;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_bound();
+    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner() const;
     const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_bound() const;
 
-    void clear_matrix();
+    void clear();
 };
 
 template<size_t DoF, class T, class I, class Matrix_Index>
-finite_element_matrix_2d<DoF, T, I, Matrix_Index>::finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy)
-    : _mesh_proxy{mesh_proxy} {}
+finite_element_matrix_2d<DoF, T, I, Matrix_Index>::finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+    : _mesh{mesh} {}
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 const mesh::mesh_2d<T, I>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh() const {
-    return mesh_proxy()->mesh();
+    return *mesh_ptr();
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
-const std::shared_ptr<mesh::mesh_proxy<T, I>>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_proxy() const {
-    return _mesh_proxy;
+const std::shared_ptr<mesh::mesh_2d<T, I>>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_ptr() const {
+    return _mesh;
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() {
-    return _matrix_inner;
-}
-
-template<size_t DoF, class T, class I, class Matrix_Index>
-const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() const {
     return _matrix_inner;
 }
 
@@ -159,12 +158,17 @@ Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
+const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() const {
+    return _matrix_inner;
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
 const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_bound() const {
     return _matrix_bound;
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
-void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::clear_matrix() {
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::clear() {
     _matrix_inner = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
     _matrix_bound = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
 }
@@ -179,23 +183,22 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(c
     utils::allocate_matrix(matrix_inner());
     utils::allocate_matrix(matrix_bound());
     mesh_index<index_stage::NONZERO, Theory>(is_inner);
-    utils::sort_indices(matrix_inner());
-    utils::sort_indices(matrix_bound());
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 template<theory_t Theory, class Callback>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const Callback& callback) const {
-#pragma omp parallel for default(none) firstprivate(callback) schedule(dynamic)
-    for(size_t node = mesh_proxy()->first_node(); node < mesh_proxy()->last_node(); ++node) {
-        for(const I eL : mesh_proxy()->nodes_elements_map(node)) {
-            const size_t iL = mesh_proxy()->global_to_local_numbering(eL, node);
+    const auto process_nodes = mesh().process_nodes();
+#pragma omp parallel for default(none) shared(process_nodes) firstprivate(callback) schedule(dynamic)
+    for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+        for(const I eL : mesh().elements(node)) {
+            const size_t iL = mesh().global_to_local(eL, node);
             if constexpr (Theory == theory_t::LOCAL)
-                for(size_t jL = 0; jL < mesh().nodes_count(eL); ++jL)
+                for(const size_t jL : std::ranges::iota_view{0u, mesh().container().nodes_count(eL)})
                     callback(eL, iL, jL);
             if constexpr (Theory == theory_t::NONLOCAL)
-                for(const I eNL : mesh_proxy()->neighbors(eL))
-                    for(size_t jNL = 0; jNL < mesh().nodes_count(eNL); ++jNL)
+                for(const I eNL : mesh().neighbours(eL))
+                    for(const size_t jNL : std::ranges::iota_view{0u, mesh().container().nodes_count(eNL)})
                         callback(eL, eNL, iL, jNL);
         }
     }
@@ -220,7 +223,7 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(const std::v
 
     using block_t = std::array<T, DoF * DoF>;
     const auto assemble_block =
-        [this, &is_inner, shift = DoF * mesh_proxy()->first_node()]
+        [this, &is_inner, shift = DoF * mesh().process_nodes().front()]
         (const block_t& block, const size_t glob_row, const size_t glob_col, const theory_t theory) {
             for(auto [row, component] = std::pair{glob_row, block.cbegin()}; row < glob_row + DoF; ++row) {
                 T* data_ptr = nullptr;
@@ -241,8 +244,8 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(const std::v
 
     mesh_run<theory_t::LOCAL>(
         [this, &integrate_rule_loc, &assemble_predicate, &assemble_block](const size_t e, const size_t i, const size_t j) {
-            const size_t glob_row = DoF * mesh().node_number(e, i),
-                         glob_col = DoF * mesh().node_number(e, j);
+            const size_t glob_row = DoF * mesh().container().node_number(e, i),
+                         glob_col = DoF * mesh().container().node_number(e, j);
             if (assemble_predicate(glob_row, glob_col, theory_t::LOCAL))
                 assemble_block(block_t{integrate_rule_loc(e, i, j)}, glob_row, glob_col, theory_t::LOCAL);
         });
@@ -251,8 +254,8 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(const std::v
         mesh_run<theory_t::NONLOCAL>(
             [this, &influence_fun, &integrate_rule_nonloc, &assemble_predicate, &assemble_block]
             (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                const size_t glob_row = DoF * mesh().node_number(eL,   iL),
-                             glob_col = DoF * mesh().node_number(eNL, jNL);
+                const size_t glob_row = DoF * mesh().container().node_number(eL,   iL),
+                             glob_col = DoF * mesh().container().node_number(eNL, jNL);
                 if (assemble_predicate(glob_row, glob_col, theory_t::NONLOCAL))
                     assemble_block(block_t{integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun)}, glob_row, glob_col, theory_t::NONLOCAL);
             });

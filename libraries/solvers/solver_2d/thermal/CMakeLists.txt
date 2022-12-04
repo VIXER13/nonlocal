@@ -13,3 +13,6 @@ target_sources(heat_equation_solver_2d_lib INTERFACE
                stationary_heat_equation_solver_2d.hpp
                nonstationary_heat_equation_solver_2d.hpp)
 target_include_directories(heat_equation_solver_2d_lib INTERFACE ${HEAT_EQUATION_SOLVER_2D_LIB_DIR})
+target_link_libraries(heat_equation_solver_2d_lib INTERFACE
+    mesh_2d_lib
+)

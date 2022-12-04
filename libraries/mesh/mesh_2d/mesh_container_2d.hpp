@@ -234,6 +234,7 @@ template<class T, class I>
 void mesh_container_2d<T, I>::read_from_file(const std::filesystem::path& path_to_mesh) {
     const std::string extension = path_to_mesh.extension().string();
     if (extension == ".su2") {
+        clear();
         _elements_set = std::make_unique<vtk_elements_set<T>>();
         std::ifstream mesh_file{path_to_mesh};
         read_su2(mesh_file);
@@ -258,5 +259,7 @@ void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation
 }
 
 }
+
+#include "su2_parser.hpp"
 
 #endif

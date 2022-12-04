@@ -46,8 +46,10 @@ public:
     size_t global_to_local(const size_t e, const size_t node) const;
 
     size_t quad_shift(const size_t e) const;
-    size_t quad_coord(const size_t qshift) const;
+    const std::array<T, 2>& quad_coord(const size_t qshift) const;
+    const std::array<T, 2>& quad_coord(const size_t e, const size_t q) const;
     const metamath::types::square_matrix<T, 2>& jacobi_matrix(const size_t qshift) const;
+    const metamath::types::square_matrix<T, 2>& jacobi_matrix(const size_t e, const size_t q) const;
 
     size_t quad_node_shift(const size_t e, const size_t i) const;
     const std::array<T, 2>& derivatives(const size_t e, const size_t i, const size_t q) const;
@@ -56,6 +58,8 @@ public:
     std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel_utils::MPI_rank()) const;
 
     const std::vector<I>& neighbours(const size_t e) const;
+
+    void clear();
 };
 
 template<class T, class I>
@@ -93,13 +97,23 @@ size_t mesh_2d<T, I>::quad_shift(const size_t e) const {
 }
 
 template<class T, class I>
-size_t mesh_2d<T, I>::quad_coord(const size_t qshift) const {
+const std::array<T, 2>& mesh_2d<T, I>::quad_coord(const size_t qshift) const {
     return _quad_coords[qshift];
 }
 
 template<class T, class I>
+const std::array<T, 2>& mesh_2d<T, I>::quad_coord(const size_t e, const size_t q) const {
+    return quad_coord(quad_shift(e) + q);
+}
+
+template<class T, class I>
 const metamath::types::square_matrix<T, 2>& mesh_2d<T, I>::jacobi_matrix(const size_t qshift) const {
-    _jacobi_matrices[qshift];
+    return _jacobi_matrices[qshift];
+}
+
+template<class T, class I>
+const metamath::types::square_matrix<T, 2>& mesh_2d<T, I>::jacobi_matrix(const size_t e, const size_t q) const {
+    return jacobi_matrix(quad_shift(e) + q);
 }
 
 template<class T, class I>
@@ -123,8 +137,30 @@ std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::process_nodes(const size_t
 }
 
 template<class T, class I>
-const std::vector<I>& neighbours(const size_t e) const {
+const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::clear() {
+    _mesh.clear();
+    _node_elements.clear();
+    _node_elements.shrink_to_fit();
+    _global_to_local.claer();
+    _global_to_local.shrink_to_fit();
+    _quad_shifts.clear();
+    _quad_shifts.shrink_to_fit();
+    _quad_coords.clear();
+    _quad_coords.shrink_to_fit();
+    _jacobi_matrices.clear();
+    _jacobi_matrices.shrink_to_fit();
+    _quad_node_shift.clear();
+    _quad_node_shift.shrink_to_fit();
+    _derivatives.clear();
+    _derivatives.shrink_to_fit();
+    _MPI_ranges = parallel_utils::MPI_ranges{0};
+    _elements_neighbors.clear();
+    _elements_neighbors.shrink_to_fit();
 }
 
 

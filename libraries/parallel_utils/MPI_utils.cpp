@@ -26,11 +26,11 @@ MPI_ranges::MPI_ranges(const size_t size)
 }
 
 std::ranges::iota_view<size_t, size_t> MPI_ranges::get(const size_t process) const {
-    return _ranges[rank];
+    return _ranges[process];
 }
 
 void MPI_ranges::set(const std::ranges::iota_view<size_t, size_t> range, const size_t process) {
-    _ranges[rank] = range;
+    _ranges[process] = range;
 }
 
 }
