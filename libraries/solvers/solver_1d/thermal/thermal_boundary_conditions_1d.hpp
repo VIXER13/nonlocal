@@ -3,8 +3,7 @@
 
 #include "boundary_conditions_1d.hpp"
 #include "../../solvers_constants.hpp"
-#include <cmath>
-//#include "../../../metamath.hpp"
+#include "metamath.hpp"
 
 namespace nonlocal::thermal {
 
@@ -74,11 +73,13 @@ public:
     ~convection_1d() noexcept override = default;
 
     T operator()() const override {
-        return heat_transfer * ambient_temperature - emissivity * std::pow(3, bound_temperature) + absorption * flux;
+        using namespace metamath::functions;
+        return heat_transfer * ambient_temperature - emissivity * power<3>(bound_temperature) + absorption * flux;
     }
 
     T matrix_value() const {
-        return 4 * time_step * emissivity * std::pow(4, bound_temperature);
+        using namespace metamath::functions;
+        return 4 * time_step * emissivity * power<4>(bound_temperature);
     }
 };
 

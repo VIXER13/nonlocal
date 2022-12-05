@@ -6,7 +6,7 @@ echo $line
 
 
 echo "Searching for build directory..."
-build_dir=build/
+build_dir=../build/
 if [ -d $build_dir ]; then
 	echo "The $build_dir directory exists."
 	cd $build_dir
@@ -18,21 +18,17 @@ echo $line
 
 
 echo "Starting make thermal_nonstationary_1d... "
-time make thermal_nonstationary_1d 
+time make thermal_nonstationary_radiation_1d 
 echo $line
 
 
 main_dir=calculations
-way_to_folder="D:/nonlocal/build/"$main_dir
-function p1_str {
-var= awk "BEGIN {print $1 * 100}"
-echo $var
-}
+way_to_folder="D:/nonlocal/"$main_dir
 function calculation {
 file_name="$1"
 echo $file_name 
 mkdir $way_to_folder/$2/$file_name  
-time ./src/1d/thermal/thermal_nonstationary_1d $way_to_folder/$2/$file_name 
+time ./src/1d/thermal/thermal_nonstationary_radiation_1d $way_to_folder/$2/$file_name 
 }
 echo "Starting calculations..."
 echo "All results will be written in folder $way_to_folder ."
@@ -45,4 +41,4 @@ echo $line
 #------------------------------------------------------------------------------------------------------------------------
 
 mkdir $way_to_folder/"tests"
-calculation  "left_flux_1_right_flux_-1" "tests"
+calculation  "example1" "tests"
