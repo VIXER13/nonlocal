@@ -7,6 +7,7 @@
 #include "boundary_condition_first_kind_1d.hpp"
 #include "boundary_condition_second_kind_1d.hpp"
 #include "convection_condition_1d.hpp"
+#include "radiation_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
 
 namespace nonlocal::thermal {
@@ -20,7 +21,10 @@ class nonstationary_heat_equation_solver_1d final {
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
     const T _time_step = T{1};
+    std::array<T, 2> _capacity_radiation_val = {T(0), T(0)};
+    std::array<T, 2> _conductivity_radiation_val = {T(0), T(0)};
 
+ 
 public:
     explicit nonstationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const T time_step);
 
@@ -84,6 +88,12 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equa
         for(auto& [_, val] : matrix_part)
             val *= time_step();
 
+    _conductivity_radiation_val = {_conductivity.matrix_inner().coeffRef(0, 0),
+    _conductivity.matrix_inner().coeffRef(_conductivity.matrix_inner().rows() - 1, _conductivity.matrix_inner().cols() - 1)};
+
+    _capacity_radiation_val = {_capacity.matrix_inner().coeffRef(0, 0),
+    _capacity.matrix_inner().coeffRef(_capacity.matrix_inner().rows() - 1, _capacity.matrix_inner().cols() - 1)};
+
     for(const size_t i : std::ranges::iota_view{0u, _conductivity.mesh().nodes_count()})
         _temperature_curr[i] = init_dist(_conductivity.mesh().node_coord(i));
 }
@@ -94,14 +104,27 @@ void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const std::array<std
                                                             const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
+    _conductivity.matrix_inner().coeffRef(0, 0) = _conductivity_radiation_val[0];
+    _conductivity.matrix_inner().coeffRef(_conductivity.matrix_inner().rows() - 1, _conductivity.matrix_inner().cols() - 1) = _conductivity_radiation_val[1];
+    _capacity.matrix_inner().coeffRef(0, 0) = _capacity_radiation_val[0];
+    _capacity.matrix_inner().coeffRef(_capacity.matrix_inner().rows() - 1, _capacity.matrix_inner().cols() - 1) = _capacity_radiation_val[1];
+
     const std::array<size_t, 2> indices = {0, _capacity.mesh().nodes_count() - 1};
-    for(const size_t b : std::ranges::iota_view{0u, boundary_condition.size()})
+    for(const size_t b : std::ranges::iota_view{0u, boundary_condition.size()}) {
         boundary_condition_second_kind_1d<T>(_right_part, *boundary_condition[b], indices[b]);
+        radiation_condition_1d(_capacity.matrix_inner(), *boundary_condition[b], indices[b]);
+    }
+
     integrate_right_part(_right_part, _conductivity.mesh(), right_part);
+
     _right_part *= time_step();
     _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
-    for(const size_t b : std::ranges::iota_view{0u, boundary_condition.size()})
+
+    for(const size_t b : std::ranges::iota_view{0u, boundary_condition.size()}){
         boundary_condition_first_kind_1d<T>(_right_part, _conductivity.matrix_bound()[b], *boundary_condition[b], indices[b]);
+        radiation_condition_1d(_conductivity.matrix_inner(), *boundary_condition[b], indices[b]);
+    }
+
     _temperature_curr = _slae_solver.solve(_right_part);
 }
 

@@ -14,6 +14,29 @@ void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const
     nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), folder / ("Flux" + std::to_string(step) + ".csv"));
 }
 
+void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>>& parameters,
+               const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2>& boundary_condition,
+               const std::filesystem::path& folder) {
+    std::ofstream info_file;
+    const std::string way_to_file = folder /  ("calculation_info.txt");
+    std::cout << "Info about calculation will be writen in " << way_to_file << "\n";
+    info_file.open(way_to_file);
+
+    // Есть мысль передавать в функцию только название папки, куда сохранять результат,
+    // а всю информацию о расчете писать в специальный файл <calculation_info.txt>.
+    // Это позволит не захламлять название расчета, при этом сохраняя всю информацию о нем.
+    for (size_t i = 0; i < parameters.size(); ++i) {
+    info_file << "------------------№"<< i << "-----------------\n";
+    info_file << "conductivity = " << std::to_string(parameters[i].physical.conductivity) << "\n";
+    info_file << "density = "      << std::to_string(parameters[i].physical.density)      << "\n";
+    info_file << "capacity = "     << std::to_string(parameters[i].physical.capacity)     << "\n";
+    info_file << "local_weight = " << std::to_string(parameters[i].model.local_weight)    << "\n";
+    info_file << "-------------------------------------\n";
+    }
+
+    info_file.close();
+}
+
 }
 
 int main(const int argc, const char *const *const argv) {
@@ -66,10 +89,14 @@ int main(const int argc, const char *const *const argv) {
             boundary_condition,
             [](const double) constexpr noexcept { return 0; }
         );
-        save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", 0);
+
+        save_info(parameters, boundary_condition, argv[1]);
+        save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, argv[1], 0);
+        //save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", 0);
         for(const uintmax_t step : std::ranges::iota_view{1u, 101u}) {
             solver.calc_step(boundary_condition, [](const double x) constexpr noexcept { return 0; });
-            save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", step);
+            save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, argv[1], step);
+            //save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", step);
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

@@ -1,7 +1,7 @@
 #include "make_element.hpp"
 #include "mesh_1d.hpp"
 #include "thermal/thermal_conductivity_matrix_1d.hpp"
-#include "thermal/heat_equation_parameters_1d.hpp"
+#include "thermal/thermal_parameters_1d.hpp"
 
 #include <iostream>
 
