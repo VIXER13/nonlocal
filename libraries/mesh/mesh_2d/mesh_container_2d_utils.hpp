@@ -3,6 +3,8 @@
 
 #include "mesh_container_2d.hpp"
 
+#include "nonlocal_constants.hpp"
+
 namespace nonlocal::mesh::utils {
 
 template<class T, class I>
@@ -99,6 +101,69 @@ std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>&
             }
     }
     return derivatives;
+}
+
+template<class Stream, class T, class I>
+void save_as_vtk(Stream& stream, const mesh_container_2d<T, I>& mesh) {
+    static constexpr auto write_element = []<size_t K0, size_t... K>(Stream& stream, const std::vector<I>& element, const std::index_sequence<K0, K...>) {
+        stream << element[K0];
+        ((stream << ' ' << element[K]), ...);
+    };
+
+    stream << "# vtk DataFile Version 4.2\n"
+              "Data\n"
+              "ASCII\n"
+              "DATASET UNSTRUCTURED_GRID\n";
+
+    stream << "POINTS " << mesh.nodes_count() << ' ' << vtk_data_type<T> << '\n';
+    for(const size_t i : mesh.nodes()) {
+        const std::array<T, 2>& point = mesh.node_coord(i);
+        stream << point[X] << ' ' << point[Y] << " 0\n";
+    }
+
+    const auto elements_2d = mesh.elements_2d();
+    const auto reduces = [&mesh](const size_t sum, const size_t e) { return sum + mesh.nodes_count(e) + 1; };
+    const size_t list_size = std::reduce(elements_2d.begin(), elements_2d.end(), size_t{0}, reduces);
+
+    stream << "CELLS " << mesh.elements_2d_count() << ' ' << list_size << '\n';
+    for(const size_t e : elements_2d) {
+        stream << mesh.nodes_count(e) << ' ';
+        switch (mesh.element_type_2d(e)) {
+            case element_2d_t::TRIANGLE:
+                write_element(stream, mesh.nodes(e), std::index_sequence<0, 1, 2>{});
+            break;
+
+            case element_2d_t::QUADRATIC_TRIANGLE:
+                write_element(stream, mesh.nodes(e), std::index_sequence<0, 1, 2, 3, 4, 5>{});
+            break;
+
+            case element_2d_t::BILINEAR:
+                write_element(stream, mesh.nodes(e), std::index_sequence<0, 1, 2, 3>{});
+            break;
+
+            case element_2d_t::QUADRATIC_SERENDIPITY:
+                write_element(stream, mesh.nodes(e), std::index_sequence<0, 2, 4, 6, 1, 3, 5, 7>{});
+            break;
+
+            case element_2d_t::QUADRATIC_LAGRANGE:
+                write_element(stream, mesh.nodes(e), std::index_sequence<0, 2, 4, 6, 1, 3, 5, 7, 8>{});
+            break;
+            
+            default:
+                throw std::domain_error{"Unknown element."};
+        }
+        stream << '\n';
+    }
+
+    stream << "CELL_TYPES " << mesh.elements_2d_count() << '\n';
+    for(const size_t e : elements_2d)
+        stream << size_t(mesh.get_elements_set().local_to_model_2d(mesh.element_type_2d(e))) << '\n';
+}
+
+template<class T, class I>
+void save_as_vtk(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh) {
+    std::ofstream vtk{path_to_save};
+    save_as_vtk(vtk, mesh);
 }
 
 }

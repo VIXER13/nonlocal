@@ -66,11 +66,15 @@ public:
     size_t nodes_count() const noexcept;
     size_t nodes_count(const size_t element) const;
     size_t node_number(const size_t element, const size_t i) const;
+    std::ranges::iota_view<size_t, size_t> nodes() const noexcept;
 
     const std::vector<I>& nodes(const size_t element) const;
     const std::array<T, 2>& node_coord(const size_t node) const;
 
     const elements_set<T>& get_elements_set() const;
+
+    element_1d_t element_type_1d(const size_t element) const;
+    element_2d_t element_type_2d(const size_t element) const;
 
     const element_integrate_1d<T>& element_1d(const size_t element) const;
     const element_integrate_2d<T>& element_2d(const size_t element) const;
@@ -184,6 +188,11 @@ size_t mesh_container_2d<T, I>::node_number(const size_t element, const size_t i
 }
 
 template<class T, class I>
+std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::nodes() const noexcept {
+    return {0u, nodes_count()};
+}
+
+template<class T, class I>
 const std::vector<I>& mesh_container_2d<T, I>::nodes(const size_t element) const {
     return _elements[element];
 }
@@ -199,13 +208,23 @@ const elements_set<T>& mesh_container_2d<T, I>::get_elements_set() const {
 }
 
 template<class T, class I>
+element_1d_t mesh_container_2d<T, I>::element_type_1d(const size_t element) const {
+    return element_1d_t(_elements_types[element]);
+}
+
+template<class T, class I>
+element_2d_t mesh_container_2d<T, I>::element_type_2d(const size_t element) const {
+    return element_2d_t(_elements_types[element]);
+}
+
+template<class T, class I>
 const element_integrate_1d<T>& mesh_container_2d<T, I>::element_1d(const size_t element) const {
-    return get_elements_set().element_1d(_elements_types[element]);
+    return get_elements_set().element_1d(element_type_1d(element));
 }
 
 template<class T, class I>
 const element_integrate_2d<T>& mesh_container_2d<T, I>::element_2d(const size_t element) const {
-    return get_elements_set().element_2d(_elements_types[element]);
+    return get_elements_set().element_2d(element_type_2d(element));
 }
 
 template<class T, class I>

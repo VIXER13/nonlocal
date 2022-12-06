@@ -12,15 +12,13 @@ protected:
     using influence_function_t = std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>;
 
 private:
-    static constexpr std::string_view vtk_data_type = std::is_same_v<T, float> ? "float" : "double";
-
-    const std::shared_ptr<mesh::mesh_proxy<T, I>> _mesh_proxy;
+    const std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
     const T _local_weight = T{1};
     const influence_function_t _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{}; };
 
 protected:
-    explicit solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy);
-    explicit solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
+    explicit solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
+    explicit solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                          const T local_weight, const influence_function_t& influence_function);
 
     template<class Callback>
@@ -32,7 +30,8 @@ protected:
 public:
     virtual ~solution_2d() noexcept = default;
 
-    const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy() const noexcept;
+    const mesh::mesh_2d<T, I>& mesh() const;
+    const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
     T local_weight() const noexcept;
     const influence_function_t& influence_function() const noexcept;
 
@@ -40,19 +39,24 @@ public:
 };
 
 template<class T, class I>
-solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy)
-    : _mesh_proxy{mesh_proxy} {}
+solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+    : _mesh{mesh} {}
 
 template<class T, class I>
-solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_proxy<T, I>>& mesh_proxy,
+solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                const T local_weight, const influence_function_t& influence_function)
-    : _mesh_proxy{mesh_proxy}
+    : _mesh{mesh}
     , _local_weight{local_weight}
     , _influence_function{influence_function} {}
 
 template<class T, class I>
-const std::shared_ptr<mesh::mesh_proxy<T, I>>& solution_2d<T, I>::mesh_proxy() const noexcept {
-    return _mesh_proxy;
+const mesh::mesh_2d<T, I>& solution_2d<T, I>::mesh() const {
+    return *_mesh;
+}
+
+template<class T, class I>
+const std::shared_ptr<mesh::mesh_2d<T, I>>& solution_2d<T, I>::mesh_ptr() const noexcept {
+    return _mesh;
 }
 
 template<class T, class I>
@@ -68,22 +72,23 @@ const typename solution_2d<T, I>::influence_function_t& solution_2d<T, I>::influ
 template<class T, class I>
 template<class Callback>
 void solution_2d<T, I>::calc_nonlocal(const Callback& callback) const {
-    std::vector<bool> neighbors(mesh_proxy()->mesh().elements_count(), true);
-#pragma omp parallel for default(none) firstprivate(neighbors, callback)
-    for(size_t node = mesh_proxy()->first_node(); node < mesh_proxy()->last_node(); ++node) {
-        std::fill(neighbors.begin(), neighbors.end(), true);
-        for(const I eL : mesh_proxy()->nodes_elements_map(node))
-            for(const I eNL : mesh_proxy()->neighbors(eL))
-                if (neighbors[eNL]) {
-                    callback(eNL, node);
-                    neighbors[eNL] = false;
-                }
-    }
+//     const auto process_nodes = mesh().process_nodes();
+//     std::vector<bool> neighbors(mesh().container().elements_count(), true);
+// #pragma omp parallel for default(none) shared(process_nodes) firstprivate(neighbors, callback)
+//     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+//         std::fill(neighbors.begin(), neighbors.end(), true);
+//         for(const I eL : mesh().elements(node))
+//             for(const I eNL : mesh().neighbours(eL))
+//                 if (neighbors[eNL]) {
+//                     callback(eNL, node);
+//                     neighbors[eNL] = false;
+//                 }
+//     }
 }
 
 template<class T, class I>
 void solution_2d<T, I>::save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const {
-    output << "SCALARS " << name << ' ' << vtk_data_type << " 1\n"
+    output << "SCALARS " << name << ' ' << mesh::vtk_data_type<T> << " 1\n"
            << "LOOKUP_TABLE default\n";
     for(const T val : x)
         output << val << '\n';
@@ -91,16 +96,16 @@ void solution_2d<T, I>::save_scalars(std::ofstream& output, const std::vector<T>
 
 template<class T, class I>
 void solution_2d<T, I>::save_vectors(std::ofstream& output, const std::array<std::vector<T>, 2>& vec, const std::string_view name) const {
-    output << "VECTORS " << name << ' ' << vtk_data_type << '\n';
-    for(const size_t i : std::views::iota(size_t{0}, mesh_proxy()->mesh().nodes_count()))
+    output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
+    for(const size_t i : std::ranges::iota_view{0u, mesh().container().nodes_count()})
         output << vec[X][i] << ' ' << vec[Y][i] << " 0\n";
 }
 
 template<class T, class I>
 void solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
     output.precision(std::numeric_limits<T>::max_digits10);
-    mesh_proxy()->mesh().save_as_vtk(output);
-    output << "POINT_DATA " << mesh_proxy()->mesh().nodes_count() << '\n';
+    mesh::utils::save_as_vtk(output, mesh().container());
+    output << "POINT_DATA " << mesh().container().nodes_count() << '\n';
 }
 
 }

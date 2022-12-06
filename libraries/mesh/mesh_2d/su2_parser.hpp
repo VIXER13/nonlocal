@@ -18,7 +18,7 @@ auto mesh_container_2d<T, I>::read_elements_2d(Stream& mesh_file) {
     std::string pass;
     mesh_file >> pass >> pass >> pass >> elements_count;
     std::vector<std::vector<I>> elements_2d(elements_count);
-    std::vector<uint8_t> elements_types_2d(elements_count);
+    std::vector<element_2d_t> elements_types_2d(elements_count);
     for(const size_t e : std::ranges::iota_view{0u, elements_count}) {
         size_t type = 0;
         mesh_file >> type;
@@ -72,7 +72,7 @@ auto mesh_container_2d<T, I>::read_elements_1d(Stream& mesh_file) {
     mesh_file >> pass >> groups_count;
     std::vector<std::string> groups_names_1d(groups_count);
     std::vector<std::vector<std::vector<I>>> elements_1d(groups_count);
-    std::vector<std::vector<uint8_t>> elements_types_1d(groups_count);
+    std::vector<std::vector<element_1d_t>> elements_types_1d(groups_count);
     for(const size_t b : std::ranges::iota_view{0u, groups_count}) {
         size_t elements_count = 0;
         mesh_file >> pass >> groups_names_1d[b] >> pass >> elements_count;
@@ -121,14 +121,14 @@ void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
     _elements_types.resize(elements);
     for(const size_t e : std::ranges::iota_view{0u, _elements_2d_count}) {
         _elements[e] = std::move(elements_2d[e]);
-        _elements_types[e] = elements_types_2d[e];
+        _elements_types[e] = uint8_t(elements_types_2d[e]);
     }
 
     size_t curr_element = _elements_2d_count;
     for(const size_t b : std::ranges::iota_view{0u, _groups_names_1d.size()})
         for(const size_t e : std::ranges::iota_view{0u, elements_1d[b].size()}) {
             _elements[curr_element] = std::move(elements_1d[b][e]);
-            _elements_types[curr_element] = elements_types_1d[b][e];
+            _elements_types[curr_element] = uint8_t(elements_types_1d[b][e]);
             ++curr_element;
         }
 }

@@ -2,6 +2,7 @@
 #include "mesh_2d.hpp"
 #include "thermal_conductivity_matrix_2d.hpp"
 #include "influence_functions_2d.hpp"
+#include "heat_equation_solution_2d.hpp"
 
 namespace {
 
@@ -45,6 +46,14 @@ int main(int argc, char** argv) {
     matrix.compute({1.}, nonlocal::material_t::ISOTROPIC, std::vector<bool>(mesh->container().nodes_count(), true), 1., nonlocal::influence::constant_2d<T>{1}, true);
     std::cout << Eigen::MatrixXd{matrix.matrix_inner()} << std::endl;
 
+    nonlocal::mesh::utils::save_as_vtk(std::filesystem::path{"./test.vtk"}, mesh->container());
+
+    std::vector<T> sol(9);
+    for(const size_t i : std::ranges::iota_view{0u, sol.size()})
+        sol[i] = mesh->container().node_coord(i)[0] + mesh->container().node_coord(i)[1];
+    nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, 1., nonlocal::influence::constant_2d<T>{1}, nonlocal::thermal::parameter_2d<T>{}, sol};
+    solution.calc_flux();
+    solution.save_as_vtk("./sol.vtk");
 
     return 0;
 }

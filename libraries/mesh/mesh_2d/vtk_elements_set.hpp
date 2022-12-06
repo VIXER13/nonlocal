@@ -15,6 +15,9 @@ enum class vtk_element_number : size_t {
     QUADRATIC_LAGRANGE = 28
 };
 
+template<std::floating_point T>
+inline constexpr std::string_view vtk_data_type = std::is_same_v<T, float> ? "float" : "double";
+
 template<class T>
 class vtk_elements_set final : public elements_set<T> {
     template<class U, template<class, auto...> class Quadrature_Type, auto... Args>
@@ -49,20 +52,20 @@ class vtk_elements_set final : public elements_set<T> {
                  std::make_shared<element_2d_integrate<T, lagrangian_element_2d, 2, 2>>(quadrature<T, gauss, 3>{}) };
     }
 
-    static std::unordered_map<size_t, size_t> vtk_to_local_1d() {
+    static std::unordered_map<size_t, element_1d_t> vtk_to_local_1d() {
         return {
-            {size_t(vtk_element_number::LINEAR), 0},
-            {size_t(vtk_element_number::QUADRATIC), 1}
+            {size_t(vtk_element_number::LINEAR),    element_1d_t::LINEAR},
+            {size_t(vtk_element_number::QUADRATIC), element_1d_t::QUADRATIC}
         };
     }
 
-    static std::unordered_map<size_t, size_t> vtk_to_local_2d() {
+    static std::unordered_map<size_t, element_2d_t> vtk_to_local_2d() {
         return {
-            {size_t(vtk_element_number::TRIANGLE), 0},
-            {size_t(vtk_element_number::QUADRATIC_TRIANGLE), 1},
-            {size_t(vtk_element_number::BILINEAR), 2},
-            {size_t(vtk_element_number::QUADRATIC_SERENDIPITY), 3},
-            {size_t(vtk_element_number::QUADRATIC_LAGRANGE), 4}
+            {size_t(vtk_element_number::TRIANGLE),              element_2d_t::TRIANGLE},
+            {size_t(vtk_element_number::QUADRATIC_TRIANGLE),    element_2d_t::QUADRATIC_TRIANGLE},
+            {size_t(vtk_element_number::BILINEAR),              element_2d_t::BILINEAR},
+            {size_t(vtk_element_number::QUADRATIC_SERENDIPITY), element_2d_t::QUADRATIC_SERENDIPITY},
+            {size_t(vtk_element_number::QUADRATIC_LAGRANGE),    element_2d_t::QUADRATIC_LAGRANGE}
         };
     }
 

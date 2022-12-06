@@ -11,12 +11,12 @@ enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
 
 template<class T>
 constexpr T jacobian(const std::array<T, 2>& J) {
-    return std::sqrt(J[0] * J[0] + J[1] * J[1]);
+    return std::sqrt(J[X] * J[X] + J[Y] * J[Y]);
 }
 
 template<class T>
 constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
-    return std::abs(J[0][0] * J[1][1] - J[0][1] * J[1][0]);
+    return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
 }
 
 template<class T, class I>
@@ -58,6 +58,8 @@ public:
     std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel_utils::MPI_rank()) const;
 
     const std::vector<I>& neighbours(const size_t e) const;
+
+    T element_area(const size_t e) const;
 
     void clear();
 };
@@ -139,6 +141,18 @@ std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::process_nodes(const size_t
 template<class T, class I>
 const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
+}
+
+template<class T, class I>
+T mesh_2d<T, I>::element_area(const size_t e) const {
+    T area = T{0};
+    const auto& el = container().element_2d(e);
+    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
+        const T factor = el.weight(q) * jacobian(jacobi_matrix(e, q));
+        for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+            area += factor * el.qN(i, q);
+    }
+    return area;
 }
 
 template<class T, class I>
