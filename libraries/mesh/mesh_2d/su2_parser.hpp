@@ -70,12 +70,14 @@ auto mesh_container_2d<T, I>::read_elements_1d(Stream& mesh_file) {
     std::string pass;
     size_t groups_count = 0;
     mesh_file >> pass >> groups_count;
-    std::vector<std::string> groups_names_1d(groups_count);
+    std::unordered_set<std::string> groups_names_1d;
     std::vector<std::vector<std::vector<I>>> elements_1d(groups_count);
     std::vector<std::vector<element_1d_t>> elements_types_1d(groups_count);
     for(const size_t b : std::ranges::iota_view{0u, groups_count}) {
         size_t elements_count = 0;
-        mesh_file >> pass >> groups_names_1d[b] >> pass >> elements_count;
+        std::string group_name;
+        mesh_file >> pass >> group_name >> pass >> elements_count;
+        groups_names_1d.emplace(std::move(group_name));
         elements_1d[b].resize(elements_count);
         elements_types_1d[b].resize(elements_count);
         for(const size_t e : std::ranges::iota_view{0u, elements_count}) {
@@ -112,9 +114,11 @@ void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
     _elements_2d_count = elements_2d.size();
     _elements_groups["Default"] = {0u, _elements_2d_count};
     size_t elements = _elements_2d_count;
-    for(const size_t b : std::ranges::iota_view{0u, _groups_names_1d.size()}) {
-        _elements_groups[_groups_names_1d[b]] = std::ranges::iota_view{elements, elements + elements_1d[b].size()};
-        elements += elements_1d[b].size();
+    size_t bound = 0;
+    for(const std::string& bound_name : _groups_names_1d) {
+        _elements_groups[bound_name] = std::ranges::iota_view{elements, elements + elements_1d[bound].size()};
+        elements += elements_1d[bound].size();
+        ++bound;
     }
     
     _elements.resize(elements);

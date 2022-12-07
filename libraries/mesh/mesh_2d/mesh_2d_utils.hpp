@@ -53,10 +53,10 @@ std::vector<T> qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
         throw std::logic_error{"Cannot approximate node values because vector size does not match number of quadrature nodes"};
     std::vector<T> approximation(mesh.container().nodes_count(), T{0});
 #pragma parallel for default(none) shared(approximation, mesh, x)
-    for(const size_t node : mesh.container().nodes()) {
+    for(size_t node = 0; node < mesh.container().nodes_count(); ++node) {
         T node_area = T{0};
         for(const I e : mesh.elements(node)) {
-            const T area = mesh.element_area(e);
+            const T area = mesh.area(e);
             const size_t i = mesh.global_to_local(e, node);
             const auto& el = mesh.container().element_2d(e);
             const size_t qshift = mesh.quad_shift(e) + el.nearest_qnode(i);

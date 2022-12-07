@@ -37,6 +37,8 @@ class mesh_2d final {
 
     std::vector<std::vector<I>> _elements_neighbors;
 
+    T area(const std::ranges::iota_view<size_t, size_t> elements) const;
+
 public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
 
@@ -59,7 +61,9 @@ public:
 
     const std::vector<I>& neighbours(const size_t e) const;
 
-    T element_area(const size_t e) const;
+    T area(const size_t e) const;
+    T area(const std::string& element_group) const;
+    T area() const;
 
     void clear();
 };
@@ -144,7 +148,7 @@ const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
 }
 
 template<class T, class I>
-T mesh_2d<T, I>::element_area(const size_t e) const {
+T mesh_2d<T, I>::area(const size_t e) const {
     T area = T{0};
     const auto& el = container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
@@ -153,6 +157,27 @@ T mesh_2d<T, I>::element_area(const size_t e) const {
             area += factor * el.qN(i, q);
     }
     return area;
+}
+
+template<class T, class I>
+T mesh_2d<T, I>::area(const std::ranges::iota_view<size_t, size_t> elements) const {
+    const auto summator = [this](const T sum, const size_t e) { return sum + area(e); };
+    return std::reduce(elements.begin(), elements.end(), T{0}, summator);
+}
+
+template<class T, class I>
+T mesh_2d<T, I>::area(const std::string& element_group) const {
+    if (!container().groups_names_2d().contains(element_group))
+        throw std::domain_error{
+            "It is not possible to calculate the area of the elements group, "
+            "since the elements group " + element_group + " is missing"
+        };
+    return area(container().elements(element_group));
+}
+
+template<class T, class I>
+T mesh_2d<T, I>::area() const {
+    return area(container().elements_2d());
 }
 
 template<class T, class I>

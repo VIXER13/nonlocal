@@ -19,8 +19,7 @@ void test_mesh(const nonlocal::mesh::mesh_container_2d<T, I>& mesh) {
     for(const std::string& name : mesh.groups_names_2d())
         std::cout << name << ' ';
     std::cout << std::endl;
-
-    std::cout << "elements_count = " << mesh.elements_count() << std::endl;
+    
     std::cout << "elements_1d_count = " << mesh.elements_1d_count() << std::endl;
     std::cout << "elements_2d_count = " << mesh.elements_2d_count() << std::endl;
 

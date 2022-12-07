@@ -7,6 +7,7 @@
 #include <fstream>
 #include <ranges>
 #include <numeric>
+#include <unordered_set>
 
 namespace nonlocal::mesh {
 
@@ -19,8 +20,8 @@ class mesh_container_2d final {
     std::vector<std::array<T, 2>> _nodes;
     std::vector<std::vector<I>> _elements;
     std::vector<uint8_t> _elements_types;
-    std::vector<std::string> _groups_names_1d;
-    std::vector<std::string> _groups_names_2d;
+    std::unordered_set<std::string> _groups_names_1d;
+    std::unordered_set<std::string> _groups_names_2d;
     std::unordered_map<std::string, std::ranges::iota_view<size_t, size_t>> _elements_groups;
     size_t _elements_2d_count = 0u;
 
@@ -48,17 +49,15 @@ public:
 
     explicit mesh_container_2d(const std::filesystem::path& path_to_mesh);
 
-    const std::vector<std::string>& groups_names_1d() const noexcept;
-    const std::vector<std::string>& groups_names_2d() const noexcept;
+    const std::unordered_set<std::string>& groups_names_1d() const noexcept;
+    const std::unordered_set<std::string>& groups_names_2d() const noexcept;
     size_t groups_1d_count() const noexcept;
     size_t groups_2d_count() const noexcept;
     
-    size_t elements_count() const noexcept;
     size_t elements_count(const std::string& group_name) const;
     size_t elements_1d_count() const;
     size_t elements_2d_count() const;
 
-    std::ranges::iota_view<size_t, size_t> elements() const noexcept;
     std::ranges::iota_view<size_t, size_t> elements(const std::string& group_name) const;
     std::ranges::iota_view<size_t, size_t> elements_1d() const noexcept;
     std::ranges::iota_view<size_t, size_t> elements_2d() const noexcept;
@@ -113,12 +112,12 @@ mesh_container_2d<T, I>::mesh_container_2d(const std::filesystem::path& path_to_
 }
 
 template<class T, class I>
-const std::vector<std::string>& mesh_container_2d<T, I>::groups_names_1d() const noexcept {
+const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_names_1d() const noexcept {
     return _groups_names_1d;
 }
 
 template<class T, class I>
-const std::vector<std::string>& mesh_container_2d<T, I>::groups_names_2d() const noexcept {
+const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_names_2d() const noexcept {
     return _groups_names_2d;
 }
 
@@ -133,28 +132,18 @@ size_t mesh_container_2d<T, I>::groups_2d_count() const noexcept {
 }
 
 template<class T, class I>
-size_t mesh_container_2d<T, I>::elements_count() const noexcept {
-    return _elements.size();
-}
-
-template<class T, class I>
 size_t mesh_container_2d<T, I>::elements_count(const std::string& group_name) const {
     return _elements_groups.at(group_name).size();
 }
 
 template<class T, class I>
 size_t mesh_container_2d<T, I>::elements_1d_count() const {
-    return elements_count() - elements_2d_count();
+    return _elements.size() - elements_2d_count();
 }
 
 template<class T, class I>
 size_t mesh_container_2d<T, I>::elements_2d_count() const {
     return _elements_2d_count;
-}
-
-template<class T, class I>
-std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements() const noexcept {
-    return {0u, elements_count()};
 }
 
 template<class T, class I>
@@ -164,7 +153,7 @@ std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements(const s
 
 template<class T, class I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements_1d() const noexcept {
-    return {elements_2d_count(), elements_count()};
+    return {elements_2d_count(), _elements.size()};
 }
 
 template<class T, class I>
@@ -242,9 +231,7 @@ void mesh_container_2d<T, I>::clear() {
     _elements_types.clear();
     _elements_types.shrink_to_fit();
     _groups_names_1d.clear();
-    _groups_names_1d.shrink_to_fit();
     _groups_names_2d.clear();
-    _groups_names_2d.shrink_to_fit();
     _elements_groups.clear();
     _elements_2d_count = 0u;
 }
