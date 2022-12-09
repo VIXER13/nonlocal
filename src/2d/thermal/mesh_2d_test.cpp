@@ -35,23 +35,37 @@ int main(const int argc, const char *const *const argv) {
     auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
     test_mesh(mesh->container());
 
-    nonlocal::thermal::boundaries_conditions_2d<T> boundary_conditions;
-    boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
-    );
-    boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
-    );
-    boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
-    );
-    boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
-    );
 
+    std::cout << "before boundaries" << std::endl;
+
+    nonlocal::thermal::boundaries_conditions_2d<T> boundary_conditions;
+    boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        -1.
+    );
+    boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        1.
+    );
+    // boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+    //     [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+    // );
+    // boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+    //     [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+    // );
+    // boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+    //     [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+    // );
+    // boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+    //     [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+    // );
+
+    static constexpr auto right_part = [](const std::array<T, 2>& x) {
+        return -4;
+    };
+
+    std::cout << "before tast" << std::endl;
     nonlocal::thermal::parameter_2d<T> parameters;
     auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
-        mesh, parameters, boundary_conditions, [](){}, 1., nonlocal::influence::constant_2d<T>{1}
+        mesh, parameters, boundary_conditions, right_part, 1., nonlocal::influence::constant_2d<T>{1}
     );
 
     solution.calc_flux();

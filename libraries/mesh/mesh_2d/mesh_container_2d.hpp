@@ -38,6 +38,15 @@ class mesh_container_2d final {
     void read_su2(Stream& mesh_file);
 
 public:
+    struct element_data_1d final {
+        const mesh_container_2d& mesh;
+        const std::vector<I>& nodes;
+        const element_integrate_1d<T>& element;
+
+        std::array<T, 2> quad_coord(const size_t q) const;
+        std::array<T, 2> jacobi_matrix(const size_t q) const;
+    };
+
     struct element_data_2d final {
         const mesh_container_2d& mesh;
         const std::vector<I>& nodes;
@@ -80,12 +89,31 @@ public:
     const element_integrate_1d<T>& element_1d(const size_t element) const;
     const element_integrate_2d<T>& element_2d(const size_t element) const;
 
+    element_data_1d element_1d_data(const size_t element) const;
     element_data_2d element_2d_data(const size_t element) const;
 
     void clear();
     void read_from_file(const std::filesystem::path& path_to_mesh);
     void renumbering(const std::vector<size_t>& permutation);
 };
+
+template<class T, class I>
+std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size_t q) const {
+    std::array<T, 2> coord = {};
+    using namespace metamath::functions;
+    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
+        coord += mesh.node_coord(nodes[i]) * element.qN(i, q);
+    return coord;
+}
+
+template<class T, class I>
+std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const size_t q) const {
+    std::array<T, 2> J = {};
+    using namespace metamath::functions;
+    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
+        J += mesh.node_coord(nodes[i]) * element.qNxi(i, q);
+    return J;
+}
 
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size_t q) const {
@@ -225,6 +253,11 @@ const element_integrate_1d<T>& mesh_container_2d<T, I>::element_1d(const size_t 
 template<class T, class I>
 const element_integrate_2d<T>& mesh_container_2d<T, I>::element_2d(const size_t element) const {
     return get_elements_set().element_2d(element_type_2d(element));
+}
+
+template<class T, class I>
+mesh_container_2d<T, I>::element_data_1d mesh_container_2d<T, I>::element_1d_data(const size_t element) const {
+    return {.mesh = *this, .nodes = nodes(element), .element = element_1d(element)};
 }
 
 template<class T, class I>

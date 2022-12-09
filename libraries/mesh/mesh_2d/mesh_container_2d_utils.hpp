@@ -21,9 +21,9 @@ std::vector<std::vector<I>> node_elements_2d(const mesh_container_2d<T, I>& mesh
 
 template<class T, class I>
 std::vector<std::unordered_map<I, uint8_t>> global_to_local(const mesh_container_2d<T, I>& mesh) {
-    std::vector<std::unordered_map<I, uint8_t>> global_to_local_numbering(mesh.elements_2d_count());
+    std::vector<std::unordered_map<I, uint8_t>> global_to_local_numbering(mesh.elements_2d_count() + mesh.elements_1d_count());
 #pragma omp parallel for default(none) shared(mesh, global_to_local_numbering)
-    for(size_t e = 0; e < mesh.elements_2d_count(); ++e) {
+    for(size_t e = 0; e < global_to_local_numbering.size(); ++e) {
         const std::vector<I>& nodes = mesh.nodes(e);
         for(const size_t i : std::ranges::iota_view{0u, nodes.size()})
             global_to_local_numbering[e][nodes[i]] = i;
