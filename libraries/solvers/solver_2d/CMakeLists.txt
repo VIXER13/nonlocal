@@ -16,4 +16,5 @@ target_link_libraries(finite_element_solver_2d_lib INTERFACE
     finite_element_solver_2d_base_lib
     heat_equation_solver_2d_lib 
     structural_solver_2d_lib
+    slae_solver_lib
 )

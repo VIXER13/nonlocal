@@ -20,8 +20,8 @@ class mesh_container_2d final {
     std::vector<std::array<T, 2>> _nodes;
     std::vector<std::vector<I>> _elements;
     std::vector<uint8_t> _elements_types;
-    std::unordered_set<std::string> _groups_names_1d;
-    std::unordered_set<std::string> _groups_names_2d;
+    std::unordered_set<std::string> _groups_1d;
+    std::unordered_set<std::string> _groups_2d;
     std::unordered_map<std::string, std::ranges::iota_view<size_t, size_t>> _elements_groups;
     size_t _elements_2d_count = 0u;
 
@@ -49,8 +49,10 @@ public:
 
     explicit mesh_container_2d(const std::filesystem::path& path_to_mesh);
 
-    const std::unordered_set<std::string>& groups_names_1d() const noexcept;
-    const std::unordered_set<std::string>& groups_names_2d() const noexcept;
+    const std::string& group(const size_t element) const;
+
+    const std::unordered_set<std::string>& groups_1d() const noexcept;
+    const std::unordered_set<std::string>& groups_2d() const noexcept;
     size_t groups_1d_count() const noexcept;
     size_t groups_2d_count() const noexcept;
     
@@ -112,23 +114,32 @@ mesh_container_2d<T, I>::mesh_container_2d(const std::filesystem::path& path_to_
 }
 
 template<class T, class I>
-const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_names_1d() const noexcept {
-    return _groups_names_1d;
+const std::string& mesh_container_2d<T, I>::group(const size_t element) const {
+    if (element >= _elements.size())
+        throw std::domain_error{"The group was not found because the element number is greater than the total number of elements."};
+    for(const auto& [name, range] : _elements_groups)
+        if (element >= range.front() && element <= range.back())
+            return name;
 }
 
 template<class T, class I>
-const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_names_2d() const noexcept {
-    return _groups_names_2d;
+const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_1d() const noexcept {
+    return _groups_1d;
+}
+
+template<class T, class I>
+const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_2d() const noexcept {
+    return _groups_2d;
 }
 
 template<class T, class I>
 size_t mesh_container_2d<T, I>::groups_1d_count() const noexcept {
-    return groups_names_1d().size();
+    return groups_1d().size();
 }
 
 template<class T, class I>
 size_t mesh_container_2d<T, I>::groups_2d_count() const noexcept {
-    return groups_names_2d().size();
+    return groups_2d().size();
 }
 
 template<class T, class I>
@@ -230,8 +241,8 @@ void mesh_container_2d<T, I>::clear() {
     _elements.shrink_to_fit();
     _elements_types.clear();
     _elements_types.shrink_to_fit();
-    _groups_names_1d.clear();
-    _groups_names_2d.clear();
+    _groups_1d.clear();
+    _groups_2d.clear();
     _elements_groups.clear();
     _elements_2d_count = 0u;
 }

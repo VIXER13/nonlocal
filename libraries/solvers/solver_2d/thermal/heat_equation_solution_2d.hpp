@@ -1,5 +1,5 @@
-#ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_HPP
-#define NONLOCAL_HEAT_EQUATION_SOLUTION_HPP
+#ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_2D_HPP
+#define NONLOCAL_HEAT_EQUATION_SOLUTION_2D_HPP
 
 #include "solution_2d.hpp"
 #include "thermal_parameters_2d.hpp"
@@ -37,7 +37,7 @@ public:
     const std::array<std::vector<T>, 2>& calc_flux();
 
     void save_as_vtk(std::ofstream& output) const override;
-    void save_as_vtk(const std::string& path) const;
+    void save_as_vtk(const std::filesystem::path& path) const;
 };
 
 template<class T, class I>
@@ -158,7 +158,7 @@ void heat_equation_solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
 }
 
 template<class T, class I>
-void heat_equation_solution_2d<T, I>::save_as_vtk(const std::string& path) const {
+void heat_equation_solution_2d<T, I>::save_as_vtk(const std::filesystem::path& path) const {
     std::ofstream output{path};
     save_as_vtk(output);
 }

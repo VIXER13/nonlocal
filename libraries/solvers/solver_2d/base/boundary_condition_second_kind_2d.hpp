@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_BOUNDARY_CONDITION_SECOND_KIND_2D_HPP
 #define NONLOCAL_BOUNDARY_CONDITION_SECOND_KIND_2D_HPP
 
-#include "boundary_condition_2d.hpp"
+#include "boundary_conditions_2d.hpp"
 #include "mesh_2d.hpp"
 
 namespace nonlocal {

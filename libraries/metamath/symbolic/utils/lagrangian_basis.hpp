@@ -6,6 +6,8 @@
 namespace SYMBOLIC_NAMESPACE {
 
 class _lagrangian_function final {
+    explicit constexpr _lagrangian_function() noexcept = default;
+
     template<size_t X, size_t K, size_t I, class T, size_t N>
     static constexpr auto generate_term(const std::array<T, N>& nodes) noexcept {
         if constexpr (K != I) {
@@ -32,6 +34,8 @@ constexpr auto generate_lagrangian_function(const std::array<T, N>& nodes) noexc
 }
 
 class _lagrangian_basis final {
+    explicit constexpr _lagrangian_basis() noexcept = default;
+
     template<size_t X, class T, size_t N, size_t... K>
     static constexpr auto generate_lagrangian_basis(const std::array<T, N>& nodes, const std::index_sequence<K...>) noexcept {
         return std::make_tuple(generate_lagrangian_function<X, K>(nodes)...);

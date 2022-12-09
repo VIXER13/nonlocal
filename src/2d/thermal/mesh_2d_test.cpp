@@ -1,8 +1,6 @@
 #include <iostream>
-#include "mesh_2d.hpp"
-#include "thermal_conductivity_matrix_2d.hpp"
+#include "stationary_heat_equation_solver_2d.hpp"
 #include "influence_functions_2d.hpp"
-#include "heat_equation_solution_2d.hpp"
 
 namespace {
 
@@ -11,12 +9,12 @@ using I = int64_t;
 
 void test_mesh(const nonlocal::mesh::mesh_container_2d<T, I>& mesh) {
     std::cout << "groups_names_1d: ";
-    for(const std::string& name : mesh.groups_names_1d())
+    for(const std::string& name : mesh.groups_1d())
         std::cout << name << ' ';
     std::cout << std::endl;
 
     std::cout << "groups_names_2d: ";
-    for(const std::string& name : mesh.groups_names_2d())
+    for(const std::string& name : mesh.groups_2d())
         std::cout << name << ' ';
     std::cout << std::endl;
     
@@ -32,27 +30,35 @@ void test_mesh(const nonlocal::mesh::mesh_container_2d<T, I>& mesh) {
 
 }
 
-int main(int argc, char** argv) {
+int main(const int argc, const char *const *const argv) {
     std::cout.precision(2);
     auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
     test_mesh(mesh->container());
 
-    //const auto process_nodes = mesh->process_nodes();
-    //std::cout << process_nodes.front() << " " << process_nodes.back() << std::endl;
+    nonlocal::thermal::boundaries_conditions_2d<T> boundary_conditions;
+    boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
+    );
+    boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
+    );
+    boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
+    );
+    boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+        [](const std::array<T, 2>& x) { return x[0] * x[0] + x[1] * x[1]; }
+    );
 
-    //nonlocal::thermal::equation_parameters_2d<T, nonlocal::material_t::ISOTROPIC> param;
-    nonlocal::thermal::thermal_conductivity_matrix_2d<T, I, I> matrix{mesh};
-    matrix.compute({1.}, nonlocal::material_t::ISOTROPIC, std::vector<bool>(mesh->container().nodes_count(), true), 1., nonlocal::influence::constant_2d<T>{1}, true);
-    std::cout << Eigen::MatrixXd{matrix.matrix_inner()} << std::endl;
+    nonlocal::thermal::parameter_2d<T> parameters;
+    auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
+        mesh, parameters, boundary_conditions, [](){}, 1., nonlocal::influence::constant_2d<T>{1}
+    );
 
-    nonlocal::mesh::utils::save_as_vtk(std::filesystem::path{"./test.vtk"}, mesh->container());
-
-    std::vector<T> sol(9);
-    for(const size_t i : std::ranges::iota_view{0u, sol.size()})
-        sol[i] = mesh->container().node_coord(i)[0] + mesh->container().node_coord(i)[1];
-    nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, 1., nonlocal::influence::constant_2d<T>{1}, nonlocal::thermal::parameter_2d<T>{}, sol};
     solution.calc_flux();
-    solution.save_as_vtk("./sol.vtk");
+    solution.save_as_vtk("./test.vtk");
+    nonlocal::mesh::utils::save_as_csv(std::filesystem::path{"./T.csv"}, mesh->container(), solution.temperature());
+    nonlocal::mesh::utils::save_as_csv(std::filesystem::path{"./TX.csv"}, mesh->container(), solution.flux()[0]);
+    nonlocal::mesh::utils::save_as_csv(std::filesystem::path{"./TY.csv"}, mesh->container(), solution.flux()[1]);
 
     return 0;
 }

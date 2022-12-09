@@ -70,14 +70,14 @@ auto mesh_container_2d<T, I>::read_elements_1d(Stream& mesh_file) {
     std::string pass;
     size_t groups_count = 0;
     mesh_file >> pass >> groups_count;
-    std::unordered_set<std::string> groups_names_1d;
+    std::unordered_set<std::string> groups_1d;
     std::vector<std::vector<std::vector<I>>> elements_1d(groups_count);
     std::vector<std::vector<element_1d_t>> elements_types_1d(groups_count);
     for(const size_t b : std::ranges::iota_view{0u, groups_count}) {
         size_t elements_count = 0;
         std::string group_name;
         mesh_file >> pass >> group_name >> pass >> elements_count;
-        groups_names_1d.emplace(std::move(group_name));
+        groups_1d.emplace(std::move(group_name));
         elements_1d[b].resize(elements_count);
         elements_types_1d[b].resize(elements_count);
         for(const size_t e : std::ranges::iota_view{0u, elements_count}) {
@@ -98,7 +98,7 @@ auto mesh_container_2d<T, I>::read_elements_1d(Stream& mesh_file) {
             }
         }
     }
-    return std::make_tuple(std::move(groups_names_1d), std::move(elements_1d), std::move(elements_types_1d));
+    return std::make_tuple(std::move(groups_1d), std::move(elements_1d), std::move(elements_types_1d));
 }
 
 template<class T, class I>
@@ -106,16 +106,16 @@ template<class Stream>
 void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
     auto [elements_2d, elements_types_2d] = read_elements_2d(mesh_file);
     auto nodes = read_nodes(mesh_file);
-    auto [groups_names_1d, elements_1d, elements_types_1d] = read_elements_1d(mesh_file);
+    auto [groups_1d, elements_1d, elements_types_1d] = read_elements_1d(mesh_file);
 
     _nodes = std::move(nodes);
-    _groups_names_1d = std::move(groups_names_1d);
-    _groups_names_2d = {"Default"};
+    _groups_1d = std::move(groups_1d);
+    _groups_2d = {"Default"};
     _elements_2d_count = elements_2d.size();
     _elements_groups["Default"] = {0u, _elements_2d_count};
     size_t elements = _elements_2d_count;
     size_t bound = 0;
-    for(const std::string& bound_name : _groups_names_1d) {
+    for(const std::string& bound_name : _groups_1d) {
         _elements_groups[bound_name] = std::ranges::iota_view{elements, elements + elements_1d[bound].size()};
         elements += elements_1d[bound].size();
         ++bound;
@@ -129,7 +129,7 @@ void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
     }
 
     size_t curr_element = _elements_2d_count;
-    for(const size_t b : std::ranges::iota_view{0u, _groups_names_1d.size()})
+    for(const size_t b : std::ranges::iota_view{0u, _groups_1d.size()})
         for(const size_t e : std::ranges::iota_view{0u, elements_1d[b].size()}) {
             _elements[curr_element] = std::move(elements_1d[b][e]);
             _elements_types[curr_element] = uint8_t(elements_types_1d[b][e]);

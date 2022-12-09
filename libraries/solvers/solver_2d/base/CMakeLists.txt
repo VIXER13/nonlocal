@@ -5,10 +5,13 @@ set(FINITE_ELEMENT_SOLVER_2D_BASE_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(finite_element_solver_2d_base_lib INTERFACE)
 target_sources(finite_element_solver_2d_base_lib INTERFACE
-    boundary_condition_2d.hpp
+    boundary_condition_first_kind_2d.hpp
+    boundary_condition_second_kind_2d.hpp
+    boundary_conditions_2d.hpp
     finite_element_matrix_2d.hpp
     right_part_2d.hpp
     solution_2d.hpp
+    solvers_utils.hpp
 )
 target_include_directories(finite_element_solver_2d_base_lib INTERFACE ${FINITE_ELEMENT_SOLVER_2D_BASE_LIB_DIR})
 target_link_libraries(finite_element_solver_2d_base_lib INTERFACE
