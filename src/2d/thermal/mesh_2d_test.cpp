@@ -39,8 +39,8 @@ int main(const int argc, const char *const *const argv) {
     std::cout << "before boundaries" << std::endl;
 
     nonlocal::thermal::boundaries_conditions_2d<T> boundary_conditions;
-    boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-        -1.
+    boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
+        -1., 1.
     );
     boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
         1.
@@ -59,7 +59,7 @@ int main(const int argc, const char *const *const argv) {
     // );
 
     static constexpr auto right_part = [](const std::array<T, 2>& x) {
-        return -4;
+        return 0;
     };
 
     std::cout << "before tast" << std::endl;

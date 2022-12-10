@@ -17,16 +17,14 @@ public:
 };
 
 template<class T>
-class temperature_2d : public first_kind_2d<T>
-                     , public thermal_boundary_condition_2d<T> {
-    using _base = first_kind_2d<T>;
-
-protected:
+class temperature_2d final : public first_kind_2d<T>
+                           , public thermal_boundary_condition_2d<T> {
+    using first_kind_2d<T>::function_from_value;
     const std::function<T(const std::array<T, 2>&)> _temperature;
 
 public:
     explicit temperature_2d(const T temperature)
-        : _temperature{_base::from_value(temperature)} {}
+        : _temperature{function_from_value(temperature)} {}
     explicit temperature_2d(const std::function<T(const std::array<T, 2>&)>& temperature)
         : _temperature{temperature} {}
     ~temperature_2d() noexcept override = default;
@@ -37,16 +35,14 @@ public:
 };
 
 template<class T>
-class flux_2d : public second_kind_2d<T>
-              , public thermal_boundary_condition_2d<T> {
-    using _base = second_kind_2d<T>;
-
-protected:
+class flux_2d final : public second_kind_2d<T>
+                    , public thermal_boundary_condition_2d<T> {
+    using second_kind_2d<T>::function_from_value;
     const std::function<T(const std::array<T, 2>&)> _flux;
 
 public:
     explicit flux_2d(const T flux)
-        : _flux{_base::from_value(flux)} {}
+        : _flux{function_from_value(flux)} {}
     explicit flux_2d(const std::function<T(const std::array<T, 2>&)>& flux) noexcept
         : _flux{flux} {}
     ~flux_2d() noexcept override = default;
@@ -57,17 +53,15 @@ public:
 };
 
 template<class T>
-class convection_2d : public second_kind_2d<T>
-                    , public thermal_boundary_condition_2d<T> {
-    using _base = second_kind_2d<T>;
-
-protected:
+class convection_2d final : public second_kind_2d<T>
+                          , public thermal_boundary_condition_2d<T> {
+    using second_kind_2d<T>::function_from_value;
     const std::function<T(const std::array<T, 2>&)> _ambient_temperature;
     const T _heat_transfer;
 
 public:
     explicit convection_2d(const T heat_transfer, const T ambient_temperature)
-        : _ambient_temperature{_base::from_value(ambient_temperature)}
+        : _ambient_temperature{function_from_value(ambient_temperature)}
         , _heat_transfer{heat_transfer} {}
     explicit convection_2d(const T heat_transfer, const std::function<T(const std::array<T, 2>&)>& ambient_temperature)
         : _ambient_temperature{ambient_temperature}
@@ -75,16 +69,18 @@ public:
     ~convection_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>& x) const override {
-        return _heat_transfer * ambient_temperature(x);
+        return _heat_transfer * _ambient_temperature(x);
+    }
+
+    constexpr T heat_transfer() const noexcept {
+        return _heat_transfer;
     }
 };
 
 template<class T>
 class radiation_2d : public second_kind_2d<T>
                    , public thermal_boundary_condition_2d<T> {
-    using _base = second_kind_2d<T>;
-
-protected:
+    using second_kind_2d<T>::function_from_value;
     // parameters
 
 public:
@@ -95,6 +91,8 @@ public:
         // What goes to the right part
         return 0;
     }
+
+    // some others functions...
 };
 
 template<class T>

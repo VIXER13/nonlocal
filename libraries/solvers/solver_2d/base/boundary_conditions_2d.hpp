@@ -14,7 +14,7 @@ protected:
     constexpr explicit boundary_condition_2d() noexcept = default;
 
 protected:
-    static constexpr auto from_value(const T value) noexcept {
+    static constexpr auto function_from_value(const T value) noexcept {
         return [value](const std::array<T, 2>&) constexpr noexcept { return value; };
     }
 

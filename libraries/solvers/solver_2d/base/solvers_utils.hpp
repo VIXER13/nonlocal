@@ -10,10 +10,10 @@ template<size_t DoF, template<class> class Condition, class T, class I, class Ca
 void run_by_boundary(const mesh::mesh_container_2d<T, I>& mesh, const std::string& bound_name,
                      const boundary_condition_2d<T>& condition, const size_t degree, 
                      const Callback& callback) {
-    if (dynamic_cast<const Condition<T>*>(&condition))
+    if (const auto *const cond = dynamic_cast<const Condition<T>*>(&condition))
         for(const size_t be : mesh.elements(bound_name))
             for(const size_t node : mesh.nodes(be))
-                callback(condition, be, node, degree);
+                callback(*cond, be, node, degree);
 }
 
 template<size_t DoF, template<class> class Condition, class T, class I, class Conditions_Map, class Callback>
@@ -33,7 +33,7 @@ std::vector<bool> inner_nodes(const mesh::mesh_container_2d<T, I>& mesh,
                               const Conditions_Map& boundaries_conditions) {
     std::vector<bool> is_inner(DoF * mesh.nodes_count(), true);
     run_by_boundaries<DoF, first_kind_2d>(mesh, boundaries_conditions,
-        [&is_inner](const auto&, const size_t, const size_t node, const size_t degree) {
+        [&is_inner](const first_kind_2d<T>&, const size_t, const size_t node, const size_t degree) {
             is_inner[DoF * node + degree] = false;
         });
     return is_inner;

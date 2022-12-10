@@ -6,6 +6,7 @@
 #include "thermal_boundary_conditions_2d.hpp"
 #include "boundary_condition_first_kind_2d.hpp"
 #include "boundary_condition_second_kind_2d.hpp"
+#include "convection_condition_2d.hpp"
 #include "right_part_2d.hpp"
 #include "heat_equation_solution_2d.hpp"
 
@@ -47,19 +48,13 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     );
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "Conductivity matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
-    // convection_condition_matrix_part_2d(conductivity.matrix_inner(), *mesh_proxy, bounds_types, equation_param.heat_transfer);
-    // convection_condition_right_part_2d(f, *mesh_proxy, boundary_condition, equation_param.heat_transfer);
+    convection_condition_2d(conductivity.matrix_inner(), *mesh, boundaries_conditions);
     integrate_right_part<DoF>(f, *mesh, right_part);
     if (!is_neumann)
         boundary_condition_first_kind_2d<DoF>(f, *mesh, boundaries_conditions, conductivity.matrix_bound());
 
-    // std::cout << Eigen::MatrixXd{conductivity.matrix_inner()} << std::endl << std::endl;
-    // std::cout << Eigen::MatrixXd{conductivity.matrix_bound()} << std::endl << std::endl;
-    // std::cout << f.transpose() << std::endl << std::endl;
-
     start_time = std::chrono::high_resolution_clock::now();
-    // const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{conductivity.matrix_inner()};
+    const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
     const auto temperature = solver.solve(f);
 
     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
