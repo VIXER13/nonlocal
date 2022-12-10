@@ -2,7 +2,7 @@
 #define METAMATH_FIXED_MATRIX_HPP
 
 #include <array>
-#include <cinttypes>
+#include <stddef.h>
 
 namespace metamath::types {
 

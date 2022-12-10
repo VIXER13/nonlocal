@@ -18,7 +18,7 @@ namespace nonlocal::thermal {
 
 template<class Matrix_Index, class T, class I, class Right_Part, class Influence_Function>
 heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                                   const nonlocal::thermal::parameter_2d<T>& parameters,
+                                                                   const parameter_2d<T>& parameters,
                                                                    const boundaries_conditions_2d<T>& boundaries_conditions,
                                                                    const Right_Part& right_part,
                                                                    const T p1,

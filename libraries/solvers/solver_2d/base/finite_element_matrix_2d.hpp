@@ -8,6 +8,8 @@
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Sparse>
 
+#include <iostream>
+
 namespace nonlocal {
 
 template<size_t DoF, class T, class I, class Matrix_Index>

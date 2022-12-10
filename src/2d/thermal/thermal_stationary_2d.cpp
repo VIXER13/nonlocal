@@ -1,7 +1,15 @@
+#include "stationary_heat_equation_solver_2d.hpp"
 #include "influence_functions_2d.hpp"
-#include "thermal/stationary_heat_equation_solver_2d.hpp"
+#include "mesh_container_2d_utils.hpp"
 
-int main(int argc, char** argv) {
+namespace {
+
+using T = double;
+using I = int64_t;
+
+}
+
+int main(const int argc, const char *const *const argv) {
 #ifdef MPI_USE
     MPI_Init(&argc, &argv);
 #endif
@@ -15,60 +23,50 @@ int main(int argc, char** argv) {
     }
 
     try {
-        std::cout.precision(20);
-        const double p1 = std::stod(argv[4]);
-        const std::array<double, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
-        nonlocal::thermal::equation_parameters_2d<double, nonlocal::material_t::ORTHOTROPIC> eq_parameters;
-        eq_parameters.thermal_conductivity[0] = r[0] / std::max(r[0], r[1]);
-        eq_parameters.thermal_conductivity[1] = r[1] / std::max(r[0], r[1]);
-        eq_parameters.heat_transfer = {
-            {"Right", 1},
-            {"Left",  1}
+        std::cout.precision(3);
+        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
+        const std::array<T, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
+        const T p1 = std::stod(argv[4]);
+        nonlocal::thermal::parameter_2d<T> parameters = {
+            .conductivity = {T{1}, T{0},
+                             T{0}, T{1}},
+            .material = nonlocal::material_t::ISOTROPIC
         };
 
-        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double, int64_t>>(argv[1]);
-        auto mesh_proxy = std::make_shared<nonlocal::mesh::mesh_proxy<double, int64_t>>(mesh);
-        if (p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>) {
-            const double time = omp_get_wtime();
-            mesh_proxy->find_neighbours(std::max(r[0], r[1]) + 0.005, nonlocal::mesh::balancing_t::MEMORY);
-            std::cout << "find neighbours: " << omp_get_wtime() - time << std::endl;
-            double mean = 0;
-            for(const size_t e : std::views::iota(size_t{0}, mesh->elements_count()))
-                mean += mesh_proxy->neighbors(e).size();
-            std::cout << "Average neighbours = " << mean / mesh->nodes_count() << std::endl;
+        if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
+            // find neighbours, don't work right now
         }
 
-        const auto permutations = nonlocal::mesh::cuthill_mckee(*mesh_proxy, p1 < nonlocal::MAX_NONLOCAL_WEIGHT<double>);
-        mesh_proxy->renumber_nodes(permutations);
+        nonlocal::thermal::boundaries_conditions_2d<T> boundary_conditions;
+        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+        );
+        boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+        );
+        boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+        );
+        boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
+            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
+        );
 
-        const std::unordered_map<std::string, nonlocal::stationary_boundary_2d_t<nonlocal::thermal::boundary_condition_t, double, 1>>
-            boundary_condition = {
-                {   "Right",
-                    {   nonlocal::thermal::boundary_condition_t::TEMPERATURE,
-                        [](const std::array<double, 2>& x) { return 1.; },
-                    }
-                },
-                {   "Left",
-                    {   nonlocal::thermal::boundary_condition_t::TEMPERATURE,
-                        [](const std::array<double, 2>& x) { return -1; },
-                    }
-                }
-            };
+        static constexpr auto right_part = [](const std::array<T, 2>& x) {
+            return -4;
+        };
 
-        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<double, int64_t, int64_t>(
-            eq_parameters, mesh_proxy, boundary_condition,
-            [](const std::array<double, 2>& x) { return 0; }, // Правая часть
-            p1, nonlocal::influence::polynomial_2d<double, 2, 1>{r}
+        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
+            mesh, parameters, boundary_conditions, right_part, p1, nonlocal::influence::constant_2d<T>{r}
         );
 
         if (parallel_utils::MPI_rank() == 0) {
-            solution.calc_flux();
-            std::cout << "Energy = " << solution.calc_energy() << std::endl;
+            const auto& [TX, TY] = solution.calc_flux();
+            //std::cout << "Energy = " << solution.calc_energy() << std::endl;
             solution.save_as_vtk("heat.vtk");
-            const auto& [X, Y] = solution.flux();
-            nonlocal::mesh::save_as_csv("T.csv", *mesh, solution.temperature());
-            nonlocal::mesh::save_as_csv("TX.csv", *mesh, X);
-            nonlocal::mesh::save_as_csv("TY.csv", *mesh, Y);
+            using namespace std::literals;
+            nonlocal::mesh::utils::save_as_csv("T.csv", mesh->container(), solution.temperature());
+            nonlocal::mesh::utils::save_as_csv("TX.csv", mesh->container(), TX);
+            nonlocal::mesh::utils::save_as_csv("TY.csv", mesh->container(), TY);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
