@@ -58,8 +58,11 @@ public:
 
     const parallel_utils::MPI_ranges& MPI_ranges() const noexcept;
     std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel_utils::MPI_rank()) const;
+    std::unordered_set<I> process_elements(const size_t process = parallel_utils::MPI_rank()) const;
 
     const std::vector<I>& neighbours(const size_t e) const;
+
+    void find_neighbours(const T r, const balancing_t balancing = balancing_t::MEMORY, const bool add_diam = true);
 
     T area(const size_t e) const;
     T area(const std::string& element_group) const;
@@ -143,8 +146,22 @@ std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::process_nodes(const size_t
 }
 
 template<class T, class I>
+std::unordered_set<I> mesh_2d<T, I>::process_elements(const size_t process) const {
+    std::unordered_set<I> proc_elements;
+    for(const size_t node : process_nodes(process))
+        for(const I e : elements(node))
+            proc_elements.insert(e);
+    return proc_elements;
+}
+
+template<class T, class I>
 const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::find_neighbours(const T r, const balancing_t balancing, const bool add_diam) {
+    _elements_neighbors = utils::find_neighbours(r, utils::approx_centers_of_elements(container()), process_elements());
 }
 
 template<class T, class I>

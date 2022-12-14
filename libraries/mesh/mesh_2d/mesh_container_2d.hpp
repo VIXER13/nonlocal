@@ -52,6 +52,7 @@ public:
         const std::vector<I>& nodes;
         const element_integrate_2d<T>& element;
         
+        std::array<T, 2> center() const;
         std::array<T, 2> quad_coord(const size_t q) const;
         metamath::types::square_matrix<T, 2> jacobi_matrix(const size_t q) const;
     };
@@ -113,6 +114,17 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const s
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
         J += mesh.node_coord(nodes[i]) * element.qNxi(i, q);
     return J;
+}
+
+template<class T, class I>
+std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
+    std::array<T, 2> coord = {};
+    using namespace metamath::functions;
+    using namespace metamath::finite_element;
+    const T x0 = bool(dynamic_cast<const rectangle_element_geometry<T>*>(&element)) ? T{1} / T{3} : T{0};
+    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
+        coord += mesh.node_coord(nodes[i]) * element.N(i, {x0, x0});
+    return coord;
 }
 
 template<class T, class I>

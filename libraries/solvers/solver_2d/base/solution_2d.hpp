@@ -14,7 +14,7 @@ protected:
 private:
     const std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
     const T _local_weight = T{1};
-    const influence_function_t _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{}; };
+    const influence_function_t _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{0}; };
 
 protected:
     explicit solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);

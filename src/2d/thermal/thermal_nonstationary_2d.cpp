@@ -8,18 +8,6 @@ namespace {
 using T = double;
 using I = int64_t;
 
-// void logger(const nonlocal::thermal::heat_equation_solution_2d<T, I>& solution, const std::string& path, const uintmax_t step) {
-//     std::cout << "step = " << step << std::endl;
-//     //std::cout << "Energy = " << solution.calc_energy() << std::endl;
-//     solution.save_as_vtk(path + '/' + std::to_string(step) + ".vtk");
-//     const auto& [X, Y] = solution.flux();
-//     nonlocal::mesh::save_as_csv(path + '/' + std::to_string(step) + "T.csv",  solution.mesh_proxy()->mesh(), solution.temperature());
-//     if (!X.empty() && !Y.empty()) {
-//         nonlocal::mesh::save_as_csv(path + '/' + std::to_string(step) + "TX.csv", solution.mesh_proxy()->mesh(), X);
-//         nonlocal::mesh::save_as_csv(path + '/' + std::to_string(step) + "TY.csv", solution.mesh_proxy()->mesh(), Y);
-//     }
-// }
-
 void save_solution(const nonlocal::thermal::heat_equation_solution_2d<T, I>& solution, 
                    const std::filesystem::path& folder, const size_t step) {
     solution.save_as_vtk(folder.string() + '/' + std::to_string(step) + "T.vtk");

@@ -103,6 +103,42 @@ std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>&
     return derivatives;
 }
 
+template<class T, class I>
+std::vector<std::array<T, 2>> approx_centers_of_elements(const mesh_container_2d<T, I>& mesh) {
+    std::vector<std::array<T, 2>> centers(mesh.elements_2d_count(), std::array<T, 2>{});
+#pragma omp parallel for default(none) shared(centers, mesh)
+    for(size_t e = 0; e < centers.size(); ++e)
+        centers[e] = mesh.element_2d_data(e).center();
+    return centers;
+}
+
+template<class I, class T>
+std::vector<I> find_neighbours(const T radius, const std::vector<std::array<T, 2>>& nodes, const size_t node) {
+    std::vector<I> neighbours;
+    for(const size_t i : std::ranges::iota_view{0u, nodes.size()})
+        if (metamath::functions::distance(nodes[node], nodes[i]) <= radius)
+            neighbours.push_back(i);
+    neighbours.shrink_to_fit();
+    return neighbours;
+}
+
+template<class I, class T>
+std::vector<std::vector<I>> find_neighbours(const T radius, const std::vector<std::array<T, 2>>& nodes) {
+    std::vector<std::vector<I>> neighbours(nodes.size());
+#pragma omp parallel for default(none) shared(neighbours, nodes)
+    for(size_t i = 0; i < nodes.size(); ++i)
+        neighbours[i] = find_neighbours<I>(radius, nodes, i);
+    return neighbours;
+}
+
+template<class T, class I>
+std::vector<std::vector<I>> find_neighbours(const T radius, const std::vector<std::array<T, 2>>& nodes, const std::unordered_set<I>& nodes_to_search) {
+    std::vector<std::vector<I>> neighbours(nodes.size());
+    for(const size_t node : nodes_to_search)
+        neighbours[node] = find_neighbours<I>(radius, nodes, node);
+    return neighbours;
+}
+
 template<class Stream, class T, class I>
 void save_as_vtk(Stream& stream, const mesh_container_2d<T, I>& mesh) {
     static constexpr auto write_element = []<size_t K0, size_t... K>(Stream& stream, const std::vector<I>& element, const std::index_sequence<K0, K...>) {
