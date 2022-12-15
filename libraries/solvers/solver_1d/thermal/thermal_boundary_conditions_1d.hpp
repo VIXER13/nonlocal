@@ -5,9 +5,13 @@
 #include "../../solvers_constants.hpp"
 #include "metamath.hpp"
 
+#include <array>
+#include <memory>
+
 namespace nonlocal::thermal {
 
-class thermal_boundary_condition_1d : public virtual boundary_condition_1d {
+template<class T>
+class thermal_boundary_condition_1d : public virtual boundary_condition_1d<T> {
 protected:
     explicit thermal_boundary_condition_1d() noexcept = default;
 
@@ -16,38 +20,38 @@ public:
 };
 
 template<class T>
-class temperature_1d : public first_kind_1d<T>
-                     , public thermal_boundary_condition_1d {
-public:
-    T temperature = T{0};
+class temperature_1d final : public first_kind_1d<T>
+                           , public thermal_boundary_condition_1d<T> {
+    T _temperature = T{0};
 
-    explicit temperature_1d(const T value) noexcept
-        : temperature{value} {}
+public:
+    explicit temperature_1d(const T temperature) noexcept
+        : _temperature{temperature} {}
     ~temperature_1d() noexcept override = default;
 
     T operator()() const override {
-        return temperature;
+        return _temperature;
     }
 };
 
 template<class T>
-class flux_1d : public second_kind_1d<T>
-              , public thermal_boundary_condition_1d {
-public:
-    T flux = T{0};
+class flux_1d final : public second_kind_1d<T>
+                    , public thermal_boundary_condition_1d<T> {
+    T _flux = T{0};
 
-    explicit flux_1d(const T value)
-        : flux{value} {}
+public:
+    explicit flux_1d(const T flux)
+        : _flux{flux} {}
     ~flux_1d() noexcept override = default;
 
     T operator()() const override {
-        return flux;
+        return _flux;
     }
 };
 
 template<class T>
-class convection_1d : public second_kind_1d<T>
-                    , public thermal_boundary_condition_1d {
+class convection_1d final : public second_kind_1d<T>
+                          , public thermal_boundary_condition_1d<T> {
 public:
     //Convection
     T heat_transfer = T{0};
@@ -61,8 +65,6 @@ public:
     //Falling flux
     T absorption = T{0};
     T flux = T{0};
-
-
 
     explicit convection_1d(const T transfer, const T temperature,
                            const T emis = T{0}, const T temp = T{0}, const T tau = T{0},
@@ -82,6 +84,12 @@ public:
         return 4 * time_step * emissivity * power<4>(bound_temperature);
     }
 };
+
+template<class T>
+using boundary_condition_1d = std::unique_ptr<thermal_boundary_condition_1d<T>>;
+
+template<class T>
+using boundaries_conditions_1d = std::array<boundary_condition_1d<T>, 2>;
 
 }
 

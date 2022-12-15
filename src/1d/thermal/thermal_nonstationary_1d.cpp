@@ -9,13 +9,12 @@ using T = double;
 using I = int64_t;
 
 void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const std::filesystem::path& folder, const uintmax_t step) {
-    using namespace std::literals;
     nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), folder / ("T" + std::to_string(step) + ".csv"));
     nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), folder / ("Flux" + std::to_string(step) + ".csv"));
 }
 
 void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>>& parameters,
-               const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2>& boundary_condition,
+               const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2>& boundary_condition,
                const std::filesystem::path& folder) {
     std::ofstream info_file;
     const std::string way_to_file = folder /  ("calculation_info.txt");
@@ -78,7 +77,7 @@ int main(const int argc, const char *const *const argv) {
         if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL)
             mesh->find_neighbours(radii);
 
-        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2> boundary_condition = {
+        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
             std::make_unique<nonlocal::thermal::flux_1d<T>>(1.),
             std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.)
         };
@@ -92,11 +91,9 @@ int main(const int argc, const char *const *const argv) {
 
         save_info(parameters, boundary_condition, argv[1]);
         save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, argv[1], 0);
-        //save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", 0);
         for(const uintmax_t step : std::ranges::iota_view{1u, 101u}) {
             solver.calc_step(boundary_condition, [](const double x) constexpr noexcept { return 0; });
             save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, argv[1], step);
-            //save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, "./sol", step);
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

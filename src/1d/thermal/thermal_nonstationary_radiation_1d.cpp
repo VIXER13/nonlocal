@@ -18,7 +18,7 @@ void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const
 }
 
 void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>>& parameters,
-               const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2>& boundary_condition,
+               const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2>& boundary_condition,
                const T tau, const std::vector<T>& radii, const std::vector<nonlocal::mesh::segment_data<T>>& segment_data,
                const std::filesystem::path& folder) {
     std::ofstream info_file;
@@ -49,7 +49,7 @@ int main(const int argc, const char *const *const argv) {
     try {
         std::cout.precision(3);
         const std::vector<nonlocal::mesh::segment_data<T>> segment_data = {
-                {.length = 2., .elements = 200}
+                {.length = 1., .elements = 200}
                 //{.length = 0.25, .elements = 100},
                 //{.length = 0.35, .elements = 100},
                 //{.length = 0.15, .elements = 100}
@@ -112,7 +112,7 @@ int main(const int argc, const char *const *const argv) {
 
 
         nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, tau};
-        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2> boundary_condition = {
+        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
             std::make_unique<nonlocal::thermal::convection_1d<T>>(heat_transfer, ambient_temperature(0.),   
                                                                   emissivity, initial_dist(0.), 0.,
                                                                   absorption, falling_flux(0.)),
@@ -130,7 +130,7 @@ int main(const int argc, const char *const *const argv) {
         for(const uintmax_t step : std::ranges::iota_view{1u, 101u}) {
             const T time = step * tau;
 
-            const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d>, 2> boundary_condition = {
+            const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
             std::make_unique<nonlocal::thermal::convection_1d<T>>(heat_transfer, ambient_temperature(time),   
                                                                   emissivity, solver.temperature()[0], time,
                                                                   absorption, falling_flux(time)),
