@@ -81,12 +81,13 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equa
     _conductivity.template calc_matrix(parameters, is_first_kind);
     convection_condition_1d(_conductivity.matrix_inner(), boundaries_conditions);
 
-    _conductivity.matrix_inner() *= time_step();
-    _conductivity.matrix_inner() += _capacity.matrix_inner();
-    if (is_first_kind.front())
-        _conductivity.matrix_inner().coeffRef(0, 0) = T{1};
-    if (is_first_kind.back())
-        _conductivity.matrix_inner().coeffRef(_conductivity.matrix_inner().rows() - 1, _conductivity.matrix_inner().cols() - 1) = T{1};
+    auto& conductivity = _conductivity.matrix_inner();
+    conductivity *= time_step();
+    conductivity += _capacity.matrix_inner();
+    reset_to_init_values(conductivity, {
+        is_first_kind.front() ? T{1} : conductivity.coeffRef(0, 0),
+        is_first_kind.back()  ? T{1} : conductivity.coeffRef(conductivity.rows() - 1, conductivity.cols() - 1)
+    });
     
     for(std::unordered_map<size_t, T>& matrix_part : _conductivity.matrix_bound())
         for(auto& val : matrix_part | std::views::values)
@@ -109,14 +110,14 @@ void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const boundaries_con
     reset_to_init_values(_conductivity.matrix_inner(), _conductivity_initial_values);
     reset_to_init_values(_capacity.matrix_inner(), _capacity_initial_values);
 
-    radiation_condition_1d(_capacity.matrix_inner(), boundaries_conditions);
+    radiation_condition_1d(_capacity.matrix_inner(), boundaries_conditions, time_step());
     boundary_condition_second_kind_1d<T>(_right_part, boundaries_conditions);
     if constexpr (!std::is_same_v<Right_Part, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
         integrate_right_part(_right_part, _conductivity.mesh(), right_part);
     _right_part *= time_step();
     _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
     
-    radiation_condition_1d(_conductivity.matrix_inner(), boundaries_conditions);
+    radiation_condition_1d(_conductivity.matrix_inner(), boundaries_conditions, time_step());
     boundary_condition_first_kind_1d(_right_part, _conductivity.matrix_bound(), boundaries_conditions);
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{_conductivity.matrix_inner()};

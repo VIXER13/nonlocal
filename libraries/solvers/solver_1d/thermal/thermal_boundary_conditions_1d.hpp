@@ -52,36 +52,71 @@ public:
 template<class T>
 class convection_1d final : public second_kind_1d<T>
                           , public thermal_boundary_condition_1d<T> {
+    T _heat_transfer = T{0};
+    T _ambient_temperature = T{0};
+
 public:
-    //Convection
-    T heat_transfer = T{0};
-    T ambient_temperature = T{0};
-
-    //Radiation
-    T emissivity = T{0};
-    T bound_temperature = T{0};
-    T time_step = T{0};
-
-    //Falling flux
-    T absorption = T{0};
-    T flux = T{0};
-
-    explicit convection_1d(const T transfer, const T temperature,
-                           const T emis = T{0}, const T temp = T{0}, const T tau = T{0},
-                           const T absorp = T{0}, const T fl = T{0})
-        : heat_transfer{transfer}, ambient_temperature{temperature},
-          emissivity{emis * STEFAN_BOLTZMANN_CONSTANT<T>}, bound_temperature{temp}, time_step{tau},
-          absorption{absorp}, flux{fl} {}
+    explicit convection_1d(const T heat_transfer, const T ambient_temperature)
+        : _heat_transfer{heat_transfer}
+        , _ambient_temperature{ambient_temperature} {}
     ~convection_1d() noexcept override = default;
 
     T operator()() const override {
-        using namespace metamath::functions;
-        return heat_transfer * ambient_temperature - emissivity * power<3>(bound_temperature) + absorption * flux;
+        return _heat_transfer * _ambient_temperature;
     }
 
-    T matrix_value() const {
-        using namespace metamath::functions;
-        return 4 * time_step * emissivity * power<4>(bound_temperature);
+    T heat_transfer() const noexcept {
+        return _heat_transfer;
+    }
+};
+
+template<class T>
+class radiation_1d final : public second_kind_1d<T>
+                         , public thermal_boundary_condition_1d<T> {
+    T _boundary_temperature = T{0};
+
+public:
+    explicit radiation_1d(const T boundary_temperature)
+        : _boundary_temperature{boundary_temperature} {}
+    ~radiation_1d() noexcept override = default;
+
+    T operator()() const override {
+        return STEFAN_BOLTZMANN_CONSTANT<T> * metamath::functions::power<4>(_boundary_temperature);
+    }
+
+    T radiation() const noexcept {
+        return T{4} * STEFAN_BOLTZMANN_CONSTANT<T> * metamath::functions::power<3>(_boundary_temperature);
+    }
+};
+
+template<class T>
+class combined_flux_1d final : public second_kind_1d<T>
+                             , public thermal_boundary_condition_1d<T> {
+    T _absorption = T{0};
+    flux_1d<T> _flux{0};
+    convection_1d<T> _convection{0, 0};
+    T _emissivity = T{0};
+    radiation_1d<T> _radiation{0};
+
+public:
+    explicit combined_flux_1d(const T absorption, const T flux,
+                              const T heat_transfer, const T ambient_temperature,
+                              const T emissivity, const T boundary_temperature)
+        : _absorption{absorption}, _flux{flux}
+        , _convection{heat_transfer, ambient_temperature}
+        , _emissivity{emissivity}, _radiation{boundary_temperature} {}
+    ~combined_flux_1d() noexcept override = default;
+
+    T operator()() const override {
+        return _absorption * _flux() + _convection() - _emissivity * _radiation();
+    }
+
+    T heat_transfer() const noexcept {
+        return _convection.heat_transfer();
+    }
+
+    T radiation() const noexcept {
+        return _emissivity * _radiation.radiation();
     }
 };
 

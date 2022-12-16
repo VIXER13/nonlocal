@@ -113,11 +113,13 @@ int main(const int argc, const char *const *const argv) {
 
         nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, tau};
         const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
-            std::make_unique<nonlocal::thermal::convection_1d<T>>(heat_transfer, ambient_temperature(0.),   
-                                                                  emissivity, initial_dist(0.), 0.,
-                                                                  absorption, falling_flux(0.)),
+            std::make_unique<nonlocal::thermal::combined_flux_1d<T>>(
+                absorption, falling_flux(0.),
+                heat_transfer, ambient_temperature(0.),   
+                emissivity, initial_dist(0.)
+            ),
             std::make_unique<nonlocal::thermal::flux_1d<T>>(flux(0.))
-            };
+        };
 
         solver.compute(
             parameters,
@@ -131,10 +133,12 @@ int main(const int argc, const char *const *const argv) {
             const T time = step * tau;
 
             const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
-            std::make_unique<nonlocal::thermal::convection_1d<T>>(heat_transfer, ambient_temperature(time),   
-                                                                  emissivity, solver.temperature()[0], time,
-                                                                  absorption, falling_flux(time)),
-            std::make_unique<nonlocal::thermal::flux_1d<T>>(flux(time))
+                std::make_unique<nonlocal::thermal::combined_flux_1d<T>>(
+                    absorption, falling_flux(time),
+                    heat_transfer, ambient_temperature(time),   
+                    emissivity, solver.temperature()[0]
+                ),
+                std::make_unique<nonlocal::thermal::flux_1d<T>>(flux(time))
             };
 
             //Right hand side

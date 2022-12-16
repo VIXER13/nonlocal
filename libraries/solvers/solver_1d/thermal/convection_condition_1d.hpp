@@ -12,7 +12,9 @@ void convection_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                              const thermal_boundary_condition_1d<T>& boundary_condition,
                              const size_t index) {
     if (const auto* const condition = dynamic_cast<const convection_1d<T>*>(&boundary_condition))
-        matrix.coeffRef(index, index) += condition->heat_transfer;
+        matrix.coeffRef(index, index) += condition->heat_transfer();
+    else if (const auto* const condition = dynamic_cast<const combined_flux_1d<T>*>(&boundary_condition))
+        matrix.coeffRef(index, index) += condition->heat_transfer();
 }
 
 template<class T, class I>
