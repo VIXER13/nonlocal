@@ -13,9 +13,6 @@ using I = int64_t;
 }
 
 int main(const int argc, const char *const *const argv) {
-
-std::cout << "Hello, World!" << std::endl;
-
     try {
         std::cout.precision(3);
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
@@ -37,7 +34,7 @@ std::cout << "Hello, World!" << std::endl;
         std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>> parameters;
         for(const auto [conductivity, radius, local_weight] : {std::tuple{ 1., radii[0], p1 }, 
                                                                std::tuple{ 7., radii[1], 1. },
-                                                               std::tuple{ 3., radii[2], p1 },
+                                                               std::tuple{ 3., radii[2], 0.5 * p1 },
                                                                std::tuple{10., radii[3], 1. }
                                                                }) {
             parameters.push_back({
@@ -50,16 +47,17 @@ std::cout << "Hello, World!" << std::endl;
                 }
             });
         }
-        if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL)
-            mesh->find_neighbours(radii);
+        mesh->find_neighbours(radii);
 
+        const T energy = 5.;
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
             mesh, parameters,
             {
-                std::make_unique<nonlocal::thermal::flux_1d<T>>(1.),
-                std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.)
+                std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.),
+                std::make_unique<nonlocal::thermal::flux_1d<T>>(1.)
             },
-            [](const T x) constexpr noexcept { return 0; }
+            nonlocal::EMPTY_FUNCTION,
+            energy
         );
         std::cout << "integral = " << nonlocal::mesh::utils::integrate(*mesh, solution.temperature()) << std::endl;
         nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), "./T05.csv");

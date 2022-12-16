@@ -8,11 +8,21 @@
 namespace nonlocal::thermal {
 
 template<class T, class I>
-void convection_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K,
-                             const thermal_boundary_condition_1d& boundary_condition,
+void convection_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
+                             const thermal_boundary_condition_1d<T>& boundary_condition,
                              const size_t index) {
     if (const auto* const condition = dynamic_cast<const convection_1d<T>*>(&boundary_condition))
-        K.coeffRef(index, index) -= condition->heat_transfer;
+        matrix.coeffRef(index, index) += condition->heat_transfer();
+    else if (const auto* const condition = dynamic_cast<const combined_flux_1d<T>*>(&boundary_condition))
+        matrix.coeffRef(index, index) += condition->heat_transfer();
+}
+
+template<class T, class I>
+void convection_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
+                             const boundaries_conditions_1d<T>& boundaries_conditions) {
+    const std::array<size_t, 2> indices = {0, size_t(matrix.outerSize() - 1)};
+    for(const size_t b : std::ranges::iota_view{0u, 2u})
+        convection_condition_1d(matrix, *boundaries_conditions[b], indices[b]);
 }
 
 }
