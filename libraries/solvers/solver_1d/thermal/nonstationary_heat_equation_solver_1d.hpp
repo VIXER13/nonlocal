@@ -41,11 +41,11 @@ public:
 
     template<class Init_Dist>
     void compute(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                 const boundaries_conditions_1d<T>& boundaries_conditions,
+                 const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                  const Init_Dist& init_dist);
 
     template<class Right_Part>
-    void calc_step(const boundaries_conditions_1d<T>& boundaries_conditions,
+    void calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                    const Right_Part& right_part);
 };
 
@@ -71,7 +71,7 @@ const Eigen::Matrix<T, Eigen::Dynamic, 1>& nonstationary_heat_equation_solver_1d
 template<class T, class I>
 template<class Init_Dist>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                                                          const boundaries_conditions_1d<T>& boundaries_conditions,
+                                                          const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                           const Init_Dist& init_dist) {
     const std::array<bool, 2> is_first_kind = {
         bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.front().get())),
@@ -103,7 +103,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equa
 
 template<class T, class I>
 template<class Right_Part>
-void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const boundaries_conditions_1d<T>& boundaries_conditions,
+void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                             const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);

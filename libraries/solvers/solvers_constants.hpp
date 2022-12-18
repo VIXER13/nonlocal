@@ -18,6 +18,11 @@ enum class material_t : uint8_t {
     ANISOTROPIC
 };
 
+enum class physics_t : uint8_t {
+    THERMAL,
+    MECHANICAL
+};
+
 inline constexpr auto EMPTY_FUNCTION = []() constexpr noexcept {};
 
 namespace thermal {
