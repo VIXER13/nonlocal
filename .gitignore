@@ -8,7 +8,9 @@
 **build
 **.vtk
 **Eigen
+**.m
 
-a.outwq
+calculations
+a.out
 
 results
