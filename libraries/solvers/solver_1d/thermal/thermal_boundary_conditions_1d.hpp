@@ -2,26 +2,12 @@
 #define NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
 
 #include "boundary_conditions_1d.hpp"
-#include "../../solvers_constants.hpp"
 #include "metamath.hpp"
-
-#include <array>
-#include <memory>
 
 namespace nonlocal::thermal {
 
 template<class T>
-class thermal_boundary_condition_1d : public virtual boundary_condition_1d<T> {
-protected:
-    explicit thermal_boundary_condition_1d() noexcept = default;
-
-public:
-    virtual ~thermal_boundary_condition_1d() noexcept = default;
-};
-
-template<class T>
-class temperature_1d final : public first_kind_1d<T>
-                           , public thermal_boundary_condition_1d<T> {
+class temperature_1d final : public first_kind_1d<T, physics_t::THERMAL>{
     T _temperature = T{0};
 
 public:
@@ -35,8 +21,7 @@ public:
 };
 
 template<class T>
-class flux_1d final : public second_kind_1d<T>
-                    , public thermal_boundary_condition_1d<T> {
+class flux_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
     T _flux = T{0};
 
 public:
@@ -50,8 +35,7 @@ public:
 };
 
 template<class T>
-class convection_1d final : public second_kind_1d<T>
-                          , public thermal_boundary_condition_1d<T> {
+class convection_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
     T _heat_transfer = T{0};
     T _ambient_temperature = T{0};
 
@@ -71,8 +55,7 @@ public:
 };
 
 template<class T>
-class radiation_1d final : public second_kind_1d<T>
-                         , public thermal_boundary_condition_1d<T> {
+class radiation_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
     T _boundary_temperature = T{0};
 
 public:
@@ -81,50 +64,50 @@ public:
     ~radiation_1d() noexcept override = default;
 
     T operator()() const override {
-        return STEFAN_BOLTZMANN_CONSTANT<T> * metamath::functions::power<4>(_boundary_temperature);
+        return -STEFAN_BOLTZMANN_CONSTANT<T> * metamath::functions::power<4>(_boundary_temperature);
     }
 
-    T radiation() const noexcept {
+    virtual T radiation() const {
         return T{4} * STEFAN_BOLTZMANN_CONSTANT<T> * metamath::functions::power<3>(_boundary_temperature);
     }
 };
 
 template<class T>
-class combined_flux_1d final : public second_kind_1d<T>
-                             , public thermal_boundary_condition_1d<T> {
+class combined_flux_1d : public flux_1d<T>
+                       , public convection_1d<T>
+                       , public radiation_1d<T> {
+    using _flux = flux_1d<T>;
+    using _convection = convection_1d<T>;
+    using _radiation = radiation_1d<T>;
+
     T _absorption = T{0};
-    flux_1d<T> _flux{0};
-    convection_1d<T> _convection{0, 0};
     T _emissivity = T{0};
-    radiation_1d<T> _radiation{0};
 
 public:
     explicit combined_flux_1d(const T absorption, const T flux,
                               const T heat_transfer, const T ambient_temperature,
                               const T emissivity, const T boundary_temperature)
-        : _absorption{absorption}, _flux{flux}
+        : _flux{flux}
         , _convection{heat_transfer, ambient_temperature}
-        , _emissivity{emissivity}, _radiation{boundary_temperature} {}
+        , _radiation{boundary_temperature}
+        , _absorption{absorption}
+        , _emissivity{emissivity} {}
     ~combined_flux_1d() noexcept override = default;
 
     T operator()() const override {
-        return _absorption * _flux() + _convection() - _emissivity * _radiation();
+        return _absorption * _flux::operator()() + _convection::operator()() + _emissivity * _radiation::operator()();
     }
 
-    T heat_transfer() const noexcept {
-        return _convection.heat_transfer();
-    }
-
-    T radiation() const noexcept {
-        return _emissivity * _radiation.radiation();
+    T radiation() const override {
+        return _emissivity * _radiation::radiation();
     }
 };
 
 template<class T>
-using boundary_condition_1d = std::unique_ptr<thermal_boundary_condition_1d<T>>;
+using thermal_boundary_condition_1d = boundary_condition_1d<T, physics_t::THERMAL>;
 
 template<class T>
-using boundaries_conditions_1d = std::array<boundary_condition_1d<T>, 2>;
+using thermal_boundaries_conditions_1d = boundaries_conditions_1d<T, physics_t::THERMAL>;
 
 }
 
