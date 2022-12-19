@@ -49,7 +49,7 @@ int main(const int argc, const char *const *const argv) {
     try {
         std::cout.precision(3);
         const std::vector<nonlocal::mesh::segment_data<T>> segment_data = {
-                {.length = 1., .elements = 200}
+                {.length = 2., .elements = 200}
                 //{.length = 0.25, .elements = 100},
                 //{.length = 0.35, .elements = 100},
                 //{.length = 0.15, .elements = 100}
@@ -114,7 +114,7 @@ int main(const int argc, const char *const *const argv) {
         nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, tau};
         const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
             std::make_unique<nonlocal::thermal::combined_flux_1d<T>>(
-                absorption, falling_flux(0.),
+                absorption * falling_flux(0.),
                 heat_transfer, ambient_temperature(0.),   
                 emissivity, initial_dist(0.)
             ),
@@ -134,7 +134,7 @@ int main(const int argc, const char *const *const argv) {
 
             const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
                 std::make_unique<nonlocal::thermal::combined_flux_1d<T>>(
-                    absorption, falling_flux(time),
+                    absorption * falling_flux(time),
                     heat_transfer, ambient_temperature(time),   
                     emissivity, solver.temperature()[0]
                 ),
