@@ -38,7 +38,7 @@ int main(const int argc, const char *const *const argv) {
             mesh->find_neighbours(std::max(r[0], r[1]));
         }
 
-        nonlocal::thermal::boundaries_conditions_2d<T> boundary_conditions;
+        nonlocal::boundaries_conditions_2d<T, nonlocal::physics_t::THERMAL, 1> boundary_conditions;
         boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
         boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
 

@@ -11,8 +11,7 @@ namespace nonlocal::thermal {
 template<class T, class I, class Matrix_Index>
 void convection_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
                              const mesh::mesh_2d<T, I>& mesh,
-                             const boundaries_conditions_2d<T>& boundaries_conditions) {
-    static constexpr size_t DoF = 1;
+                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions) {
     const auto integrate = [&mesh = mesh.container()](const convection_2d<T>& condition, const size_t be, const size_t i, const size_t j) {
         T integral = T{0};
         const auto el_data = mesh.element_1d_data(be);
@@ -22,7 +21,7 @@ void convection_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Inde
         return condition.heat_transfer() * integral;
     };
 
-    utils::run_by_boundaries<DoF, convection_2d>(mesh.container(), boundaries_conditions,
+    utils::run_by_boundaries<convection_2d>(mesh.container(), boundaries_conditions,
         [&K, &integrate, &mesh, process_nodes = mesh.process_nodes()](const convection_2d<T>& condition, const size_t be, const size_t row, const size_t) {
             if (row >= process_nodes.front() && row <= process_nodes.back())
                 for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})

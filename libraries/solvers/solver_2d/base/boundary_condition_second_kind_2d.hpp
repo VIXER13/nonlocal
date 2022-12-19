@@ -10,10 +10,10 @@
 
 namespace nonlocal {
 
-template<size_t DoF, class T, class I, class Conditions_Map>
+template<class T, class I, physics_t Physics, size_t DoF>
 void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                        const mesh::mesh_2d<T, I>& mesh,
-                                       const Conditions_Map& boundaries_conditions) {
+                                       const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
     const auto integrate = [&mesh = mesh.container()](const auto& condition, const size_t be, const size_t i) {
         T integral = T{0};
         const auto el_data = mesh.element_1d_data(be);
@@ -23,7 +23,7 @@ void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
         return integral;
     };
 
-    utils::run_by_boundaries<DoF, second_kind_2d>(mesh.container(), boundaries_conditions,
+    utils::run_by_boundaries<second_kind_2d, Physics>(mesh.container(), boundaries_conditions,
         [&f, &integrate, &mesh, process_nodes = mesh.process_nodes()](const auto& condition, const size_t be, const size_t node, const size_t degree) {
             if (node >= process_nodes.front() && node <= process_nodes.back()) {
                 const size_t index = DoF * node + degree;

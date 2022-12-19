@@ -7,6 +7,8 @@
 
 #include <eigen3/Eigen/Sparse>
 
+#include <iostream>
+
 namespace nonlocal {
 
 template<class T, class I>
