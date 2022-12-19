@@ -51,10 +51,10 @@ int main(int argc, char** argv) {
         };
 
         if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
-            // find neighbours, don't work right now
+            mesh->find_neighbours(std::max(r[0], r[1]));
         }
 
-        nonlocal::thermal::boundaries_conditions_2d<T> boundaries_conditions;
+        nonlocal::thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
         boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
             [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
         );
