@@ -62,30 +62,30 @@ class mesh_1d final {
 public:
     explicit mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments);
 
-    const finite_element_1d& element() const noexcept;
+    const finite_element_1d& element() const;
 
     size_t segments_count() const noexcept;
     size_t elements_count() const noexcept;
-    size_t elements_count(const size_t segment) const noexcept;
-    size_t nodes_count() const noexcept;
-    size_t nodes_count(const size_t segment) const noexcept;
-    size_t segment_number(const size_t e) const noexcept;
-    size_t node_number(const size_t e, const size_t i) const noexcept;
+    size_t elements_count(const size_t segment) const;
+    size_t nodes_count() const;
+    size_t nodes_count(const size_t segment) const;
+    size_t segment_number(const size_t e) const;
+    size_t node_number(const size_t e, const size_t i) const;
     std::ranges::iota_view<size_t, size_t> segments() const noexcept;
     std::ranges::iota_view<size_t, size_t> elements() const noexcept;
-    std::ranges::iota_view<size_t, size_t> nodes() const noexcept;
-    std::ranges::iota_view<size_t, size_t> elements(const size_t segment) const noexcept;
-    std::ranges::iota_view<size_t, size_t> nodes(const size_t segment) const noexcept;
-    std::ranges::iota_view<size_t, size_t> neighbours(const size_t e) const noexcept;
-    left_right_element node_elements(const size_t node) const noexcept;
+    std::ranges::iota_view<size_t, size_t> nodes() const;
+    std::ranges::iota_view<size_t, size_t> elements(const size_t segment) const;
+    std::ranges::iota_view<size_t, size_t> nodes(const size_t segment) const;
+    std::ranges::iota_view<size_t, size_t> neighbours(const size_t e) const;
+    left_right_element node_elements(const size_t node) const;
 
     T length() const noexcept;
-    T length(const size_t segment) const noexcept;
-    T element_length(const size_t segment) const noexcept;
-    T jacobian(const size_t segment) const noexcept;
-    T node_coord(const size_t node) const noexcept;
-    T qnode_coord(const size_t e, const size_t q) const noexcept;
-    std::array<T, 2> bounds(const size_t segment) const noexcept;
+    T length(const size_t segment) const;
+    T element_length(const size_t segment) const;
+    T jacobian(const size_t segment) const;
+    T node_coord(const size_t node) const;
+    T qnode_coord(const size_t e, const size_t q) const;
+    std::array<T, 2> bounds(const size_t segment) const;
 
     void find_neighbours(const std::vector<T>& radii);
 };
@@ -107,7 +107,7 @@ std::vector<segment_data<T>> mesh_1d<T>::accumulate(const std::vector<segment_da
 }
 
 template<class T>
-const mesh_1d<T>::finite_element_1d& mesh_1d<T>::element() const noexcept {
+const mesh_1d<T>::finite_element_1d& mesh_1d<T>::element() const {
     return *_element;
 }
 
@@ -118,26 +118,26 @@ size_t mesh_1d<T>::segments_count() const noexcept {
 
 template<class T>
 size_t mesh_1d<T>::elements_count() const noexcept {
-    return _segments.back().elements;
+    return segments_count() ? _segments.back().elements : 0;
 }
 
 template<class T>
-size_t mesh_1d<T>::elements_count(const size_t segment) const noexcept {
+size_t mesh_1d<T>::elements_count(const size_t segment) const {
     return segment ? _segments[segment].elements - _segments[segment - 1].elements : _segments[segment].elements;
 }
 
 template<class T>
-size_t mesh_1d<T>::nodes_count() const noexcept {
+size_t mesh_1d<T>::nodes_count() const {
     return elements_count() * (element().nodes_count() - 1) + 1;
 }
 
 template<class T>
-size_t mesh_1d<T>::nodes_count(const size_t segment) const noexcept {
+size_t mesh_1d<T>::nodes_count(const size_t segment) const {
     return elements_count(segment) * (element().nodes_count() - 1) + 1;
 }
 
 template<class T>
-size_t mesh_1d<T>::segment_number(const size_t e) const noexcept {
+size_t mesh_1d<T>::segment_number(const size_t e) const {
     size_t segment = 0;
     while(_segments[segment].elements <= e)
         ++segment;
@@ -145,7 +145,7 @@ size_t mesh_1d<T>::segment_number(const size_t e) const noexcept {
 }
 
 template<class T>
-size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const noexcept {
+size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const {
     return e * (element().nodes_count() - 1) + i;
 }
 
@@ -160,24 +160,24 @@ std::ranges::iota_view<size_t, size_t> mesh_1d<T>::elements() const noexcept {
 }
 
 template<class T>
-std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes() const noexcept {
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes() const {
     return {size_t{0}, nodes_count()};
 }
 
 template<class T>
-std::ranges::iota_view<size_t, size_t> mesh_1d<T>::elements(const size_t segment) const noexcept {
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::elements(const size_t segment) const {
     return {segment ? _segments[segment - 1].elements : 0, _segments[segment].elements};
 }
 
 template<class T>
-std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes(const size_t segment) const noexcept {
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes(const size_t segment) const {
     const size_t elements_nodes_count = element().nodes_count() - 1;
     const std::ranges::iota_view<size_t, size_t> elements = mesh_1d<T>::elements(segment);
     return {elements_nodes_count * elements.front(), elements_nodes_count * (elements.back() + 1) + 1};
 }
 
 template<class T>
-std::ranges::iota_view<size_t, size_t> mesh_1d<T>::neighbours(const size_t e) const noexcept {
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::neighbours(const size_t e) const {
     const size_t segment = segment_number(e);
     const size_t left_bound  = segment ? _segments[segment - 1].elements : 0;
     const size_t right_bound = _segments[segment].elements;
@@ -190,7 +190,7 @@ std::ranges::iota_view<size_t, size_t> mesh_1d<T>::neighbours(const size_t e) co
 }
 
 template<class T>
-left_right_element mesh_1d<T>::node_elements(const size_t node) const noexcept {
+left_right_element mesh_1d<T>::node_elements(const size_t node) const {
     using data = left_right_element::node_element;
 
     if (!node)
@@ -212,27 +212,27 @@ left_right_element mesh_1d<T>::node_elements(const size_t node) const noexcept {
 
 template<class T>
 T mesh_1d<T>::length() const noexcept {
-    return _segments.back().length;
+    return segments_count() ? _segments.back().length : T{0};
 }
 
 template<class T>
-T mesh_1d<T>::length(const size_t segment) const noexcept {
+T mesh_1d<T>::length(const size_t segment) const {
     return segment ? _segments[segment].length - _segments[segment - 1].length : _segments.front().length;
 }
 
 template<class T>
-T mesh_1d<T>::element_length(const size_t segment) const noexcept {
+T mesh_1d<T>::element_length(const size_t segment) const {
     return length(segment) / elements_count(segment);
 }
 
 template<class T>
-T mesh_1d<T>::jacobian(const size_t segment) const noexcept {
+T mesh_1d<T>::jacobian(const size_t segment) const {
     using enum metamath::finite_element::side_1d;
     return element_length(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
 }
 
 template<class T>
-T mesh_1d<T>::node_coord(const size_t node) const noexcept {
+T mesh_1d<T>::node_coord(const size_t node) const {
     size_t segment = 0, accumulated_nodes = nodes_count(segment) - 1;
     while(node >= accumulated_nodes && segment < segments_count() - 1)
         accumulated_nodes += nodes_count(++segment) - 1;
@@ -243,7 +243,7 @@ T mesh_1d<T>::node_coord(const size_t node) const noexcept {
 }
 
 template<class T>
-T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const noexcept {
+T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const {
     using enum metamath::finite_element::side_1d;
     const size_t segment = segment_number(e);
     const auto [left_bound, _] = bounds(segment);
@@ -253,7 +253,7 @@ T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const noexcept {
 }
 
 template<class T>
-std::array<T, 2> mesh_1d<T>::bounds(const size_t segment) const noexcept {
+std::array<T, 2> mesh_1d<T>::bounds(const size_t segment) const {
     return {segment ? _segments[segment - 1].length : T{0}, _segments[segment].length};
 }
 
