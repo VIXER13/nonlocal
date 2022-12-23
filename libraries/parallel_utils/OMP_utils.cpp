@@ -9,7 +9,7 @@ int threads_count() {
     int threads = 1;
 #pragma omp parallel default(none) shared(threads)
 {
-    threads = omp_get_num_threads();
+    //threads = omp_get_num_threads();
 }
     return threads > 1 ? threads : 1;
 }

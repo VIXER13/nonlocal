@@ -2,6 +2,7 @@
 #define NONLOCAL_THERMAL_BOUNDARY_CONDITION_2D_HPP
 
 #include "boundary_conditions_2d.hpp"
+#include "mesh_container_2d.hpp"
 
 #include <functional>
 
@@ -75,7 +76,7 @@ public:
     ~radiation_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>&) const override {
-        return T{0};
+        return 0;
     }
 
     T emissivity() const noexcept {
@@ -87,8 +88,6 @@ template<class T>
 class combined_flux_2d : public flux_2d<T>
                        , public convection_2d<T>
                        , public radiation_2d<T> {
-    using second_kind_2d<T, physics_t::THERMAL>::from_value;
-
 public:
     template<class Flux, class Ambient_Temperature>
     explicit combined_flux_2d(const Flux flux,

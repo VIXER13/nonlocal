@@ -7,6 +7,7 @@
 #include "boundary_condition_first_kind_2d.hpp"
 #include "boundary_condition_second_kind_2d.hpp"
 #include "convection_condition_2d.hpp"
+#include "radiation_condition_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
 #include "conjugate_gradient.hpp"
@@ -20,6 +21,7 @@ class nonstationary_heat_equation_solver_2d final {
     std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     heat_capacity_matrix_2d<T, I, Matrix_Index> _capacity;
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _conductivity_initial_matrix_inner;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
@@ -69,7 +71,9 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
                                                                         const T p1, const Influence_Function& influence_function) {
     const std::vector<bool> is_inner = utils::inner_nodes(_conductivity.mesh().container(), boundaries_conditions);
     _conductivity.template compute(parameters.conductivity, parameters.material, is_inner, p1, influence_function);
+
     convection_condition_2d(_conductivity.matrix_inner(), _conductivity.mesh(), boundaries_conditions);
+
     _capacity.calc_matrix(parameters.capacity, parameters.density, is_inner);
 
     _conductivity.matrix_inner() *= time_step();
@@ -78,6 +82,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
     for(const size_t node : std::ranges::iota_view{0u, is_inner.size()})
         if(!is_inner[node])
             _conductivity.matrix_inner().coeffRef(node, node) = T{1};
+    _conductivity_initial_matrix_inner = _conductivity.matrix_inner();
 
     for(const size_t node : _conductivity.mesh().container().nodes())
         _temperature_prev[node] = init_dist(_conductivity.mesh().container().node_coord(node));
@@ -91,6 +96,10 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
                                                                           const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
+    _conductivity.matrix_inner() = _conductivity_initial_matrix_inner;
+    radiation_condition_2d(_conductivity.matrix_inner(), _right_part, _conductivity.mesh(), boundaries_conditions, 
+                           _temperature_prev, time_step());
+
     boundary_condition_second_kind_2d(_right_part, _conductivity.mesh(), boundaries_conditions);
     integrate_right_part<DoF>(_right_part, _conductivity.mesh(), right_part);
     _right_part *= time_step();
