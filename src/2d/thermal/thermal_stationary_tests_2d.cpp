@@ -41,10 +41,10 @@ int main(const int argc, const char *const *const argv) {
         nonlocal::boundaries_conditions_2d<T, nonlocal::physics_t::THERMAL, 1> boundary_conditions;
 
         boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
-             T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return std::abs(x[1] - 0.5); }
+             T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return T{10}; }
         );
         boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
-             T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return std::abs(x[1] - 0.5); }
+             T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return T{10}; }
         );
         boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
             [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
@@ -57,6 +57,8 @@ int main(const int argc, const char *const *const argv) {
             return T{0} ;
         };
 
+        const std::filesystem::path folder =  argv[5];
+
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
             mesh, parameters, boundary_conditions, right_part, p1, nonlocal::influence::polynomial_2d<T, 1, 1>{r}
         );
@@ -66,9 +68,9 @@ int main(const int argc, const char *const *const argv) {
             //std::cout << "Energy = " << solution.calc_energy() << std::endl;
             solution.save_as_vtk("heat.vtk");
             using namespace std::literals;
-            nonlocal::mesh::utils::save_as_csv("T.csv", mesh->container(), solution.temperature());
-            nonlocal::mesh::utils::save_as_csv("TX.csv", mesh->container(), TX);
-            nonlocal::mesh::utils::save_as_csv("TY.csv", mesh->container(), TY);
+            nonlocal::mesh::utils::save_as_csv(folder.string() + "/" + "T.csv", mesh->container(), solution.temperature());
+            nonlocal::mesh::utils::save_as_csv(folder.string() + "/" + "TX.csv", mesh->container(), TX);
+            nonlocal::mesh::utils::save_as_csv(folder.string() + "/" + "TY.csv", mesh->container(), TY);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

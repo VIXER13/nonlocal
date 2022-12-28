@@ -68,7 +68,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
             if (row >= process_nodes.front() && row <= process_nodes.back()){
                 for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})
                     if (const size_t col = mesh.container().node_number(be, j); col >= row)
-                        K.coeffRef(row, col) -= time_step * integrate_matrix(condition, be, mesh.global_to_local(be, row), j);
+                        K.coeffRef(row, col) += time_step * integrate_matrix(condition, be, mesh.global_to_local(be, row), j);
                 f[row] += integrate_rhs(condition, be, mesh.global_to_local(be, row));
             }
         });

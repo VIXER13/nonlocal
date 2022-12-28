@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
 #endif
 
     if(argc < 6) {
-        std::cerr << "Input format [program name] <path to mesh> <r1> <r2> <p1> <save_path>" << std::endl;
+        std::cerr << "Input format [program name] <path to mesh> <r1> <r2> <p1> <save_path> <time step>" << std::endl;
 #ifdef MPI_USE
         MPI_Finalize();
 #endif
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
 
         const T p1 = std::stod(argv[4]);
 
-        static constexpr T tau = 0.001;
+        static const T tau = std::stod(argv[6]);
         nonlocal::thermal::parameter_2d<T> parameters = {
             .conductivity = {T{1}, T{0},
                              T{0}, T{1}},
@@ -59,24 +59,23 @@ int main(int argc, char** argv) {
         };
 
         if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
-            mesh->find_neighbours(std::max(r[0], r[1]));
+            mesh->find_neighbours(3 * std::max(r[0], r[1]));
         };
 
-        const T pi = M_PI;
+        const T pi = std::numbers::pi_v<T>;
         const T lambda = T{1};
-        constexpr T ambient_temperature = 100;
+        constexpr T ambient_temperature = T{10};
         const T sigma = nonlocal::thermal::STEFAN_BOLTZMANN_CONSTANT<T>;
         const T p2 = 1 - p1;
-        const std::vector<T> coefs = {-0.5 / (sqrt(2 * pi)), 
-                                       1 / (sqrt(2) * r[0]), 
-                                       0.5 / (r[0] * r[0]),
-                                       sqrt(pi * 0.5),
-                                       0.25 / sqrt(r[0] * pi),
-                                       2 / sqrt(pi)};
+        const std::vector<T> coefs = {0.5 / (std::sqrt(2 * pi)), 
+                                      1 / (std::sqrt(2) * r[0]), 
+                                      0.5 / (r[0] * r[0]),
+                                      std::sqrt(pi * 0.5),
+                                      0.5 / (r[0] * pi)};
 
         auto twoexps = [](T x, T coef)
         {
-            return std::exp(x * x * coef) - std::exp((x - 1) * (x - 1) * coef);
+            return std::exp(-x * x * coef) - std::exp(-(x - 1) * (x - 1) * coef);
         };
 
         auto twoerfs = [](T x, T coef)
@@ -92,59 +91,84 @@ int main(int argc, char** argv) {
         auto divI = [&r, &coefs, twoexps, twoerfs](const std::array<T, 2>& x)
         {
             return coefs[4] * (
-                   coefs[5] * twoexps(x[0], coefs[2]) * 
-                   (r[0] * twoexps(x[1], coefs[2]) + x[1] * coefs[3] * twoerfs(x[1], coefs[1])) +
-                   coefs[5] * twoexps(x[1], coefs[2]) * 
-                   (r[0] * twoexps(x[0], coefs[2]) + x[0] * coefs[3] * twoerfs(x[0], coefs[1]))
+                   twoexps(x[0], coefs[2]) * (r[0] * twoexps(x[1], coefs[2]) + x[1] * coefs[3] * twoerfs(x[1], coefs[1])) +
+                   twoexps(x[1], coefs[2]) * (r[0] * twoexps(x[0], coefs[2]) + x[0] * coefs[3] * twoerfs(x[0], coefs[1]))
+                   );
+        };
+
+        auto divII = [&r, &coefs](const std::array<T, 2>& x)
+        {
+            return coefs[4] * (
+                   (std::exp(-x[0] * x[0] * coefs[2]) - std::exp(-(x[0] - 1) * (x[0] - 1) * coefs[2])) * 
+                   (r[0] * (std::exp(-x[1] * x[1] * coefs[2]) - std::exp(-(x[1] - 1) * (x[1] - 1) * coefs[2])) + 
+                    x[1] * coefs[3] * (std::erf(x[1] * coefs[1]) - std::erf((x[1] - 1) * coefs[1]))) +
+                   (std::exp(-x[1] * x[1] * coefs[2]) - std::exp(-(x[1] - 1) * (x[1] - 1) * coefs[2])) * 
+                   (r[0] * (std::exp(-x[0] * x[0] * coefs[2]) - std::exp(-(x[0] - 1) * (x[0] - 1) * coefs[2])) + 
+                    x[0] * coefs[3] * (std::erf(x[0] * coefs[1]) - std::erf((x[0] - 1) * coefs[1])))
                    );
         };
 
         const std::vector<T> absorption = {0.7, 0.0, 0.0, 0.0}; //Left, Right, Up, Down
         const std::vector<T> emissivity = {0.7, 0.0, 0.0, 0.0};
         const std::vector<T> heat_transfer = {0.7, 0.0, 0.0, 0.0};
-        const T lambda_temp_Ar = lambda * ambient_temperature / absorption[0];
+        const T lambda_temp = lambda * ambient_temperature;
+        const T lambda_div_temp = lambda / ambient_temperature;
         const T Bi = heat_transfer[0] / lambda;
-        const T N_er =  emissivity[0] * sigma * metamath::functions::power<3>(ambient_temperature) / lambda;
-
-        // auto left_q = [lambda_temp_Ar, N_er, Bi, p1, p2, Ifunc, t](const std::array<T, 2>& x)
-        // {
-        //     return lambda_temp_Ar * (N_er * metamath::functions::power<4>(t) - Bi * (1 - t) 
-        //            - p1 * x[1] - p2 * Ifunc({x[0], x[1]}));
-        // };
-
-        auto left_q = [](const std::array<T, 2>& x)
-        {
-            return T{1};
-        };
+        const T sigma_er =  emissivity[0] * sigma;
 
         nonlocal::thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
-        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::combined_flux_2d<T>>(
-            left_q, heat_transfer[0], ambient_temperature, emissivity[0]
-        );
+
+        // boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [p1, p2, lambda, Ifunc](const std::array<T, 2>& x) constexpr noexcept { return -lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]})); }
+        // );
         boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
+            [p1, p2, lambda, Ifunc](const std::array<T, 2>& x) constexpr noexcept { return  lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]})); }
         );
         boundaries_conditions["Up"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
+            [p1, p2, lambda, Ifunc](const std::array<T, 2>& x) constexpr noexcept { return  lambda * (p1 * x[0] + p2 * Ifunc({x[1], x[0]})); }
         );
         boundaries_conditions["Down"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
+            [p1, p2, lambda, Ifunc](const std::array<T, 2>& x) constexpr noexcept { return -lambda * (p1 * x[0] + p2 * Ifunc({x[1], x[0]})); }
         );
+
 
         static constexpr auto init_dist = [](const std::array<T, 2>& x) constexpr noexcept {
             return x[0] * x[1];
         };
 
-        const T c_rho_temp = T{1} * T{1} * ambient_temperature; //c * rho * Tc
-        static auto right_part = [c_rho_temp, lambda, p2, divI, ambient_temperature](const std::array<T, 2>& x) constexpr noexcept {
-            return c_rho_temp - ambient_temperature * lambda * p2 * divI({x[0], x[1]}) ;
+        static auto right_part = [lambda, p2, divII](const std::array<T, 2>& x) constexpr noexcept {
+            return (T{1} * T{1} - lambda * p2 * divII({x[0], x[1]})) ;
         };
         
         const std::filesystem::path FOLDER =  argv[5];
 
+        auto left_q = [sigma_er, p1, p2, Ifunc, &heat_transfer, ambient_temperature, lambda](const std::array<T, 2>& x)
+            {
+                return (sigma_er * metamath::functions::power<4>(0) - heat_transfer[0] * (ambient_temperature - 0) 
+                        - lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]}))); 
+            };
+
+        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::combined_flux_2d<T>>(
+        left_q, heat_transfer[0], ambient_temperature, emissivity[0]
+        );
+
         nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, tau};
         solver.compute(parameters, boundaries_conditions, init_dist, p1, influence_function);
-        for(const size_t step : std::ranges::iota_view{0u, 101u}) {
+        save_solution(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, p1, influence_function, parameters, solver.temperature()}, FOLDER, 0);
+        for(const size_t step : std::ranges::iota_view{1u, 101u}) {
+            const T time = step * tau;
+
+            auto left_q = [sigma_er, p1, p2, Ifunc, time, &heat_transfer, ambient_temperature, lambda](const std::array<T, 2>& x)
+            {
+                return (sigma_er * metamath::functions::power<4>(time) - heat_transfer[0] * (ambient_temperature - time) 
+                        - lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]}))); 
+            };
+
+            boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::combined_flux_2d<T>>(
+            left_q, heat_transfer[0], ambient_temperature, emissivity[0]
+            );
+
+
             solver.calc_step(boundaries_conditions, right_part);
             auto solution = nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, p1, influence_function, parameters, solver.temperature()};
             solution.calc_flux();

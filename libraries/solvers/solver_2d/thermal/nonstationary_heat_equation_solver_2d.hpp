@@ -85,7 +85,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
     _conductivity_initial_matrix_inner = _conductivity.matrix_inner();
 
     for(const size_t node : _conductivity.mesh().container().nodes())
-        _temperature_prev[node] = init_dist(_conductivity.mesh().container().node_coord(node));
+        _temperature_curr[node] = init_dist(_conductivity.mesh().container().node_coord(node));
 
     slae_solver = std::make_unique<slae::conjugate_gradient<T, Matrix_Index>>(_conductivity.matrix_inner());
 }
