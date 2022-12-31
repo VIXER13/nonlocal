@@ -12,9 +12,8 @@ template<class T, class I>
 T temperature_appr(const mesh::mesh_container_2d<T, I>& mesh, const Eigen::Matrix<T, Eigen::Dynamic, 1>& temp,
                    const auto& el ,const size_t be, const size_t i) {
     T approximation = T{0};
-    for(size_t q = 0; q < el.qnodes_count(); ++q){
-            approximation += temp[mesh.node_number(be, i)] * el.qN(i, q);
-    }
+    for(size_t q = 0; q < el.qnodes_count(); ++q)
+        approximation += temp[mesh.node_number(be, i)] * el.qN(i, q);
     return approximation;
 }
 
@@ -33,8 +32,6 @@ T radiation_mtr(const mesh::mesh_container_2d<T, I>& mesh, const Eigen::Matrix<T
     static constexpr T STEFAN_BOLTZMANN_CONSTANT_X4 = T{4} * STEFAN_BOLTZMANN_CONSTANT<T>;
     return STEFAN_BOLTZMANN_CONSTANT_X4 * emissivity * metamath::functions::power<3>(temperature_appr(mesh, temp, el, be, i));
 }
-
-
 
 template<class T, class I, class Matrix_Index>
 void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,

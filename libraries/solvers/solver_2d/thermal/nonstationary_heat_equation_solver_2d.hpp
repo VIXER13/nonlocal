@@ -71,9 +71,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
                                                                         const T p1, const Influence_Function& influence_function) {
     const std::vector<bool> is_inner = utils::inner_nodes(_conductivity.mesh().container(), boundaries_conditions);
     _conductivity.template compute(parameters.conductivity, parameters.material, is_inner, p1, influence_function);
-
     convection_condition_2d(_conductivity.matrix_inner(), _conductivity.mesh(), boundaries_conditions);
-
     _capacity.calc_matrix(parameters.capacity, parameters.density, is_inner);
 
     _conductivity.matrix_inner() *= time_step();

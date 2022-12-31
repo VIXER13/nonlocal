@@ -135,10 +135,13 @@ void conjugate_gradient<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z)
 template<class T, class I>
 void conjugate_gradient<T, I>::matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& z,
                                                      const Eigen::Matrix<T, Eigen::Dynamic, 1>& p) const {
-//#pragma omp parallel default(none) shared(p) num_threads(_parameters.threads_count)
+#pragma omp parallel default(none) shared(p) num_threads(_parameters.threads_count)
 {
-    //const I thread = omp_get_thread_num();
+#ifdef _OPENMP
+    const I thread = omp_get_thread_num();
+#else
     const I thread = 0;
+#endif
     _threaded_z.col(thread).setZero();
     for(I row = _threads_ranges[thread].front(); row < I(_threads_ranges[thread].back()); ++row) {
         const I ind = _A.outerIndexPtr()[row];

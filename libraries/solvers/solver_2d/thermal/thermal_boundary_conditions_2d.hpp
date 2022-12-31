@@ -2,7 +2,6 @@
 #define NONLOCAL_THERMAL_BOUNDARY_CONDITION_2D_HPP
 
 #include "boundary_conditions_2d.hpp"
-#include "mesh_container_2d.hpp"
 
 #include <functional>
 
@@ -76,7 +75,7 @@ public:
     ~radiation_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>&) const override {
-        return 0;
+        return T{0};
     }
 
     T emissivity() const noexcept {

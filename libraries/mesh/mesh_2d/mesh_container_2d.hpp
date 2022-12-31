@@ -40,9 +40,10 @@ class mesh_container_2d final {
 public:
     struct element_data_1d final {
         const mesh_container_2d& mesh;
-        const std::vector<I>& nodes;
-        const element_integrate_1d<T>& element;
+        const size_t number = T{0};
 
+        template<class Vector>
+        T approximate_in_qnode(const size_t q, const Vector& x) const;
         std::array<T, 2> quad_coord(const size_t q) const;
         std::array<T, 2> jacobi_matrix(const size_t q) const;
     };
@@ -99,11 +100,22 @@ public:
 };
 
 template<class T, class I>
+template<class Vector>
+T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q, const Vector& x) const {
+    T approximation = T{0};
+    const auto& el = mesh.element_1d(number);
+    for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+        approximation += x[mesh.nodes()[i]] * el.qN(i, q);
+    return approximation;
+}
+
+template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
     using namespace metamath::functions;
-    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
-        coord += mesh.node_coord(nodes[i]) * element.qN(i, q);
+    const auto& el = mesh.element_1d(number);
+    for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+        coord += mesh.node_coord(mesh.nodes()[i]) * el.qN(i, q);
     return coord;
 }
 
@@ -111,8 +123,9 @@ template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const size_t q) const {
     std::array<T, 2> J = {};
     using namespace metamath::functions;
-    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
-        J += mesh.node_coord(nodes[i]) * element.qNxi(i, q);
+    const auto& el = mesh.element_1d(number);
+    for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+        J += mesh.node_coord(mesh.nodes()[i]) * el.qNxi(i, q);
     return J;
 }
 
@@ -269,7 +282,7 @@ const element_integrate_2d<T>& mesh_container_2d<T, I>::element_2d(const size_t 
 
 template<class T, class I>
 mesh_container_2d<T, I>::element_data_1d mesh_container_2d<T, I>::element_1d_data(const size_t element) const {
-    return {.mesh = *this, .nodes = nodes(element), .element = element_1d(element)};
+    return {.mesh = *this, .number = element};
 }
 
 template<class T, class I>
