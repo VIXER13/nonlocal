@@ -40,7 +40,7 @@ class mesh_container_2d final {
 public:
     struct element_data_1d final {
         const mesh_container_2d& mesh;
-        const size_t number = T{0};
+        const size_t element = T{0};
 
         template<class Vector>
         T approximate_in_qnode(const size_t q, const Vector& x) const;
@@ -103,9 +103,9 @@ template<class T, class I>
 template<class Vector>
 T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q, const Vector& x) const {
     T approximation = T{0};
-    const auto& el = mesh.element_1d(number);
+    const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
-        approximation += x[mesh.nodes()[i]] * el.qN(i, q);
+        approximation += x[mesh.nodes(element)[i]] * el.qN(i, q);
     return approximation;
 }
 
@@ -113,9 +113,9 @@ template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
     using namespace metamath::functions;
-    const auto& el = mesh.element_1d(number);
+    const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
-        coord += mesh.node_coord(mesh.nodes()[i]) * el.qN(i, q);
+        coord += mesh.node_coord(mesh.nodes(element)[i]) * el.qN(i, q);
     return coord;
 }
 
@@ -123,9 +123,9 @@ template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const size_t q) const {
     std::array<T, 2> J = {};
     using namespace metamath::functions;
-    const auto& el = mesh.element_1d(number);
+    const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
-        J += mesh.node_coord(mesh.nodes()[i]) * el.qNxi(i, q);
+        J += mesh.node_coord(mesh.nodes(element)[i]) * el.qNxi(i, q);
     return J;
 }
 
@@ -282,7 +282,7 @@ const element_integrate_2d<T>& mesh_container_2d<T, I>::element_2d(const size_t 
 
 template<class T, class I>
 mesh_container_2d<T, I>::element_data_1d mesh_container_2d<T, I>::element_1d_data(const size_t element) const {
-    return {.mesh = *this, .number = element};
+    return {.mesh = *this, .element = element};
 }
 
 template<class T, class I>

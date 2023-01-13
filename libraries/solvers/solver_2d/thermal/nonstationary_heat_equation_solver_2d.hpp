@@ -100,6 +100,7 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
 
     boundary_condition_second_kind_2d(_right_part, _conductivity.mesh(), boundaries_conditions);
     integrate_right_part<DoF>(_right_part, _conductivity.mesh(), right_part);
+
     _right_part *= time_step();
     _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
     boundary_condition_first_kind_2d(_right_part, _conductivity.mesh(), boundaries_conditions, _conductivity.matrix_bound());

@@ -13,10 +13,9 @@ class temperature_2d final : public first_kind_2d<T, physics_t::THERMAL> {
     const std::function<T(const std::array<T, 2>&)> _temperature;
 
 public:
-    explicit temperature_2d(const T temperature)
+    template<class U>
+    explicit temperature_2d(const U& temperature)
         : _temperature{from_value(temperature)} {}
-    explicit temperature_2d(const std::function<T(const std::array<T, 2>&)>& temperature)
-        : _temperature{temperature} {}
     ~temperature_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>& x) const override {
@@ -30,10 +29,9 @@ class flux_2d : public virtual second_kind_2d<T, physics_t::THERMAL> {
     const std::function<T(const std::array<T, 2>&)> _flux;
 
 public:
-    explicit flux_2d(const T flux)
+    template<class U>
+    explicit flux_2d(const U& flux)
         : _flux{from_value(flux)} {}
-    explicit flux_2d(const std::function<T(const std::array<T, 2>&)>& flux) noexcept
-        : _flux{flux} {}
     ~flux_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>& x) const override {
@@ -48,11 +46,9 @@ class convection_2d : public virtual second_kind_2d<T, physics_t::THERMAL> {
     const T _heat_transfer;
 
 public:
-    explicit convection_2d(const T heat_transfer, const T ambient_temperature)
+    template<class U>
+    explicit convection_2d(const T heat_transfer, const U& ambient_temperature)
         : _ambient_temperature{from_value(ambient_temperature)}
-        , _heat_transfer{heat_transfer} {}
-    explicit convection_2d(const T heat_transfer, const std::function<T(const std::array<T, 2>&)>& ambient_temperature)
-        : _ambient_temperature{ambient_temperature}
         , _heat_transfer{heat_transfer} {}
     ~convection_2d() noexcept override = default;
 
@@ -89,8 +85,8 @@ class combined_flux_2d : public flux_2d<T>
                        , public radiation_2d<T> {
 public:
     template<class Flux, class Ambient_Temperature>
-    explicit combined_flux_2d(const Flux flux,
-                              const T heat_transfer, const Ambient_Temperature ambient_temperature,
+    explicit combined_flux_2d(const Flux& flux,
+                              const T heat_transfer, const Ambient_Temperature& ambient_temperature,
                               const T emissivity)
         : flux_2d<T>{flux}
         , convection_2d<T>{heat_transfer, ambient_temperature}

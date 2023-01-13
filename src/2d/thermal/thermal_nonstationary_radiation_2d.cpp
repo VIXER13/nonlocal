@@ -121,6 +121,7 @@ int main(int argc, char** argv) {
         // boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
         //     [p1, p2, lambda, Ifunc](const std::array<T, 2>& x) constexpr noexcept { return -lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]})); }
         // );
+
         boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
             [p1, p2, lambda, Ifunc](const std::array<T, 2>& x) constexpr noexcept { return  lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]})); }
         );
@@ -136,7 +137,7 @@ int main(int argc, char** argv) {
             return x[0] * x[1];
         };
 
-        static auto right_part = [lambda, p2, divII](const std::array<T, 2>& x) constexpr noexcept {
+        const auto right_part = [lambda, p2, divII](const std::array<T, 2>& x) constexpr noexcept {
             return (T{1} * T{1} - lambda * p2 * divII({x[0], x[1]})) ;
         };
         
@@ -144,12 +145,12 @@ int main(int argc, char** argv) {
 
         auto left_q = [sigma_er, p1, p2, Ifunc, &heat_transfer, ambient_temperature, lambda](const std::array<T, 2>& x)
             {
-                return (sigma_er * metamath::functions::power<4>(0) - heat_transfer[0] * (ambient_temperature - 0) 
-                        - lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]}))); 
+                return sigma_er * metamath::functions::power<4>(0) - heat_transfer[0] * (ambient_temperature - 0) 
+                       - lambda * (p1 * x[1] + p2 * Ifunc({x[0], x[1]}));
             };
 
         boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::combined_flux_2d<T>>(
-        left_q, heat_transfer[0], ambient_temperature, emissivity[0]
+            left_q, heat_transfer[0], ambient_temperature, emissivity[0]
         );
 
         nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, tau};
@@ -165,9 +166,8 @@ int main(int argc, char** argv) {
             };
 
             boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::combined_flux_2d<T>>(
-            left_q, heat_transfer[0], ambient_temperature, emissivity[0]
+                left_q, heat_transfer[0], ambient_temperature, emissivity[0]
             );
-
 
             solver.calc_step(boundaries_conditions, right_part);
             auto solution = nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, p1, influence_function, parameters, solver.temperature()};

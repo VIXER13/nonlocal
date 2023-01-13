@@ -78,21 +78,26 @@ int main(int argc, char** argv) {
         }
 
         nonlocal::thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
-        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return -flux_x({p1, 1-p1}, rr, x); }
-        );
-        boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return  flux_x({p1, 1-p1}, rr, x); }
-        );
-        boundaries_conditions["Up"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return  flux_y({p1, 1-p1}, rr, x); }
-        );
-        boundaries_conditions["Down"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return -flux_y({p1, 1-p1}, rr, x); }
-        );
+        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(1, 5);
+        boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(1, 5);
+        boundaries_conditions["Up"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(1, 5);
+        boundaries_conditions["Down"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(1, 5);
+
+        // boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return -flux_x({p1, 1-p1}, rr, x); }
+        // );
+        // boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return  flux_x({p1, 1-p1}, rr, x); }
+        // );
+        // boundaries_conditions["Up"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return  flux_y({p1, 1-p1}, rr, x); }
+        // );
+        // boundaries_conditions["Down"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [p1, rr = std::max(r[0], r[1])](const std::array<T, 2>& x) constexpr noexcept { return -flux_y({p1, 1-p1}, rr, x); }
+        // );
 
         static constexpr auto init_dist = [](const std::array<T, 2>& x) constexpr noexcept {
-            return x[0] * x[1];
+            return 0;
         };
 
         static constexpr auto right_part = [](const std::array<T, 2>& x) constexpr noexcept {
@@ -101,7 +106,7 @@ int main(int argc, char** argv) {
         
         nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, tau};
         solver.compute(parameters, boundaries_conditions, init_dist, p1, influence_function);
-        for(const size_t step : std::ranges::iota_view{1u, 101u}) {
+        for(const size_t step : std::ranges::iota_view{1u, 1001u}) {
             solver.calc_step(boundaries_conditions, right_part);
             auto solution = nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, p1, influence_function, parameters, solver.temperature()};
             solution.calc_flux();

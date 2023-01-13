@@ -40,18 +40,21 @@ int main(const int argc, const char *const *const argv) {
 
         nonlocal::boundaries_conditions_2d<T, nonlocal::physics_t::THERMAL, 1> boundary_conditions;
 
-        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
-             T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return std::abs(x[1] - 0.5); }
-        );
-        boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
-             T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return std::abs(x[1] - 0.5); }
-        );
-        boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
-        );
-        boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
-        );
+        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
+        boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
+
+        // boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
+        //      T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return std::abs(x[1] - 0.5); }
+        // );
+        // boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::convection_2d<T>>(
+        //      T{10}, [](const std::array<T, 2>& x) constexpr noexcept { return std::abs(x[1] - 0.5); }
+        // );
+        // boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
+        // );
+        // boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(
+        //     [](const std::array<T, 2>& x) constexpr noexcept { return T{0}; }
+        // );
         
         static constexpr auto right_part = [](const std::array<T, 2>& x) constexpr noexcept {
             return T{0} ;
