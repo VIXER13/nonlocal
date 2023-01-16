@@ -31,8 +31,13 @@ add_subdirectory(libraries/solvers/slae)
 add_subdirectory(libraries/solvers/solver_1d)
 add_subdirectory(libraries/solvers/solver_2d)
 
-#tests
-add_subdirectory(src/1d/thermal)
-add_subdirectory(src/2d/thermal)
-add_subdirectory(src/2d/mechanical)
-add_subdirectory(src/2d/thermomechanical)
+#examples
+add_subdirectory(examples/1d/thermal)
+add_subdirectory(examples/2d/thermal)
+add_subdirectory(examples/2d/mechanical)
+add_subdirectory(examples/2d/thermomechanical)
+
+find_package(GTest)
+if(GTEST_FOUND)
+    add_subdirectory(tests)
+endif()

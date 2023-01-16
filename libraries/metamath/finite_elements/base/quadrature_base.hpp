@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <type_traits>
+#include <ranges>
 
 namespace metamath::finite_element {
 
@@ -15,6 +16,8 @@ public:
 
     virtual size_t nodes_count() const = 0;
     virtual T weight(const size_t i) const = 0;
+
+    std::ranges::iota_view<size_t, size_t> nodes() const { return {0u, nodes_count()}; }
 };
 
 }
