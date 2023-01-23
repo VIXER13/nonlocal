@@ -13,40 +13,48 @@ std::vector<I> mesh_container_2d<T, I>::read_element(Stream& mesh_file) {
 
 template<class T, class I>
 template<class Stream>
+std::vector<I> mesh_container_2d<T, I>::read_element(Stream& mesh_file, const size_t type) {
+    switch(vtk_element_number(type)) {
+        case vtk_element_number::LINEAR:
+            return read_element<0, 1>(mesh_file);
+
+        case vtk_element_number::QUADRATIC:
+            return read_element<0, 2, 1>(mesh_file);
+
+        case vtk_element_number::TRIANGLE:
+            return read_element<0, 1, 2>(mesh_file);
+
+        case vtk_element_number::QUADRATIC_TRIANGLE:
+            return read_element<0, 1, 2, 3, 4, 5>(mesh_file);
+
+        case vtk_element_number::BILINEAR:
+            return read_element<0, 1, 2, 3>(mesh_file);
+
+        case vtk_element_number::QUADRATIC_SERENDIPITY:
+            return read_element<0, 2, 4, 6, 1, 3, 5, 7>(mesh_file);
+
+        // TODO: fix parse quadratic lagrange elements
+        //case vtk_element_number::QUADRATIC_LAGRANGE:
+        //   return read_element<0, 2, 4, 6, 1, 3, 5, 7, 8>(mesh_file);
+
+        default:
+            throw std::domain_error{"Unknown element type."};
+    }
+}
+
+template<class T, class I>
+template<class Stream>
 auto mesh_container_2d<T, I>::read_elements_2d(Stream& mesh_file) {
-    size_t elements_count = 0;
     std::string pass;
+    size_t elements_count = 0;
     mesh_file >> pass >> pass >> pass >> elements_count;
     std::vector<std::vector<I>> elements_2d(elements_count);
-    std::vector<element_2d_t> elements_types_2d(elements_count);
+    std::vector<uint8_t> elements_types_2d(elements_count);
     for(const size_t e : std::ranges::iota_view{0u, elements_count}) {
         size_t type = 0;
         mesh_file >> type;
-        elements_types_2d[e] = get_elements_set().model_to_local_2d(type);
-        switch(vtk_element_number(type)) {
-            case vtk_element_number::TRIANGLE:
-                elements_2d[e] = read_element<0, 1, 2>(mesh_file);
-            break;
-
-            case vtk_element_number::QUADRATIC_TRIANGLE:
-               elements_2d[e] = read_element<0, 1, 2, 3, 4, 5>(mesh_file);
-            break;
-
-            case vtk_element_number::BILINEAR:
-                elements_2d[e] = read_element<0, 1, 2, 3>(mesh_file);
-            break;
-
-            case vtk_element_number::QUADRATIC_SERENDIPITY:
-                elements_2d[e] = read_element<0, 2, 4, 6, 1, 3, 5, 7>(mesh_file);
-            break;
-
-            case vtk_element_number::QUADRATIC_LAGRANGE:
-               elements_2d[e] = read_element<0, 2, 4, 6, 1, 3, 5, 7, 8>(mesh_file);
-            break;
-
-            default:
-                throw std::domain_error{"Unknown 2D element."};
-        }
+        elements_types_2d[e] = type;
+        elements_2d[e] = read_element(mesh_file, type);
         mesh_file >> pass;
     }
     return std::make_tuple(std::move(elements_2d), std::move(elements_types_2d));
@@ -66,81 +74,93 @@ auto mesh_container_2d<T, I>::read_nodes(Stream& mesh_file) {
 
 template<class T, class I>
 template<class Stream>
-auto mesh_container_2d<T, I>::read_elements_1d(Stream& mesh_file) {
+auto mesh_container_2d<T, I>::read_elements_groups(Stream& mesh_file) {
     std::string pass;
     size_t groups_count = 0;
     mesh_file >> pass >> groups_count;
-    std::unordered_set<std::string> groups_1d;
-    std::unordered_map<std::string, std::vector<std::vector<I>>> elements_1d(groups_count);
-    std::unordered_map<std::string, std::vector<element_1d_t>> elements_types_1d(groups_count);
-    for(const size_t b : std::ranges::iota_view{0u, groups_count}) {
+    std::unordered_set<std::string> groups_names;
+    std::unordered_map<std::string, std::vector<std::vector<I>>> elements_in_groups(groups_count);
+    std::unordered_map<std::string, std::vector<uint8_t>> types_in_groups(groups_count);
+    for(const size_t group : std::ranges::iota_view{0u, groups_count}) {
         std::string group_name;
         size_t elements_count = 0;
         mesh_file >> pass >> group_name >> pass >> elements_count;
 
-        const auto& [group, _] = groups_1d.emplace(std::move(group_name));
-        auto& elements_types = elements_types_1d[*group] = {};
-        auto& elements = elements_1d[*group] = {};
-        elements_types.resize(elements_count);
+        auto& elements = elements_in_groups[group_name] = {};
+        auto& types = types_in_groups[group_name] = {};
+        groups_names.emplace(std::move(group_name));
+        types.resize(elements_count);
         elements.resize(elements_count);
 
         for(const size_t e : std::ranges::iota_view{0u, elements_count}) {
             size_t type = 0;
             mesh_file >> type;
-            elements_types[e] = get_elements_set().model_to_local_1d(type);
-            
-            switch(vtk_element_number(type)) {
-                case vtk_element_number::LINEAR:
-                    elements[e] = read_element<0, 1>(mesh_file);
-                break;
-
-                case vtk_element_number::QUADRATIC:
-                    elements[e] = read_element<0, 2, 1>(mesh_file);
-                break;
-
-                default:
-                    throw std::domain_error{"Unknown 1D element."};
-            }
+            types[e] = type;
+            elements[e] = read_element(mesh_file, type);
         }
     }
-    return std::make_tuple(std::move(groups_1d), std::move(elements_1d), std::move(elements_types_1d));
+    return std::make_tuple(std::move(groups_names), std::move(elements_in_groups), std::move(types_in_groups));
 }
 
 template<class T, class I>
 template<class Stream>
 void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
     auto [elements_2d, elements_types_2d] = read_elements_2d(mesh_file);
-    auto nodes = read_nodes(mesh_file);
-    auto [groups_1d, elements_1d, elements_types_1d] = read_elements_1d(mesh_file);
-
-    _nodes = std::move(nodes);
-    _groups_1d = std::move(groups_1d);
-    _groups_2d = {"Default"};
     _elements_2d_count = elements_2d.size();
-    _elements_groups["Default"] = {0u, _elements_2d_count};
-    size_t elements = _elements_2d_count;
-    for(const std::string& bound_name : _groups_1d) {
-        const size_t count = elements_1d[bound_name].size();
-        _elements_groups[bound_name] = std::ranges::iota_view{elements, elements + count};
-        elements += count;
-    }
-    
-    _elements.resize(elements);
-    _elements_types.resize(elements);
-    for(const size_t e : std::ranges::iota_view{0u, _elements_2d_count}) {
-        _elements[e] = std::move(elements_2d[e]);
-        _elements_types[e] = uint8_t(elements_types_2d[e]);
+    _nodes = read_nodes(mesh_file);
+    auto [groups_names, elements_in_groups, elements_types] = read_elements_groups(mesh_file);
+
+    size_t elements_2d_shift = 0;
+    size_t elements_shift = _elements_2d_count;
+    for(const auto& [group, types] : elements_types)
+        if (get_elements_set().is_element_1d(types.front())) {
+            _elements_groups[group] = std::ranges::iota_view{elements_shift, elements_shift + types.size()};
+            elements_shift += types.size();
+            _groups_1d.insert(group);
+        } else {
+            _elements_groups[group] = std::ranges::iota_view{elements_2d_shift, elements_2d_shift + types.size()};
+            elements_2d_shift += types.size();
+            _groups_2d.insert(group);
+        }
+    if (elements_2d_shift > elements_2d.size())
+        throw std::domain_error{"Problem with parsing groups: some groups of 2D elements overlap each other."};
+
+    _elements.resize(elements_shift);
+    _elements_types.resize(elements_shift);
+    elements_2d_shift = 0;
+    elements_shift = _elements_2d_count;
+    for(const auto& [group, range] : _elements_groups) {
+        auto& types = elements_types[group];
+        auto& elements = elements_in_groups[group];
+        if (get_elements_set().is_element_1d(types.front())) {
+            for(const size_t e : std::ranges::iota_view{0u, range.size()}) {
+                _elements[range.front() + e] = std::move(elements[e]);
+                _elements_types[range.front() + e] = uint8_t(get_elements_set().model_to_local_1d(types[e]));
+            }
+            elements_shift += range.size();
+        } else {
+            for(const size_t e : std::ranges::iota_view{0u, range.size()}) {
+                _elements[range.front() + e] = std::move(elements[e]);
+                _elements_types[range.front() + e] = uint8_t(get_elements_set().model_to_local_2d(types[e]));
+            }
+            elements_2d_shift += range.size();
+        }
     }
 
-    size_t curr_element = _elements_2d_count;
-    for(const std::string& bound_name : _groups_1d) {
-        auto& elements = elements_1d[bound_name];
-        const auto& elements_types = elements_types_1d[bound_name];
-        for(const size_t e : std::ranges::iota_view{0u, elements.size()}) {
-            _elements[curr_element] = std::move(elements[e]);
-            _elements_types[curr_element] = uint8_t(elements_types[e]);
-            ++curr_element;
-        }
+    if (elements_2d_shift < elements_2d.size()) {
+        const auto default_range = std::ranges::iota_view{elements_2d_shift, elements_2d.size()};
+        _elements_groups["Default"] = default_range;
+        for(const size_t current_element : default_range)
+            for(const size_t e : std::ranges::iota_view{0u, _elements_2d_count}) {
+                if (elements_2d[e].empty())
+                    continue;
+                const auto can_inserted = [&element = elements_2d[e]](const std::vector<I>& el) { return el == element; };
+                if (elements_2d_shift == 0 || std::any_of(_elements.begin(), std::next(_elements.begin(), elements_2d_shift), can_inserted)) {
+                    _elements[current_element] = std::move(elements_2d[e]);
+                    _elements_types[current_element] = uint8_t(get_elements_set().model_to_local_2d(elements_types_2d[e]));
+                    break;
+                }
+            }
     }
 }
 

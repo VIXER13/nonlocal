@@ -29,11 +29,13 @@ class mesh_container_2d final {
     template<size_t... K, class Stream>
     std::vector<I> read_element(Stream& mesh_file);
     template<class Stream>
+    std::vector<I> read_element(Stream& mesh_file, const size_t type);
+    template<class Stream>
     auto read_elements_2d(Stream& mesh_file);
     template<class Stream>
     auto read_nodes(Stream& mesh_file);
     template<class Stream>
-    auto read_elements_1d(Stream& mesh_file);
+    auto read_elements_groups(Stream& mesh_file);
     template<class Stream>
     void read_su2(Stream& mesh_file);
 

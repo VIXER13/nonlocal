@@ -91,6 +91,14 @@ public:
     size_t local_to_model_2d(const element_2d_t local) const {
         return _local_to_model_2d[size_t(local)];
     }
+
+    bool is_element_1d(const size_t model) const {
+        return _model_to_local_1d.contains(model);
+    }
+
+    bool is_element_2d(const size_t model) const {
+        return _model_to_local_2d.contains(model);
+    }
 };
 
 }

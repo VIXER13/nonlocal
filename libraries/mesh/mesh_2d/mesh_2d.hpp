@@ -54,6 +54,8 @@ public:
     const metamath::types::square_matrix<T, 2>& jacobi_matrix(const size_t e, const size_t q) const;
 
     size_t quad_node_shift(const size_t e, const size_t i) const;
+    const std::array<T, 2>& derivatives(const size_t qshift) const;
+    const std::array<T, 2>& derivatives(const size_t qnode_shift, const size_t q) const;
     const std::array<T, 2>& derivatives(const size_t e, const size_t i, const size_t q) const;
 
     const parallel_utils::MPI_ranges& MPI_ranges() const noexcept;
@@ -131,8 +133,18 @@ size_t mesh_2d<T, I>::quad_node_shift(const size_t e, const size_t i) const {
 }
 
 template<class T, class I>
+const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t qshift) const {
+    return _derivatives[qshift];
+}
+
+template<class T, class I>
+const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t qnode_shift, const size_t q) const {
+    return derivatives(qnode_shift + q);
+}
+
+template<class T, class I>
 const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t e, const size_t i, const size_t q) const {
-    return _derivatives[quad_node_shift(e, i) + q];
+    return derivatives(quad_node_shift(e, i), q);
 }
 
 template<class T, class I>
