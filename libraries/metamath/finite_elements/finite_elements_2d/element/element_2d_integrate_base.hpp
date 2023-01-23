@@ -16,6 +16,8 @@ protected:
 public:
     using element_integrate_base<T>::nodes_count;
     using element_integrate_base<T>::qnodes_count;
+    using element_integrate_base<T>::nodes;
+    using element_integrate_base<T>::qnodes;
     using element_2d_base<T>::boundary;
     using element_2d_base<T>::node;
     using element_2d_base<T>::N;

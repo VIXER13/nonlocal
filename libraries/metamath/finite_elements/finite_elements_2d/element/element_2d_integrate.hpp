@@ -2,7 +2,7 @@
 #define FINITE_ELEMENT_2D_INTEGRATE_HPP
 
 #include "element_2d_integrate_base.hpp"
-#include "element_2d.hpp"
+#include "element_2d_serendipity.hpp"
 
 namespace metamath::finite_element {
 
