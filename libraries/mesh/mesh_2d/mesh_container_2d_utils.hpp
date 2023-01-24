@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_MESH_CONTAINER_2D_UTILS_HPP
 #define NONLOCAL_MESH_CONTAINER_2D_UTILS_HPP
 
-#include "mesh_container_2d.hpp"
+#include "su2_parser.hpp"
 
 #include "nonlocal_constants.hpp"
 

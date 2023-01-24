@@ -1,11 +1,40 @@
 #ifndef NONLOCAL_MESH_SU2_PARSER_HPP
 #define NONLOCAL_MESH_SU2_PARSER_HPP
 
+#include "mesh_container_2d.hpp"
+#include "vtk_elements_set.hpp"
+
 namespace nonlocal::mesh {
 
 template<class T, class I>
+class mesh_parser<T, I, mesh_format::SU2> final {
+    mesh_container_2d<T, I>& _mesh;
+
+    template<size_t... K, class Stream>
+    std::vector<I> read_element(Stream& mesh_file);
+    template<class Stream>
+    std::vector<I> read_element(Stream& mesh_file, const size_t type);
+    template<class Stream>
+    auto read_elements_2d(Stream& mesh_file);
+    template<class Stream>
+    auto read_nodes(Stream& mesh_file);
+    template<class Stream>
+    auto read_elements_groups(Stream& mesh_file);
+
+public:
+    explicit mesh_parser(mesh_container_2d<T, I>& mesh) noexcept;
+
+    template<class Stream>
+    void parse(Stream& mesh_file);
+};
+
+template<class T, class I>
+mesh_parser<T, I, mesh_format::SU2>::mesh_parser(mesh_container_2d<T, I>& mesh) noexcept
+    : _mesh{mesh} {}
+
+template<class T, class I>
 template<size_t... K, class Stream>
-std::vector<I> mesh_container_2d<T, I>::read_element(Stream& mesh_file) {
+std::vector<I> mesh_parser<T, I, mesh_format::SU2>::read_element(Stream& mesh_file) {
     std::vector<I> element(sizeof...(K));
     (mesh_file >> ... >> element[K]);
     return element;
@@ -13,7 +42,7 @@ std::vector<I> mesh_container_2d<T, I>::read_element(Stream& mesh_file) {
 
 template<class T, class I>
 template<class Stream>
-std::vector<I> mesh_container_2d<T, I>::read_element(Stream& mesh_file, const size_t type) {
+std::vector<I> mesh_parser<T, I, mesh_format::SU2>::read_element(Stream& mesh_file, const size_t type) {
     switch(vtk_element_number(type)) {
         case vtk_element_number::LINEAR:
             return read_element<0, 1>(mesh_file);
@@ -44,7 +73,7 @@ std::vector<I> mesh_container_2d<T, I>::read_element(Stream& mesh_file, const si
 
 template<class T, class I>
 template<class Stream>
-auto mesh_container_2d<T, I>::read_elements_2d(Stream& mesh_file) {
+auto mesh_parser<T, I, mesh_format::SU2>::read_elements_2d(Stream& mesh_file) {
     std::string pass;
     size_t elements_count = 0;
     mesh_file >> pass >> pass >> pass >> elements_count;
@@ -62,7 +91,7 @@ auto mesh_container_2d<T, I>::read_elements_2d(Stream& mesh_file) {
 
 template<class T, class I>
 template<class Stream>
-auto mesh_container_2d<T, I>::read_nodes(Stream& mesh_file) {
+auto mesh_parser<T, I, mesh_format::SU2>::read_nodes(Stream& mesh_file) {
     size_t nodes_count = 0;
     std::string pass;
     mesh_file >> pass >> nodes_count;
@@ -74,7 +103,7 @@ auto mesh_container_2d<T, I>::read_nodes(Stream& mesh_file) {
 
 template<class T, class I>
 template<class Stream>
-auto mesh_container_2d<T, I>::read_elements_groups(Stream& mesh_file) {
+auto mesh_parser<T, I, mesh_format::SU2>::read_elements_groups(Stream& mesh_file) {
     std::string pass;
     size_t groups_count = 0;
     mesh_file >> pass >> groups_count;
@@ -104,44 +133,49 @@ auto mesh_container_2d<T, I>::read_elements_groups(Stream& mesh_file) {
 
 template<class T, class I>
 template<class Stream>
-void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
+void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
+    _mesh._elements_set = std::make_unique<vtk_elements_set<T>>();
+
     auto [elements_2d, elements_types_2d] = read_elements_2d(mesh_file);
-    _elements_2d_count = elements_2d.size();
-    _nodes = read_nodes(mesh_file);
+    _mesh._elements_2d_count = elements_2d.size();
+    _mesh._nodes = read_nodes(mesh_file);
     auto [groups_names, elements_in_groups, elements_types] = read_elements_groups(mesh_file);
 
     size_t elements_2d_shift = 0;
-    size_t elements_shift = _elements_2d_count;
-    for(const auto& [group, types] : elements_types)
-        if (get_elements_set().is_element_1d(types.front())) {
-            _elements_groups[group] = std::ranges::iota_view{elements_shift, elements_shift + types.size()};
+    size_t elements_shift = _mesh.elements_2d_count();
+    for(const auto& [group, types] : elements_types) {
+        if (group == "Default")
+            throw std::domain_error{"The group name cannot be called \"Default\", as it is a reserved group name."};
+        if (_mesh.get_elements_set().is_element_1d(types.front())) {
+            _mesh._elements_groups[group] = std::ranges::iota_view{elements_shift, elements_shift + types.size()};
             elements_shift += types.size();
-            _groups_1d.insert(group);
+            _mesh._groups_1d.insert(group);
         } else {
-            _elements_groups[group] = std::ranges::iota_view{elements_2d_shift, elements_2d_shift + types.size()};
+            _mesh._elements_groups[group] = std::ranges::iota_view{elements_2d_shift, elements_2d_shift + types.size()};
             elements_2d_shift += types.size();
-            _groups_2d.insert(group);
+            _mesh._groups_2d.insert(group);
         }
+    }
     if (elements_2d_shift > elements_2d.size())
         throw std::domain_error{"Problem with parsing groups: some groups of 2D elements overlap each other."};
 
-    _elements.resize(elements_shift);
-    _elements_types.resize(elements_shift);
+    _mesh._elements.resize(elements_shift);
+    _mesh._elements_types.resize(elements_shift);
     elements_2d_shift = 0;
-    elements_shift = _elements_2d_count;
-    for(const auto& [group, range] : _elements_groups) {
+    elements_shift = _mesh.elements_2d_count();
+    for(const auto& [group, range] : _mesh._elements_groups) {
         auto& types = elements_types[group];
         auto& elements = elements_in_groups[group];
-        if (get_elements_set().is_element_1d(types.front())) {
+        if (_mesh.get_elements_set().is_element_1d(types.front())) {
             for(const size_t e : std::ranges::iota_view{0u, range.size()}) {
-                _elements[range.front() + e] = std::move(elements[e]);
-                _elements_types[range.front() + e] = uint8_t(get_elements_set().model_to_local_1d(types[e]));
+                _mesh._elements[range.front() + e] = std::move(elements[e]);
+                _mesh._elements_types[range.front() + e] = uint8_t(_mesh.get_elements_set().model_to_local_1d(types[e]));
             }
             elements_shift += range.size();
         } else {
             for(const size_t e : std::ranges::iota_view{0u, range.size()}) {
-                _elements[range.front() + e] = std::move(elements[e]);
-                _elements_types[range.front() + e] = uint8_t(get_elements_set().model_to_local_2d(types[e]));
+                _mesh._elements[range.front() + e] = std::move(elements[e]);
+                _mesh._elements_types[range.front() + e] = uint8_t(_mesh.get_elements_set().model_to_local_2d(types[e]));
             }
             elements_2d_shift += range.size();
         }
@@ -149,15 +183,15 @@ void mesh_container_2d<T, I>::read_su2(Stream& mesh_file) {
 
     if (elements_2d_shift < elements_2d.size()) {
         const auto default_range = std::ranges::iota_view{elements_2d_shift, elements_2d.size()};
-        _elements_groups["Default"] = default_range;
+        _mesh._elements_groups["Default"] = default_range;
         for(const size_t current_element : default_range)
-            for(const size_t e : std::ranges::iota_view{0u, _elements_2d_count}) {
+            for(const size_t e : std::ranges::iota_view{0u, _mesh.elements_2d_count()}) {
                 if (elements_2d[e].empty())
                     continue;
                 const auto can_inserted = [&element = elements_2d[e]](const std::vector<I>& el) { return el == element; };
-                if (elements_2d_shift == 0 || std::any_of(_elements.begin(), std::next(_elements.begin(), elements_2d_shift), can_inserted)) {
-                    _elements[current_element] = std::move(elements_2d[e]);
-                    _elements_types[current_element] = uint8_t(get_elements_set().model_to_local_2d(elements_types_2d[e]));
+                if (elements_2d_shift == 0 || std::any_of(_mesh._elements.begin(), std::next(_mesh._elements.begin(), elements_2d_shift), can_inserted)) {
+                    _mesh._elements[current_element] = std::move(elements_2d[e]);
+                    _mesh._elements_types[current_element] = uint8_t(_mesh.get_elements_set().model_to_local_2d(elements_types_2d[e]));
                     break;
                 }
             }

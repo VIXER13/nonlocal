@@ -1,7 +1,8 @@
 #ifndef NONLOCAL_MESH_CONTAINER_2D_HPP
 #define NONLOCAL_MESH_CONTAINER_2D_HPP
 
-#include "vtk_elements_set.hpp"
+#include "elements_set.hpp"
+#include "mesh_parser.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -16,6 +17,9 @@ class mesh_container_2d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
     static_assert(std::is_integral_v<I>, "The I must be integral.");
 
+    template<class U, class J, mesh_format Format>
+    friend class mesh_parser;
+
     std::unique_ptr<elements_set<T>> _elements_set; // TODO: make elements_set copyable
     std::vector<std::array<T, 2>> _nodes;
     std::vector<std::vector<I>> _elements;
@@ -24,20 +28,6 @@ class mesh_container_2d final {
     std::unordered_set<std::string> _groups_2d;
     std::unordered_map<std::string, std::ranges::iota_view<size_t, size_t>> _elements_groups;
     size_t _elements_2d_count = 0u;
-
-    // TODO: move parser to other class or function
-    template<size_t... K, class Stream>
-    std::vector<I> read_element(Stream& mesh_file);
-    template<class Stream>
-    std::vector<I> read_element(Stream& mesh_file, const size_t type);
-    template<class Stream>
-    auto read_elements_2d(Stream& mesh_file);
-    template<class Stream>
-    auto read_nodes(Stream& mesh_file);
-    template<class Stream>
-    auto read_elements_groups(Stream& mesh_file);
-    template<class Stream>
-    void read_su2(Stream& mesh_file);
 
 public:
     struct element_data_1d final {
@@ -312,9 +302,9 @@ void mesh_container_2d<T, I>::read_from_file(const std::filesystem::path& path_t
     const std::string extension = path_to_mesh.extension().string();
     if (extension == ".su2") {
         clear();
-        _elements_set = std::make_unique<vtk_elements_set<T>>();
         std::ifstream mesh_file{path_to_mesh};
-        read_su2(mesh_file);
+        mesh_parser<T, I, mesh_format::SU2> parser{*this};
+        parser.parse(mesh_file);
         return;
     }
     throw std::domain_error{"Unable to read mesh with extension " + extension};
@@ -336,7 +326,5 @@ void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation
 }
 
 }
-
-#include "su2_parser.hpp"
 
 #endif

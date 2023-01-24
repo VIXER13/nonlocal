@@ -33,3 +33,7 @@ target_link_libraries(thermal_nonstationary_tests_2d nonlocal_constants_lib slae
 add_executable(thermal_nonstationary_ref_2d thermal_nonstationary_ref_2d.cpp)
 target_include_directories(thermal_nonstationary_ref_2d PUBLIC ".")
 target_link_libraries(thermal_nonstationary_ref_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
+
+add_executable(TShape TShape.cpp)
+target_include_directories(TShape PUBLIC ".")
+target_link_libraries(TShape nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
