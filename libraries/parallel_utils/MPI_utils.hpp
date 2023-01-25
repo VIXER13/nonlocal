@@ -1,6 +1,7 @@
 #ifndef MPI_UTILS_HPP
 #define MPI_UTILS_HPP
 
+#include <stddef.h>
 #include <array>
 #include <vector>
 #include <ranges>

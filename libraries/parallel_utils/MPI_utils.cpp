@@ -1,5 +1,7 @@
 #include "MPI_utils.hpp"
 
+#include "init_uniform_ranges.hpp"
+
 namespace parallel_utils {
 
 int MPI_rank() {
@@ -19,11 +21,7 @@ int MPI_size() {
 }
 
 MPI_ranges::MPI_ranges(const size_t size)
-    : _ranges(MPI_size()) {
-    for(const size_t process : std::ranges::iota_view{0u, _ranges.size()})
-        _ranges[process] = { size / _ranges.size() *  process,
-                             size / _ranges.size() * (process + 1) + (process == _ranges.size() - 1) * size % _ranges.size() };
-}
+    : _ranges{init_uniform_ranges(size, MPI_size())} {}
 
 std::ranges::iota_view<size_t, size_t> MPI_ranges::get(const size_t process) const {
     return _ranges[process];
