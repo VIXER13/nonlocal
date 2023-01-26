@@ -3,7 +3,10 @@
 
 #include "metamath.hpp"
 #include "../../solvers_constants.hpp"
+#include "../../equation_parameters.hpp"
 
+#include <string>
+#include <unordered_map>
 
 namespace nonlocal::thermal {
 
@@ -14,6 +17,9 @@ struct parameter_2d final {
     T density = T{1};
     material_t material = material_t::ISOTROPIC;
 };
+
+template<class T>
+using parameters_2d = std::unordered_map<std::string, equation_parameters<2, T, thermal::parameter_2d>>;
 
 };
 

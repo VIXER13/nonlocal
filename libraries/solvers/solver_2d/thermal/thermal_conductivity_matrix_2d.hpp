@@ -110,10 +110,7 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(
     if (is_neumann)
         for(const size_t row : std::views::iota(size_t{0}, size_t(_base::matrix_inner().rows())))
             _base::matrix_inner().outerIndexPtr()[row + 1] = 1;
-    if (theory == theory_t::LOCAL)
-        _base::template create_matrix_portrait<theory_t::LOCAL>(is_inner);
-    else if (theory == theory_t::NONLOCAL)
-        _base::template create_matrix_portrait<theory_t::NONLOCAL>(is_inner);
+    _base::create_matrix_portrait({{"Default", theory}}, is_inner, false);
     if (is_neumann)
         for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix_inner().rows())})
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().container().nodes_count();
@@ -144,14 +141,14 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const metamath:
     _base::matrix_inner().resize(rows, cols);
     _base::matrix_bound().resize(rows, cols);
     create_matrix_portrait(is_inner, theory, is_neumann);
-    _base::template calc_matrix(is_inner, theory, influence_fun,
-        [this, p1, &conductivity, material](const size_t e, const size_t i, const size_t j) {
-            return p1 * integrate_loc(conductivity, material, e, i, j);
-        },
-        [this, p2 = nonlocal_weight(p1), &conductivity, material]
-        (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
-            return p2 * integrate_nonloc(conductivity, material, eL, eNL, iL, jNL, influence_function);
-        });
+    // _base::template calc_matrix(is_inner, theory, influence_fun,
+    //     [this, p1, &conductivity, material](const size_t e, const size_t i, const size_t j) {
+    //         return p1 * integrate_loc(conductivity, material, e, i, j);
+    //     },
+    //     [this, p2 = nonlocal_weight(p1), &conductivity, material]
+    //     (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
+    //         return p2 * integrate_nonloc(conductivity, material, eL, eNL, iL, jNL, influence_function);
+    //     });
     if (is_neumann)
         neumann_problem_col_fill();
 }

@@ -12,6 +12,296 @@
 
 namespace nonlocal {
 
+template<class T, class I>
+using matrix_parts_t = std::array<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 2>;
+
+enum matrix_part : size_t { INNER, BOUND };
+
+template<size_t DoF, class T, class I>
+class mesh_runner_base {
+    matrix_parts_t<T, I>& _matrix;
+    const std::vector<bool>& _is_inner;
+    
+protected:
+    explicit mesh_runner_base(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner);
+
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix(const matrix_part part) const;
+    
+    template<class Callback>
+    void filter(const size_t row_block, const size_t col_block, const Callback& callback);
+
+public:
+    virtual ~mesh_runner_base() noexcept = default;
+    virtual void reset(const size_t) = 0;
+};
+
+template<size_t DoF, class T, class I>
+mesh_runner_base<DoF, T, I>::mesh_runner_base(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner)
+    : _matrix{matrix}, _is_inner{is_inner} {}
+
+template<size_t DoF, class T, class I>
+Eigen::SparseMatrix<T, Eigen::RowMajor, I>& mesh_runner_base<DoF, T, I>::matrix(const matrix_part part) const {
+    return _matrix[part];
+}
+
+template<size_t DoF, class T, class I>
+template<class Callback>
+void mesh_runner_base<DoF, T, I>::filter(const size_t row_block, const size_t col_block, const Callback& callback) {
+    //std::cout << "_is_inner.size() = " << _is_inner.size() << std::endl;
+    for(const size_t row_loc : std::ranges::iota_view{0u, DoF})
+        for(const size_t col_loc : std::ranges::iota_view{0u, DoF}) {
+            const size_t row = DoF * row_block + row_loc;
+            const size_t col = DoF * col_block + col_loc;
+            if (_is_inner[row] && _is_inner[col]) {
+                if (row <= col)
+                    callback(INNER, row, col);
+            } else if (row != col) {
+                if (_is_inner[col])
+                    callback(BOUND, row, col);
+            } else
+                callback(INNER, row, col);
+        }
+}
+
+template<size_t DoF, class T, class I>
+class indexator_base : public mesh_runner_base<DoF, T, I> {
+    using flags_t = std::array<std::array<std::vector<bool>, DoF>, 2>;
+    flags_t _flags;
+    const size_t _node_shift;
+
+protected:
+    template<class Callback>
+    static void check_flag(std::vector<bool>& flags, const size_t col, const Callback& callback);
+
+    explicit indexator_base(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift);
+
+    size_t node_shift() const noexcept;
+    std::array<std::vector<bool>, DoF>& flags(const matrix_part part) noexcept;
+
+public:
+    ~indexator_base() noexcept override = default;
+
+    void reset(const size_t node) override;
+};
+
+template<size_t DoF, class T, class I>
+template<class Callback>
+void indexator_base<DoF, T, I>::check_flag(std::vector<bool>& flags, const size_t col, const Callback& callback) {
+    if (!flags[col]) {
+        callback();
+        flags[col] = true;
+    }
+}
+
+template<size_t DoF, class T, class I>
+indexator_base<DoF, T, I>::indexator_base(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift)
+    : mesh_runner_base<DoF, T, I>{matrix, is_inner}, _node_shift{node_shift} {
+    for(auto& part : _flags)
+        for(auto& dof : part)
+            dof.resize(is_inner.size());
+}
+
+template<size_t DoF, class T, class I>
+size_t indexator_base<DoF, T, I>::node_shift() const noexcept {
+    return _node_shift;
+}
+
+template<size_t DoF, class T, class I>
+std::array<std::vector<bool>, DoF>& indexator_base<DoF, T, I>::flags(const matrix_part part) noexcept {
+    return _flags[part];
+}
+
+template<size_t DoF, class T, class I>
+void indexator_base<DoF, T, I>::reset(const size_t node) {
+    for(const size_t i : std::ranges::iota_view{0u, DoF}) {
+        std::fill(_flags[BOUND][i].begin(), _flags[BOUND][i].end(), false);
+        std::fill(std::next(_flags[INNER][i].begin(), DoF * node), _flags[INNER][i].end(), false);
+    }
+}
+
+template<size_t DoF, class T, class I>
+class shift_initializer final : public indexator_base<DoF, T, I> {
+    using _base = indexator_base<DoF, T, I>;
+
+public:
+    explicit shift_initializer(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift);
+    ~shift_initializer() noexcept override = default;
+
+    void operator()(const size_t row_block, const size_t col_block);
+};
+
+template<size_t DoF, class T, class I>
+shift_initializer<DoF, T, I>::shift_initializer(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift)
+    : _base{matrix, is_inner, node_shift} {}
+
+template<size_t DoF, class T, class I>
+void shift_initializer<DoF, T, I>::operator()(const size_t row_block, const size_t col_block) {
+    //std::cout << "row_block = " << row_block << " col_block = " << col_block << std::endl;
+    _base::filter(row_block, col_block, [this](const matrix_part part, const size_t row, const size_t col) {
+        //std::cout << "part = " << part << " row = " << row << " col = " << col << std::endl;
+        _base::check_flag(_base::flags(part)[row % DoF], col, [this, part, row]() {
+            //std::cout << "check_flag" << std::endl;
+            ++_base::matrix(part).outerIndexPtr()[row - DoF * _base::node_shift() + 1];
+        });
+    });
+}
+
+template<size_t DoF, class T, class I>
+class index_initializer final : public indexator_base<DoF, T, I> {
+    using _base = indexator_base<DoF, T, I>;
+    using indices_t = std::array<std::array<size_t, DoF>, 2>;
+    indices_t _current_indices = {};
+
+public:
+    explicit index_initializer(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift);
+    ~index_initializer() noexcept override = default;
+
+    void reset(const size_t node) override;
+
+    void operator()(const size_t row_block, const size_t col_block);
+};
+
+template<size_t DoF, class T, class I>
+index_initializer<DoF, T, I>::index_initializer(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift)
+    : _base{matrix, is_inner, node_shift} {}
+
+template<size_t DoF, class T, class I>
+void index_initializer<DoF, T, I>::reset(const size_t node) {
+    for(const matrix_part part : {matrix_part::INNER, matrix_part::BOUND})
+        for(const size_t dof : std::ranges::iota_view{0u, DoF})
+            _current_indices[part][dof] = _base::matrix(part).outerIndexPtr()[DoF * (node - _base::node_shift()) + dof];
+    _base::reset(node);
+}
+
+template<size_t DoF, class T, class I>
+void index_initializer<DoF, T, I>::operator()(const size_t row_block, const size_t col_block) {
+    _base::filter(row_block, col_block, [this](const matrix_part part, const size_t row, const size_t col) {
+        const size_t dof = row % DoF;
+        _base::check_flag(_base::flags(part)[dof], col, [this, part, col, dof]() {
+            _base::matrix(part).innerIndexPtr()[_current_indices[part][dof]++] = col;
+        });
+    });
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+class finite_element_matrix_2d {
+    static_assert(DoF > 0, "DoF must be greater than 0.");
+
+    std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
+    matrix_parts_t<T, Matrix_Index> _matrix;
+
+protected:
+    explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
+
+    template<class Initializer>
+    void mesh_run(const std::unordered_map<std::string, theory_t>& theories, 
+                  const std::vector<bool>& is_inner,
+                  Initializer&& initializer);
+
+    void create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories, 
+                                const std::vector<bool>& is_inner, 
+                                const bool sort_indices = true);
+
+public:
+    virtual ~finite_element_matrix_2d() noexcept = default;
+
+    const mesh::mesh_2d<T, I>& mesh() const;
+    const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner() noexcept;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_bound() noexcept;
+    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner() const noexcept;
+    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_bound() const noexcept;
+
+    void clear();
+};
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+finite_element_matrix_2d<DoF, T, I, Matrix_Index>::finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+    : _mesh{mesh} {}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+const mesh::mesh_2d<T, I>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh() const {
+    return *mesh_ptr();
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+const std::shared_ptr<mesh::mesh_2d<T, I>>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_ptr() const noexcept {
+    return _mesh;
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() noexcept {
+    return _matrix[INNER];
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_bound() noexcept {
+    return _matrix[BOUND];
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() const noexcept {
+    return _matrix[INNER];
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_bound() const noexcept {
+    return _matrix[BOUND];
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::clear() {
+    _matrix[INNER] = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
+    _matrix[BOUND] = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+template<class Initializer>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, 
+                                                                 const std::vector<bool>& is_inner,
+                                                                 Initializer&& initializer)
+{
+    const auto process_nodes = mesh().process_nodes();
+    std::cout << "nodes count = " << process_nodes.size() << std::endl;
+#pragma omp parallel for default(none) shared(theories, is_inner, process_nodes) firstprivate(initializer)
+    for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+        initializer.reset(node);
+        for(const I eL : mesh().elements(node)) {
+            const std::string& group = mesh().container().group(eL);
+            //std::cout << group << std::endl;
+            if (const theory_t theory = theories.at(group); theory == theory_t::LOCAL)
+                for(const size_t jL : std::ranges::iota_view{0u, mesh().container().nodes_count(eL)})
+                    initializer(node, mesh().container().node_number(eL, jL));
+            else if (theory == theory_t::NONLOCAL)
+                for(const I eNL : mesh().neighbours(eL))
+                    for(const size_t jNL : std::ranges::iota_view{0u, mesh().container().nodes_count(eNL)})
+                        initializer(node, mesh().container().node_number(eNL, jNL));
+            else
+                throw std::domain_error{"Unknown theory."};
+        }
+    }
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(
+    const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool sort_indices) {
+    const auto process_nodes = mesh().process_nodes();
+    std::cout << "shift" << std::endl;
+    mesh_run(theories, is_inner, shift_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
+    std::cout << "shift inited!" << std::endl;
+    utils::accumulate_shifts(matrix_inner());
+    utils::accumulate_shifts(matrix_bound());
+    std::cout << "Non-zero elements count: " << matrix_inner().nonZeros() + matrix_bound().nonZeros() << std::endl;
+    utils::allocate_matrix(matrix_inner());
+    utils::allocate_matrix(matrix_bound());
+    mesh_run(theories, is_inner, index_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
+    if (sort_indices) {
+        utils::sort_indices(matrix_inner());
+        utils::sort_indices(matrix_bound());
+    }
+}
+
+/*
 template<size_t DoF, class T, class I, class Matrix_Index>
 class finite_element_matrix_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
@@ -262,6 +552,7 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(const std::v
                     assemble_block(block_t{integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun)}, glob_row, glob_col, theory_t::NONLOCAL);
             });
 }
+*/
 
 }
 
