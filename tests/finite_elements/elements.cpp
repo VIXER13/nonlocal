@@ -124,7 +124,7 @@ TEST_P(elements_1d, lagrangian) {
         EXPECT_NEAR(Nxi_sum, 0.f, data.epsilon);
 
         const auto [N_incomplete_sum, Nxi_incomplete_sum] =
-            std::accumulate(element.nodes().begin(), std::prev(element.nodes().end()), std::pair{0.f, 0.f}, basis_summator);
+            std::accumulate(element.nodes().begin(), std::ranges::prev(element.nodes().end()), std::pair{0.f, 0.f}, basis_summator);
         EXPECT_GE(std::abs(N_incomplete_sum - 1.f), element.nodes_count() > 1 ? data.epsilon : 0.f);
         EXPECT_GE(std::abs(Nxi_incomplete_sum), element.nodes_count() > 1 ? data.epsilon : 0.f);
     }
@@ -174,7 +174,7 @@ TEST_P(elements_2d, basises_2d) {
             EXPECT_NEAR(Neta_sum, 0.f, data.epsilon);
 
             const auto [N_incomplete_sum, Nxi_incomplete_sum, Neta_incomplete_sum] =
-                std::accumulate(element.nodes().begin(), std::prev(element.nodes().end()), std::array{0.f, 0.f, 0.f}, basis_summator);
+                std::accumulate(element.nodes().begin(), std::ranges::prev(element.nodes().end()), std::array{0.f, 0.f, 0.f}, basis_summator);
             EXPECT_GE(std::abs(N_incomplete_sum - 1.f), element.nodes_count() > 1 ? data.epsilon : 0.f);
             EXPECT_GE(std::abs(Nxi_incomplete_sum), element.nodes_count() > 2 ? data.epsilon : 0.f);
             EXPECT_GE(std::abs(Neta_incomplete_sum), element.nodes_count() > 2 ? data.epsilon : 0.f);
