@@ -2,6 +2,7 @@
 #define NONLOCAL_FINITE_ELEMENT_MATRIX_2D_HPP
 
 #include "../solvers_utils.hpp"
+#include "../equation_parameters.hpp"
 
 #include "mesh_2d.hpp"
 
@@ -47,7 +48,6 @@ Eigen::SparseMatrix<T, Eigen::RowMajor, I>& mesh_runner_base<DoF, T, I>::matrix(
 template<size_t DoF, class T, class I>
 template<class Callback>
 void mesh_runner_base<DoF, T, I>::filter(const size_t row_block, const size_t col_block, const Callback& callback) {
-    //std::cout << "_is_inner.size() = " << _is_inner.size() << std::endl;
     for(const size_t row_loc : std::ranges::iota_view{0u, DoF})
         for(const size_t col_loc : std::ranges::iota_view{0u, DoF}) {
             const size_t row = DoF * row_block + row_loc;
@@ -136,11 +136,8 @@ shift_initializer<DoF, T, I>::shift_initializer(matrix_parts_t<T, I>& matrix, co
 
 template<size_t DoF, class T, class I>
 void shift_initializer<DoF, T, I>::operator()(const size_t row_block, const size_t col_block) {
-    //std::cout << "row_block = " << row_block << " col_block = " << col_block << std::endl;
     _base::filter(row_block, col_block, [this](const matrix_part part, const size_t row, const size_t col) {
-        //std::cout << "part = " << part << " row = " << row << " col = " << col << std::endl;
         _base::check_flag(_base::flags(part)[row % DoF], col, [this, part, row]() {
-            //std::cout << "check_flag" << std::endl;
             ++_base::matrix(part).outerIndexPtr()[row - DoF * _base::node_shift() + 1];
         });
     });
@@ -193,6 +190,8 @@ class finite_element_matrix_2d {
 protected:
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
+    void first_kind_shift(const std::vector<bool>& is_inner);
+
     template<class Initializer>
     void mesh_run(const std::unordered_map<std::string, theory_t>& theories, 
                   const std::vector<bool>& is_inner,
@@ -201,6 +200,12 @@ protected:
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories, 
                                 const std::vector<bool>& is_inner, 
                                 const bool sort_indices = true);
+
+    template<class Integrate_Loc, class Integrate_Nonloc>
+    void calc_matrix(const std::unordered_map<std::string, model_parameters<2, T>>& parameters,
+                     const std::vector<bool>& is_inner,
+                     const Integrate_Loc& integrate_rule_loc,
+                     const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
     virtual ~finite_element_matrix_2d() noexcept = default;
@@ -256,19 +261,31 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::clear() {
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::first_kind_shift(const std::vector<bool>& is_inner) {
+    // const auto process_nodes = mesh().process_nodes();
+    // // const size_t row_shift = DoF * process_nodes.front();
+    // // std::cout << "nodes_count = " << mesh().container().nodes_count() << std::endl;
+    // // std::cout << "process_nodes.size() = " << process_nodes.size() << std::endl;
+    // // std::cout << "row_shift = " << row_shift<< std::endl;
+    // // for(const size_t row : std::ranges::iota_view{0u, DoF * process_nodes.size()})
+    // //     matrix_inner().outerIndexPtr()[row] += !is_inner[row + row_shift];
+    // for(const size_t node : process_nodes)
+    //    for(const size_t dof : std::ranges::iota_view{0u, DoF})
+    //        matrix_inner().outerIndexPtr()[DoF * (node - process_nodes.front()) + dof] += !is_inner[DoF * node + dof];
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
 template<class Initializer>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, 
                                                                  const std::vector<bool>& is_inner,
                                                                  Initializer&& initializer)
 {
     const auto process_nodes = mesh().process_nodes();
-    std::cout << "nodes count = " << process_nodes.size() << std::endl;
 #pragma omp parallel for default(none) shared(theories, is_inner, process_nodes) firstprivate(initializer)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
         initializer.reset(node);
         for(const I eL : mesh().elements(node)) {
             const std::string& group = mesh().container().group(eL);
-            //std::cout << group << std::endl;
             if (const theory_t theory = theories.at(group); theory == theory_t::LOCAL)
                 for(const size_t jL : std::ranges::iota_view{0u, mesh().container().nodes_count(eL)})
                     initializer(node, mesh().container().node_number(eL, jL));
@@ -285,10 +302,9 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unor
 template<size_t DoF, class T, class I, class Matrix_Index>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(
     const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool sort_indices) {
+    first_kind_shift(is_inner);
     const auto process_nodes = mesh().process_nodes();
-    std::cout << "shift" << std::endl;
     mesh_run(theories, is_inner, shift_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
-    std::cout << "shift inited!" << std::endl;
     utils::accumulate_shifts(matrix_inner());
     utils::accumulate_shifts(matrix_bound());
     std::cout << "Non-zero elements count: " << matrix_inner().nonZeros() + matrix_bound().nonZeros() << std::endl;
@@ -299,6 +315,67 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(
         utils::sort_indices(matrix_inner());
         utils::sort_indices(matrix_bound());
     }
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+template<class Integrate_Loc, class Integrate_Nonloc>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(
+    const std::unordered_map<std::string, model_parameters<2, T>>& parameters,
+    const std::vector<bool>& is_inner,
+    const Integrate_Loc& integrate_rule_loc,
+    const Integrate_Nonloc& integrate_rule_nonloc) {
+    using block_t = metamath::types::square_matrix<T, DoF>;
+
+/*
+        const auto assemble_predicate =
+        [&is_inner](const size_t glob_row, const size_t glob_col, const theory_t theory) {
+            for(const size_t row : std::views::iota(glob_row, glob_row + DoF))
+                for(const size_t col : std::views::iota(glob_col, glob_col + DoF))
+                    if (is_inner[row] && is_inner[col] ? row <= col     :
+                        row != col                     ? !is_inner[col] : theory == theory_t::LOCAL)
+                        return true;
+            return false;
+        };
+
+    using block_t = std::array<T, DoF * DoF>;
+    const auto assemble_block =
+        [this, &is_inner, shift = DoF * mesh().process_nodes().front()]
+        (const block_t& block, const size_t glob_row, const size_t glob_col, const theory_t theory) {
+            for(auto [row, component] = std::pair{glob_row, block.cbegin()}; row < glob_row + DoF; ++row) {
+                T* data_ptr = nullptr;
+                for(size_t col = glob_col; col < glob_col + DoF; ++col, ++component)
+                    if (is_inner[row] && is_inner[col]) {
+                        if (row <= col) {
+                            if (!data_ptr) data_ptr = &matrix_inner().coeffRef(row - shift, col);
+                            else         ++data_ptr;
+                            *data_ptr += *component;
+                        }
+                    } else if (row != col) {
+                        if (!is_inner[col])
+                            matrix_bound().coeffRef(row - shift, col) += *component;
+                    } else if (theory == theory_t::LOCAL)
+                        matrix_inner().coeffRef(row - shift, col) = T{1};
+            }
+        };
+
+    mesh_run<theory_t::LOCAL>(
+        [this, &integrate_rule_loc, &assemble_predicate, &assemble_block](const size_t e, const size_t i, const size_t j) {
+            const size_t glob_row = DoF * mesh().container().node_number(e, i),
+                         glob_col = DoF * mesh().container().node_number(e, j);
+            if (assemble_predicate(glob_row, glob_col, theory_t::LOCAL))
+                assemble_block(block_t{integrate_rule_loc(e, i, j)}, glob_row, glob_col, theory_t::LOCAL);
+        });
+
+    if (theory == theory_t::NONLOCAL)
+        mesh_run<theory_t::NONLOCAL>(
+            [this, &influence_fun, &integrate_rule_nonloc, &assemble_predicate, &assemble_block]
+            (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+                const size_t glob_row = DoF * mesh().container().node_number(eL,   iL),
+                             glob_col = DoF * mesh().container().node_number(eNL, jNL);
+                if (assemble_predicate(glob_row, glob_col, theory_t::NONLOCAL))
+                    assemble_block(block_t{integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun)}, glob_row, glob_col, theory_t::NONLOCAL);
+            });
+*/
 }
 
 /*
