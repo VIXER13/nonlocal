@@ -21,7 +21,7 @@ void allocate_matrix(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
     K.data().resize(K.outerIndexPtr()[K.rows()]);
     for(const size_t i : std::ranges::iota_view{0u, size_t(K.nonZeros())}) {
         K.innerIndexPtr()[i] = 0;
-        K.valuePtr()[i] = T{0};
+        K.valuePtr()[i] = T{1};
     }
 }
 

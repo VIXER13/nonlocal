@@ -116,6 +116,17 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().container().nodes_count();
     utils::sort_indices(_base::matrix_inner());
     utils::sort_indices(_base::matrix_bound());
+
+    std::cout << "bound nodes " << std::endl;
+    for(const size_t i : std::ranges::iota_view{0u, is_inner.size()})
+        if (!is_inner[i])
+            std::cout << i << ' ';
+    std::cout << std::endl;
+
+    std::cout << "matrix_inner = " << std::endl;
+    std::cout << Eigen::MatrixXd{_base::matrix_inner()} << std::endl << std::endl;
+    std::cout << "matrix_bound = " << std::endl;
+    std::cout << Eigen::MatrixXd{_base::matrix_bound()} << std::endl << std::endl;
 }
 
 template<class T, class I, class Matrix_Index>

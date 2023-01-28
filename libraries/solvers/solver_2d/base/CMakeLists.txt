@@ -9,6 +9,7 @@ target_sources(finite_element_solver_2d_base_lib INTERFACE
     boundary_condition_second_kind_2d.hpp
     boundary_conditions_2d.hpp
     finite_element_matrix_2d.hpp
+    mesh_runner.hpp
     right_part_2d.hpp
     solution_2d.hpp
     solvers_utils.hpp
