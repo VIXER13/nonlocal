@@ -4,7 +4,8 @@
 #include "../solvers_utils.hpp"
 #include "../equation_parameters.hpp"
 
-#include "mesh_runner.hpp"
+#include "shift_initializer.hpp"
+#include "index_initializer.hpp"
 
 #include "mesh_2d.hpp"
 
@@ -23,6 +24,11 @@ class finite_element_matrix_2d {
     matrix_parts_t<T, Matrix_Index> _matrix;
 
 protected:
+    template<class Callback>
+    static void first_kind_indexator(const std::ranges::iota_view<size_t, size_t> rows, 
+                                     const std::vector<bool>& is_inner, 
+                                     const Callback& callback);
+
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
     template<class Initializer>
@@ -35,7 +41,7 @@ protected:
                                 const bool sort_indices = true);
 
     template<class Integrate_Loc, class Integrate_Nonloc>
-    void calc_matrix(const std::unordered_map<std::string, model_parameters<2, T>>& parameters,
+    void calc_matrix(const std::unordered_map<std::string, theory_t>& theories,
                      const std::vector<bool>& is_inner,
                      const Integrate_Loc& integrate_rule_loc,
                      const Integrate_Nonloc& integrate_rule_nonloc);
@@ -47,11 +53,23 @@ public:
     const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner() noexcept;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_bound() noexcept;
+    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix(const matrix_part part) noexcept;
     const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_inner() const noexcept;
     const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix_bound() const noexcept;
+    const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& matrix(const matrix_part part) const noexcept;
 
     void clear();
 };
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+template<class Callback>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::first_kind_indexator(const std::ranges::iota_view<size_t, size_t> rows,
+                                                                             const std::vector<bool>& is_inner,
+                                                                             const Callback& callback) {
+    for(const size_t row : rows)
+        if (!is_inner[row])
+            callback(row);
+}
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 finite_element_matrix_2d<DoF, T, I, Matrix_Index>::finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
@@ -69,28 +87,38 @@ const std::shared_ptr<mesh::mesh_2d<T, I>>& finite_element_matrix_2d<DoF, T, I, 
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() noexcept {
-    return _matrix[INNER];
+    return matrix(matrix_part::INNER);
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_bound() noexcept {
-    return _matrix[BOUND];
+    return matrix(matrix_part::BOUND);
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix(const matrix_part part) noexcept {
+    return _matrix[size_t(part)];
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_inner() const noexcept {
-    return _matrix[INNER];
+    return matrix(matrix_part::INNER);
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix_bound() const noexcept {
-    return _matrix[BOUND];
+    return matrix(matrix_part::BOUND);
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix(const matrix_part part) const noexcept {
+    return _matrix[size_t(part)];
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::clear() {
-    _matrix[INNER] = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
-    _matrix[BOUND] = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
+    matrix_inner() = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
+    matrix_bound() = Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>{};
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
@@ -106,11 +134,11 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unor
             const std::string& group = mesh().container().group(eL);
             if (const theory_t theory = theories.at(group); theory == theory_t::LOCAL)
                 for(const size_t jL : std::ranges::iota_view{0u, mesh().container().nodes_count(eL)})
-                    initializer(node, mesh().container().node_number(eL, jL));
+                    initializer(group, eL, node, mesh().container().node_number(eL, jL));
             else if (theory == theory_t::NONLOCAL)
                 for(const I eNL : mesh().neighbours(eL))
                     for(const size_t jNL : std::ranges::iota_view{0u, mesh().container().nodes_count(eNL)})
-                        initializer(node, mesh().container().node_number(eNL, jNL));
+                        initializer(group, eL, eNL, node, mesh().container().node_number(eNL, jNL));
             else
                 throw std::domain_error{"Unknown theory."};
         }
@@ -139,14 +167,60 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(
     }
 }
 
+template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
+class integrator final : public matrix_separator_base<T, I>  {
+    using _base = matrix_separator_base<T, I>;
+    metamath::types::square_matrix<T, DoF> _block = {};
+    const Integrate_Loc& _integrate_loc;
+    const Integrate_Nonloc& _integrate_nonloc;
+
+    bool check_predicate(const size_t row, const size_t col);
+
+public:
+    explicit integrator(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift,
+                        const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc);
+    ~integrator() noexcept override = default;
+
+    static constexpr void reset(const size_t) noexcept {}
+
+    void operator()(const std::string& group, const size_t e, const size_t i, const size_t j);
+    void operator()(const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL);
+};
+
+template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
+integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::integrator(
+    matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift,
+    const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc)
+    : _base{matrix, is_inner, node_shift}
+    , _integrate_loc{integrate_loc}, _integrate_nonloc{integrate_nonloc} {}
+
+template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
+bool integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::check_predicate(const size_t row, const size_t col) {
+    bool result = false;
+    //_base::filter(row, col, [&result]())
+    return result;
+}
+
+template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
+void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
+    const std::string& group, const size_t e, const size_t i, const size_t j) {
+    _integrate_loc(group, e, i, j);
+}
+
+template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
+void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
+    const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+    _integrate_nonloc(group, eL, eNL, iL, jNL);
+}
+
 template<size_t DoF, class T, class I, class Matrix_Index>
 template<class Integrate_Loc, class Integrate_Nonloc>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(
-    const std::unordered_map<std::string, model_parameters<2, T>>& parameters,
+    const std::unordered_map<std::string, theory_t>& theories,
     const std::vector<bool>& is_inner,
     const Integrate_Loc& integrate_rule_loc,
     const Integrate_Nonloc& integrate_rule_nonloc) {
-    using block_t = metamath::types::square_matrix<T, DoF>;
+    
 
 /*
         const auto assemble_predicate =
