@@ -110,7 +110,8 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(
     if (is_neumann)
         for(const size_t row : std::views::iota(0u, size_t(_base::matrix_inner().rows())))
             _base::matrix_inner().outerIndexPtr()[row + 1] = 1;
-    _base::create_matrix_portrait({{"Default", theory}}, is_inner, false);
+    _base::init_shifts({{"Default", theory}}, is_inner);
+    _base::init_indices({{"Default", theory}}, is_inner, false);
     if (is_neumann)
         for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix_inner().rows())})
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().container().nodes_count();

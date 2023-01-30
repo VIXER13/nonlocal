@@ -2,15 +2,12 @@
 #define NONLOCAL_FINITE_ELEMENT_MATRIX_2D_HPP
 
 #include "../solvers_utils.hpp"
-#include "../equation_parameters.hpp"
 
 #include "shift_initializer.hpp"
 #include "index_initializer.hpp"
+#include "integrator.hpp"
 
 #include "mesh_2d.hpp"
-
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Sparse>
 
 #include <iostream>
 
@@ -25,26 +22,19 @@ class finite_element_matrix_2d {
 
 protected:
     template<class Callback>
-    static void first_kind_indexator(const std::ranges::iota_view<size_t, size_t> rows, 
-                                     const std::vector<bool>& is_inner, 
-                                     const Callback& callback);
+    static void first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows, 
+                                  const std::vector<bool>& is_inner, const Callback& callback);
 
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
     template<class Initializer>
-    void mesh_run(const std::unordered_map<std::string, theory_t>& theories, 
-                  const std::vector<bool>& is_inner,
-                  Initializer&& initializer);
+    void mesh_run(const std::unordered_map<std::string, theory_t>& theories, Initializer&& initializer);
 
-    void create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories, 
-                                const std::vector<bool>& is_inner, 
-                                const bool sort_indices = true);
-
+    void init_shifts(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner);
+    void init_indices(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool sort_indices = true);
     template<class Integrate_Loc, class Integrate_Nonloc>
-    void calc_matrix(const std::unordered_map<std::string, theory_t>& theories,
-                     const std::vector<bool>& is_inner,
-                     const Integrate_Loc& integrate_rule_loc,
-                     const Integrate_Nonloc& integrate_rule_nonloc);
+    void calc_coeffs(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner,
+                     Integrate_Loc&& integrate_loc, Integrate_Nonloc&& integrate_nonloc);
 
 public:
     virtual ~finite_element_matrix_2d() noexcept = default;
@@ -63,9 +53,9 @@ public:
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 template<class Callback>
-void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::first_kind_indexator(const std::ranges::iota_view<size_t, size_t> rows,
-                                                                             const std::vector<bool>& is_inner,
-                                                                             const Callback& callback) {
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows,
+                                                                          const std::vector<bool>& is_inner,
+                                                                          const Callback& callback) {
     for(const size_t row : rows)
         if (!is_inner[row])
             callback(row);
@@ -123,13 +113,13 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::clear() {
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 template<class Initializer>
-void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, 
-                                                                 const std::vector<bool>& is_inner,
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unordered_map<std::string, theory_t>& theories,
                                                                  Initializer&& initializer) {
     const auto process_nodes = mesh().process_nodes();
-#pragma omp parallel for default(none) shared(theories, is_inner, process_nodes) firstprivate(initializer)
+#pragma omp parallel for default(none) shared(theories, process_nodes) firstprivate(initializer)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        initializer.reset(node);
+        if constexpr (std::is_base_of_v<indexator_base<DoF>, Initializer>)
+            initializer.reset(node);
         for(const I eL : mesh().elements(node)) {
             const std::string& group = mesh().container().group(eL);
             if (const theory_t theory = theories.at(group); theory == theory_t::LOCAL)
@@ -146,19 +136,28 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unor
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
-void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(
-    const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool sort_indices) {
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::init_shifts(
+    const std::unordered_map<std::string, theory_t>& theories, 
+    const std::vector<bool>& is_inner) {
     const auto process_nodes = mesh().process_nodes();
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    mesh_run(theories, is_inner, shift_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
-    first_kind_indexator(process_rows, is_inner, [this](const size_t row) { ++matrix_inner().outerIndexPtr()[row + 1]; });
+    mesh_run(theories, shift_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
+    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++matrix_inner().outerIndexPtr()[row + 1]; });
     utils::accumulate_shifts(matrix_inner());
     utils::accumulate_shifts(matrix_bound());
     std::cout << "Non-zero elements count: " << matrix_inner().nonZeros() + matrix_bound().nonZeros() << std::endl;
+}
+
+template<size_t DoF, class T, class I, class Matrix_Index>
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::init_indices(
+    const std::unordered_map<std::string, theory_t>& theories, 
+    const std::vector<bool>& is_inner, const bool sort_indices) {
+    const auto process_nodes = mesh().process_nodes();
+    const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     utils::allocate_matrix(matrix_inner());
     utils::allocate_matrix(matrix_bound());
-    mesh_run(theories, is_inner, index_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
-    first_kind_indexator(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
+    mesh_run(theories, index_initializer<DoF, T, Matrix_Index>{_matrix, is_inner, process_nodes.front()});
+    first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
         matrix_inner().innerIndexPtr()[matrix_inner().outerIndexPtr()[row]] = row + shift; 
     });
     if (sort_indices) {
@@ -167,60 +166,19 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::create_matrix_portrait(
     }
 }
 
-template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
-class integrator final : public matrix_separator_base<T, I>  {
-    using _base = matrix_separator_base<T, I>;
-    metamath::types::square_matrix<T, DoF> _block = {};
-    const Integrate_Loc& _integrate_loc;
-    const Integrate_Nonloc& _integrate_nonloc;
-
-    bool check_predicate(const size_t row, const size_t col);
-
-public:
-    explicit integrator(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift,
-                        const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc);
-    ~integrator() noexcept override = default;
-
-    static constexpr void reset(const size_t) noexcept {}
-
-    void operator()(const std::string& group, const size_t e, const size_t i, const size_t j);
-    void operator()(const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL);
-};
-
-template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
-integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::integrator(
-    matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner, const size_t node_shift,
-    const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc)
-    : _base{matrix, is_inner, node_shift}
-    , _integrate_loc{integrate_loc}, _integrate_nonloc{integrate_nonloc} {}
-
-template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
-bool integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::check_predicate(const size_t row, const size_t col) {
-    bool result = false;
-    //_base::filter(row, col, [&result]())
-    return result;
-}
-
-template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
-void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
-    const std::string& group, const size_t e, const size_t i, const size_t j) {
-    _integrate_loc(group, e, i, j);
-}
-
-template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
-void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
-    const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-    _integrate_nonloc(group, eL, eNL, iL, jNL);
-}
-
 template<size_t DoF, class T, class I, class Matrix_Index>
 template<class Integrate_Loc, class Integrate_Nonloc>
-void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(
-    const std::unordered_map<std::string, theory_t>& theories,
-    const std::vector<bool>& is_inner,
-    const Integrate_Loc& integrate_rule_loc,
-    const Integrate_Nonloc& integrate_rule_nonloc) {
-    
+void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_coeffs(
+    const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner,
+    Integrate_Loc&& integrate_loc, Integrate_Nonloc&& integrate_nonloc) {
+    const auto process_nodes = mesh().process_nodes();
+    const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
+    mesh_run(theories, integrator<DoF, T, Matrix_Index, Integrate_Loc, Integrate_Nonloc>{
+        _matrix, is_inner, process_nodes.front(), integrate_loc, integrate_nonloc});
+    first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
+        matrix_inner().valuePtr()[matrix_inner().outerIndexPtr()[row]] = T{1}; 
+    });
+}
 
 /*
         const auto assemble_predicate =
@@ -272,7 +230,6 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_matrix(
                     assemble_block(block_t{integrate_rule_nonloc(eL, eNL, iL, jNL, influence_fun)}, glob_row, glob_col, theory_t::NONLOCAL);
             });
 */
-}
 
 /*
 template<size_t DoF, class T, class I, class Matrix_Index>
