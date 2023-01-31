@@ -29,7 +29,7 @@ public:
     template<class Influence_Function>
     void compute(const metamath::types::square_matrix<T, 2>& conductivity, const material_t material,
                  const std::vector<bool>& is_inner,
-                 const T p1, const Influence_Function& influence_fun,
+                 const T p1, const Influence_Function& influence_function,
                  const bool is_neumann = false);
 };
 
@@ -117,17 +117,6 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().container().nodes_count();
     utils::sort_indices(_base::matrix_inner());
     utils::sort_indices(_base::matrix_bound());
-
-    std::cout << "bound nodes " << std::endl;
-    for(const size_t i : std::ranges::iota_view{0u, is_inner.size()})
-        if (!is_inner[i])
-            std::cout << i << ' ';
-    std::cout << std::endl;
-
-    std::cout << "matrix_inner = " << std::endl;
-    std::cout << Eigen::MatrixXd{_base::matrix_inner()} << std::endl << std::endl;
-    std::cout << "matrix_bound = " << std::endl;
-    std::cout << Eigen::MatrixXd{_base::matrix_bound()} << std::endl << std::endl;
 }
 
 template<class T, class I, class Matrix_Index>
@@ -145,7 +134,7 @@ template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
 void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const metamath::types::square_matrix<T, 2>& conductivity, const material_t material,
                                                                  const std::vector<bool>& is_inner,
-                                                                 const T p1, const Influence_Function& influence_fun,
+                                                                 const T p1, const Influence_Function& influence_function,
                                                                  const bool is_neumann) {
     const theory_t theory = p1 < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
     const size_t rows = _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::MPI_rank() == parallel_utils::MPI_size() - 1);
@@ -153,14 +142,14 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const metamath:
     _base::matrix_inner().resize(rows, cols);
     _base::matrix_bound().resize(rows, cols);
     create_matrix_portrait(is_inner, theory, is_neumann);
-    // _base::template calc_matrix(is_inner, theory, influence_fun,
-    //     [this, p1, &conductivity, material](const size_t e, const size_t i, const size_t j) {
-    //         return p1 * integrate_loc(conductivity, material, e, i, j);
-    //     },
-    //     [this, p2 = nonlocal_weight(p1), &conductivity, material]
-    //     (const size_t eL, const size_t eNL, const size_t iL, const size_t jNL, const Influence_Function& influence_function) {
-    //         return p2 * integrate_nonloc(conductivity, material, eL, eNL, iL, jNL, influence_function);
-    //     });
+    _base::calc_coeffs({{"Default", theory}}, is_inner,
+        [this, p1, &conductivity, material](const std::string& group, const size_t e, const size_t i, const size_t j) {
+            return p1 * integrate_loc(conductivity, material, e, i, j);
+        },
+        [this, p2 = nonlocal_weight(p1), &conductivity, material, &influence_function]
+        (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            return p2 * integrate_nonloc(conductivity, material, eL, eNL, iL, jNL, influence_function);
+        });
     if (is_neumann)
         neumann_problem_col_fill();
 }
