@@ -28,10 +28,33 @@ int main(const int argc, const char *const *const argv) {
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
         const std::array<T, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         const T p1 = std::stod(argv[4]);
-        nonlocal::thermal::parameter_2d<T> parameters = {
-            .conductivity = {T{1}, T{0},
-                             T{0}, T{1}},
-            .material = nonlocal::material_t::ISOTROPIC
+        nonlocal::thermal::parameters_2d<T> parameters;
+        parameters["Material1"] = {
+            .model = {
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+                .local_weight = T{1}
+            },
+            .physical = {
+                .conductivity = {T{1}}
+            }
+        };
+        parameters["Material2"] = {
+            .model = {
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+                .local_weight = T{0.5}
+            },
+            .physical = {
+                .conductivity = {T{10}}
+            }
+        };
+        parameters["Material3"] = {
+            .model = {
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+                .local_weight = T{1}
+            },
+            .physical = {
+                .conductivity = {T{2}}
+            }
         };
 
         if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
@@ -42,7 +65,7 @@ int main(const int argc, const char *const *const argv) {
 
         //boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(500.);
         //boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(-1000.);
-        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(-1);
+        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
         boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
         
         static constexpr auto right_part = [](const std::array<T, 2>& x) constexpr noexcept {
@@ -50,7 +73,7 @@ int main(const int argc, const char *const *const argv) {
         };
 
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
-            mesh, parameters, boundary_conditions, right_part, p1, nonlocal::influence::polynomial_2d<T, 2, 1>{r}
+            mesh, parameters, boundary_conditions, right_part
         );
 
         if (parallel_utils::MPI_rank() == 0) {
@@ -58,9 +81,9 @@ int main(const int argc, const char *const *const argv) {
             //std::cout << "Energy = " << solution.calc_energy() << std::endl;
             using namespace std::literals;
             solution.save_as_vtk(argv[5] + "/heat.vtk"s);
-            nonlocal::mesh::utils::save_as_csv(argv[5] + "/T.csv"s, mesh->container(), solution.temperature());
-            nonlocal::mesh::utils::save_as_csv(argv[5] + "/TX.csv"s, mesh->container(), TX);
-            nonlocal::mesh::utils::save_as_csv(argv[5] + "/TY.csv"s, mesh->container(), TY);
+            nonlocal::mesh::utils::save_as_csv(argv[5] + "/Tnl.csv"s, mesh->container(), solution.temperature());
+            //nonlocal::mesh::utils::save_as_csv(argv[5] + "/TX.csv"s, mesh->container(), TX);
+            //nonlocal::mesh::utils::save_as_csv(argv[5] + "/TY.csv"s, mesh->container(), TY);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

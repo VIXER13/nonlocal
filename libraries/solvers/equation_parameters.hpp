@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <array>
 #include <vector>
+#include <unordered_map>
 #include <functional>
+#include <string>
 
 namespace nonlocal {
 
@@ -20,8 +22,8 @@ struct model_parameters final {
 
 template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
 struct equation_parameters final {
-    Physical<T, Args...> physical;
     model_parameters<Dimension, T> model;
+    Physical<T, Args...> physical;
 };
 
 template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
@@ -46,6 +48,14 @@ std::vector<theory_t> theories_types(const std::vector<equation_parameters<Dimen
     std::transform(parameters.cbegin(), parameters.cend(), theories.begin(), 
                    [](const equation_parameters<Dimension, T, Physical, Args...>& parameter)
                    { return theory_type(parameter.model.local_weight); } );
+    return theories;
+}
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::unordered_map<std::string, theory_t> theories_types(const std::unordered_map<std::string, equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::unordered_map<std::string, theory_t> theories;
+    for(const auto& [name, parameter] : parameters)
+        theories[name] = theory_type(parameter.model.local_weight);
     return theories;
 }
 
