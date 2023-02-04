@@ -40,8 +40,8 @@ int main(const int argc, const char *const *const argv) {
         };
         parameters["Material2"] = {
             .model = {
-                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
-                .local_weight = T{0.5}
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{std::stod(argv[2])},
+                .local_weight = p1
             },
             .physical = {
                 .conductivity = {T{10}}
@@ -56,10 +56,33 @@ int main(const int argc, const char *const *const argv) {
                 .conductivity = {T{2}}
             }
         };
+        // parameters["Material4"] = {
+        //     .model = {
+        //         .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+        //         .local_weight = 0.5 * p1
+        //     },
+        //     .physical = {
+        //         .conductivity = {T{5}}
+        //     }
+        // };
+        // parameters["Material5"] = {
+        //     .model = {
+        //         .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+        //         .local_weight = T{1}
+        //     },
+        //     .physical = {
+        //         .conductivity = {T{25}}
+        //     }
+        // };
 
-        if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
-            mesh->find_neighbours(std::max(r[0], r[1]) + 0.008);
-        }
+        mesh->find_neighbours({
+            {"Material2", std::stod(argv[2]) + 0.05}
+            //{"Material4", std::stod(argv[2]) + 0.05}
+        });
+
+        //if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
+        //    mesh->find_neighbours(std::max(r[0], r[1]) + 0.008);
+        //}
 
         nonlocal::boundaries_conditions_2d<T, nonlocal::physics_t::THERMAL, 1> boundary_conditions;
 
@@ -77,13 +100,14 @@ int main(const int argc, const char *const *const argv) {
         );
 
         if (parallel_utils::MPI_rank() == 0) {
-            const auto& [TX, TY] = solution.calc_flux();
+            solution.calc_flux();
+            const auto& [TX, TY] = solution.flux();
             //std::cout << "Energy = " << solution.calc_energy() << std::endl;
             using namespace std::literals;
             solution.save_as_vtk(argv[5] + "/heat.vtk"s);
-            nonlocal::mesh::utils::save_as_csv(argv[5] + "/Tnl.csv"s, mesh->container(), solution.temperature());
-            //nonlocal::mesh::utils::save_as_csv(argv[5] + "/TX.csv"s, mesh->container(), TX);
-            //nonlocal::mesh::utils::save_as_csv(argv[5] + "/TY.csv"s, mesh->container(), TY);
+            nonlocal::mesh::utils::save_as_csv(argv[5] + "/T025.csv"s, mesh->container(), solution.temperature());
+            nonlocal::mesh::utils::save_as_csv(argv[5] + "/TX.csv"s, mesh->container(), TX);
+            nonlocal::mesh::utils::save_as_csv(argv[5] + "/TY.csv"s, mesh->container(), TY);
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;

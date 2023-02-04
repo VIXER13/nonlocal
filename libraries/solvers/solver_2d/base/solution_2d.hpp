@@ -3,26 +3,22 @@
 
 #include "mesh_2d.hpp"
 #include "../solvers_constants.hpp"
+#include "../equation_parameters.hpp"
 
 namespace nonlocal {
 
 template<class T, class I>
 class solution_2d {
-protected:
-    using influence_function_t = std::function<T(const std::array<T, 2>& x, const std::array<T, 2>& y)>;
-
-private:
     const std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
-    const T _local_weight = T{1};
-    const influence_function_t _influence_function = [](const std::array<T, 2>&, const std::array<T, 2>&) constexpr noexcept { return T{0}; };
+    const std::unordered_map<std::string, model_parameters<2, T>> _models;
 
 protected:
     explicit solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     explicit solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                         const T local_weight, const influence_function_t& influence_function);
+                         const std::unordered_map<std::string, model_parameters<2, T>>& models);
 
-    template<class Callback>
-    void calc_nonlocal(const Callback& callback) const;
+    // template<class Callback>
+    // void calc_nonlocal(const Callback& callback) const;
 
     void save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const;
     void save_vectors(std::ofstream& output, const std::array<std::vector<T>, 2>& vec, const std::string_view name) const;
@@ -32,8 +28,7 @@ public:
 
     const mesh::mesh_2d<T, I>& mesh() const;
     const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
-    T local_weight() const noexcept;
-    const influence_function_t& influence_function() const noexcept;
+    const model_parameters<2, T>& model(const std::string& group) const;
 
     virtual void save_as_vtk(std::ofstream& output) const;
 };
@@ -44,10 +39,9 @@ solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
 
 template<class T, class I>
 solution_2d<T, I>::solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                               const T local_weight, const influence_function_t& influence_function)
+                               const std::unordered_map<std::string, model_parameters<2, T>>& models)
     : _mesh{mesh}
-    , _local_weight{local_weight}
-    , _influence_function{influence_function} {}
+    , _models{models} {}
 
 template<class T, class I>
 const mesh::mesh_2d<T, I>& solution_2d<T, I>::mesh() const {
@@ -60,18 +54,13 @@ const std::shared_ptr<mesh::mesh_2d<T, I>>& solution_2d<T, I>::mesh_ptr() const 
 }
 
 template<class T, class I>
-T solution_2d<T, I>::local_weight() const noexcept {
-    return _local_weight;
+const model_parameters<2, T>& solution_2d<T, I>::model(const std::string& group) const {
+    return _models.at(group);
 }
 
-template<class T, class I>
-const typename solution_2d<T, I>::influence_function_t& solution_2d<T, I>::influence_function() const noexcept {
-    return _influence_function;
-}
-
-template<class T, class I>
-template<class Callback>
-void solution_2d<T, I>::calc_nonlocal(const Callback& callback) const {
+// template<class T, class I>
+// template<class Callback>
+// void solution_2d<T, I>::calc_nonlocal(const Callback& callback) const {
 //     const auto process_nodes = mesh().process_nodes();
 //     std::vector<bool> neighbors(mesh().container().elements_count(), true);
 // #pragma omp parallel for default(none) shared(process_nodes) firstprivate(neighbors, callback)
@@ -84,7 +73,7 @@ void solution_2d<T, I>::calc_nonlocal(const Callback& callback) const {
 //                     neighbors[eNL] = false;
 //                 }
 //     }
-}
+// }
 
 template<class T, class I>
 void solution_2d<T, I>::save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const {

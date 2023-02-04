@@ -34,6 +34,32 @@ std::vector<model_parameters<Dimension, T>> get_models(const std::vector<equatio
     return models;
 }
 
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::unordered_map<std::string, model_parameters<Dimension, T>> get_models(
+    const std::unordered_map<std::string, equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::unordered_map<std::string, model_parameters<Dimension, T>> models;
+    for(const auto& [name, parameter] : parameters)
+        models[name] = parameter.model;
+    return models;
+}
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::vector<Physical<T, Args...>> get_physical_parameters(const std::vector<equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::vector<Physical<T, Args...>> physical_parameters(parameters.size());
+    std::transform(parameters.cbegin(), parameters.cend(), physical_parameters.begin(),
+                  [](const equation_parameters<Dimension, T, Physical, Args...>& parameter) { return parameter.physical; });
+    return physical_parameters;
+}
+
+template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
+std::unordered_map<std::string, Physical<T, Args...>> get_physical_parameters(
+    const std::unordered_map<std::string, equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
+    std::unordered_map<std::string, Physical<T, Args...>> physical_parameters;
+    for(const auto& [name, parameter] : parameters)
+        physical_parameters[name] = parameter.physical;
+    return physical_parameters;
+}
+
 template<size_t Dimension, class T>
 std::vector<theory_t> theories_types(const std::vector<model_parameters<Dimension, T>>& models) {
     std::vector<theory_t> theories(models.size());
