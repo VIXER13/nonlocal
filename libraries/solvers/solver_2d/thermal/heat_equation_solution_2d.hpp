@@ -16,6 +16,13 @@ class heat_equation_solution_2d : public solution_2d<T, I> {
     std::array<std::vector<T>, 2> _flux;
     std::unordered_map<std::string, parameter_2d<T>> _parameters;
 
+    void add_flux(const material_t material, const metamath::types::square_matrix<T, 2>& factor, 
+                  const std::array<T, 2>& gradient, const size_t qshift);
+    template<class Influence>
+    std::array<T, 2> calc_nonlocal_gradient(const size_t eL,
+                                            const std::array<std::vector<T>, 2>& gradient,
+                                            const Influence& influence);
+
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     template<class Vector>
@@ -77,6 +84,49 @@ bool heat_equation_solution_2d<T, I>::is_flux_calculated() const noexcept {
 }
 
 template<class T, class I>
+void heat_equation_solution_2d<T, I>::add_flux(const material_t material, const metamath::types::square_matrix<T, 2>& factor,
+                                               const std::array<T, 2>& gradient, const size_t qshift) {
+    switch(material) {
+        case material_t::ISOTROPIC:
+            _flux[X][qshift] += factor[X][X] * gradient[X];
+            _flux[Y][qshift] += factor[X][X] * gradient[Y];
+        break;
+
+        case material_t::ORTHOTROPIC:
+            _flux[X][qshift] += factor[X][X] * gradient[X];
+            _flux[Y][qshift] += factor[Y][Y] * gradient[Y];
+        break;
+
+        case material_t::ANISOTROPIC:
+            _flux[X][qshift] += factor[X][X] * gradient[X] + factor[X][Y] * gradient[Y];
+            _flux[Y][qshift] += factor[Y][X] * gradient[X] + factor[Y][Y] * gradient[Y];
+        break;
+    
+        default:
+            throw std::domain_error{"Unknown material type."};
+    }
+}
+
+template<class T, class I>
+template<class Influence>
+std::array<T, 2> heat_equation_solution_2d<T, I>::calc_nonlocal_gradient(const size_t eL,
+                                                                         const std::array<std::vector<T>, 2>& gradient,
+                                                                         const Influence& influence) {
+    std::array<T, 2> nonlocal_gradient = {};
+    for(const size_t eNL : _base::mesh().neighbours(eL)) {
+        const auto& elNL = _base::mesh().container().element_2d(eNL);
+        const size_t qshiftNL = _base::mesh().quad_shift(eNL);
+        for(const size_t qNL : elNL.qnodes()) {
+            const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshiftNL + qNL)) *
+                                       influence(_base::mesh().quad_coord(qshiftNL + qNL));
+            nonlocal_gradient[X] += influence_weight * gradient[X][qshiftNL + qNL];
+            nonlocal_gradient[Y] += influence_weight * gradient[Y][qshiftNL + qNL];
+        }
+    }
+    return nonlocal_gradient;
+}
+
+template<class T, class I>
 void heat_equation_solution_2d<T, I>::calc_flux() {
     const auto gradient = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
     _flux[X].resize(gradient[X].size(), T{0});
@@ -84,21 +134,6 @@ void heat_equation_solution_2d<T, I>::calc_flux() {
     for(const auto& [group, parameter] : _parameters) {
         using namespace metamath::functions;
         const model_parameters<2, T>& model = _base::model(group);
-        if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
-            for(const size_t eL : _base::mesh().container().elements(group)) {
-                for(const size_t eNL : _base::mesh().neighbours(eL))
-                    for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
-                        const size_t qshiftNL = _base::mesh().quad_shift(eNL);
-                        const auto& elNL = _base::mesh().container().element_2d(eNL);
-                        for(const size_t qNL : elNL.qnodes()) {
-                            const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshiftNL + qNL)) *
-                                                       model.influence(_base::mesh().quad_coord(qshiftL), _base::mesh().quad_coord(qshiftNL + qNL));
-                            _flux[X][qshiftL] += influence_weight * gradient[X][qshiftNL + qNL];
-                            _flux[Y][qshiftL] += influence_weight * gradient[Y][qshiftNL + qNL];
-                        }
-                    }
-            }
-        }
         const metamath::types::square_matrix<T, 2> local_factor = {
             -model.local_weight * parameter.conductivity[X],
             -model.local_weight * parameter.conductivity[Y],
@@ -107,29 +142,17 @@ void heat_equation_solution_2d<T, I>::calc_flux() {
             -nonlocal_weight(model.local_weight) * parameter.conductivity[X],
             -nonlocal_weight(model.local_weight) * parameter.conductivity[Y],
         };
-        for(const size_t eL : _base::mesh().container().elements(group))
-            for(const size_t qshift : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)})
-                switch(parameter.material) {
-                case material_t::ISOTROPIC:
-                    _flux[X][qshift] = local_factor[X][X] * gradient[X][qshift] + nonlocal_factor[X][X] * _flux[X][qshift];
-                    _flux[Y][qshift] = local_factor[X][X] * gradient[Y][qshift] + nonlocal_factor[X][X] * _flux[Y][qshift];
-                break;
-
-                case material_t::ORTHOTROPIC:
-                    _flux[X][qshift] = local_factor[X][X] * gradient[X][qshift] + nonlocal_factor[X][X] * _flux[X][qshift];
-                    _flux[Y][qshift] = local_factor[Y][Y] * gradient[Y][qshift] + nonlocal_factor[Y][Y] * _flux[Y][qshift];
-                break;
-
-                case material_t::ANISOTROPIC:
-                _flux[X][qshift] = local_factor[X][X] * gradient[X][qshift] + nonlocal_factor[X][X] * _flux[X][qshift] +
-                                   local_factor[X][Y] * gradient[Y][qshift] + nonlocal_factor[X][Y] * _flux[Y][qshift];
-                _flux[Y][qshift] = local_factor[Y][X] * gradient[X][qshift] + nonlocal_factor[Y][X] * _flux[X][qshift] +
-                                   local_factor[Y][Y] * gradient[Y][qshift] + nonlocal_factor[Y][Y] * _flux[Y][qshift];
-                break;
-            
-                default:
-                    throw std::domain_error{"Unknown material type."};
+        const auto elements = _base::mesh().container().elements(group);
+#pragma omp parallel for default(none) shared(gradient, model, parameter, local_factor, nonlocal_factor, elements) schedule(dynamic)
+        for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
+            for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
+                if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
+                    const auto influence = [&influence = model.influence, &coordL = _base::mesh().quad_coord(qshiftL)]
+                                           (const std::array<T, 2>& coordNL) { return influence(coordL, coordNL); };
+                    add_flux(parameter.material, nonlocal_factor, calc_nonlocal_gradient(eL, gradient, influence), qshiftL);
                 }
+                add_flux(parameter.material, local_factor, {gradient[X][qshiftL], gradient[Y][qshiftL]}, qshiftL);
+            }
     }
     _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[X]);
     _flux[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[Y]);
