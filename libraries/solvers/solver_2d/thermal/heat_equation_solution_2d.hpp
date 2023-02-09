@@ -11,31 +11,32 @@ namespace nonlocal::thermal {
 template<class T, class I>
 class heat_equation_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
-    using typename solution_2d<T, I>::influence_function_t;
 
     std::vector<T> _temperature;
     std::array<std::vector<T>, 2> _flux;
-    parameter_2d<T> _parameters;
+    std::unordered_map<std::string, parameter_2d<T>> _parameters;
 
-    void flux_from_gradient(std::array<std::vector<T>, 2>& gradient, const parameter_2d<T>& parameters, const T model_weight) const;
-    void calc_local_flux(const std::array<std::vector<T>, 2>& gradient);
-    void calc_nonlocal_flux(const std::array<std::vector<T>, 2>& gradient);
+    void add_flux(const material_t material, const metamath::types::square_matrix<T, 2>& factor, 
+                  const std::array<T, 2>& gradient, const size_t qshift);
+    template<class Influence>
+    std::array<T, 2> calc_nonlocal_gradient(const size_t eL,
+                                            const std::array<std::vector<T>, 2>& gradient,
+                                            const Influence& influence);
 
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     template<class Vector>
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                       const T local_weight, const influence_function_t& influence_function,
-                                       const parameter_2d<T>& parameters, const Vector& temperature);
+                                       const parameters_2d<T>& parameters, const Vector& temperature);
     ~heat_equation_solution_2d() noexcept override = default;
 
     const std::vector<T>& temperature() const noexcept;
     const std::array<std::vector<T>, 2>& flux() const;
-    const parameter_2d<T>& parameters() const;
+    const parameter_2d<T>& parameter(const std::string& group) const;
 
     T calc_energy() const;
     bool is_flux_calculated() const noexcept;
-    const std::array<std::vector<T>, 2>& calc_flux();
+    void calc_flux();
 
     void save_as_vtk(std::ofstream& output) const override;
     void save_as_vtk(const std::filesystem::path& path) const;
@@ -49,11 +50,10 @@ heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr
 template<class T, class I>
 template<class Vector>
 heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                           const T local_weight, const influence_function_t& influence_function,
-                                                           const parameter_2d<T>& parameters, const Vector& temperature)
-    : _base{mesh, local_weight, influence_function}
+                                                           const parameters_2d<T>& parameters, const Vector& temperature)
+    : _base{mesh, get_models(parameters)}
     , _temperature{temperature.cbegin(), std::next(temperature.cbegin(), mesh->container().nodes_count())}
-    , _parameters{parameters} {}
+    , _parameters{get_physical_parameters(parameters)} {}
 
 template<class T, class I>
 const std::vector<T>& heat_equation_solution_2d<T, I>::temperature() const noexcept {
@@ -62,12 +62,14 @@ const std::vector<T>& heat_equation_solution_2d<T, I>::temperature() const noexc
 
 template<class T, class I>
 const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::flux() const {
+    if (!is_flux_calculated())
+        throw std::runtime_error{"Flux wasn't calculated"};
     return _flux;
 }
 
 template<class T, class I>
-const parameter_2d<T>& heat_equation_solution_2d<T, I>::parameters() const {
-    return _parameters;
+const parameter_2d<T>& heat_equation_solution_2d<T, I>::parameter(const std::string& group) const {
+    return _parameters.at(group);
 }
 
 template<class T, class I>
@@ -82,27 +84,22 @@ bool heat_equation_solution_2d<T, I>::is_flux_calculated() const noexcept {
 }
 
 template<class T, class I>
-void heat_equation_solution_2d<T, I>::flux_from_gradient(std::array<std::vector<T>, 2>& gradient, const parameter_2d<T>& parameters, const T model_weight) const {
-    using namespace metamath::functions;
-    const metamath::types::square_matrix<T, 2> factor = { 
-        -model_weight * parameters.conductivity[X], 
-        -model_weight * parameters.conductivity[Y]
-    };
-    switch (parameters.material) {
+void heat_equation_solution_2d<T, I>::add_flux(const material_t material, const metamath::types::square_matrix<T, 2>& factor,
+                                               const std::array<T, 2>& gradient, const size_t qshift) {
+    switch(material) {
         case material_t::ISOTROPIC:
-            gradient[X] *= factor[X][X];
-            gradient[Y] *= factor[X][X];
+            _flux[X][qshift] += factor[X][X] * gradient[X];
+            _flux[Y][qshift] += factor[X][X] * gradient[Y];
         break;
 
         case material_t::ORTHOTROPIC:
-            gradient[X] *= factor[X][X];
-            gradient[Y] *= factor[Y][Y];
+            _flux[X][qshift] += factor[X][X] * gradient[X];
+            _flux[Y][qshift] += factor[Y][Y] * gradient[Y];
         break;
 
         case material_t::ANISOTROPIC:
-            for(const size_t i : _base::mesh().container().nodes())
-                for(const size_t comp : std::ranges::iota_view{0u, 2u})
-                    gradient[comp] = factor[comp][X] * gradient[X] + factor[comp][Y] * gradient[Y];
+            _flux[X][qshift] += factor[X][X] * gradient[X] + factor[X][Y] * gradient[Y];
+            _flux[Y][qshift] += factor[Y][X] * gradient[X] + factor[Y][Y] * gradient[Y];
         break;
     
         default:
@@ -111,53 +108,54 @@ void heat_equation_solution_2d<T, I>::flux_from_gradient(std::array<std::vector<
 }
 
 template<class T, class I>
-void heat_equation_solution_2d<T, I>::calc_local_flux(const std::array<std::vector<T>, 2>& gradient) {
-    _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), gradient[X]);
-    _flux[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), gradient[Y]);
-    flux_from_gradient(_flux, parameters(), _base::local_weight());
-}
-
-template<class T, class I>
-void heat_equation_solution_2d<T, I>::calc_nonlocal_flux(const std::array<std::vector<T>, 2>& gradient) {
-    std::array<std::vector<T>, 2> nonlocal_gradient = {
-        std::vector<T>(gradient[X].size(), T{0}),
-        std::vector<T>(gradient[Y].size(), T{0})
-    };
-
-    for(const size_t eL : _base::mesh().container().elements_2d()) {
-        const auto& elL = _base::mesh().container().element_2d(eL);
-        const size_t qshiftL = _base::mesh().quad_shift(eL);
-        for(const size_t eNL : _base::mesh().neighbours(eL)) {
-            const auto& elNL = _base::mesh().container().element_2d(eNL);
-            const size_t qshiftNL = _base::mesh().quad_shift(eNL);
-            for(const size_t qL : std::ranges::iota_view{0u, elL.qnodes_count()})
-                for(const size_t qNL : std::ranges::iota_view{0u, elNL.qnodes_count()}) {
-                    const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshiftNL + qNL)) *
-                                               _base::influence_function()(_base::mesh().quad_coord(qshiftL  + qL ), 
-                                                                           _base::mesh().quad_coord(qshiftNL + qNL));
-                    nonlocal_gradient[X][qshiftL + qL] += influence_weight * gradient[X][qshiftNL + qNL];
-                    nonlocal_gradient[Y][qshiftL + qL] += influence_weight * gradient[Y][qshiftNL + qNL];
-                }
+template<class Influence>
+std::array<T, 2> heat_equation_solution_2d<T, I>::calc_nonlocal_gradient(const size_t eL,
+                                                                         const std::array<std::vector<T>, 2>& gradient,
+                                                                         const Influence& influence) {
+    std::array<T, 2> nonlocal_gradient = {};
+    for(const size_t eNL : _base::mesh().neighbours(eL)) {
+        const auto& elNL = _base::mesh().container().element_2d(eNL);
+        const size_t qshiftNL = _base::mesh().quad_shift(eNL);
+        for(const size_t qNL : elNL.qnodes()) {
+            const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshiftNL + qNL)) *
+                                       influence(_base::mesh().quad_coord(qshiftNL + qNL));
+            nonlocal_gradient[X] += influence_weight * gradient[X][qshiftNL + qNL];
+            nonlocal_gradient[Y] += influence_weight * gradient[Y][qshiftNL + qNL];
         }
     }
-
-    nonlocal_gradient[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), nonlocal_gradient[X]);
-    nonlocal_gradient[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), nonlocal_gradient[Y]);
-    flux_from_gradient(nonlocal_gradient, parameters(), nonlocal_weight(_base::local_weight()));
-    using namespace metamath::functions;
-    _flux[X] += nonlocal_gradient[X];
-    _flux[Y] += nonlocal_gradient[Y];
+    return nonlocal_gradient;
 }
 
 template<class T, class I>
-const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux() {
-    if (!is_flux_calculated()) {
-        const auto gradient = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
-        calc_local_flux(gradient);
-        if (theory_type(_base::local_weight()) == theory_t::NONLOCAL)
-            calc_nonlocal_flux(gradient);
+void heat_equation_solution_2d<T, I>::calc_flux() {
+    const auto gradient = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
+    _flux[X].resize(gradient[X].size(), T{0});
+    _flux[Y].resize(gradient[Y].size(), T{0});
+    for(const auto& [group, parameter] : _parameters) {
+        using namespace metamath::functions;
+        const model_parameters<2, T>& model = _base::model(group);
+        const metamath::types::square_matrix<T, 2> local_factor = {
+            -model.local_weight * parameter.conductivity[X],
+            -model.local_weight * parameter.conductivity[Y],
+        };
+        const metamath::types::square_matrix<T, 2> nonlocal_factor = {
+            -nonlocal_weight(model.local_weight) * parameter.conductivity[X],
+            -nonlocal_weight(model.local_weight) * parameter.conductivity[Y],
+        };
+        const auto elements = _base::mesh().container().elements(group);
+#pragma omp parallel for default(none) shared(gradient, model, parameter, local_factor, nonlocal_factor, elements) schedule(dynamic)
+        for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
+            for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
+                if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
+                    const auto influence = [&influence = model.influence, &coordL = _base::mesh().quad_coord(qshiftL)]
+                                           (const std::array<T, 2>& coordNL) { return influence(coordL, coordNL); };
+                    add_flux(parameter.material, nonlocal_factor, calc_nonlocal_gradient(eL, gradient, influence), qshiftL);
+                }
+                add_flux(parameter.material, local_factor, {gradient[X][qshiftL], gradient[Y][qshiftL]}, qshiftL);
+            }
     }
-    return _flux;
+    _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[X]);
+    _flux[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[Y]);
 }
 
 template<class T, class I>

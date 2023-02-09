@@ -16,13 +16,11 @@
 
 namespace nonlocal::thermal {
 
-template<class Matrix_Index, class T, class I, class Right_Part, class Influence_Function>
+template<class Matrix_Index, class T, class I, class Right_Part>
 heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                                   const parameter_2d<T>& parameters,
+                                                                   const parameters_2d<T>& parameters,
                                                                    const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                    const Right_Part& right_part,
-                                                                   const T p1,
-                                                                   const Influence_Function& influence_function, 
                                                                    const T energy = T{0}) {
     static constexpr size_t DoF = 1;
     static constexpr auto is_second_kind = [](const auto& condition) {
@@ -40,12 +38,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
 
     auto start_time = std::chrono::high_resolution_clock::now();
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
-    conductivity.template compute(
-        parameters.conductivity, parameters.material, 
-        utils::inner_nodes(mesh->container(), boundaries_conditions), 
-        p1, influence_function, 
-        is_neumann
-    );
+    conductivity.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_neumann);
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "Conductivity matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
     convection_condition_2d(conductivity.matrix_inner(), *mesh, boundaries_conditions);
@@ -60,7 +53,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
     std::cout << "Iterations: " << solver.iterations() << std::endl;
-    return heat_equation_solution_2d<T, I>{mesh, p1, influence_function, parameters, temperature};
+    return heat_equation_solution_2d<T, I>{mesh, parameters, temperature};
 }
 
 }

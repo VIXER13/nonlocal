@@ -165,6 +165,7 @@ const std::string& mesh_container_2d<T, I>::group(const size_t element) const {
     for(const auto& [name, range] : _elements_groups)
         if (element >= range.front() && element <= range.back())
             return name;
+    throw std::domain_error{"The group could not be determined. Unknown element number."};
 }
 
 template<class T, class I>

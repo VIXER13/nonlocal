@@ -64,11 +64,13 @@ public:
 
     const std::vector<I>& neighbours(const size_t e) const;
 
-    void find_neighbours(const T r, const balancing_t balancing = balancing_t::MEMORY, const bool add_diam = true);
-
     T area(const size_t e) const;
     T area(const std::string& element_group) const;
     T area() const;
+
+    void find_neighbours(const std::unordered_map<std::string, T>& radii);
+
+    //void find_neighbours(const T r, const balancing_t balancing = balancing_t::MEMORY, const bool add_diam = true);
 
     void clear();
 };
@@ -172,11 +174,6 @@ const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
 }
 
 template<class T, class I>
-void mesh_2d<T, I>::find_neighbours(const T r, const balancing_t balancing, const bool add_diam) {
-    _elements_neighbors = utils::find_neighbours(r, utils::approx_centers_of_elements(container()), process_elements());
-}
-
-template<class T, class I>
 T mesh_2d<T, I>::area(const size_t e) const {
     T area = T{0};
     const auto& el = container().element_2d(e);
@@ -208,6 +205,27 @@ template<class T, class I>
 T mesh_2d<T, I>::area() const {
     return area(container().elements_2d());
 }
+
+template<class T, class I>
+void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& radii) {
+    _elements_neighbors.resize(container().elements_2d_count());
+    const std::vector<std::array<T, 2>> centers = utils::approx_centers_of_elements(container());
+    for(const auto& [group, radius] : radii) {
+        const auto elements_range = container().elements(group);
+        for(const size_t eL : elements_range) {
+            _elements_neighbors[eL].reserve(elements_range.size());
+            for(const size_t eNL : elements_range)
+                if (metamath::functions::distance(centers[eL], centers[eNL]) <= radius)
+                    _elements_neighbors[eL].push_back(eNL);
+            _elements_neighbors[eL].shrink_to_fit();
+        }
+    }
+}
+
+// template<class T, class I>
+// void mesh_2d<T, I>::find_neighbours(const T r, const balancing_t balancing, const bool add_diam) {
+//     _elements_neighbors = utils::find_neighbours(r, utils::approx_centers_of_elements(container()), process_elements());
+// }
 
 template<class T, class I>
 void mesh_2d<T, I>::clear() {
