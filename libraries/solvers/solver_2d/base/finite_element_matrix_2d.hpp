@@ -116,7 +116,7 @@ template<class Initializer>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unordered_map<std::string, theory_t>& theories,
                                                                  Initializer&& initializer) {
     const auto process_nodes = mesh().process_nodes();
-#pragma omp parallel for default(none) shared(theories, process_nodes) firstprivate(initializer)
+#pragma omp parallel for default(none) shared(theories, process_nodes) firstprivate(initializer) schedule(dynamic)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
         if constexpr (std::is_base_of_v<indexator_base<DoF>, Initializer>)
             initializer.reset(node);
