@@ -33,11 +33,10 @@ public:
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature() const noexcept;
     constexpr T time_step() const noexcept;
 
-    template<class Init_Dist, class Influence_Function>
-    void compute(const parameter_2d<T>& parameters,
+    template<class Init_Dist>
+    void compute(const parameters_2d<T>& parameters,
                  const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                 const Init_Dist& init_dist,
-                 const T p1, const Influence_Function& influence_function);
+                 const Init_Dist& init_dist);
 
     template<class Right_Part>
     void calc_step(const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
@@ -64,22 +63,21 @@ constexpr T nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::time_step
 }
 
 template<class T, class I, class Matrix_Index>
-template<class Init_Dist, class Influence_Function>
-void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const parameter_2d<T>& parameters,
+template<class Init_Dist>
+void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const parameters_2d<T>& parameters,
                                                                         const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                                                                        const Init_Dist& init_dist,
-                                                                        const T p1, const Influence_Function& influence_function) {
+                                                                        const Init_Dist& init_dist) {
     const std::vector<bool> is_inner = utils::inner_nodes(_conductivity.mesh().container(), boundaries_conditions);
-    _conductivity.template compute(parameters.conductivity, parameters.material, is_inner, p1, influence_function);
+    _conductivity.compute(parameters, is_inner);
     convection_condition_2d(_conductivity.matrix_inner(), _conductivity.mesh(), boundaries_conditions);
-    _capacity.calc_matrix(parameters.capacity, parameters.density, is_inner);
+    _capacity.calc_matrix(parameters, is_inner);
 
     _conductivity.matrix_inner() *= time_step();
     _conductivity.matrix_bound() *= time_step();
     _conductivity.matrix_inner() += _capacity.matrix_inner();
-    for(const size_t node : std::ranges::iota_view{0u, is_inner.size()})
-        if(!is_inner[node])
-            _conductivity.matrix_inner().coeffRef(node, node) = T{1};
+    first_kind_filler(_conductivity.mesh().process_nodes(), is_inner, [&matrix = _conductivity.matrix_inner()](const size_t row) {
+        matrix.valuePtr()[matrix.outerIndexPtr()[row]] = T{1};
+    });
     _conductivity_initial_matrix_inner = _conductivity.matrix_inner();
 
     for(const size_t node : _conductivity.mesh().container().nodes())

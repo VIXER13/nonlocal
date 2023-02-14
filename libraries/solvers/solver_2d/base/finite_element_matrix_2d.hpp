@@ -13,6 +13,14 @@
 
 namespace nonlocal {
 
+template<class Callback>
+void first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows, 
+                       const std::vector<bool>& is_inner, const Callback& callback) {
+    for(const size_t row : rows)
+        if (!is_inner[row])
+            callback(row);
+}
+
 template<size_t DoF, class T, class I, class Matrix_Index>
 class finite_element_matrix_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
@@ -21,10 +29,6 @@ class finite_element_matrix_2d {
     matrix_parts_t<T, Matrix_Index> _matrix;
 
 protected:
-    template<class Callback>
-    static void first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows, 
-                                  const std::vector<bool>& is_inner, const Callback& callback);
-
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
     template<class Initializer>
@@ -50,16 +54,6 @@ public:
 
     void clear();
 };
-
-template<size_t DoF, class T, class I, class Matrix_Index>
-template<class Callback>
-void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows,
-                                                                          const std::vector<bool>& is_inner,
-                                                                          const Callback& callback) {
-    for(const size_t row : rows)
-        if (!is_inner[row])
-            callback(row);
-}
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 finite_element_matrix_2d<DoF, T, I, Matrix_Index>::finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
@@ -177,7 +171,7 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_coeffs(
     mesh_run(theories, integrator<DoF, T, Matrix_Index, Integrate_Loc, Integrate_Nonloc>{
         _matrix, mesh().container(), is_inner, process_nodes.front(), integrate_loc, integrate_nonloc});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
-        matrix_inner().valuePtr()[matrix_inner().outerIndexPtr()[row]] = T{1}; 
+        matrix_inner().valuePtr()[matrix_inner().outerIndexPtr()[row]] = T{1};
     });
 }
 

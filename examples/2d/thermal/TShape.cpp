@@ -40,7 +40,7 @@ int main(const int argc, const char *const *const argv) {
         };
         parameters["Material2"] = {
             .model = {
-                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{std::stod(argv[2])},
+                .influence = nonlocal::influence::normal_distribution_2d<T>{std::stod(argv[2])},
                 .local_weight = p1
             },
             .physical = {
@@ -56,38 +56,13 @@ int main(const int argc, const char *const *const argv) {
                 .conductivity = {T{2}}
             }
         };
-        // parameters["Material4"] = {
-        //     .model = {
-        //         .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
-        //         .local_weight = 0.5 * p1
-        //     },
-        //     .physical = {
-        //         .conductivity = {T{5}}
-        //     }
-        // };
-        // parameters["Material5"] = {
-        //     .model = {
-        //         .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
-        //         .local_weight = T{1}
-        //     },
-        //     .physical = {
-        //         .conductivity = {T{25}}
-        //     }
-        // };
 
         mesh->find_neighbours({
-            {"Material2", std::stod(argv[2]) + 0.05}
+            {"Material2", 3 * std::stod(argv[2])}
             //{"Material4", std::stod(argv[2]) + 0.05}
         });
 
-        //if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
-        //    mesh->find_neighbours(std::max(r[0], r[1]) + 0.008);
-        //}
-
         nonlocal::boundaries_conditions_2d<T, nonlocal::physics_t::THERMAL, 1> boundary_conditions;
-
-        //boundary_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(500.);
-        //boundary_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(-1000.);
         boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
         boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
         
@@ -105,7 +80,7 @@ int main(const int argc, const char *const *const argv) {
             //std::cout << "Energy = " << solution.calc_energy() << std::endl;
             using namespace std::literals;
             solution.save_as_vtk(argv[5] + "/heat.vtk"s);
-            nonlocal::mesh::utils::save_as_csv(argv[5] + "/T025.csv"s, mesh->container(), solution.temperature());
+            nonlocal::mesh::utils::save_as_csv(argv[5] + "/T.csv"s, mesh->container(), solution.temperature());
             nonlocal::mesh::utils::save_as_csv(argv[5] + "/TX.csv"s, mesh->container(), TX);
             nonlocal::mesh::utils::save_as_csv(argv[5] + "/TY.csv"s, mesh->container(), TY);
         }

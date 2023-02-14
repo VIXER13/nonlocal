@@ -107,13 +107,18 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(const par
 template<class T, class I, class Matrix_Index>
 void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                                                                 const std::vector<bool>& is_inner, const bool is_neumann) {
+    const size_t rows = _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::MPI_rank() == parallel_utils::MPI_size() - 1);
+    const size_t cols = _base::mesh().container().nodes_count() + is_neumann;
+    _base::matrix_inner().resize(rows, cols);
+    _base::matrix_bound().resize(rows, cols);
     if (is_neumann)
-        for(const size_t row : std::views::iota(0u, size_t(_base::matrix_inner().rows())))
+        for(const size_t row : std::views::iota(0u, rows))
             _base::matrix_inner().outerIndexPtr()[row + 1] = 1;
     _base::init_shifts(theories, is_inner);
-    _base::init_indices(theories, is_inner, false);
+    static constexpr bool sort_indices = false;
+    _base::init_indices(theories, is_inner, sort_indices);
     if (is_neumann)
-        for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix_inner().rows())})
+        for(const size_t row : std::ranges::iota_view{0u, rows})
             _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().container().nodes_count();
     utils::sort_indices(_base::matrix_inner());
     utils::sort_indices(_base::matrix_bound());
@@ -134,16 +139,11 @@ template<class T, class I, class Matrix_Index>
 void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameters_2d<T>& parameters,
                                                                  const std::vector<bool>& is_inner,
                                                                  const bool is_neumann) {
-    const size_t rows = _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::MPI_rank() == parallel_utils::MPI_size() - 1);
-    const size_t cols = _base::mesh().container().nodes_count() + is_neumann;
-    _base::matrix_inner().resize(rows, cols);
-    _base::matrix_bound().resize(rows, cols);
     const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
     create_matrix_portrait(theories, is_inner, is_neumann);
     _base::calc_coeffs(theories, is_inner,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& parameter = parameters.at(group);
-            //std::cout << "e = " << e << " cond = " << parameter.physical.conductivity[X][X] << std::endl;
             return parameter.model.local_weight * integrate_loc(parameter.physical, e, i, j);
         },
         [this, &parameters](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {

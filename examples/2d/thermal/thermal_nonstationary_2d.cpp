@@ -42,47 +42,60 @@ int main(int argc, char** argv) {
         const T p1 = std::stod(argv[4]);
 
         static constexpr T tau = 0.001;
-        nonlocal::thermal::parameter_2d<T> parameters = {
-            .conductivity = {T{1}, T{0},
-                             T{0}, T{1}},
-            .capacity = T{1},
-            .density = T{1},
-            .material = nonlocal::material_t::ISOTROPIC
+        nonlocal::thermal::parameters_2d<T> parameters;
+        parameters["Material1"] = {
+            .model = {
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+                .local_weight = T{1}
+            },
+            .physical = {
+                .conductivity = {T{1}}
+            }
+        };
+        parameters["Material2"] = {
+            .model = {
+                .influence = nonlocal::influence::normal_distribution_2d<T>{std::stod(argv[2])},
+                .local_weight = p1
+            },
+            .physical = {
+                .conductivity = {T{10}}
+            }
+        };
+        parameters["Material3"] = {
+            .model = {
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+                .local_weight = T{1}
+            },
+            .physical = {
+                .conductivity = {T{2}}
+            }
         };
 
-        if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL) {
-            mesh->find_neighbours(std::max(r[0], r[1]));
-        }
+        mesh->find_neighbours({
+            {"Material2", 3 * std::stod(argv[2])}
+        });
 
         nonlocal::thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
-        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
-        );
-        boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
-        );
-        boundaries_conditions["Up"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
-        );
-        boundaries_conditions["Down"] = std::make_unique<nonlocal::thermal::temperature_2d<T>>(
-            [](const std::array<T, 2>& x) constexpr noexcept { return x[0] * x[0] + x[1] * x[1]; }
-        );
+        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
+        boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
 
         static constexpr auto init_dist = [](const std::array<T, 2>& x) constexpr noexcept {
             return T{0};
         };
 
         static constexpr auto right_part = [](const std::array<T, 2>& x) constexpr noexcept {
-            return T{-4};
+            return T{0};
         };
         
         nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, tau};
-        solver.compute(parameters, boundaries_conditions, init_dist, p1, influence_function);
-        for(const size_t step : std::ranges::iota_view{0u, 101u}) {
+        solver.compute(parameters, boundaries_conditions, init_dist);
+        for(const size_t step : std::ranges::iota_view{0u, 100001u}) {
             solver.calc_step(boundaries_conditions, right_part);
-            auto solution = nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, p1, influence_function, parameters, solver.temperature()};
-            solution.calc_flux();
-            save_solution(solution, "./sol", step);
+            if (step % 5 == 0) {
+                auto solution = nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()};
+                solution.calc_flux();
+                save_solution(solution, "./sol", step);
+            }
         }
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
