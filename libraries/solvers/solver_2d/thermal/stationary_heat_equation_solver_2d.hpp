@@ -49,7 +49,6 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     start_time = std::chrono::high_resolution_clock::now();
     const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
     const auto temperature = solver.solve(f);
-
     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
     std::cout << "Iterations: " << solver.iterations() << std::endl;

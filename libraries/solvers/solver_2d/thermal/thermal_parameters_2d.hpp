@@ -19,7 +19,7 @@ struct parameter_2d final {
 };
 
 template<class T>
-using parameters_2d = std::unordered_map<std::string, equation_parameters<2, T, thermal::parameter_2d>>;
+using parameters_2d = std::unordered_map<std::string, equation_parameters<2, T, parameter_2d>>;
 
 };
 

@@ -34,6 +34,7 @@ class boundary_conditions_2d final : public std::array<std::unique_ptr<boundary_
 
 public:
     using _base::array;
+    using _base::operator=;
 };
 
 template<class T, physics_t Physics>
