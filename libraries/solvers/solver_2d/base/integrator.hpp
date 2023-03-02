@@ -8,6 +8,7 @@ namespace nonlocal {
 template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
 class integrator final : public matrix_separator_base<T, I>  {
     using _base = matrix_separator_base<T, I>;
+    using block_t = metamath::types::square_matrix<T, DoF>;
 
     const mesh::mesh_container_2d<T, I>& _mesh;
     const Integrate_Loc& _integrate_loc;
@@ -38,7 +39,7 @@ void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
     const std::string& group, const size_t e, const size_t i, const size_t j) {
     const size_t row_glob = DoF * _mesh.node_number(e, i);
     const size_t col_glob = DoF * _mesh.node_number(e, j);
-    std::optional<metamath::types::square_matrix<T, DoF>> block = std::nullopt;
+    std::optional<block_t> block = std::nullopt;
     for(const size_t row_loc : std::ranges::iota_view{0u, DoF})
         for(const size_t col_loc : std::ranges::iota_view{0u, DoF}) {
             const size_t row = row_glob + row_loc;
@@ -56,7 +57,7 @@ void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
     const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
     const size_t row_glob = DoF * _mesh.node_number(eL,  iL);
     const size_t col_glob = DoF * _mesh.node_number(eNL, jNL);
-    std::optional<metamath::types::square_matrix<T, DoF>> block = std::nullopt;
+    std::optional<block_t> block = std::nullopt;
     for(const size_t row_loc : std::ranges::iota_view{0u, DoF})
         for(const size_t col_loc : std::ranges::iota_view{0u, DoF}) {
             const size_t row = row_glob + row_loc;
@@ -65,10 +66,8 @@ void integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::operator()(
                 if (!block) {
                     block = {_integrate_nonloc(group, eL, eNL, iL, jNL)};
                     if (eL == eNL) {
-                        const metamath::types::square_matrix<T, DoF> block_loc = {_integrate_loc(group, eL, iL, jNL)};
-                        for(const size_t n : std::ranges::iota_view{0u, DoF})
-                            for(const size_t m : std::ranges::iota_view{0u, DoF})
-                                (*block)[n][m] += block_loc[n][m];
+                        using namespace metamath::functions;
+                        (*block) += block_t{_integrate_loc(group, eL, iL, jNL)};
                     }
                 }
                 _base::matrix(part).coeffRef(row - DoF * _base::node_shift(), col) += (*block)[row_loc][col_loc];

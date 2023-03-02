@@ -143,11 +143,9 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
     const hooke_parameters hooke = to_hooke(parameters);
     _base::calc_coeffs(theories, is_inner,
         [this, &hooke](const std::string& group, const size_t e, const size_t i, const size_t j) {
-            const auto& parameter = hooke.at(group);
             using namespace metamath::functions;
-            const block_t integral = integrate_loc(parameter.physical, e, i, j);
-            return block_t{ parameter.model.local_weight * integral[X],
-                            parameter.model.local_weight * integral[Y] };
+            const auto& parameter = hooke.at(group);
+            return parameter.model.local_weight * integrate_loc(parameter.physical, e, i, j);
         },
         [this, &hooke](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             const auto& parameter = hooke.at(group);

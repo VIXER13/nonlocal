@@ -134,14 +134,8 @@ void heat_equation_solution_2d<T, I>::calc_flux() {
     for(const auto& [group, parameter] : _parameters) {
         using namespace metamath::functions;
         const model_parameters<2, T>& model = _base::model(group);
-        const metamath::types::square_matrix<T, 2> local_factor = {
-            -model.local_weight * parameter.conductivity[X],
-            -model.local_weight * parameter.conductivity[Y],
-        };
-        const metamath::types::square_matrix<T, 2> nonlocal_factor = {
-            -nonlocal_weight(model.local_weight) * parameter.conductivity[X],
-            -nonlocal_weight(model.local_weight) * parameter.conductivity[Y],
-        };
+        const metamath::types::square_matrix<T, 2> local_factor = -model.local_weight * parameter.conductivity;
+        const metamath::types::square_matrix<T, 2> nonlocal_factor = -nonlocal_weight(model.local_weight) * parameter.conductivity;
         const auto elements = _base::mesh().container().elements(group);
 #pragma omp parallel for default(none) shared(gradient, model, parameter, local_factor, nonlocal_factor, elements) schedule(dynamic)
         for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
