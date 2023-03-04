@@ -85,6 +85,7 @@ int main(const int argc, const char *const *const argv) {
 
         if (parallel_utils::MPI_rank() == 0) {
             using namespace std::literals;
+            solution.calc_strain_and_stress();
             solution.save_as_vtk(argv[5] + "/mechanical.vtk"s);
         }
     } catch(const std::exception& e) {
