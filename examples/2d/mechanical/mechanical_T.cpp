@@ -28,8 +28,8 @@ int main(const int argc, const char *const *const argv) {
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
         const std::array<T, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
         const T p1 = std::stod(argv[4]);
-        nonlocal::mechanical::parameters_2d<T> parameters;
-        parameters["Material1"] = {
+        nonlocal::mechanical::mechanical_parameters_2d<T> parameters;
+        parameters.materials["Material1"] = {
             .model = {
                 .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
                 .local_weight = T{1}
@@ -39,7 +39,7 @@ int main(const int argc, const char *const *const argv) {
                 .poissons_ratio = 0.3
             }
         };
-        parameters["Material2"] = {
+        parameters.materials["Material2"] = {
             .model = {
                 .influence = nonlocal::influence::normal_distribution_2d<T>{std::stod(argv[2])},
                 .local_weight = p1
@@ -49,7 +49,7 @@ int main(const int argc, const char *const *const argv) {
                 .poissons_ratio = 0.2
             }
         };
-        parameters["Material3"] = {
+        parameters.materials["Material3"] = {
             .model = {
                 .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
                 .local_weight = T{1}

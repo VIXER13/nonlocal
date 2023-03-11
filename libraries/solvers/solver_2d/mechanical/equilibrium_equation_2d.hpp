@@ -17,7 +17,7 @@ namespace nonlocal::mechanical {
 
 template<class Matrix_Index, class T, class I, class Right_Part>
 mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                              const parameters_2d<T>& parameters,
+                                                              const mechanical_parameters_2d<T>& parameters,
                                                               const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
                                                               const Right_Part& right_part) {
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(2 * mesh->container().nodes_count());
@@ -26,7 +26,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
 
     auto start_time = std::chrono::high_resolution_clock::now();
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
-    stiffness.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions));
+    stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions));
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "Stiffness matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
 
