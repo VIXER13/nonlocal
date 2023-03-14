@@ -183,6 +183,7 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
 
     if (elements_2d_shift < elements_2d.size()) {
         const auto default_range = std::ranges::iota_view{elements_2d_shift, elements_2d.size()};
+        _mesh._groups_2d.insert("Default");
         _mesh._elements_groups["Default"] = default_range;
         for(const size_t current_element : default_range)
             for(const size_t e : std::ranges::iota_view{0u, _mesh.elements_2d_count()}) {

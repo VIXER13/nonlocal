@@ -106,7 +106,7 @@ public:
         _r = r;
         _disp_mul = {-T{0.5} / (_r[0] * _r[0]),
                      -T{0.5} / (_r[1] * _r[1])};
-        _norm = T{0.5} / (T{M_PI} * r[0] * r[1]);
+        _norm = T{0.5} / (std::numbers::pi_v<T> * r[0] * r[1]);
     }
 
     const std::array<T, 2>& radius() const noexcept { return _r; }

@@ -37,3 +37,7 @@ target_link_libraries(thermal_nonstationary_ref_2d nonlocal_constants_lib slae_s
 add_executable(TShape TShape.cpp)
 target_include_directories(TShape PUBLIC ".")
 target_link_libraries(TShape nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
+
+add_executable(radiation radiation.cpp)
+target_include_directories(radiation PUBLIC ".")
+target_link_libraries(radiation nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)

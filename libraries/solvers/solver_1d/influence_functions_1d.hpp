@@ -2,6 +2,7 @@
 #define NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
 
 #include "metamath.hpp"
+
 #include <cmath>
 
 namespace nonlocal::influence {
@@ -60,7 +61,7 @@ public:
 
     void set_radius(const T r) noexcept {
         _r = r;
-        _norm = 1 / (_r * std::sqrt(2 * T{M_PI}));
+        _norm = 1 / (_r * std::sqrt(2 * std::numbers::pi_v<T>));
         _disp_mul = -T{0.5} / (_r * _r);
     }
 

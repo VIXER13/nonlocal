@@ -40,8 +40,8 @@ class vtk_elements_set final : public elements_set<T> {
     using lagrangian_element_2d = metamath::finite_element::lagrangian_element_2d<U, N, M>;
 
     static std::vector<finite_element_1d_sptr<T>> make_default_1d_elements() {
-        return { std::make_shared<element_1d_integrate<T, lagrangian_element_1d, 1>>(quadrature<T, gauss, 3>{}),
-                 std::make_shared<element_1d_integrate<T, lagrangian_element_1d, 2>>(quadrature<T, gauss, 5>{}) };
+        return { std::make_shared<element_1d_integrate<T, lagrangian_element_1d, 1>>(quadrature<T, gauss, 1>{}),
+                 std::make_shared<element_1d_integrate<T, lagrangian_element_1d, 2>>(quadrature<T, gauss, 2>{}) };
     }
 
     static std::vector<finite_element_2d_sptr<T>> make_default_2d_elements() {

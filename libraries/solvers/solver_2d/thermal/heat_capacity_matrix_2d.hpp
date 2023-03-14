@@ -30,7 +30,7 @@ template<class T, class I, class Matrix_Index>
 T heat_capacity_matrix_2d<T, I, Matrix_Index>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
-    for(const size_t q : std::ranges::iota_view{0u, el.nodes_count()})
+    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
         integral += el.weight(q) * el.qN(i, q) * el.qN(j, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
     return integral;
 }
