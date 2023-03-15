@@ -30,6 +30,7 @@ add_subdirectory(libraries/mesh/mesh_2d)
 add_subdirectory(libraries/solvers/slae)
 add_subdirectory(libraries/solvers/solver_1d)
 add_subdirectory(libraries/solvers/solver_2d)
+add_subdirectory(libraries/json_parser)
 
 #examples
 add_subdirectory(examples/1d/thermal)
