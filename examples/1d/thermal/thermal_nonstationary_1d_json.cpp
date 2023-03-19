@@ -9,14 +9,14 @@ namespace {
 using T = double;
 using I = int64_t;
 
-void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const json_data<T>& data, const uintmax_t step) {
+void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const json_data& data, const uintmax_t step) {
     nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), data.not_template.path_to_save_temperature + std::to_string(step) + ".csv");
     nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), data.not_template.path_to_save_flux + std::to_string(step) + ".csv");
 }
 
 void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>>& parameters,
                const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2>& boundary_condition,
-               const json_data<T>& data) {
+               const json_data& data) {
     std::ofstream info_file;
     const std::string way_to_file = data.not_template.path_to_save_info + ".txt";
     std::cout << "Info about calculation will be writen in " << way_to_file << std::endl;
@@ -38,7 +38,7 @@ void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::t
     info_file.close();
 }
 
-auto get_segment_data(const json_data<T>& data) {
+auto get_segment_data(const json_data& data) {
     std::vector<nonlocal::mesh::segment_data<T>> res;
     for (const auto& current_material : data.materials) 
         res.push_back({current_material.length, current_material.elements});
@@ -46,7 +46,7 @@ auto get_segment_data(const json_data<T>& data) {
     return res;       
 }
 
-std::vector<T> get_radii(const json_data<T>& data) {
+std::vector<T> get_radii(const json_data& data) {
     std::vector<T> res;
     for (const auto& current_material : data.materials) 
         res.push_back(current_material.nonlocal_radius);
@@ -54,7 +54,7 @@ std::vector<T> get_radii(const json_data<T>& data) {
     return res;  
 }
 
-auto get_boundary_conditions(const json_data<T>& data) {
+auto get_boundary_conditions(const json_data& data) {
     std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> res;
     if (data.not_template.left_boundary_kind == boundary_kind_type::TEMPERATURE)
         res[0] = std::make_unique<nonlocal::thermal::temperature_1d<T>>(data.left_boundary_value);
@@ -72,7 +72,7 @@ auto get_boundary_conditions(const json_data<T>& data) {
 
 int main(const int argc, const char *const *const argv) {
     try {
-        json_data<T> data;
+        json_data data;
         get_data_from_json(data, argv[1]);
         std::cout.precision(3);
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(

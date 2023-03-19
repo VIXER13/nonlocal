@@ -6,6 +6,3 @@ link_libraries(${JSONCPP_LIBRARIES})
 add_library(json_parser_lib STATIC json_parser.cpp)
 target_include_directories(json_parser_lib PUBLIC "." "/usr/include/json")
 target_link_libraries(json_parser_lib ${JSONCPP_LIBRARIES})
-
-message("INCLUDE DIRS: ${JSONCPP_INCLUDE_DIR}")
-message("INCLUDE LIBS: ${JSONCPP_LIBRARIES}")
