@@ -10,15 +10,15 @@ using T = double;
 using I = int64_t;
 
 void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const json_data& data, const uintmax_t step) {
-    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), data.not_template.path_to_save_temperature + std::to_string(step) + ".csv");
-    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), data.not_template.path_to_save_flux + std::to_string(step) + ".csv");
+    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), data.path_to_save_temperature + std::to_string(step) + ".csv");
+    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), data.path_to_save_flux + std::to_string(step) + ".csv");
 }
 
 void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>>& parameters,
                const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2>& boundary_condition,
                const json_data& data) {
     std::ofstream info_file;
-    const std::string way_to_file = data.not_template.path_to_save_info + ".txt";
+    const std::string way_to_file = data.path_to_save_info + ".txt";
     std::cout << "Info about calculation will be writen in " << way_to_file << std::endl;
     info_file.open(way_to_file);
 
@@ -56,11 +56,11 @@ std::vector<T> get_radii(const json_data& data) {
 
 auto get_boundary_conditions(const json_data& data) {
     std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> res;
-    if (data.not_template.left_boundary_kind == boundary_kind_type::TEMPERATURE)
+    if (data.left_boundary_kind == boundary_kind_type::TEMPERATURE)
         res[0] = std::make_unique<nonlocal::thermal::temperature_1d<T>>(data.left_boundary_value);
     else
         res[0] = std::make_unique<nonlocal::thermal::flux_1d<T>>(data.left_boundary_value);
-    if (data.not_template.right_boundary_kind == boundary_kind_type::TEMPERATURE)
+    if (data.right_boundary_kind == boundary_kind_type::TEMPERATURE)
         res[1] = std::make_unique<nonlocal::thermal::temperature_1d<T>>(data.right_boundary_value);
     else
         res[1] = std::make_unique<nonlocal::thermal::flux_1d<T>>(data.right_boundary_value);
@@ -76,7 +76,7 @@ int main(const int argc, const char *const *const argv) {
         get_data_from_json(data, argv[1]);
         std::cout.precision(3);
         const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
-            nonlocal::make_element<T>((nonlocal::element_type)data.not_template.element_order),
+            nonlocal::make_element<T>((nonlocal::element_type)data.element_order),
             get_segment_data(data)
         );
         const std::vector<T> radii = get_radii(data);
@@ -105,12 +105,12 @@ int main(const int argc, const char *const *const argv) {
             [&data](const T) constexpr noexcept { return data.right_part; }
         );
 
-        uint64_t steps_count = data.not_template.steps_count + 1;
+        uint64_t steps_count = data.steps_count + 1;
         save_info(parameters, boundary_condition, data);
         save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, data, 0);
         for(const uintmax_t step : std::ranges::iota_view{1u, steps_count}) {
             solver.calc_step(boundary_condition, [&data](const T x) constexpr noexcept { return data.right_part; });
-            if (!(step % data.not_template.save_frequent)) 
+            if (!(step % data.save_frequent)) 
                 save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, data, step);
         }
     } catch (const std::exception& e) {

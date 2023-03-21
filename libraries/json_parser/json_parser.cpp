@@ -22,24 +22,27 @@ boundary_kind_type get_boundary_type(const std::string& str) {
 	throw std::domain_error("Unknown boundary condition type: " + str); 
 }
 
-void read_json_not_template(not_template_parameters& par, const Json::Value& Jval) {
-    par.path_to_save_temperature = Jval["save"]["folder"].asString() + "/" + Jval["save"]["temperature"].asString();
-	par.path_to_save_flux = Jval["save"]["folder"].asString() + "/" + Jval["save"]["flux"].asString();
-	par.path_to_save_info = Jval["save"]["folder"].asString() + "/" + Jval["save"]["info"].asString();
-	par.steps_count = Jval["steps_count"].asInt();
-	par.save_frequent = Jval["save_frequent"].asInt();
+void read_json_parameters(json_data& res, const Json::Value& Jval) {
+    res.path_to_save_temperature = Jval["save"]["folder"].asString() + "/" + Jval["save"]["temperature"].asString();
+	res.path_to_save_flux = Jval["save"]["folder"].asString() + "/" + Jval["save"]["flux"].asString();
+	res.path_to_save_info = Jval["save"]["folder"].asString() + "/" + Jval["save"]["info"].asString();
+	res.steps_count = Jval["steps_count"].asInt();
+	res.save_frequent = Jval["save_frequent"].asInt();
 
-	par.element_order = Jval["element_order"].isInt() ? element_type(Jval["element_order"].asInt()) : 
+	res.element_order = Jval["element_order"].isInt() ? 
+	                    element_type(Jval["element_order"].asInt()) : 
 	                    get_element_type(Jval["element_order"].asString());
 
-	par.left_boundary_kind = Jval["boundaries"]["left"]["kind"].isInt() ? boundary_kind_type(Jval["boundaries"]["left"]["kind"].asInt()) : 
+	res.left_boundary_kind = Jval["boundaries"]["left"]["kind"].isInt() ? 
+	                         boundary_kind_type(Jval["boundaries"]["left"]["kind"].asInt()) : 
 	                         get_boundary_type(Jval["boundaries"]["left"]["kind"].asString());
 
-    par.right_boundary_kind = Jval["boundaries"]["right"]["kind"].isInt() ? boundary_kind_type(Jval["boundaries"]["right"]["kind"].asInt()) : 
+    res.right_boundary_kind = Jval["boundaries"]["right"]["kind"].isInt() ? 
+	                          boundary_kind_type(Jval["boundaries"]["right"]["kind"].asInt()) : 
 	                          get_boundary_type(Jval["boundaries"]["right"]["kind"].asString());
 }
 
-void read_json_template(json_data& res, const Json::Value& Jval) {
+void read_json_materials(json_data& res, const Json::Value& Jval) {
     for (const auto& current_material : Jval["materials"]) {
         res.time_step = Jval["time_step"].asDouble();
         res.left_boundary_value = Jval["boundaries"]["left"]["value"].asDouble();
@@ -75,6 +78,6 @@ Json::Value read_json_file(const std::string& json_file_name) {
 
 void get_data_from_json(json_data& res, const std::string& json_file_name) {
 	Json::Value json_value = read_json_file(json_file_name);
-    read_json_not_template(res.not_template, json_value);
-    read_json_template(res, json_value);
+    read_json_parameters(res, json_value);
+    read_json_materials(res, json_value);
 }
