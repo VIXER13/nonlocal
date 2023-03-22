@@ -1,7 +1,7 @@
 #ifndef BOUNDARY_CONDITION_1D_HPP
 #define BOUNDARY_CONDITION_1D_HPP
 
-#include "../../solvers_constants.hpp"
+#include "nonlocal_constants.hpp"
 
 #include <array>
 #include <memory>

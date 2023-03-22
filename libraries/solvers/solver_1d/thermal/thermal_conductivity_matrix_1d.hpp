@@ -12,8 +12,8 @@ template<class T, class I>
 class thermal_conductivity_matrix_1d : public finite_element_matrix_1d<T, I> {
     using _base = finite_element_matrix_1d<T, I>;
 
-    static std::vector<T> local_factors(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters);
-    static std::vector<T> nonlocal_factors(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters);
+    static std::vector<T> local_factors(const parameters_1d<T>& parameters);
+    static std::vector<T> nonlocal_factors(const parameters_1d<T>& parameters);
 
 protected:
     T integrate_basic(const size_t e, const size_t i) const;
@@ -31,12 +31,11 @@ public:
     explicit thermal_conductivity_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
     ~thermal_conductivity_matrix_1d() override = default;
 
-    void calc_matrix(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                     const std::array<bool, 2> is_first_kind, const bool is_neumann = false);
+    void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann = false);
 };
 
 template<class T, class I>
-std::vector<T> thermal_conductivity_matrix_1d<T, I>::local_factors(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters) {
+std::vector<T> thermal_conductivity_matrix_1d<T, I>::local_factors(const parameters_1d<T>& parameters) {
     std::vector<T> factors(parameters.size());
     for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
         factors[i] = parameters[i].model.local_weight * parameters[i].physical.conductivity;
@@ -44,7 +43,7 @@ std::vector<T> thermal_conductivity_matrix_1d<T, I>::local_factors(const std::ve
 }
 
 template<class T, class I>
-std::vector<T> thermal_conductivity_matrix_1d<T, I>::nonlocal_factors(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters) {
+std::vector<T> thermal_conductivity_matrix_1d<T, I>::nonlocal_factors(const parameters_1d<T>& parameters) {
     std::vector<T> factors(parameters.size());
     for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
         factors[i] = nonlocal_weight(parameters[i].model.local_weight) * parameters[i].physical.conductivity;
@@ -116,8 +115,7 @@ void thermal_conductivity_matrix_1d<T, I>::create_matrix_portrait(const std::vec
 }
 
 template<class T, class I>
-void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
-                                                       const std::array<bool, 2> is_first_kind, const bool is_neumann) {
+void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann) {
     if (parameters.size() != _base::mesh().segments_count())
         throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
     _base::clear();

@@ -16,7 +16,7 @@ template<size_t Dimension, class T>
 struct model_parameters final {
     static_assert(Dimension > 0, "Dimension must be non-zero.");
     using arg = std::conditional_t<Dimension == 1, T, std::array<T, Dimension>>;
-    std::function<T(const arg&, const arg&)> influence = [](const arg&, const arg&) constexpr noexcept { return T{100}; };
+    std::function<T(const arg&, const arg&)> influence = [](const arg&, const arg&) constexpr noexcept { return T{0}; };
     T local_weight = T{1};
 };
 

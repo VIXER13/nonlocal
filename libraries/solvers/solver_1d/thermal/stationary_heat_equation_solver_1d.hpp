@@ -14,7 +14,7 @@ namespace nonlocal::thermal {
 
 template<class T, class I, class Right_Part>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                                const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
+                                                                const parameters_1d<T>& parameters,
                                                                 const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                                 const Right_Part& right_part,
                                                                 const T energy = T{0}) {

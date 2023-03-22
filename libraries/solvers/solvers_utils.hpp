@@ -1,8 +1,8 @@
 #ifndef NONLOCAL_SOLVERS_UTILS_HPP
 #define NONLOCAL_SOLVERS_UTILS_HPP
 
-#include "solvers_constants.hpp"
 #include <eigen3/Eigen/Sparse>
+
 #include <algorithm>
 #include <array>
 #include <ranges>
