@@ -1,0 +1,79 @@
+{
+    "save": {
+        "folder": "D:/Projects/nonlocal/solutions/sol_1", 
+        "temperature": "T", 
+        "flux": "flux",
+        "info": "info"     
+    },
+    "time_step": 0.01,  
+    "steps_count": 100,
+    "save_frequent": 5, 
+    "element_order": "linear",
+    "boundaries": {
+        "left": {
+            "kind": "temperature",
+            "value": 170
+        },
+        "right": {
+            "kind": "flux",
+            "value": -43
+        }
+    },
+    "right_part": 0.57,
+    "materials": [
+        {
+        "length": 0.25,
+        "elements": 100,
+        "parameters": {
+                "model": {
+                    "local_weight": 0.5,
+                    "nonlocal_radius": 0.1,
+                    "search_radius": 0.3
+                },
+                "physical": {
+                    "conductivity": 10,
+                    "capacity": 1,
+                    "density": 1
+                }
+            }
+        },
+        {
+        "length": 0.25,
+        "elements": 100,
+        "parameters": {
+                "physical": {
+                    "conductivity": 12,
+                    "capacity": 9,
+                    "density": 3
+                }
+            } 
+        },
+        {
+        "length": 0.25,
+        "elements": 100,
+        "parameters": {
+                "model": {
+                    "local_weight": 0.5,
+                    "nonlocal_radius": 0.1,
+                    "search_radius": 0.3
+                },
+                "physical": {
+                    "conductivity": 10,
+                    "capacity": 1,
+                    "density": 1
+                }
+            }
+        },
+        {
+            "length": 0.25,
+        "elements": 100,
+        "parameters": {
+                "physical": {
+                    "conductivity": 10,
+                    "capacity": 1,
+                    "density": 1
+                }
+            }
+        }
+    ]
+ }
