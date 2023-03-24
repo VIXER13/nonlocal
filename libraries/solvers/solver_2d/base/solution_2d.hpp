@@ -2,7 +2,7 @@
 #define NONLOCAL_SOLUTION_2D_HPP
 
 #include "mesh_2d.hpp"
-#include "../solvers_constants.hpp"
+#include "nonlocal_constants.hpp"
 #include "../equation_parameters.hpp"
 
 namespace nonlocal {

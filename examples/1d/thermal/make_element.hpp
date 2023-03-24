@@ -1,57 +1,52 @@
-#ifndef NONLOCALMPI_MAKE_ELEMENT_HPP
-#define NONLOCALMPI_MAKE_ELEMENT_HPP
+#ifndef NONLOCAL_MAKE_ELEMENT_HPP
+#define NONLOCAL_MAKE_ELEMENT_HPP
 
-#include "metamath.hpp"
-#include <memory>
+#include "make_quadrature.hpp"
 
 namespace nonlocal {
 
-enum class element_type : uint8_t {
+enum class element_1d_order_t : uint8_t {
     LINEAR = 1,
-    QUADRATIC = 2,
-    QUBIC = 3,
-    QUARTIC = 4,
-    QUINTIC = 5
+    QUADRATIC,
+    QUBIC,
+    QUARTIC,
+    QUINTIC
 };
 
 template<class T>
 using finite_element_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<T>>;
 
 template<class T>
-finite_element_1d_ptr<T> make_element(const element_type type) {
-    switch(type) {
-        case element_type::LINEAR: {
-            using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, 1>;
-            using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, 1>;
-            return std::make_unique<element_1d>(quadrature{});
-        }
+finite_element_1d_ptr<T> make_element(const element_1d_order_t element_order, 
+                                      const quadrature_1d_order_t quadrature_order = quadrature_1d_order_t::DEFAULT);
 
-        case element_type::QUADRATIC: {
-            using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, 2>;
-            using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, 2>;
-            return std::make_unique<element_1d>(quadrature{});
-        }
+class _make_element_1d final {
+    template<class T, size_t Order>
+    using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, Order>;
 
-        case element_type::QUBIC: {
-            using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, 3>;
-            using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, 3>;
-            return std::make_unique<element_1d>(quadrature{});
-        }
+    explicit constexpr _make_element_1d() noexcept = default;
 
-        case element_type::QUARTIC: {
-            using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, 4>;
-            using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, 4>;
-            return std::make_unique<element_1d>(quadrature{});
-        }
+public:
+    template<class T>
+    friend finite_element_1d_ptr<T> make_element(const element_1d_order_t element_order, const quadrature_1d_order_t quadrature_order);
+};
 
-        case element_type::QUINTIC: {
-            using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, 5>;
-            using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, 5>;
-            return std::make_unique<element_1d>(quadrature{});
-        }
-
+template<class T>
+finite_element_1d_ptr<T> make_element(const element_1d_order_t element_order, const quadrature_1d_order_t quadrature_order) {
+    using enum quadrature_1d_order_t;
+    switch(element_order) {
+        case element_1d_order_t::LINEAR:
+            return std::make_unique<_make_element_1d::element_1d<T, 1>>(*make_quadrature<T>(quadrature_order ? : LINEAR));
+        case element_1d_order_t::QUADRATIC:
+            return std::make_unique<_make_element_1d::element_1d<T, 2>>(*make_quadrature<T>(quadrature_order ? : QUADRATIC));
+        case element_1d_order_t::QUBIC:
+            return std::make_unique<_make_element_1d::element_1d<T, 3>>(*make_quadrature<T>(quadrature_order ? : QUBIC));
+        case element_1d_order_t::QUARTIC:
+            return std::make_unique<_make_element_1d::element_1d<T, 4>>(*make_quadrature<T>(quadrature_order ? : QUARTIC));
+        case element_1d_order_t::QUINTIC:
+            return std::make_unique<_make_element_1d::element_1d<T, 5>>(*make_quadrature<T>(quadrature_order ? : QUINTIC));
         default:
-            throw std::logic_error{"Unknown element type " + std::to_string(int(type))};
+            throw std::logic_error{"Invalid element order " + std::to_string(int(element_order))};
     }
 }
 

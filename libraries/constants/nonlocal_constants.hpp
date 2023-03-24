@@ -32,7 +32,7 @@ enum class coefficients_t : uint8_t {
 };
 
 enum class boundary_condition_t : uint8_t {
-    FIRST_KIND,
+    FIRST_KIND = 1,
     SECOND_KIND,
     THIRD_KIND,
     FOURTH_KIND,

@@ -27,12 +27,13 @@ int main(const int argc, const char *const *const argv) {
         std::cout.precision(10);
         auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
         const std::array<T, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
+        const T rr = std::max(r[0], r[1]);
         const T p1 = std::stod(argv[4]);
         nonlocal::thermal::parameters_2d<T> parameters;
         parameters["Material1"] = {
             .model = {
-                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
-                .local_weight = T{1}
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{rr},
+                .local_weight = p1
             },
             .physical = {
                 .conductivity = {T{1}}
@@ -40,8 +41,8 @@ int main(const int argc, const char *const *const argv) {
         };
         parameters["Material2"] = {
             .model = {
-                .influence = nonlocal::influence::normal_distribution_2d<T>{std::stod(argv[2])},
-                .local_weight = p1
+                .influence = nonlocal::influence::normal_distribution_2d<T>{rr},
+                .local_weight = 1
             },
             .physical = {
                 .conductivity = {T{10}}
@@ -49,22 +50,32 @@ int main(const int argc, const char *const *const argv) {
         };
         parameters["Material3"] = {
             .model = {
-                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{rr},
+                .local_weight = p1
+            },
+            .physical = {
+                .conductivity = {T{1}}
+            }
+        };
+        parameters["Material4"] = {
+            .model = {
+                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{rr},
                 .local_weight = T{1}
             },
             .physical = {
-                .conductivity = {T{2}}
+                .conductivity = {T{10}}
             }
         };
 
-        mesh->find_neighbours({
-            {"Material2", 3 * std::stod(argv[2])}
-            //{"Material4", std::stod(argv[2]) + 0.05}
-        });
+        if (p1 < nonlocal::MAX_NONLOCAL_WEIGHT<T>)
+            mesh->find_neighbours({
+                {"Material1", rr + 0.015},
+                {"Material3", rr + 0.015},
+            });
 
         nonlocal::boundaries_conditions_2d<T, nonlocal::physics_t::THERMAL, 1> boundary_conditions;
-        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
-        boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
+        boundary_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
+        boundary_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
         
         static constexpr auto right_part = [](const std::array<T, 2>& x) constexpr noexcept {
             return T{0} ;
@@ -77,8 +88,9 @@ int main(const int argc, const char *const *const argv) {
         if (parallel_utils::MPI_rank() == 0) {
             solution.calc_flux();
             const auto& [TX, TY] = solution.flux();
-            //std::cout << "Energy = " << solution.calc_energy() << std::endl;
             using namespace std::literals;
+            if (!std::filesystem::exists(argv[5]))
+                std::filesystem::create_directories(argv[5]);
             solution.save_as_vtk(argv[5] + "/heat.vtk"s);
             nonlocal::mesh::utils::save_as_csv(argv[5] + "/T.csv"s, mesh->container(), solution.temperature());
             nonlocal::mesh::utils::save_as_csv(argv[5] + "/TX.csv"s, mesh->container(), TX);

@@ -2,7 +2,7 @@
 #define NONLOCAL_THERMAL_PARAMETERS_1D
 
 #include "metamath.hpp"
-#include "../../solvers_constants.hpp"
+#include "nonlocal_constants.hpp"
 #include "../../equation_parameters.hpp"
 
 #include <string>

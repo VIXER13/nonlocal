@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_BOUNDARY_CONDITIONS_2D_HPP
 #define NONLOCAL_BOUNDARY_CONDITIONS_2D_HPP
 
-#include "../../solvers_constants.hpp"
+#include "nonlocal_constants.hpp"
 
 #include <array>
 #include <memory>
