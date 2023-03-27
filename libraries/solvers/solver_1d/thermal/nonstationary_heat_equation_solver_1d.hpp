@@ -40,7 +40,7 @@ public:
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature() const noexcept;
 
     template<class Init_Dist>
-    void compute(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
+    void compute(const nonlocal::thermal::parameters_1d<T>& parameters,
                  const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                  const Init_Dist& init_dist);
 
@@ -70,7 +70,7 @@ const Eigen::Matrix<T, Eigen::Dynamic, 1>& nonstationary_heat_equation_solver_1d
 
 template<class T, class I>
 template<class Init_Dist>
-void nonstationary_heat_equation_solver_1d<T, I>::compute(const std::vector<equation_parameters<1, T, parameters_1d>>& parameters,
+void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::thermal::parameters_1d<T>& parameters,
                                                           const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                           const Init_Dist& init_dist) {
     const std::array<bool, 2> is_first_kind = {

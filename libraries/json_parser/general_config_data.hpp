@@ -3,6 +3,8 @@
 
 #include "config_utils.hpp"
 
+#include <ranges>
+#include <type_traits>
 #include <unordered_map>
 #include <optional>
 
@@ -30,29 +32,47 @@ struct nonstationary_data final {
 
     explicit constexpr nonstationary_data() noexcept = default;
     explicit nonstationary_data(const Json::Value& nonstationary) {
-        check_required_fields(nonstationary, { "time_step", "steps_cont"});
+        check_required_fields(nonstationary, { "time_step", "steps_count"});
         time_step = nonstationary["time_step"].template as<T>();
         initial_time = nonstationary.get("initial_time", T{0}).template as<T>();
-        steps_cont = nonstationary["steps_cont"].asUInt64();
+        steps_cont = nonstationary["steps_count"].asUInt64();
         save_frequency = nonstationary.get("save_frequency", 1u).asUInt64();
     }
 };
 
 template<std::floating_point T, size_t Dimension>
-struct model_data;
+class model_data final {
+    using radius_t = std::conditional_t<Dimension == 1, T, std::array<T, Dimension>>;
 
-template<std::floating_point T>
-struct model_data<T, 1> final {
-    T local_weight = T{1};    // required
-    T nonlocal_radius = T{0}; // required
-    T search_radius = T{0};   // if skipped sets equal nonlocal_radius
+    static radius_t read_radius(const Json::Value& arr, const std::string& field) {
+        std::array<T, Dimension> result;
+        
+        if (arr.template is<T>())
+            result.fill(arr.template as<T>());
+        else if (arr.isArray() && arr.size() == Dimension)
+            for(const Json::ArrayIndex i : std::ranges::iota_view{0u, Dimension})
+                result[i] = arr[i].template as<T>();
+        else
+            throw std::domain_error{"Field \"" + field + "\" must be an array with length " + std::to_string(Dimension)};
+
+        if constexpr (std::is_same_v<radius_t, T>)
+            return result.front();
+        else
+            return result;
+    }
+
+public:
+    T local_weight = T{1};           // required
+    radius_t nonlocal_radius = T{0}; // required
+    radius_t search_radius = T{0};   // if skipped sets equal nonlocal_radius
 
     explicit constexpr model_data() noexcept = default;
     explicit model_data(const Json::Value& model) {
         check_required_fields(model, { "local_weight", "nonlocal_radius" });
         local_weight = model["local_weight"].template as<T>();
-        nonlocal_radius = model["nonlocal_radius"].template as<T>();
-        search_radius = model.get("search_radius", nonlocal_radius).template as<T>();
+        nonlocal_radius = read_radius(model["nonlocal_radius"], "nonlocal_radius");
+        search_radius = !model.isMember("search_radius") ? nonlocal_radius :
+                        read_radius(model["search_radius"], "search_radius");
     }
 };
 
