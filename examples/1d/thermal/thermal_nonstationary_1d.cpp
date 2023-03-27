@@ -1,99 +1,53 @@
-#include "make_element.hpp"
+#include "make_mesh.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
-#include "influence_functions_1d.hpp"
-#include <iostream>
 
 namespace {
 
 using T = double;
 using I = int64_t;
 
-void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const std::filesystem::path& folder, const uintmax_t step) {
-    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), folder / ("T" + std::to_string(step) + ".csv"));
-    nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), folder / ("Flux" + std::to_string(step) + ".csv"));
-}
-
-void save_info(const std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>>& parameters,
-               const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2>& boundary_condition,
-               const std::filesystem::path& folder) {
-    std::ofstream info_file;
-    const std::string way_to_file = folder /  ("calculation_info.txt");
-    std::cout << "Info about calculation will be writen in " << way_to_file << "\n";
-    info_file.open(way_to_file);
-
-    // Есть мысль передавать в функцию только название папки, куда сохранять результат,
-    // а всю информацию о расчете писать в специальный файл <calculation_info.txt>.
-    // Это позволит не захламлять название расчета, при этом сохраняя всю информацию о нем.
-    for (size_t i = 0; i < parameters.size(); ++i) {
-    info_file << "------------------№"<< i << "-----------------\n";
-    info_file << "conductivity = " << std::to_string(parameters[i].physical.conductivity) << "\n";
-    info_file << "density = "      << std::to_string(parameters[i].physical.density)      << "\n";
-    info_file << "capacity = "     << std::to_string(parameters[i].physical.capacity)     << "\n";
-    info_file << "local_weight = " << std::to_string(parameters[i].model.local_weight)    << "\n";
-    info_file << "-------------------------------------\n";
-    }
-
-    info_file.close();
+template<class T>
+void save_step(nonlocal::thermal::heat_equation_solution_1d<T>&& solution, const nonlocal::config::save_data& save, const uint64_t step) {
+    if (!std::filesystem::exists(save.folder()))
+        std::filesystem::create_directories(save.folder());
+    if (save.contains("temperature"))
+        nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.temperature(), save.path("", ".csv", std::to_string(step) + "temperature"));
+    if (save.contains("flux"))
+        nonlocal::mesh::utils::save_as_csv(solution.mesh(), solution.calc_flux(), save.path("", ".csv", std::to_string(step) + "flux"));
 }
 
 }
 
 int main(const int argc, const char *const *const argv) {
+    if (argc != 2) {
+        std::cerr << "Input format [program name] <path/to/config.json>" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     try {
         std::cout.precision(3);
-        const auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
-            nonlocal::make_element<T>(nonlocal::element_type::QUADRATIC),
-            std::vector<nonlocal::mesh::segment_data<T>>{
-                {.length = 0.15, .elements = 100},
-                {.length = 0.25, .elements = 100},
-                {.length = 0.35, .elements = 100},
-                {.length = 0.15, .elements = 100}
+        const nonlocal::config::nonstationary_thermal_1d_data<T> config_data{
+            nonlocal::config::read_json(std::filesystem::path{argv[1]})
+        };
+
+        const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.element_order, config_data.quadrature_order);
+        const auto parameters = nonlocal::make_thermal_parameters(config_data.materials);
+        const nonlocal::thermal::thermal_boundaries_conditions_1d<T> boundaries_conditions =  {
+            nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
+            nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
+        };
+
+        nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, config_data.nonstationary.time_step};
+        solver.compute(parameters, boundaries_conditions,
+            [init_dist = config_data.equation.initial_distribution](const T x) constexpr noexcept { return init_dist; });
+        save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, config_data.save, 0u);
+        for(const uint64_t step : std::ranges::iota_view{1u, config_data.nonstationary.steps_cont + 1}) {
+            solver.calc_step(boundaries_conditions,
+                [right_part = config_data.equation.right_part](const T x) constexpr noexcept { return right_part; });
+            if (step % config_data.nonstationary.save_frequency == 0) {
+                std::cout << "step = " << step << std::endl;
+                save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, config_data.save, step);
             }
-        );
-        const std::vector<T> radii = {
-            0.05, 
-            0., 
-            0.1, 
-            0.
-        };
-        const T p1 = 0.5;
-        const T tau = 0.001;
-        std::vector<nonlocal::equation_parameters<1, T, nonlocal::thermal::parameters_1d>> parameters;
-        for(const auto [conductivity, radius, local_weight] : {std::tuple{ 1., radii[0], p1 }, 
-                                                               std::tuple{ 7., radii[1], 1. },
-                                                               std::tuple{ 3., radii[2], p1 },
-                                                               std::tuple{10., radii[3], 1. }
-                                                               }) {
-            parameters.push_back({
-                .physical = {
-                    .conductivity = conductivity
-                },
-                .model = {
-                    .influence = nonlocal::influence::polynomial_1d<T, 1, 1>{radius},
-                    .local_weight = local_weight
-                }
-            });
-        }
-        if (nonlocal::theory_type(p1) == nonlocal::theory_t::NONLOCAL)
-            mesh->find_neighbours(radii);
-
-        const std::array<std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>>, 2> boundary_condition = {
-            std::make_unique<nonlocal::thermal::flux_1d<T>>(1.),
-            std::make_unique<nonlocal::thermal::flux_1d<T>>(-1.)
-        };
-
-        nonlocal::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, tau};
-        solver.compute(
-            parameters,
-            boundary_condition,
-            [](const double) constexpr noexcept { return 0; }
-        );
-
-        save_info(parameters, boundary_condition, argv[1]);
-        save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, argv[1], 0);
-        for(const uintmax_t step : std::ranges::iota_view{1u, 101u}) {
-            solver.calc_step(boundary_condition, [](const double x) constexpr noexcept { return 0; });
-            save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, argv[1], step);
         }
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

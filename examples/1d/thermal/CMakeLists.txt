@@ -6,26 +6,12 @@ add_executable(thermal_stationary_1d thermal_stationary_1d.cpp)
 target_include_directories(thermal_stationary_1d PUBLIC ".")
 target_link_libraries(thermal_stationary_1d 
     finite_element_solver_1d_lib
-    parallel_utils_lib
     json_parser_lib
 )
 
 add_executable(thermal_nonstationary_1d thermal_nonstationary_1d.cpp)
 target_include_directories(thermal_nonstationary_1d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_1d metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_radiation_1d thermal_nonstationary_radiation_1d.cpp)
-target_include_directories(thermal_nonstationary_radiation_1d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_radiation_1d metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_tests_1d thermal_nonstationary_tests_1d.cpp)
-target_include_directories(thermal_nonstationary_tests_1d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_tests_1d metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
-
-add_executable(thermal_json thermal_json.cpp)
-target_include_directories(thermal_json PUBLIC ".")
-target_link_libraries(thermal_json json_parser_lib metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_1d_json thermal_nonstationary_1d_json.cpp)
-target_include_directories(thermal_nonstationary_1d_json PUBLIC ".")
-target_link_libraries(thermal_nonstationary_1d_json json_parser_lib metamath_lib nonlocal_constants_lib finite_element_solver_1d_lib parallel_utils_lib)
+target_link_libraries(thermal_nonstationary_1d 
+    finite_element_solver_1d_lib
+    json_parser_lib
+)
