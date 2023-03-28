@@ -10,7 +10,9 @@
 namespace nonlocal::config {
 
 thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
+const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
 size_t get_order(const Json::Value& order);
+const std::string& get_order(const size_t order);
 
 template<std::floating_point T, size_t Dimension>
 struct thermal_material_data;
@@ -108,7 +110,7 @@ struct thermal_boundary_condition_data final {
 
     Json::Value to_json() const {
         Json::Value result;
-        result["kind"] = uint(kind);
+        result["kind"] = get_thermal_condition(kind);
         result["temperature"] = temperature;
         result["flux"] = flux;
         result["heat_transfer"] = heat_transfer;
@@ -145,7 +147,7 @@ struct stationary_thermal_1d_data {
     thermal_boundaries_conditions_data<T, 1> boundaries;           // required
     std::vector<segment_data<T, thermal_material_data>> materials; // required
     size_t element_order = 1;
-    size_t quadrature_order = 0; // 0 means that will be used default quadrature order
+    size_t quadrature_order = 1;
 
     explicit stationary_thermal_1d_data(const Json::Value& value)
         : other{value.get("other", {})}
@@ -165,8 +167,7 @@ struct stationary_thermal_1d_data {
 
         if (value.isMember("element_order"))
             element_order = get_order(value["element_order"]);
-        if (value.isMember("quadrature_order"))
-            element_order = get_order(value["quadrature_order"]);
+        quadrature_order = value.isMember("quadrature_order") ? get_order(value["quadrature_order"]) : element_order;
     }
 
     virtual ~stationary_thermal_1d_data() noexcept = default;
@@ -177,8 +178,8 @@ struct stationary_thermal_1d_data {
         result["save"] = save.to_json();
         result["equation"] = equation.to_json();
         result["boundaries"] = boundaries.to_json();
-        result["element_order"] = element_order;
-        result["quadrature_order"] = quadrature_order;
+        result["element_order"] = get_order(element_order);
+        result["quadrature_order"] = get_order(quadrature_order);
         Json::Value& segments = result["materials"] = {};
         for(const auto& segment : materials)
             segments.append(segment.to_json());
