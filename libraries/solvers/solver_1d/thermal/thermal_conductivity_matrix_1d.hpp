@@ -12,16 +12,23 @@ template<class T, class I>
 class thermal_conductivity_matrix_1d : public finite_element_matrix_1d<T, I> {
     using _base = finite_element_matrix_1d<T, I>;
 
-    static std::vector<T> local_factors(const parameters_1d<T>& parameters);
-    static std::vector<T> nonlocal_factors(const parameters_1d<T>& parameters);
-
 protected:
     T integrate_basic(const size_t e, const size_t i) const;
-    T integrate_loc(const size_t e, const size_t i, const size_t j) const;
+
+    T integrate_loc(const T conductivity, const size_t e, const size_t i, const size_t j) const;
+    T integrate_loc(const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const;
+    T integrate_loc(const std::function<T(const T, const T)>& conductivity, const size_t e, const size_t i, const size_t j) const;
+
     template<class Influence_Function>
-    T integrate_nonloc(const size_t eL, const size_t eNL,
-                       const size_t iL, const size_t jNL,
-                       const Influence_Function& influence) const;
+    T integrate_nonloc(const T conductivity, const Influence_Function& influence,
+                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
+    template<class Influence_Function>
+    T integrate_nonloc(const std::function<T(const T)>& conductivity, const Influence_Function& influence,
+                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
+    template<class Influence_Function>
+    T integrate_nonloc(const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence,
+                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
+
 
     void neumann_problem_col_fill();
     void create_matrix_portrait(const std::vector<theory_t>& theories,
@@ -33,22 +40,6 @@ public:
 
     void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann = false);
 };
-
-template<class T, class I>
-std::vector<T> thermal_conductivity_matrix_1d<T, I>::local_factors(const parameters_1d<T>& parameters) {
-    std::vector<T> factors(parameters.size());
-    for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
-        factors[i] = parameters[i].model.local_weight * parameters[i].physical.conductivity;
-    return factors;
-}
-
-template<class T, class I>
-std::vector<T> thermal_conductivity_matrix_1d<T, I>::nonlocal_factors(const parameters_1d<T>& parameters) {
-    std::vector<T> factors(parameters.size());
-    for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
-        factors[i] = nonlocal_weight(parameters[i].model.local_weight) * parameters[i].physical.conductivity;
-    return factors;
-}
 
 template<class T, class I>
 thermal_conductivity_matrix_1d<T, I>::thermal_conductivity_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
@@ -64,19 +55,31 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_basic(const size_t e, const si
 }
 
 template<class T, class I>
-T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const size_t e, const size_t i, const size_t j) const {
+T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const T conductivity, const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     const auto& el = _base::mesh().element();
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
         integral += el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q);
-    return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
+    return conductivity * integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
+}
+
+template<class T, class I>
+T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
+    const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const {
+    return 0;
+}
+
+template<class T, class I>
+T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
+    const std::function<T(const T, const T)>& conductivity, const size_t e, const size_t i, const size_t j) const {
+    return 0;
 }
 
 template<class T, class I>
 template<class Influence_Function>
-T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const size_t eNL,
-                                                         const size_t iL, const size_t jNL,
-                                                         const Influence_Function& influence) const {
+T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
+    const T conductivity, const Influence_Function& influence,
+    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     T integral = T{0};
     const auto& el = _base::mesh().element();
     for(const size_t qL : std::ranges::iota_view{0u, el.qnodes_count()}) {
@@ -88,7 +91,23 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const 
         }
         integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
     }
-    return integral;
+    return conductivity * integral;
+}
+
+template<class T, class I>
+template<class Influence_Function>
+T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
+    const std::function<T(const T)>& conductivity, const Influence_Function& influence,
+    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
+    return 0;
+}
+
+template<class T, class I>
+template<class Influence_Function>
+T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
+    const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence,
+    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
+    return 0;
 }
 
 template<class T, class I>
@@ -124,11 +143,34 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
     const std::vector<theory_t> theories = theories_types(parameters);
     create_matrix_portrait(theories, is_first_kind, is_neumann);
     _base::template calc_matrix(theories, is_first_kind,
-        [this, factors = local_factors(parameters)](const size_t segment, const size_t e, const size_t i, const size_t j) {
-            return factors[segment] * integrate_loc(e, i, j);
+        [this, &parameters](const size_t segment, const size_t e, const size_t i, const size_t j) {
+            using enum coefficients_t;
+            const auto& [model, physic] = parameters[segment];
+            switch (physic->type) {
+            case CONSTANTS:
+                return model.local_weight * integrate_loc(parameter_cast<CONSTANTS>(*physic).conductivity, e, i, j);
+            case SPACE_DEPENDENT:
+                return model.local_weight * integrate_loc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, e, i, j);
+            case SOLUTION_DEPENDENT:
+                return model.local_weight * integrate_loc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, e, i, j);
+            default:
+                return std::numeric_limits<T>::quiet_NaN();
+            }
         },
-        [this, &parameters, factors = nonlocal_factors(parameters)](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            return factors[segment] * integrate_nonloc(eL, eNL, iL, jNL, parameters[segment].model.influence);
+        [this, &parameters](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            using enum coefficients_t;
+            const auto& [model, physic] = parameters[segment];
+            const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
+            switch (physic->type) {
+            case CONSTANTS:
+                return nonlocal_weight * integrate_nonloc(parameter_cast<CONSTANTS>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
+            case SPACE_DEPENDENT:
+                return nonlocal_weight * integrate_nonloc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
+            case SOLUTION_DEPENDENT:
+                return nonlocal_weight * integrate_nonloc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
+            default:
+                return std::numeric_limits<T>::quiet_NaN();
+            }
         }
     );
     if (is_neumann)

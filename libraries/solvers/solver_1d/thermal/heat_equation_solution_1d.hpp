@@ -11,11 +11,8 @@ class heat_equation_solution_1d : public solution_1d<T> {
     using _base = solution_1d<T>;
 
     const std::vector<T> _temperature;
-    const std::vector<T> _conductivity;
+    const std::vector<parameter_1d_sptr<T>> _parameters;
     std::optional<std::vector<T>> _flux;
-
-    template<class Parameter>
-    static std::vector<T> get_conductivity(const std::vector<Parameter>& parameters);
     
 public:
     using _base::mesh;
@@ -28,20 +25,11 @@ public:
 
     const std::vector<T>& temperature() const noexcept;
     const std::vector<T>& flux() const;
-    T conductivity(const size_t segment) const noexcept;
+    const parameter_1d_sptr<T>& parameter(const size_t segment) const noexcept;
 
     bool is_flux_calculated() const noexcept;
     const std::vector<T>& calc_flux();
 };
-
-template<class T>
-template<class Parameter>
-std::vector<T> heat_equation_solution_1d<T>::get_conductivity(const std::vector<Parameter>& parameters) {
-    std::vector<T> conductivity(parameters.size());
-    std::transform(parameters.cbegin(), parameters.cend(), conductivity.begin(),
-                   [](const Parameter& parameter) { return parameter.physical.conductivity; } );
-    return conductivity;
-}
 
 template<class T>
 template<class Parameter, class Vector>
@@ -50,7 +38,7 @@ heat_equation_solution_1d<T>::heat_equation_solution_1d(const std::shared_ptr<me
                                                         const Vector& solution)
     : _base{mesh, get_models(parameters)}
     , _temperature(solution.cbegin(), std::next(solution.cbegin(), mesh->nodes_count()))
-    , _conductivity{get_conductivity(parameters)} {}
+    , _parameters{get_physical_parameters(parameters)} {}
 
 template<class T>
 const std::vector<T>& heat_equation_solution_1d<T>::temperature() const noexcept {
@@ -63,8 +51,8 @@ const std::vector<T>& heat_equation_solution_1d<T>::flux() const {
 }
 
 template<class T>
-T heat_equation_solution_1d<T>::conductivity(const size_t segment) const noexcept {
-    return _conductivity[segment];
+const parameter_1d_sptr<T>& heat_equation_solution_1d<T>::parameter(const size_t segment) const noexcept {
+    return _parameters[segment];
 }
 
 template<class T>
@@ -83,6 +71,9 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
         const theory_t theory = theory_type(_base::model(segment).local_weight);
         std::vector<T> gradient_nonlocal(theory == theory_t::NONLOCAL ? mesh().elements_count(segment) * el.qnodes_count() : 0, T{0});
 
+        if (parameter(segment)->type == coefficients_t::SPACE_DEPENDENT || parameter(segment)->type == coefficients_t::SOLUTION_DEPENDENT)
+            throw std::domain_error{"Oops! Right now I can calc flux only if conductivity is constant!"};
+
         if (theory == theory_t::NONLOCAL) {
             for(const size_t eL : segment_elements) {
                 const size_t qshiftL = (eL - segment_elements.front()) * el.qnodes_count();
@@ -97,12 +88,14 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
                 }
             }
             using namespace metamath::functions;
-            gradient_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * conductivity(segment) * mesh().jacobian(segment);
+            gradient_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * 
+                                 parameter_cast<coefficients_t::CONSTANTS>(*parameter(segment)).conductivity * 
+                                 mesh().jacobian(segment);
         }
 
         const size_t qshiftNL = el.qnodes_count() * segment_elements.front();
         for(const size_t qshiftL : std::ranges::iota_view{qshiftNL, el.qnodes_count() * *segment_elements.end()}) {
-            gradient[qshiftL] *= -_base::model(segment).local_weight * conductivity(segment);
+            gradient[qshiftL] *= -_base::model(segment).local_weight * parameter_cast<coefficients_t::CONSTANTS>(*parameter(segment)).conductivity;
             if (theory == theory_t::NONLOCAL)
                 gradient[qshiftL] += gradient_nonlocal[qshiftL - qshiftNL];
         }

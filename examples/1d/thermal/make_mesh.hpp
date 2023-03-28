@@ -40,11 +40,11 @@ nonlocal::thermal::parameters_1d<T> make_thermal_parameters(
                 .influence = nonlocal::influence::polynomial_1d<T, 1, 1>{materials[i].model.nonlocal_radius},
                 .local_weight = materials[i].model.local_weight
             },
-            .physical = {
-                .conductivity = materials[i].physical.conductivity,
-                .capacity = materials[i].physical.capacity,
-                .density = materials[i].physical.density
-            },
+            .physical = std::make_shared<thermal::parameter_1d<T, coefficients_t::CONSTANTS>>(
+                materials[i].physical.conductivity,
+                materials[i].physical.capacity,
+                materials[i].physical.density
+            ),
         };
     return parameters;
 }

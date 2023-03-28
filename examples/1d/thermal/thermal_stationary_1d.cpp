@@ -26,12 +26,12 @@ int main(const int argc, const char *const *const argv) {
         std::cout << "integral = " << nonlocal::mesh::utils::integrate(*mesh, solution.temperature()) << std::endl;
         if (!std::filesystem::exists(config_data.save.folder()))
             std::filesystem::create_directories(config_data.save.folder());
+        if (config_data.save.contains("config"))
+            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
         if (config_data.save.contains("temperature"))
             nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), config_data.save.path("temperature", ".csv"), config_data.save.precision());
         if (config_data.save.contains("flux"))
             nonlocal::mesh::utils::save_as_csv(*mesh, solution.calc_flux(), config_data.save.path("flux", ".csv"), config_data.save.precision());
-        if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

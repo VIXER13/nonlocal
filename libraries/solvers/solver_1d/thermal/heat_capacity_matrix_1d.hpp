@@ -29,7 +29,7 @@ template<class T, class I>
 std::vector<T> heat_capacity_matrix_1d<T, I>::calc_factors(const nonlocal::thermal::parameters_1d<T>& parameters) {
     std::vector<T> factors(parameters.size());
     for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
-        factors[i] = parameters[i].physical.capacity * parameters[i].physical.density;
+        factors[i] = parameters[i].physical->capacity * parameters[i].physical->density;
     return factors;
 }
 
