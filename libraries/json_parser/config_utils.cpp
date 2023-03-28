@@ -5,21 +5,27 @@
 
 namespace nonlocal::config {
 
-Json::Value read_json(const std::filesystem::path& config) {
-	std::ifstream file{config};
+Json::Value read_json(const std::filesystem::path& path) {
+	std::ifstream file{path};
     Json::Reader reader;
 	Json::Value value;
 	if (reader.parse(file, value))
         return value;
-	throw std::runtime_error{"Invalid json file: " + config.string() + ".\nError message: " + reader.getFormattedErrorMessages()};
+	throw std::runtime_error{"Invalid json file: " + path.string() + ".\nError message: " + reader.getFormattedErrorMessages()};
 }
 
-Json::Value read_json(const std::string& config) {
+Json::Value read_json(const std::string& str) {
 	Json::Reader reader;
 	Json::Value value;
-	if (reader.parse(config, value))
+	if (reader.parse(str, value))
         return value;
 	throw std::runtime_error{"Invalid json: " + reader.getFormattedErrorMessages()};
+}
+
+void save_json(const std::filesystem::path& path, const Json::Value& value) {
+	Json::StyledStreamWriter writer;
+	std::ofstream file{path};
+	writer.write(file, value);
 }
 
 void check_required_fields(const Json::Value& value, const std::vector<std::string>& required) {
