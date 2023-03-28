@@ -27,6 +27,8 @@ public:
     std::filesystem::path make_path(const std::string& name, const std::string& extension) const;
     std::filesystem::path path(const std::string& key, const std::string& extension,
                                const std::optional<std::string>& default_name = std::nullopt) const;
+
+    Json::Value to_json() const;
 };
 
 template<std::floating_point T>
@@ -43,6 +45,15 @@ struct nonstationary_data final {
         initial_time = nonstationary.get("initial_time", T{0}).template as<T>();
         steps_cont = nonstationary["steps_count"].asUInt64();
         save_frequency = nonstationary.get("save_frequency", 1u).asUInt64();
+    }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["time_step"] = time_step;
+        result["initial_time"] = initial_time;
+        result["steps_cont"] = steps_cont;
+        result["save_frequency"] = save_frequency;
+        return result;
     }
 };
 
@@ -80,6 +91,23 @@ public:
         search_radius = !model.isMember("search_radius") ? nonlocal_radius :
                         read_radius(model["search_radius"], "search_radius");
     }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["local_weight"] = local_weight;
+        if constexpr (std::is_same_v<radius_t, T>) {
+            result["nonlocal_radius"] = nonlocal_radius;
+            result["search_radius"] = search_radius;
+        } else {
+            Json::Value& nonloc = result["nonlocal_radius"] = {};
+            Json::Value& search = result["search_radius"] = {};
+            for(const size_t i : std::ranges::iota_view{0u, Dimension}) {
+                nonloc.append(nonlocal_radius[i]);
+                search.append(search_radius[i]);
+            }
+        }
+        return result;
+    }
 };
 
 template<std::floating_point T, template<std::floating_point, size_t> class Physics>
@@ -97,6 +125,15 @@ struct segment_data final {
         physical = Physics<T, 1>{segment["physical"]};
         if (segment.isMember("model"))
             model = model_data<T, 1>{segment["model"]};
+    }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["elements_count"] = elements_count;
+        result["length"] = length;
+        result["physical"] = physical.to_json();
+        result["model"] = model.to_json();
+        return result;
     }
 };
 

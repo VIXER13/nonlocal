@@ -9,8 +9,7 @@ int main(const int argc, const char *const *const argv) {
     try {
         using T = double;
         using I = int64_t;
-        const Json::Value config = nonlocal::config::read_json(std::filesystem::path{argv[1]});
-        const nonlocal::config::stationary_thermal_1d_data<T> config_data{config};
+        const nonlocal::config::stationary_thermal_1d_data<T> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
         const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.element_order, config_data.quadrature_order);
@@ -32,7 +31,7 @@ int main(const int argc, const char *const *const argv) {
         if (config_data.save.contains("flux"))
             nonlocal::mesh::utils::save_as_csv(*mesh, solution.calc_flux(), config_data.save.path("flux", ".csv"), config_data.save.precision());
         if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config);
+            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;

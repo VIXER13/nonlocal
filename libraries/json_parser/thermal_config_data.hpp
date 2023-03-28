@@ -28,6 +28,14 @@ struct thermal_material_data<T, 1> final {
         capacity = physical.get("capacity", T{1}).template as<T>();
         density = physical.get("density", T{1}).template as<T>();
     }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["conductivity"] = conductivity;
+        result["capacity"] = capacity;
+        result["density"] = density;
+        return result;
+    }
 };
 
 template<std::floating_point T>
@@ -41,6 +49,14 @@ struct thermal_equation_data final {
         energy = equation.get("energy", T{0}).template as<T>();
         right_part = equation.get("right_part", T{0}).template as<T>();
         initial_distribution = equation.get("initial_distribution", T{0}).template as<T>();
+    }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["energy"] = energy;
+        result["right_part"] = right_part;
+        result["initial_distribution"] = initial_distribution;
+        return result;
     }
 };
 
@@ -89,6 +105,16 @@ struct thermal_boundary_condition_data final {
             throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(kind))};
         }
     }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["kind"] = uint(kind);
+        result["temperature"] = temperature;
+        result["flux"] = flux;
+        result["heat_transfer"] = heat_transfer;
+        result["emissivity"] = emissivity;
+        return result;
+    }
 };
 
 template<std::floating_point T, size_t Dimension>
@@ -102,6 +128,13 @@ struct thermal_boundaries_conditions_data final {
         for(const std::string& name : boundaries.getMemberNames())
             conditions[name] = thermal_boundary_condition_data<T>{boundaries[name]};
     }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        for(const auto& [name, condition] : conditions)
+            result[name] = condition.to_json();
+        return result;
+    }
 };
 
 template<std::floating_point T>
@@ -113,8 +146,6 @@ struct stationary_thermal_1d_data {
     std::vector<segment_data<T, thermal_material_data>> materials; // required
     size_t element_order = 1;
     size_t quadrature_order = 0; // 0 means that will be used default quadrature order
-
-    static size_t convert(const std::string& order);
 
     explicit stationary_thermal_1d_data(const Json::Value& value)
         : other{value.get("other", {})}
@@ -139,6 +170,20 @@ struct stationary_thermal_1d_data {
     }
 
     virtual ~stationary_thermal_1d_data() noexcept = default;
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["other"] = other;
+        result["save"] = save.to_json();
+        result["equation"] = equation.to_json();
+        result["boundaries"] = boundaries.to_json();
+        result["element_order"] = element_order;
+        result["quadrature_order"] = quadrature_order;
+        Json::Value& segments = result["materials"] = {};
+        for(const auto& segment : materials)
+            segments.append(segment.to_json());
+        return result;
+    }
 };
 
 template<std::floating_point T>
@@ -152,6 +197,12 @@ struct nonstationary_thermal_1d_data final : public stationary_thermal_1d_data<T
     }
 
     ~nonstationary_thermal_1d_data() noexcept override = default;
+
+    Json::Value to_json() const {
+        Json::Value result = stationary_thermal_1d_data<T>::to_json();
+        result["nonstationary"] = nonstationary.to_json();
+        return result;
+    }
 };
 
 }

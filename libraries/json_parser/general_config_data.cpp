@@ -42,4 +42,14 @@ std::filesystem::path save_data::path(const std::string& key, const std::string&
 	return make_path(get_name(key, default_name), extension);
 }
 
+Json::Value save_data::to_json() const {
+	Json::Value result;
+	result["folder"] = _folder.string();
+	for(const auto& [key, name] : _names)
+		result["key"] = name;
+	if (_precision)
+		result["precision"] = *_precision;
+	return result;
+}
+
 }
