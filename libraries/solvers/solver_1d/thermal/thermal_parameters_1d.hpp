@@ -13,7 +13,7 @@ struct parameter_1d_base {
     T density = T{1};
 
 protected:
-    explicit parameter_1d_base(const coefficients_t coefficients, const T capacity = T{1}, const T density = T{1})
+    explicit parameter_1d_base(const coefficients_t coefficients, const T capacity = T{1}, const T density = T{1}) noexcept
         : type{coefficients}
         , capacity{capacity}
         , density{density} {}
@@ -23,18 +23,12 @@ public:
 };
 
 template<class T, coefficients_t Coefficients = coefficients_t::CONSTANTS>
-struct parameter_1d final : public parameter_1d_base<T> {
-    using conductivity_t = 
-        std::conditional_t<
-            Coefficients == coefficients_t::SOLUTION_DEPENDENT,
-            std::function<T(const T, const T)>,
-            std::conditional_t<
-                Coefficients == coefficients_t::SPACE_DEPENDENT,
-                std::function<T(const T)>, T
-            >
-        >;
+class parameter_1d final : public parameter_1d_base<T> {
+    static_assert(Coefficients == coefficients_t::CONSTANTS ||
+                  Coefficients == coefficients_t::SPACE_DEPENDENT ||
+                  Coefficients == coefficients_t::SOLUTION_DEPENDENT,
+                  "Unknown coefficient type.");
 
-private:
     static constexpr auto init() noexcept {
         if constexpr (Coefficients == coefficients_t::CONSTANTS)
             return T{1};
@@ -45,11 +39,21 @@ private:
     }
 
 public:
+    using conductivity_t = 
+        std::conditional_t<
+            Coefficients == coefficients_t::SOLUTION_DEPENDENT,
+            std::function<T(const T, const T)>,
+            std::conditional_t<
+                Coefficients == coefficients_t::SPACE_DEPENDENT,
+                std::function<T(const T)>, T
+            >
+        >;
+
     conductivity_t conductivity = init();
 
     constexpr parameter_1d() noexcept
         : parameter_1d_base<T>{Coefficients} {}
-    explicit parameter_1d(const conductivity_t& conductivity, const T capacity = T{1}, const T density = T{1})
+    explicit parameter_1d(const conductivity_t& conductivity, const T capacity = T{1}, const T density = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
         : parameter_1d_base<T>{Coefficients, capacity, density}
         , conductivity{conductivity} {}
     ~parameter_1d() noexcept override = default;
@@ -62,15 +66,15 @@ template<class T>
 using parameters_1d = std::vector<equation_parameters<1, T, parameter_1d_sptr>>;
 
 template<coefficients_t Coefficients, class T>
-parameter_1d<T, Coefficients>* parameter_cast(parameter_1d_base<T> *const parameter) {
+constexpr parameter_1d<T, Coefficients>* parameter_cast(parameter_1d_base<T> *const parameter) noexcept {
     return parameter && parameter->type == Coefficients ? 
-           static_cast<parameter_1d<T, Coefficients>*>(parameter) : nullptr;
+        static_cast<parameter_1d<T, Coefficients>*>(parameter) : nullptr;
 }
 
 template<coefficients_t Coefficients, class T>
-const parameter_1d<T, Coefficients>* parameter_cast(const parameter_1d_base<T> *const parameter) {
+constexpr const parameter_1d<T, Coefficients>* parameter_cast(const parameter_1d_base<T> *const parameter) noexcept {
     return parameter && parameter->type == Coefficients ? 
-           static_cast<const parameter_1d<T, Coefficients>*>(parameter) : nullptr;
+        static_cast<const parameter_1d<T, Coefficients>*>(parameter) : nullptr;
 }
 
 template<coefficients_t Coefficients, class T>
