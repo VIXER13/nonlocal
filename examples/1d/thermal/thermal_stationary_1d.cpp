@@ -9,7 +9,7 @@ int main(const int argc, const char *const *const argv) {
     try {
         using T = double;
         using I = int64_t;
-        const nonlocal::config::stationary_thermal_1d_data<T> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
+        const nonlocal::config::stationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
         const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.element_order, config_data.quadrature_order);

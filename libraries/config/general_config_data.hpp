@@ -3,6 +3,8 @@
 
 #include "config_utils.hpp"
 
+#include "nonlocal_constants.hpp"
+
 #include <ranges>
 #include <type_traits>
 #include <unordered_map>
@@ -99,8 +101,8 @@ public:
             result["nonlocal_radius"] = nonlocal_radius;
             result["search_radius"] = search_radius;
         } else {
-            Json::Value& nonloc = result["nonlocal_radius"] = {};
-            Json::Value& search = result["search_radius"] = {};
+            Json::Value& nonloc = result["nonlocal_radius"] = Json::arrayValue;
+            Json::Value& search = result["search_radius"] = Json::arrayValue;
             for(const size_t i : std::ranges::iota_view{0u, Dimension}) {
                 nonloc.append(nonlocal_radius[i]);
                 search.append(search_radius[i]);
@@ -136,6 +138,15 @@ struct segment_data final {
         return result;
     }
 };
+
+thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
+const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
+
+size_t get_order(const Json::Value& order);
+const std::string& get_order(const size_t order);
+
+material_t get_material(const Json::Value& material);
+const std::string& get_material(const material_t material);
 
 }
 

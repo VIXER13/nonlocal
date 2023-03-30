@@ -3,42 +3,9 @@
 
 #include "general_config_data.hpp"
 
-#include "nonlocal_constants.hpp"
-
 #include <exception>
 
 namespace nonlocal::config {
-
-thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
-const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
-size_t get_order(const Json::Value& order);
-const std::string& get_order(const size_t order);
-
-template<std::floating_point T, size_t Dimension>
-struct thermal_material_data;
-
-template<std::floating_point T>
-struct thermal_material_data<T, 1> final {
-    T conductivity = T{1}; // required
-    T capacity = T{1};
-    T density = T{1};
-
-    explicit constexpr thermal_material_data() noexcept = default;
-    explicit thermal_material_data(const Json::Value& physical) {
-        check_required_fields(physical, { "conductivity" });
-        conductivity = physical["conductivity"].template as<T>();
-        capacity = physical.get("capacity", T{1}).template as<T>();
-        density = physical.get("density", T{1}).template as<T>();
-    }
-
-    Json::Value to_json() const {
-        Json::Value result;
-        result["conductivity"] = conductivity;
-        result["capacity"] = capacity;
-        result["density"] = density;
-        return result;
-    }
-};
 
 template<std::floating_point T>
 struct thermal_equation_data final {
@@ -139,8 +106,98 @@ struct thermal_boundaries_conditions_data final {
     }
 };
 
+template<std::floating_point T, size_t Dimension>
+struct thermal_material_data;
+
 template<std::floating_point T>
-struct stationary_thermal_1d_data {
+struct thermal_material_data<T, 1> final {
+    T conductivity = T{1}; // required
+    T capacity = T{1};
+    T density = T{1};
+
+    explicit constexpr thermal_material_data() noexcept = default;
+    explicit thermal_material_data(const Json::Value& physical) {
+        check_required_fields(physical, { "conductivity" });
+        conductivity = physical["conductivity"].template as<T>();
+        capacity = physical.get("capacity", T{1}).template as<T>();
+        density = physical.get("density", T{1}).template as<T>();
+    }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["conductivity"] = conductivity;
+        result["capacity"] = capacity;
+        result["density"] = density;
+        return result;
+    }
+};
+
+template<std::floating_point T>
+class thermal_material_data<T, 2> final {
+    void read_conductivity(const Json::Value& conduct) {
+        if (conduct.isNumeric())
+            conductivity.front() = conduct.template as<T>();
+        else if (conduct.isArray() && conduct.size() == 2) {
+            material == material_t::ORTHOTROPIC;
+            conductivity.front() = conduct[0].template as<T>();
+            conductivity.back() = conduct[1].template as<T>();
+        } else if (conduct.isArray() && conduct.size() == 4) {
+            material == material_t::ANISOTROPIC;
+            for(const Json::ArrayIndex i : std::ranges::iota_view{0u, 4u})
+                conductivity[i] = conduct[i].template as<T>();
+        } else
+            throw std::domain_error{"The thermal conductivity should be either a number in the isotropic case, "
+                                    "or an array of size 2 in the orthotropic case and size 4 in the anisotropic case"};
+    }
+
+    Json::Value save_conductivity() {
+        Json::Value result;
+        switch (material) {
+        case material_t::ISOTROPIC:
+            result = conductivity;
+        break;
+
+        case material_t::ORTHOTROPIC: {
+            result.append(conductivity.front());
+            result.append(conductivity.back());
+        } break;
+
+        case material_t::ANISOTROPIC:
+            for(const T val : conductivity)
+                result.append(val);
+        break;
+        }
+        return result;
+    }
+
+public:
+    material_t material = material_t::ISOTROPIC; // not json field
+    std::array<T, 4> conductivity = {T{1}};      // required
+    T capacity = T{1};
+    T density = T{1};
+
+    explicit constexpr thermal_material_data() noexcept = default;
+    explicit thermal_material_data(const Json::Value& physical) {
+        check_required_fields(physical, { "conductivity" });
+        read_conductivity(physical["conductivity"]);
+        capacity = physical.get("capacity", T{1}).template as<T>();
+        density = physical.get("density", T{1}).template as<T>();
+    }
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["conductivity"] = save_conductivity();
+        result["capacity"] = capacity;
+        result["density"] = density;
+        return result;
+    }
+};
+
+template<std::floating_point T, size_t Dimension>
+struct stationary_thermal_data;
+
+template<std::floating_point T>
+struct stationary_thermal_data<T, 1> {
     Json::Value other;
     save_data save;
     thermal_equation_data<T> equation;
@@ -149,7 +206,7 @@ struct stationary_thermal_1d_data {
     size_t element_order = 1;
     size_t quadrature_order = 1;
 
-    explicit stationary_thermal_1d_data(const Json::Value& value)
+    explicit stationary_thermal_data(const Json::Value& value)
         : other{value.get("other", {})}
         , save{value.get("save", {})} {
         check_required_fields(value, { "boundaries", "materials" });
@@ -170,7 +227,7 @@ struct stationary_thermal_1d_data {
         quadrature_order = value.isMember("quadrature_order") ? get_order(value["quadrature_order"]) : element_order;
     }
 
-    virtual ~stationary_thermal_1d_data() noexcept = default;
+    virtual ~stationary_thermal_data() noexcept = default;
 
     Json::Value to_json() const {
         Json::Value result;
@@ -180,27 +237,27 @@ struct stationary_thermal_1d_data {
         result["boundaries"] = boundaries.to_json();
         result["element_order"] = get_order(element_order);
         result["quadrature_order"] = get_order(quadrature_order);
-        Json::Value& segments = result["materials"] = {};
+        Json::Value& segments = result["materials"] = Json::arrayValue;
         for(const auto& segment : materials)
             segments.append(segment.to_json());
         return result;
     }
 };
 
-template<std::floating_point T>
-struct nonstationary_thermal_1d_data final : public stationary_thermal_1d_data<T> {
+template<std::floating_point T, size_t Dimension>
+struct nonstationary_thermal_data final : public stationary_thermal_data<T, Dimension> {
     nonstationary_data<T> nonstationary;
 
-    explicit nonstationary_thermal_1d_data(const Json::Value& value) 
-        : stationary_thermal_1d_data<T>{value} {
+    explicit nonstationary_thermal_data(const Json::Value& value) 
+        : stationary_thermal_data<T, Dimension>{value} {
         check_required_fields(value, { "nonstationary" });
         nonstationary = nonstationary_data<T>{value["nonstationary"]};
     }
 
-    ~nonstationary_thermal_1d_data() noexcept override = default;
+    ~nonstationary_thermal_data() noexcept override = default;
 
     Json::Value to_json() const {
-        Json::Value result = stationary_thermal_1d_data<T>::to_json();
+        Json::Value result = stationary_thermal_data<T, Dimension>::to_json();
         result["nonstationary"] = nonstationary.to_json();
         return result;
     }
