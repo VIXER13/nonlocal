@@ -12,12 +12,22 @@
 
 namespace nonlocal::config {
 
+thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
+const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
+
+size_t get_order(const Json::Value& order);
+const std::string& get_order(const size_t order);
+
+material_t get_material(const Json::Value& material);
+const std::string& get_material(const material_t material);
+
 class save_data final {
-    std::filesystem::path _folder;
+    std::filesystem::path _folder = ".";
     std::unordered_map<std::string, std::string> _names;
     std::optional<std::streamsize> _precision;
 
 public:
+    explicit save_data() = default;
     explicit save_data(const Json::Value& save);
 
     std::optional<std::streamsize> precision() const noexcept;
@@ -139,14 +149,32 @@ struct segment_data final {
     }
 };
 
-thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
-const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
+template<std::floating_point T, size_t Dimension>
+struct element_data final {
+    explicit constexpr element_data(const Json::Value& value) noexcept {}
 
-size_t get_order(const Json::Value& order);
-const std::string& get_order(const size_t order);
+    constexpr Json::Value to_json() const {
+        return {};
+    }
+};
 
-material_t get_material(const Json::Value& material);
-const std::string& get_material(const material_t material);
+template<std::floating_point T>
+struct element_data<T, 1> final {
+    size_t element_order = 1;
+    size_t quadrature_order = 1;
+
+    explicit constexpr element_data() noexcept = default;
+    explicit element_data(const Json::Value& value)
+        : element_order{get_order(value.get("element_order", 1))}
+        , quadrature_order{get_order(value.get("quadrature_order", element_order))} {}
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["element_order"] = get_order(element_order);
+        result["quadrature_order"] = get_order(quadrature_order);
+        return result;
+    }
+};
 
 }
 

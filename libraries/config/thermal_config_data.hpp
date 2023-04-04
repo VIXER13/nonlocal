@@ -194,37 +194,41 @@ public:
 };
 
 template<std::floating_point T, size_t Dimension>
-struct stationary_thermal_data;
+struct stationary_thermal_data {
+    using materials_t = std::conditional_t<
+        Dimension == 1,
+        std::vector<segment_data<T, thermal_material_data>>,
+        std::unordered_map<std::string, thermal_material_data<T, Dimension>>
+    >;
 
-template<std::floating_point T>
-struct stationary_thermal_data<T, 1> {
     Json::Value other;
     save_data save;
+    element_data<T, Dimension> elements;
     thermal_equation_data<T> equation;
-    thermal_boundaries_conditions_data<T, 1> boundaries;           // required
-    std::vector<segment_data<T, thermal_material_data>> materials; // required
-    size_t element_order = 1;
-    size_t quadrature_order = 1;
+    thermal_boundaries_conditions_data<T, Dimension> boundaries; // required
+    materials_t materials;                                       // required
 
     explicit stationary_thermal_data(const Json::Value& value)
         : other{value.get("other", {})}
-        , save{value.get("save", {})} {
+        , save{value.get("save", {})}
+        , elements{value.get("elements", {})}
+        , equation{value.get("equation", {})} {
         check_required_fields(value, { "boundaries", "materials" });
-        
-        if (value.isMember("equation"))
-            equation = thermal_equation_data<T>{value["equation"]};
-        boundaries = thermal_boundaries_conditions_data<T, 1>{value["boundaries"]};
-
-        const Json::Value& segments = value["materials"];
-        if (!segments.isArray() || segments.empty())
-            throw std::domain_error{"Field \"materials\" must be not empty array."};
-        materials.reserve(segments.size());
-        for(const Json::Value& segment : segments)
-            materials.emplace_back(segment);
-
-        if (value.isMember("element_order"))
-            element_order = get_order(value["element_order"]);
-        quadrature_order = value.isMember("quadrature_order") ? get_order(value["quadrature_order"]) : element_order;
+        boundaries = thermal_boundaries_conditions_data<T, Dimension>{value["boundaries"]};
+        if constexpr (Dimension == 1) {
+            const Json::Value& segments = value["materials"];
+            if (!segments.isArray() || segments.empty())
+                throw std::domain_error{"Field \"materials\" must be not empty array."};
+            materials.reserve(segments.size());
+            for(const Json::Value& segment : segments)
+                materials.emplace_back(segment);
+        } else {
+            const Json::Value& areas = value["materials"];
+            if (!areas.isObject())
+                throw std::domain_error{"Field \"materials\" must be a key value map, where key is material name and value is material parameters."};
+            for(const std::string& name : areas.getMemberNames())
+                materials[name] = thermal_material_data<T, Dimension>{areas[name]};
+        }
     }
 
     virtual ~stationary_thermal_data() noexcept = default;
@@ -233,13 +237,18 @@ struct stationary_thermal_data<T, 1> {
         Json::Value result;
         result["other"] = other;
         result["save"] = save.to_json();
+        result["elements"] = elements.to_json();
         result["equation"] = equation.to_json();
         result["boundaries"] = boundaries.to_json();
-        result["element_order"] = get_order(element_order);
-        result["quadrature_order"] = get_order(quadrature_order);
-        Json::Value& segments = result["materials"] = Json::arrayValue;
-        for(const auto& segment : materials)
-            segments.append(segment.to_json());
+        if constexpr (Dimension == 1) {
+            Json::Value& segments = result["materials"] = Json::arrayValue;
+            for(const auto& segment : materials)
+                segments.append(segment.to_json());
+        } else {
+            Json::Value& areas = result["materials"] = Json::objectValue;
+            for(const auto& [name, area] : materials)
+                areas[name] = area.to_json();
+        }
         return result;
     }
 };

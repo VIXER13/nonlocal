@@ -31,7 +31,7 @@ int main(const int argc, const char *const *const argv) {
         const nonlocal::config::nonstationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
-        const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.element_order, config_data.quadrature_order);
+        const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.elements.element_order, config_data.elements.quadrature_order);
         const auto parameters = nonlocal::make_thermal_parameters(config_data.materials);
         const nonlocal::thermal::thermal_boundaries_conditions_1d<T> boundaries_conditions =  {
             nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),

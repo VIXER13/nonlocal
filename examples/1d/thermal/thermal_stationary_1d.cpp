@@ -12,7 +12,7 @@ int main(const int argc, const char *const *const argv) {
         const nonlocal::config::stationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
-        const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.element_order, config_data.quadrature_order);
+        const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.elements.element_order, config_data.elements.quadrature_order);
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
             mesh, nonlocal::make_thermal_parameters(config_data.materials),
             nonlocal::thermal::thermal_boundaries_conditions_1d<T>{
