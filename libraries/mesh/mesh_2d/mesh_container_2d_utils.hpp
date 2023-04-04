@@ -203,10 +203,12 @@ void save_as_vtk(const std::filesystem::path& path_to_save, const mesh_container
 }
 
 template<class T, class I, class Vector>
-void save_as_csv(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh, const Vector& x) {
-    std::ofstream csv{path_to_save};
+void save_as_csv(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh,
+                 const Vector& x, const std::optional<std::streamsize> precision = std::nullopt) {
     if (x.size() != mesh.nodes_count())
         throw std::runtime_error{"Cannot save csv file because the mesh points counts does not match the vector length"};
+    std::ofstream csv{path_to_save};
+    csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
     for(const size_t node : mesh.nodes())
         csv << mesh.node_coord(node)[X] << ',' << mesh.node_coord(node)[Y] << ',' << x[node] << '\n';
 }

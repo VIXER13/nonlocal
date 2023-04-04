@@ -12,7 +12,7 @@ namespace nonlocal {
 
 template<class T, template<class, size_t> class Physics>
 std::shared_ptr<nonlocal::mesh::mesh_1d<T>> make_mesh(
-    const std::vector<nonlocal::config::segment_data<T, Physics>>& materials,
+    const std::vector<nonlocal::config::material_data<Physics, T, 1>>& materials,
     const size_t element_order, const size_t quadrature_order) {
     std::vector<nonlocal::mesh::segment_data<T>> segments(materials.size());
     std::vector<T> search_radii(materials.size());
@@ -32,7 +32,7 @@ std::shared_ptr<nonlocal::mesh::mesh_1d<T>> make_mesh(
 
 template<class T>
 nonlocal::thermal::parameters_1d<T> make_thermal_parameters(
-    const std::vector<nonlocal::config::segment_data<T, nonlocal::config::thermal_material_data>>& materials) {
+    const std::vector<nonlocal::config::material_data<nonlocal::config::thermal_material_data, T, 1>>& materials) {
     nonlocal::thermal::parameters_1d<T> parameters(materials.size());
     for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
         parameters[i] = {

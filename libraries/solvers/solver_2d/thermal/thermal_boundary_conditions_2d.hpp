@@ -99,6 +99,9 @@ public:
 };
 
 template<class T>
+using thermal_boundary_condition_2d = boundary_conditions_2d<T, nonlocal::physics_t::THERMAL, 1>;
+
+template<class T>
 using thermal_boundaries_conditions_2d = boundaries_conditions_2d<T, physics_t::THERMAL, 1>;
 
 }

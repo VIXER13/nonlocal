@@ -150,11 +150,11 @@ class thermal_material_data<T, 2> final {
                                     "or an array of size 2 in the orthotropic case and size 4 in the anisotropic case"};
     }
 
-    Json::Value save_conductivity() {
+    Json::Value save_conductivity() const {
         Json::Value result;
         switch (material) {
         case material_t::ISOTROPIC:
-            result = conductivity;
+            result = conductivity[0];
         break;
 
         case material_t::ORTHOTROPIC: {
@@ -197,13 +197,13 @@ template<std::floating_point T, size_t Dimension>
 struct stationary_thermal_data {
     using materials_t = std::conditional_t<
         Dimension == 1,
-        std::vector<segment_data<T, thermal_material_data>>,
-        std::unordered_map<std::string, thermal_material_data<T, Dimension>>
+        std::vector<material_data<thermal_material_data, T, 1>>,
+        std::unordered_map<std::string, material_data<thermal_material_data, T, Dimension>>
     >;
 
     Json::Value other;
     save_data save;
-    element_data<T, Dimension> elements;
+    mesh_data<T, Dimension> mesh;
     thermal_equation_data<T> equation;
     thermal_boundaries_conditions_data<T, Dimension> boundaries; // required
     materials_t materials;                                       // required
@@ -211,11 +211,11 @@ struct stationary_thermal_data {
     explicit stationary_thermal_data(const Json::Value& value)
         : other{value.get("other", {})}
         , save{value.get("save", {})}
-        , elements{value.get("elements", {})}
         , equation{value.get("equation", {})} {
-        check_required_fields(value, { "boundaries", "materials" });
-        boundaries = thermal_boundaries_conditions_data<T, Dimension>{value["boundaries"]};
         if constexpr (Dimension == 1) {
+            check_required_fields(value, { "boundaries", "materials" });
+            if (value.isMember("mesh"))
+                mesh = mesh_data<T, Dimension>{value["mesh"]};
             const Json::Value& segments = value["materials"];
             if (!segments.isArray() || segments.empty())
                 throw std::domain_error{"Field \"materials\" must be not empty array."};
@@ -223,12 +223,15 @@ struct stationary_thermal_data {
             for(const Json::Value& segment : segments)
                 materials.emplace_back(segment);
         } else {
+            check_required_fields(value, { "boundaries", "materials", "mesh" });
+            mesh = mesh_data<T, Dimension>{value["mesh"]};
             const Json::Value& areas = value["materials"];
             if (!areas.isObject())
-                throw std::domain_error{"Field \"materials\" must be a key value map, where key is material name and value is material parameters."};
+                throw std::domain_error{"Field \"materials\" must be a key-value map, where key is material name and value is material parameters."};
             for(const std::string& name : areas.getMemberNames())
-                materials[name] = thermal_material_data<T, Dimension>{areas[name]};
+                materials.emplace(name, areas[name]);
         }
+        boundaries = thermal_boundaries_conditions_data<T, Dimension>{value["boundaries"]};
     }
 
     virtual ~stationary_thermal_data() noexcept = default;
@@ -237,7 +240,7 @@ struct stationary_thermal_data {
         Json::Value result;
         result["other"] = other;
         result["save"] = save.to_json();
-        result["elements"] = elements.to_json();
+        result["mesh"] = mesh.to_json();
         result["equation"] = equation.to_json();
         result["boundaries"] = boundaries.to_json();
         if constexpr (Dimension == 1) {

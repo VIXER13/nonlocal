@@ -2,42 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(thermal_2d)
 
-add_executable(mesh_2d_test mesh_2d_test.cpp)
-target_include_directories(mesh_2d_test PUBLIC ".")
-target_link_libraries(mesh_2d_test nonlocal_constants_lib mesh_2d_lib finite_element_solver_2d_lib)
-
-# add_executable(calculate_flux calculate_flux.cpp)
-# target_include_directories(calculate_flux PUBLIC ".")
-# target_link_libraries(calculate_flux nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
 add_executable(thermal_stationary_2d thermal_stationary_2d.cpp)
 target_include_directories(thermal_stationary_2d PUBLIC ".")
-target_link_libraries(thermal_stationary_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(thermal_stationary_tests_2d thermal_stationary_tests_2d.cpp)
-target_include_directories(thermal_stationary_tests_2d PUBLIC ".")
-target_link_libraries(thermal_stationary_tests_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_2d thermal_nonstationary_2d.cpp)
-target_include_directories(thermal_nonstationary_2d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_radiation_2d thermal_nonstationary_radiation_2d.cpp)
-target_include_directories(thermal_nonstationary_radiation_2d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_radiation_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_tests_2d thermal_nonstationary_tests_2d.cpp)
-target_include_directories(thermal_nonstationary_tests_2d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_tests_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(thermal_nonstationary_ref_2d thermal_nonstationary_ref_2d.cpp)
-target_include_directories(thermal_nonstationary_ref_2d PUBLIC ".")
-target_link_libraries(thermal_nonstationary_ref_2d nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(TShape TShape.cpp)
-target_include_directories(TShape PUBLIC ".")
-target_link_libraries(TShape nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(radiation radiation.cpp)
-target_include_directories(radiation PUBLIC ".")
-target_link_libraries(radiation nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
+target_link_libraries(thermal_stationary_2d 
+    finite_element_solver_2d_lib
+    parallel_utils_lib
+    config_lib
+)
