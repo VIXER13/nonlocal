@@ -68,7 +68,7 @@ template<class T, class I>
 void conjugate_gradient_old<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& z) const {
     for(size_t i = 1; i < _threaded_z.cols(); ++i)
         _threaded_z.block(_shift, 0, z.size() - _shift, 1) += _threaded_z.block(_shift, i, z.size() - _shift, 1);
-#if MPI_USE
+#if MPI_USED
     MPI_Allreduce(_threaded_z.col(0).data(), z.data(), z.size(), std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #else
     z = _threaded_z.col(0);
@@ -126,7 +126,7 @@ void conjugate_gradient_old<T, I>::set_max_iterations(const uintmax_t max_iterat
 
 template<class T, class I>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient_old<T, I>::solve(const Eigen::Matrix<T, Eigen::Dynamic, 1>& b) const {
-#if MPI_USE
+#if MPI_USED
     const Eigen::Matrix<T, Eigen::Dynamic, 1> b_full = calc_b_full(b);
 #else
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b_full = b;

@@ -206,6 +206,8 @@ T mesh_2d<T, I>::area() const {
 
 template<class T, class I>
 void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& radii, const balancing_t balancing, const bool add_diam) {
+    if (radii.empty())
+        return;
     _elements_neighbors.resize(container().elements_2d_count());
     const std::vector<std::array<T, 2>> centers = utils::approx_centers_of_elements(container());
     for(const auto& [group, radius] : radii) {

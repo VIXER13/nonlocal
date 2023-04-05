@@ -1,118 +1,78 @@
-#include "nonstationary_heat_equation_solver_2d.hpp"
-#include "heat_equation_solution_2d.hpp"
-#include "influence_functions_2d.hpp"
-#include "mesh_container_2d_utils.hpp"
+#include "make_mesh.hpp"
+#include "thermal/nonstationary_heat_equation_solver_2d.hpp"
 
 namespace {
 
-using T = double;
-using I = int64_t;
+template<class T, class I>
+void save_step(nonlocal::thermal::heat_equation_solution_2d<T, I>&& solution, const nonlocal::config::save_data& save, const uint64_t step) {
+    if (parallel_utils::MPI_rank() != 0)
+        return;
 
-void save_solution(const nonlocal::thermal::heat_equation_solution_2d<T, I>& solution, 
-                   const std::filesystem::path& folder, const size_t step) {
-    solution.save_as_vtk(folder.string() + '/' + std::to_string(step) + "T.vtk");
-    nonlocal::mesh::utils::save_as_csv(folder.string() + '/' + std::to_string(step) + "T.csv", solution.mesh().container(), solution.temperature());
-    if (solution.is_flux_calculated()) {
-        const auto& [TX, TY] = solution.flux();
-        nonlocal::mesh::utils::save_as_csv(folder.string() + '/' + std::to_string(step) + "TX.csv", solution.mesh().container(), TX);
-        nonlocal::mesh::utils::save_as_csv(folder.string() + '/' + std::to_string(step) + "TY.csv", solution.mesh().container(), TY);
+    std::cout << "step = " << step << std::endl;
+    const auto save_vector = [&solution, &save, step](const std::vector<T>& x, const std::string& name) {
+        const std::filesystem::path path = save.make_path(std::to_string(step) + save.get_name(name), ".csv");
+        nonlocal::mesh::utils::save_as_csv(path, solution.mesh().container(), x, save.precision());
+    };
+
+    solution.calc_flux();
+    if (save.contains("temperature"))
+        save_vector(solution.temperature(), "temperature");
+    if (save.contains("flux_x"))
+        save_vector(solution.flux()[0], "flux_x");
+    if (save.contains("flux_y"))
+        save_vector(solution.flux()[1], "flux_y");
+    if (save.contains("vtk"))
+        solution.save_as_vtk(save.make_path(std::to_string(step) + save.get_name("vtk"), ".vtk"));
+}
+
+}
+
+int main(const int argc, const char *const *const argv) {
+    if(argc != 2) {
+        std::cerr << "Input format [program name] <path/to/config.json>" << std::endl;
+        return EXIT_FAILURE;
     }
-}
 
-}
-
-int main(int argc, char** argv) {
-#ifdef MPI_USE
+#ifdef MPI_USED
     MPI_Init(&argc, &argv);
 #endif
 
-    if(argc < 6) {
-        std::cerr << "Input format [program name] <path to mesh> <r1> <r2> <p1> <save_path>" << std::endl;
-#ifdef MPI_USE
-        MPI_Finalize();
-#endif
-        return EXIT_FAILURE;
-    }
-
+    int exit_code = EXIT_SUCCESS;
     try {
-        std::cout.precision(3);
-        auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
-        const std::array<T, 2> r = {std::stod(argv[2]), std::stod(argv[3])};
-        static const nonlocal::influence::polynomial_2d<T, 2, 1> influence_function{r};
-        const T p1 = std::stod(argv[4]);
+        using T = double;
+        using I = int64_t;
+        const nonlocal::config::nonstationary_thermal_data<T, 2> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
+        std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
-        static constexpr T tau = 0.001;
-        nonlocal::thermal::parameters_2d<T> parameters;
-        parameters["Material1"] = {
-            .model = {
-                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
-                .local_weight = T{1}
-            },
-            .physical = {
-                .conductivity = {T{1}}
-            }
-        };
-        parameters["Material2"] = {
-            .model = {
-                .influence = nonlocal::influence::normal_distribution_2d<T>{std::stod(argv[2])},
-                .local_weight = p1
-            },
-            .physical = {
-                .conductivity = {T{10}}
-            }
-        };
-        parameters["Material3"] = {
-            .model = {
-                .influence = nonlocal::influence::polynomial_2d<T, 2, 1>{r},
-                .local_weight = T{1}
-            },
-            .physical = {
-                .conductivity = {T{2}}
-            }
-        };
+        const auto mesh = nonlocal::make_mesh<T, I>(config_data.mesh.mesh, config_data.materials);
+        const auto parameters = nonlocal::make_parameters<T>(config_data.materials);
+        const auto boundaries_conditions = nonlocal::make_boundaries_conditions(config_data.boundaries);
+        nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, config_data.nonstationary.time_step};
+        solver.compute(parameters, boundaries_conditions,
+            [init_dist = config_data.equation.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
 
-        mesh->find_neighbours({
-            {"Material2", 3 * std::stod(argv[2])}
-        });
-
-        nonlocal::thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
-        boundaries_conditions["Left"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(-1);
-        boundaries_conditions["Right"] = std::make_unique<nonlocal::thermal::flux_2d<T>>(1);
-
-        static constexpr auto init_dist = [](const std::array<T, 2>& x) constexpr noexcept {
-            return T{0};
-        };
-
-        static constexpr auto right_part = [](const std::array<T, 2>& x) constexpr noexcept {
-            return T{0};
-        };
-        
-        nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, tau};
-        solver.compute(parameters, boundaries_conditions, init_dist);
-        for(const size_t step : std::ranges::iota_view{0u, 100001u}) {
-            solver.calc_step(boundaries_conditions, right_part);
-            if (step % 5 == 0) {
-                auto solution = nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()};
-                solution.calc_flux();
-                save_solution(solution, "./sol", step);
-            }
+        if (!std::filesystem::exists(config_data.save.folder()))
+            std::filesystem::create_directories(config_data.save.folder());
+        if (config_data.save.contains("config"))
+            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
+        save_step(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, config_data.save, 0u);
+        for(const uint64_t step : std::ranges::iota_view{1u, config_data.nonstationary.steps_cont + 1}) {
+            solver.calc_step(boundaries_conditions,
+                [right_part = config_data.equation.right_part](const std::array<T, 2>& x) constexpr noexcept { return right_part; });
+            if (step % config_data.nonstationary.save_frequency == 0)
+                save_step(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, config_data.save, step);
         }
-    } catch(const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
-#ifdef MPI_USE
-        MPI_Finalize();
-#endif
-        return EXIT_FAILURE;
-    } catch(...) {
-        std::cerr << "Unknown error." << std::endl;
-#ifdef MPI_USE
-        MPI_Finalize();
-#endif
-        return EXIT_FAILURE;
+        exit_code = EXIT_FAILURE;
+    } catch (...) {
+        std::cerr << "Unknown error" << std::endl;
+        exit_code = EXIT_FAILURE;
     }
 
-#ifdef MPI_USE
+#ifdef MPI_USED
     MPI_Finalize();
 #endif
-    return 0;
+
+    return exit_code;
 }

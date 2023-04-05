@@ -6,7 +6,7 @@ namespace parallel_utils {
 
 int MPI_rank() {
     int rank = 0;
-#if MPI_USE
+#if MPI_USED
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
     return rank;
@@ -14,7 +14,7 @@ int MPI_rank() {
 
 int MPI_size() {
     int size = 1;
-#if MPI_USE
+#if MPI_USED
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 #endif
     return size;

@@ -6,6 +6,12 @@ add_executable(thermal_stationary_2d thermal_stationary_2d.cpp)
 target_include_directories(thermal_stationary_2d PUBLIC ".")
 target_link_libraries(thermal_stationary_2d 
     finite_element_solver_2d_lib
-    parallel_utils_lib
+    config_lib
+)
+
+add_executable(thermal_nonstationary_2d thermal_nonstationary_2d.cpp)
+target_include_directories(thermal_nonstationary_2d PUBLIC ".")
+target_link_libraries(thermal_nonstationary_2d 
+    finite_element_solver_2d_lib
     config_lib
 )

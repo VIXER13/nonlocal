@@ -5,7 +5,7 @@
 #include <array>
 #include <vector>
 #include <ranges>
-#if MPI_USE
+#if MPI_USED
     #include <mpi.h>
 #endif
 
@@ -26,7 +26,7 @@ public:
 
 template<class U, class Vector>
 Vector all_to_all(const Vector& sendbuf, const MPI_ranges& ranges) {
-#if MPI_USE
+#if MPI_USED
     std::vector<int> sendcounts(MPI_size(),        sizeof(U) * (ranges.range().back() - ranges.range().front())),
                      sdispls   (sendcounts.size(), sizeof(U) *  ranges.range().front()),
                      recvcounts(sendcounts.size()), rdispls(sendcounts.size());
@@ -46,7 +46,7 @@ Vector all_to_all(const Vector& sendbuf, const MPI_ranges& ranges) {
 
 template<class T>
 constexpr std::enable_if_t<std::is_floating_point_v<T>, T> reduce(T local_sum) {
-#if MPI_USE
+#if MPI_USED
     T global_sum = T{0};
     MPI_Reduce(&local_sum, &global_sum, 1, std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     return global_sum;
