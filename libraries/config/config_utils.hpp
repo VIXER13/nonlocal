@@ -10,6 +10,7 @@
 namespace nonlocal::config {
 
 Json::Value read_json(const std::filesystem::path& path);
+Json::Value read_json(const char *const begin, const char *const end);
 Json::Value read_json(const std::string& str);
 
 void save_json(const std::filesystem::path& path, const Json::Value& value);

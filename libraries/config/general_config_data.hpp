@@ -12,15 +12,6 @@
 
 namespace nonlocal::config {
 
-thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
-const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
-
-size_t get_order(const Json::Value& order);
-const std::string& get_order(const size_t order);
-
-material_t get_material(const Json::Value& material);
-const std::string& get_material(const material_t material);
-
 class save_data final {
     std::filesystem::path _folder = ".";
     std::unordered_map<std::string, std::string> _names;
@@ -51,44 +42,16 @@ struct nonstationary_data final {
     uint64_t save_frequency = 1u;
 
     explicit constexpr nonstationary_data() noexcept = default;
-    explicit nonstationary_data(const Json::Value& nonstationary) {
-        check_required_fields(nonstationary, { "time_step", "steps_count"});
-        time_step = nonstationary["time_step"].template as<T>();
-        initial_time = nonstationary.get("initial_time", T{0}).template as<T>();
-        steps_cont = nonstationary["steps_count"].asUInt64();
-        save_frequency = nonstationary.get("save_frequency", 1u).asUInt64();
-    }
+    explicit nonstationary_data(const Json::Value& nonstationary);
 
-    Json::Value to_json() const {
-        Json::Value result;
-        result["time_step"] = time_step;
-        result["initial_time"] = initial_time;
-        result["steps_cont"] = steps_cont;
-        result["save_frequency"] = save_frequency;
-        return result;
-    }
+    Json::Value to_json() const;
 };
 
 template<std::floating_point T, size_t Dimension>
 class model_data final {
     using radius_t = std::conditional_t<Dimension == 1, T, std::array<T, Dimension>>;
 
-    static radius_t read_radius(const Json::Value& arr, const std::string& field) {
-        std::array<T, Dimension> result;
-        
-        if (arr.template is<T>())
-            result.fill(arr.template as<T>());
-        else if (arr.isArray() && arr.size() == Dimension)
-            for(const Json::ArrayIndex i : std::ranges::iota_view{0u, Dimension})
-                result[i] = arr[i].template as<T>();
-        else
-            throw std::domain_error{"Field \"" + field + "\" must be an array with length " + std::to_string(Dimension)};
-
-        if constexpr (std::is_same_v<radius_t, T>)
-            return result.front();
-        else
-            return result;
-    }
+    static radius_t read_radius(const Json::Value& arr, const std::string& field);
 
 public:
     T local_weight = T{1};             // required
@@ -96,30 +59,9 @@ public:
     radius_t search_radius = {T{0}};   // if skipped sets equal nonlocal_radius
 
     explicit constexpr model_data() noexcept = default;
-    explicit model_data(const Json::Value& model) {
-        check_required_fields(model, { "local_weight", "nonlocal_radius" });
-        local_weight = model["local_weight"].template as<T>();
-        nonlocal_radius = read_radius(model["nonlocal_radius"], "nonlocal_radius");
-        search_radius = !model.isMember("search_radius") ? nonlocal_radius :
-                        read_radius(model["search_radius"], "search_radius");
-    }
+    explicit model_data(const Json::Value& model);
 
-    Json::Value to_json() const {
-        Json::Value result;
-        result["local_weight"] = local_weight;
-        if constexpr (std::is_same_v<radius_t, T>) {
-            result["nonlocal_radius"] = nonlocal_radius;
-            result["search_radius"] = search_radius;
-        } else {
-            Json::Value& nonloc = result["nonlocal_radius"] = Json::arrayValue;
-            Json::Value& search = result["search_radius"] = Json::arrayValue;
-            for(const size_t i : std::ranges::iota_view{0u, Dimension}) {
-                nonloc.append(nonlocal_radius[i]);
-                search.append(search_radius[i]);
-            }
-        }
-        return result;
-    }
+    Json::Value to_json() const;
 };
 
 template<template<class, size_t> class Physics, std::floating_point T, size_t Dimension>
@@ -128,19 +70,9 @@ struct material_data final {
     model_data<T, Dimension> model;
 
     explicit constexpr material_data() noexcept = default;
-    explicit material_data(const Json::Value& material) {
-        check_required_fields(material, { "physical" });
-        physical = Physics<T, Dimension>{material["physical"]};
-        if (material.isMember("model"))
-            model = model_data<T, Dimension>{material["model"]};
-    }
+    explicit material_data(const Json::Value& material);
 
-    Json::Value to_json() const {
-        Json::Value result;
-        result["physical"] = physical.to_json();
-        result["model"] = model.to_json();
-        return result;
-    }
+    Json::Value to_json() const;
 };
 
 template<template<class, size_t> class Physics, std::floating_point T>
@@ -151,23 +83,9 @@ struct material_data<Physics, T, 1> final {
     model_data<T, 1> model;
 
     explicit constexpr material_data() noexcept = default;
-    explicit material_data(const Json::Value& material) {
-        check_required_fields(material, { "elements_count", "length", "physical" });
-        elements_count = material["elements_count"].asUInt64();
-        length = material["length"].template as<T>();
-        physical = Physics<T, 1>{material["physical"]};
-        if (material.isMember("model"))
-            model = model_data<T, 1>{material["model"]};
-    }
+    explicit material_data(const Json::Value& material);
 
-    Json::Value to_json() const {
-        Json::Value result;
-        result["elements_count"] = elements_count;
-        result["length"] = length;
-        result["physical"] = physical.to_json();
-        result["model"] = model.to_json();
-        return result;
-    }
+    Json::Value to_json() const;
 };
 
 template<std::floating_point T, size_t Dimension>
@@ -175,16 +93,9 @@ struct mesh_data final {
     std::filesystem::path mesh;
 
     explicit mesh_data() = default;
-    explicit mesh_data(const Json::Value& value) {
-        check_required_fields(value, { "mesh" });
-        mesh = value["mesh"].asString();
-    }
+    explicit mesh_data(const Json::Value& value);
 
-    constexpr Json::Value to_json() const {
-        Json::Value result;
-        result["mesh"] = mesh.string();
-        return result;
-    }
+    Json::Value to_json() const;
 };
 
 template<std::floating_point T>
@@ -193,18 +104,22 @@ struct mesh_data<T, 1> final {
     size_t quadrature_order = 1;
 
     explicit constexpr mesh_data() noexcept = default;
-    explicit mesh_data(const Json::Value& value)
-        : element_order{get_order(value.get("element_order", 1))}
-        , quadrature_order{get_order(value.get("quadrature_order", element_order))} {}
+    explicit mesh_data(const Json::Value& value);
 
-    Json::Value to_json() const {
-        Json::Value result;
-        result["element_order"] = get_order(element_order);
-        result["quadrature_order"] = get_order(quadrature_order);
-        return result;
-    }
+    Json::Value to_json() const;
 };
 
+thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
+const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
+
+size_t get_order(const Json::Value& order);
+const std::string& get_order(const size_t order);
+
+material_t get_material(const Json::Value& material);
+const std::string& get_material(const material_t material);
+
 }
+
+#include "general_config_data_impl.hpp"
 
 #endif

@@ -14,12 +14,16 @@ Json::Value read_json(const std::filesystem::path& path) {
 	throw std::runtime_error{"Invalid json file: " + path.string() + ".\nError message: " + reader.getFormattedErrorMessages()};
 }
 
-Json::Value read_json(const std::string& str) {
+Json::Value read_json(const char *const begin, const char *const end) {
 	Json::Reader reader;
 	Json::Value value;
-	if (reader.parse(str, value))
+	if (reader.parse(begin, end, value))
         return value;
 	throw std::runtime_error{"Invalid json: " + reader.getFormattedErrorMessages()};
+}
+
+Json::Value read_json(const std::string& str) {
+	return read_json(str.data(), std::next(str.data(), str.size()));
 }
 
 void save_json(const std::filesystem::path& path, const Json::Value& value) {

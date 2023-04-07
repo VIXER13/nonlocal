@@ -40,5 +40,6 @@ add_subdirectory(examples/2d/thermomechanical)
 
 find_package(GTest)
 if(GTEST_FOUND)
+    include(CMakeTools/EmbeddedFiles.cmake)
     add_subdirectory(tests)
 endif()
