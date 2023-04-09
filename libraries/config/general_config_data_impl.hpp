@@ -3,12 +3,30 @@
 
 namespace nonlocal::config {
 
+template<>
+struct mesh_data<1u> final {
+    size_t element_order = 1;
+    size_t quadrature_order = 1;
+
+    explicit constexpr mesh_data() noexcept = default;
+    explicit mesh_data(const Json::Value& value)
+        : element_order{get_order(value.get("element_order", 1))}
+        , quadrature_order{get_order(value.get("quadrature_order", element_order))} {}
+
+    Json::Value to_json() const {
+        Json::Value result;
+        result["element_order"] = get_order(element_order);
+        result["quadrature_order"] = get_order(quadrature_order);
+        return result;
+    }
+};
+
 template<std::floating_point T>
 nonstationary_data<T>::nonstationary_data(const Json::Value& nonstationary) {
     check_required_fields(nonstationary, { "time_step", "steps_count"});
     time_step = nonstationary["time_step"].template as<T>();
     initial_time = nonstationary.get("initial_time", T{0}).template as<T>();
-    steps_cont = nonstationary["steps_count"].asUInt64();
+    steps_count = nonstationary["steps_count"].asUInt64();
     save_frequency = nonstationary.get("save_frequency", 1u).asUInt64();
 }
 
@@ -17,7 +35,7 @@ Json::Value nonstationary_data<T>::to_json() const {
     Json::Value result;
     result["time_step"] = time_step;
     result["initial_time"] = initial_time;
-    result["steps_cont"] = steps_cont;
+    result["steps_count"] = steps_count;
     result["save_frequency"] = save_frequency;
     return result;
 }
@@ -26,7 +44,7 @@ template<std::floating_point T, size_t Dimension>
 model_data<T, Dimension>::radius_t model_data<T, Dimension>::read_radius(const Json::Value& arr, const std::string& field) {
     std::array<T, Dimension> result;
     
-    if (arr.template is<T>())
+    if (arr.isDouble())
         result.fill(arr.template as<T>());
     else if (arr.isArray() && arr.size() == Dimension)
         for(const Json::ArrayIndex i : std::ranges::iota_view{0u, Dimension})
@@ -103,29 +121,16 @@ Json::Value material_data<Physics, T, 1>::to_json() const {
     return result;
 }
 
-template<std::floating_point T, size_t Dimension>
-mesh_data<T, Dimension>::mesh_data(const Json::Value& value) {
+template<size_t Dimension>
+mesh_data<Dimension>::mesh_data(const Json::Value& value) {
     check_required_fields(value, { "mesh" });
     mesh = value["mesh"].asString();
 }
 
-template<std::floating_point T, size_t Dimension>
-Json::Value mesh_data<T, Dimension>::to_json() const {
+template<size_t Dimension>
+Json::Value mesh_data<Dimension>::to_json() const {
     Json::Value result;
     result["mesh"] = mesh.string();
-    return result;
-}
-
-template<std::floating_point T>
-mesh_data<T, 1>::mesh_data(const Json::Value& value)
-    : element_order{get_order(value.get("element_order", 1))}
-    , quadrature_order{get_order(value.get("quadrature_order", element_order))} {}
-
-template<std::floating_point T>
-Json::Value mesh_data<T, 1>::to_json() const {
-    Json::Value result;
-    result["element_order"] = get_order(element_order);
-    result["quadrature_order"] = get_order(quadrature_order);
     return result;
 }
 

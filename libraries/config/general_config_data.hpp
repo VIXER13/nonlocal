@@ -34,11 +34,21 @@ public:
     Json::Value to_json() const;
 };
 
+template<size_t Dimension>
+struct mesh_data final {
+    std::filesystem::path mesh; // required
+
+    explicit mesh_data() = default;
+    explicit mesh_data(const Json::Value& value);
+
+    Json::Value to_json() const;
+};
+
 template<std::floating_point T>
 struct nonstationary_data final {
     T time_step = T{0.01};      // required
     T initial_time = T{0};
-    uint64_t steps_cont = 100u; // required
+    uint64_t steps_count = 100u; // required
     uint64_t save_frequency = 1u;
 
     explicit constexpr nonstationary_data() noexcept = default;
@@ -84,27 +94,6 @@ struct material_data<Physics, T, 1> final {
 
     explicit constexpr material_data() noexcept = default;
     explicit material_data(const Json::Value& material);
-
-    Json::Value to_json() const;
-};
-
-template<std::floating_point T, size_t Dimension>
-struct mesh_data final {
-    std::filesystem::path mesh;
-
-    explicit mesh_data() = default;
-    explicit mesh_data(const Json::Value& value);
-
-    Json::Value to_json() const;
-};
-
-template<std::floating_point T>
-struct mesh_data<T, 1> final {
-    size_t element_order = 1;
-    size_t quadrature_order = 1;
-
-    explicit constexpr mesh_data() noexcept = default;
-    explicit mesh_data(const Json::Value& value);
 
     Json::Value to_json() const;
 };

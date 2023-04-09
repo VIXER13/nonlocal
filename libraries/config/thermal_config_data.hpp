@@ -86,7 +86,7 @@ struct stationary_thermal_data {
 
     Json::Value other;
     save_data save;
-    mesh_data<T, Dimension> mesh;
+    mesh_data<Dimension> mesh;
     thermal_equation_data<T> equation;
     thermal_boundaries_conditions_data<T, Dimension> boundaries; // required
     materials_t materials;                                       // required

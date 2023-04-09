@@ -163,7 +163,7 @@ stationary_thermal_data<T, Dimension>::stationary_thermal_data(const Json::Value
     if constexpr (Dimension == 1) {
         check_required_fields(value, { "boundaries", "materials" });
         if (value.isMember("mesh"))
-            mesh = mesh_data<T, Dimension>{value["mesh"]};
+            mesh = mesh_data<Dimension>{value["mesh"]};
         const Json::Value& segments = value["materials"];
         if (!segments.isArray() || segments.empty())
             throw std::domain_error{"Field \"materials\" must be not empty array."};
@@ -172,7 +172,7 @@ stationary_thermal_data<T, Dimension>::stationary_thermal_data(const Json::Value
             materials.emplace_back(segment);
     } else {
         check_required_fields(value, { "boundaries", "materials", "mesh" });
-        mesh = mesh_data<T, Dimension>{value["mesh"]};
+        mesh = mesh_data<Dimension>{value["mesh"]};
         const Json::Value& areas = value["materials"];
         if (!areas.isObject())
             throw std::domain_error{"Field \"materials\" must be a key-value map, where key is material name and value is material parameters."};

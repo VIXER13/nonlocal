@@ -5,11 +5,11 @@ project(nonlocal_tests)
 enable_testing()
 
 FileEmbedSetup()
-FileEmbedAdd(config/test_config.json)
+FileEmbedAdd(config/required_fields.json)
 
 add_executable(unit_tests 
     nonlocal_tests.cpp
-    config/config.cpp
+    config/required_fields.cpp
     finite_elements/quadratures.cpp
     finite_elements/elements.cpp
 )

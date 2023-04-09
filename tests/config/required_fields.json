@@ -1,0 +1,66 @@
+{
+    "nonstationary_missed_all": {},
+    "nonstationary_missed_time_step": {
+        "steps_count": 5
+    },
+    "nonstationary_missed_steps_count": {
+        "time_step": 0.1
+    },
+    "nonstationary_all_required_exists": {
+        "steps_count": 5,
+        "time_step": 0.1
+    },
+
+    "model_data_1d_missed_all": {},
+    "model_data_1d_missed_local_weight": {
+        "nonlocal_radius": 0.1
+    },
+    "model_data_1d_missed_nonlocal_radius": {
+        "local_weight": 0.5
+    },
+    "model_data_1d_all_required_exists": {
+        "local_weight": 0.5,
+        "nonlocal_radius": 0.1
+    },
+
+    "model_data_2d_missed_all": {},
+    "model_data_2d_missed_local_weight": {
+        "nonloca_radius": [0.1, 0.2]
+    },
+    "model_data_2d_missed_nonlocal_radius": {
+        "local_weight": 0.5
+    },
+    "model_data_2d_all_required_exists": {
+        "local_weight": 0.5,
+        "nonlocal_radius": [0.1, 0.2]
+    },
+
+    "material_data_1d_missed_all": {},
+    "material_data_1d_missed_elements_count": {
+        "length": 1.0,
+        "physical": {}
+    },
+    "material_data_1d_missed_length": {
+        "elements_count": 100,
+        "physical": {}
+    },
+    "material_data_1d_missed_physical": {
+        "elements_count": 100,
+        "length": 1.0
+    },
+    "material_data_1d_all_required_exists": {
+        "elements_count": 100,
+        "length": 1.0,
+        "physical": {}
+    },
+
+    "material_data_2d_missed_all": {},
+    "material_data_2d_all_required_exists": {
+        "physical": {}
+    },
+
+    "mesh_data_2d_missed_all": {},
+    "mesh_data_2d_all_required_exists": {
+        "mesh": "path/to/mesh.su2"
+    }
+}
