@@ -1,7 +1,7 @@
 function(FileEmbedSetup)
 
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/embedded_files)
-        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}embedded_files)
+        file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/embedded_files)
     endif ()
 
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/embedded_files/embedded_files_empty.c)
@@ -66,7 +66,6 @@ extern const char ${c_name}_data[]\;
 extern const size_t ${c_name}_size\;
 #endif"
 )
-
 
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/embedded_files)
         file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}embedded_files)

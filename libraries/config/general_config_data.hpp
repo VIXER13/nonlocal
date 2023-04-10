@@ -46,7 +46,7 @@ struct mesh_data final {
 
 template<std::floating_point T>
 struct nonstationary_data final {
-    T time_step = T{0.01};      // required
+    T time_step = T{0.01};       // required
     T initial_time = T{0};
     uint64_t steps_count = 100u; // required
     uint64_t save_frequency = 1u;
