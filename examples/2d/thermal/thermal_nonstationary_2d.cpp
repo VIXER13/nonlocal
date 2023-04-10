@@ -56,7 +56,7 @@ int main(const int argc, const char *const *const argv) {
         if (config_data.save.contains("config"))
             nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
         save_step(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, config_data.save, 0u);
-        for(const uint64_t step : std::ranges::iota_view{1u, config_data.nonstationary.steps_cont + 1}) {
+        for(const uint64_t step : std::ranges::iota_view{1u, config_data.nonstationary.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,
                 [right_part = config_data.equation.right_part](const std::array<T, 2>& x) constexpr noexcept { return right_part; });
             if (step % config_data.nonstationary.save_frequency == 0)
