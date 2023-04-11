@@ -19,8 +19,8 @@ Json::Value thermal_equation_data<T>::to_json() const {
     return result;
 }
 
-template<std::floating_point T>
-thermal_boundary_condition_data<T>::thermal_boundary_condition_data(const Json::Value& condition) {
+template<std::floating_point T, size_t Dimension>
+thermal_boundary_condition_data<T, Dimension>::thermal_boundary_condition_data(const Json::Value& condition) {
     check_required_fields(condition, { "kind" });
     switch (kind = get_thermal_condition(condition["kind"])) {
     case thermal::boundary_condition_t::TEMPERATURE: {
@@ -56,30 +56,14 @@ thermal_boundary_condition_data<T>::thermal_boundary_condition_data(const Json::
     }
 }
 
-template<std::floating_point T>
-Json::Value thermal_boundary_condition_data<T>::to_json() const {
+template<std::floating_point T, size_t Dimension>
+Json::Value thermal_boundary_condition_data<T, Dimension>::to_json() const {
     Json::Value result;
     result["kind"] = get_thermal_condition(kind);
     result["temperature"] = temperature;
     result["flux"] = flux;
     result["heat_transfer"] = heat_transfer;
     result["emissivity"] = emissivity;
-    return result;
-}
-
-template<std::floating_point T, size_t Dimension>
-thermal_boundaries_conditions_data<T, Dimension>::thermal_boundaries_conditions_data(const Json::Value& boundaries) {
-    if constexpr (Dimension == 1)
-        check_required_fields(boundaries, { "left", "right" });
-    for(const std::string& name : boundaries.getMemberNames())
-        conditions[name] = thermal_boundary_condition_data<T>{boundaries[name]};
-}
-
-template<std::floating_point T, size_t Dimension>
-Json::Value thermal_boundaries_conditions_data<T, Dimension>::to_json() const {
-    Json::Value result;
-    for(const auto& [name, condition] : conditions)
-        result[name] = condition.to_json();
     return result;
 }
 
@@ -205,14 +189,14 @@ Json::Value stationary_thermal_data<T, Dimension>::to_json() const {
 template<std::floating_point T, size_t Dimension>
 nonstationary_thermal_data<T, Dimension>::nonstationary_thermal_data(const Json::Value& value)
     : stationary_thermal_data<T, Dimension>{value} {
-    check_required_fields(value, { "nonstationary" });
-    nonstationary = nonstationary_data<T>{value["nonstationary"]};
+    check_required_fields(value, { "time" });
+    time = time_data<T>{value["time"]};
 }
 
 template<std::floating_point T, size_t Dimension>
 Json::Value nonstationary_thermal_data<T, Dimension>::to_json() const {
     Json::Value result = stationary_thermal_data<T, Dimension>::to_json();
-    result["nonstationary"] = nonstationary.to_json();
+    result["time"] = time.to_json();
     return result;
 }
 

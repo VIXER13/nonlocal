@@ -47,7 +47,7 @@ int main(const int argc, const char *const *const argv) {
         const auto mesh = nonlocal::make_mesh<T, I>(config_data.mesh.mesh, config_data.materials);
         const auto parameters = nonlocal::make_parameters<T>(config_data.materials);
         const auto boundaries_conditions = nonlocal::make_boundaries_conditions(config_data.boundaries);
-        nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, config_data.nonstationary.time_step};
+        nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, config_data.time.time_step};
         solver.compute(parameters, boundaries_conditions,
             [init_dist = config_data.equation.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
 
@@ -56,10 +56,10 @@ int main(const int argc, const char *const *const argv) {
         if (config_data.save.contains("config"))
             nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
         save_step(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, config_data.save, 0u);
-        for(const uint64_t step : std::ranges::iota_view{1u, config_data.nonstationary.steps_count + 1}) {
+        for(const uint64_t step : std::ranges::iota_view{1u, config_data.time.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,
                 [right_part = config_data.equation.right_part](const std::array<T, 2>& x) constexpr noexcept { return right_part; });
-            if (step % config_data.nonstationary.save_frequency == 0)
+            if (step % config_data.time.save_frequency == 0)
                 save_step(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, config_data.save, step);
         }
     } catch (const std::exception& e) {

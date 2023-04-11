@@ -3,6 +3,19 @@
 
 namespace nonlocal::config {
 
+template<size_t Dimension>
+mesh_data<Dimension>::mesh_data(const Json::Value& value) {
+    check_required_fields(value, { "mesh" });
+    mesh = value["mesh"].asString();
+}
+
+template<size_t Dimension>
+Json::Value mesh_data<Dimension>::to_json() const {
+    Json::Value result;
+    result["mesh"] = mesh.string();
+    return result;
+}
+
 template<>
 struct mesh_data<1u> final {
     size_t element_order = 1;
@@ -21,8 +34,24 @@ struct mesh_data<1u> final {
     }
 };
 
+template<template<class, size_t> class Condition, std::floating_point T, size_t Dimension>
+boundaries_conditions_data<Condition, T, Dimension>::boundaries_conditions_data(const Json::Value& boundaries) {
+    if constexpr (Dimension == 1)
+        check_required_fields(boundaries, { "left", "right" });
+    for(const std::string& name : boundaries.getMemberNames())
+        conditions[name] = Condition<T, Dimension>{boundaries[name]};
+}
+
+template<template<class, size_t> class Condition, std::floating_point T, size_t Dimension>
+Json::Value boundaries_conditions_data<Condition, T, Dimension>::to_json() const {
+    Json::Value result;
+    for(const auto& [name, condition] : conditions)
+        result[name] = condition.to_json();
+    return result;
+}
+
 template<std::floating_point T>
-nonstationary_data<T>::nonstationary_data(const Json::Value& nonstationary) {
+time_data<T>::time_data(const Json::Value& nonstationary) {
     check_required_fields(nonstationary, { "time_step", "steps_count"});
     time_step = nonstationary["time_step"].template as<T>();
     initial_time = nonstationary.get("initial_time", T{0}).template as<T>();
@@ -31,7 +60,7 @@ nonstationary_data<T>::nonstationary_data(const Json::Value& nonstationary) {
 }
 
 template<std::floating_point T>
-Json::Value nonstationary_data<T>::to_json() const {
+Json::Value time_data<T>::to_json() const {
     Json::Value result;
     result["time_step"] = time_step;
     result["initial_time"] = initial_time;
@@ -118,19 +147,6 @@ Json::Value material_data<Physics, T, 1>::to_json() const {
     result["length"] = length;
     result["physical"] = physical.to_json();
     result["model"] = model.to_json();
-    return result;
-}
-
-template<size_t Dimension>
-mesh_data<Dimension>::mesh_data(const Json::Value& value) {
-    check_required_fields(value, { "mesh" });
-    mesh = value["mesh"].asString();
-}
-
-template<size_t Dimension>
-Json::Value mesh_data<Dimension>::to_json() const {
-    Json::Value result;
-    result["mesh"] = mesh.string();
     return result;
 }
 

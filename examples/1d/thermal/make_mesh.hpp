@@ -51,7 +51,7 @@ nonlocal::thermal::parameters_1d<T> make_thermal_parameters(
 
 template<std::floating_point T>
 std::unique_ptr<nonlocal::thermal::thermal_boundary_condition_1d<T>> make_boundary_condition(
-    const nonlocal::config::thermal_boundary_condition_data<T>& condition) {
+    const nonlocal::config::thermal_boundary_condition_data<T, 1u>& condition) {
     switch (condition.kind) {
     case nonlocal::thermal::boundary_condition_t::TEMPERATURE:
         return std::make_unique<nonlocal::thermal::temperature_1d<T>>(condition.temperature);

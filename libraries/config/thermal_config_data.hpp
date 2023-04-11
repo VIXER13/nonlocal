@@ -19,7 +19,7 @@ struct thermal_equation_data final {
     Json::Value to_json() const;
 };
 
-template<std::floating_point T>
+template<std::floating_point T, size_t Dimension = 0>
 struct thermal_boundary_condition_data final {
     thermal::boundary_condition_t kind = thermal::boundary_condition_t::FLUX; // required
     T temperature = T{0};   // required if kind == TEMPERATURE or kind == CONVECTION
@@ -30,16 +30,6 @@ struct thermal_boundary_condition_data final {
 
     explicit constexpr thermal_boundary_condition_data() noexcept = default;
     explicit thermal_boundary_condition_data(const Json::Value& condition);
-
-    Json::Value to_json() const;
-};
-
-template<std::floating_point T, size_t Dimension>
-struct thermal_boundaries_conditions_data final {
-    std::unordered_map<std::string, thermal_boundary_condition_data<T>> conditions;
-
-    explicit constexpr thermal_boundaries_conditions_data() noexcept = default;
-    explicit thermal_boundaries_conditions_data(const Json::Value& boundaries);
 
     Json::Value to_json() const;
 };
@@ -77,6 +67,11 @@ public:
 };
 
 template<std::floating_point T, size_t Dimension>
+using thermal_boundaries_conditions_data = boundaries_conditions_data<thermal_boundary_condition_data, T, Dimension>;
+
+
+
+template<std::floating_point T, size_t Dimension>
 struct stationary_thermal_data {
     using materials_t = std::conditional_t<
         Dimension == 1,
@@ -99,7 +94,7 @@ struct stationary_thermal_data {
 
 template<std::floating_point T, size_t Dimension>
 struct nonstationary_thermal_data final : public stationary_thermal_data<T, Dimension> {
-    nonstationary_data<T> nonstationary;
+    time_data<T> time;
 
     explicit nonstationary_thermal_data(const Json::Value& value);
 

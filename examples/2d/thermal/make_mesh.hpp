@@ -44,7 +44,7 @@ thermal::parameters_2d<T> make_parameters(const typename config::stationary_ther
 
 template<std::floating_point T>
 thermal::thermal_boundary_condition_2d<T> make_boundary_condition(
-    const config::thermal_boundary_condition_data<T>& condition) {
+    const config::thermal_boundary_condition_data<T, 2>& condition) {
     switch (condition.kind) {
     case thermal::boundary_condition_t::TEMPERATURE:
         return std::make_unique<thermal::temperature_2d<T>>(condition.temperature);

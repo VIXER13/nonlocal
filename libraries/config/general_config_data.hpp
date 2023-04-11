@@ -44,15 +44,25 @@ struct mesh_data final {
     Json::Value to_json() const;
 };
 
+template<template<class, size_t> class Condition, std::floating_point T, size_t Dimension>
+struct boundaries_conditions_data final {
+    std::unordered_map<std::string, Condition<T, Dimension>> conditions;
+
+    explicit constexpr boundaries_conditions_data() noexcept = default;
+    explicit boundaries_conditions_data(const Json::Value& boundaries);
+
+    Json::Value to_json() const;
+};
+
 template<std::floating_point T>
-struct nonstationary_data final {
+struct time_data final {
     T time_step = T{0.01};       // required
     T initial_time = T{0};
     uint64_t steps_count = 100u; // required
     uint64_t save_frequency = 1u;
 
-    explicit constexpr nonstationary_data() noexcept = default;
-    explicit nonstationary_data(const Json::Value& nonstationary);
+    explicit constexpr time_data() noexcept = default;
+    explicit time_data(const Json::Value& nonstationary);
 
     Json::Value to_json() const;
 };
