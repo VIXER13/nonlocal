@@ -9,7 +9,7 @@ void save_data(const nonlocal::thermal::heat_equation_solution_2d<T, I>& solutio
     if (!std::filesystem::exists(config_data.save.folder()))
         std::filesystem::create_directories(config_data.save.folder());
     if (config_data.save.contains("config"))
-        nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
+        nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
     if (config_data.save.contains("temperature"))
         nonlocal::mesh::utils::save_as_csv(config_data.save.path("temperature", ".csv"), solution.mesh().container(), solution.temperature(), config_data.save.precision());
     if (config_data.save.contains("flux_x"))

@@ -21,10 +21,10 @@ struct boundaries_conditions_data final {
             conditions[name] = Condition<T, Dimension>{boundaries[name]};
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         for(const auto& [name, condition] : conditions)
-            result[name] = condition.to_json();
+            result[name] = condition;
         return result;
     }
 };

@@ -54,7 +54,7 @@ struct thermal_boundary_condition_data final {
         }
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["kind"] = get_thermal_condition(kind);
         result["temperature"] = temperature;

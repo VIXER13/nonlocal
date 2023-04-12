@@ -16,7 +16,7 @@ struct thermal_equation_data final {
         initial_distribution = equation.get("initial_distribution", T{0}).template as<T>();
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["energy"] = energy;
         result["right_part"] = right_part;

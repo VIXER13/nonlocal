@@ -18,10 +18,10 @@ struct material_data final {
             model = model_data<T, Dimension>{material["model"]};
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
-        result["physical"] = physical.to_json();
-        result["model"] = model.to_json();
+        result["physical"] = physical;
+        result["model"] = model;
         return result;
     }
 };
@@ -43,12 +43,12 @@ struct material_data<Physics, T, 1> final {
             model = model_data<T, 1>{material["model"]};
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["elements_count"] = elements_count;
         result["length"] = length;
-        result["physical"] = physical.to_json();
-        result["model"] = model.to_json();
+        result["physical"] = physical;
+        result["model"] = model;
         return result;
     }
 };

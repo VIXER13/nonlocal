@@ -44,7 +44,7 @@ int main(const int argc, const char *const *const argv) {
         if (!std::filesystem::exists(config_data.save.folder()))
             std::filesystem::create_directories(config_data.save.folder());
         if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
+            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
         save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, config_data.save, 0u);
         for(const uint64_t step : std::ranges::iota_view{1u, config_data.time.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,

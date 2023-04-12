@@ -29,7 +29,7 @@ public:
     std::filesystem::path path(const std::string& key, const std::string& extension,
                                const std::optional<std::string>& default_name = std::nullopt) const;
 
-    Json::Value to_json() const;
+    operator Json::Value() const;
 };
 
 }

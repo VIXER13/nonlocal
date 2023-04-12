@@ -17,7 +17,7 @@ struct mesh_data final {
         mesh = value["mesh"].asString();
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["mesh"] = mesh.string();
         return result;
@@ -34,7 +34,7 @@ struct mesh_data<1u> final {
         : element_order{get_order(value.get("element_order", 1))}
         , quadrature_order{get_order(value.get("quadrature_order", element_order))} {}
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["element_order"] = get_order(element_order);
         result["quadrature_order"] = get_order(quadrature_order);

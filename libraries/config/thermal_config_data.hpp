@@ -58,21 +58,21 @@ struct stationary_thermal_data {
 
     virtual ~stationary_thermal_data() noexcept = default;
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["other"] = other;
-        result["save"] = save.to_json();
-        result["mesh"] = mesh.to_json();
-        result["equation"] = equation.to_json();
-        result["boundaries"] = boundaries.to_json();
+        result["save"] = save;
+        result["mesh"] = mesh;
+        result["equation"] = equation;
+        result["boundaries"] = boundaries;
         if constexpr (Dimension == 1) {
             Json::Value& segments = result["materials"] = Json::arrayValue;
             for(const auto& segment : materials)
-                segments.append(segment.to_json());
+                segments.append(segment);
         } else {
             Json::Value& areas = result["materials"] = Json::objectValue;
             for(const auto& [name, area] : materials)
-                areas[name] = area.to_json();
+                areas[name] = area;
         }
         return result;
     }
@@ -90,9 +90,9 @@ struct nonstationary_thermal_data final : public stationary_thermal_data<T, Dime
 
     ~nonstationary_thermal_data() noexcept override = default;
 
-    Json::Value to_json() const {
-        Json::Value result = stationary_thermal_data<T, Dimension>::to_json();
-        result["time"] = time.to_json();
+    operator Json::Value() const {
+        Json::Value result = stationary_thermal_data<T, Dimension>::operator Json::Value();
+        result["time"] = time;
         return result;
     }
 };

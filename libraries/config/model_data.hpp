@@ -44,7 +44,7 @@ public:
                         read_radius(model["search_radius"], "search_radius");
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["local_weight"] = local_weight;
         if constexpr (std::is_same_v<radius_t, T>) {

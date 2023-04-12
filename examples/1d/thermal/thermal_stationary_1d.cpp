@@ -27,7 +27,7 @@ int main(const int argc, const char *const *const argv) {
         if (!std::filesystem::exists(config_data.save.folder()))
             std::filesystem::create_directories(config_data.save.folder());
         if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data.to_json());
+            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
         if (config_data.save.contains("temperature"))
             nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), config_data.save.path("temperature", ".csv"), config_data.save.precision());
         if (config_data.save.contains("flux"))

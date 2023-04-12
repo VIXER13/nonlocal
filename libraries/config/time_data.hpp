@@ -19,7 +19,7 @@ struct time_data final {
         save_frequency = nonstationary.get("save_frequency", 1u).asUInt64();
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["time_step"] = time_step;
         result["initial_time"] = initial_time;

@@ -26,7 +26,7 @@ struct thermal_material_data<T, 1> final {
         density = physical.get("density", T{1}).template as<T>();
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["conductivity"] = conductivity;
         result["capacity"] = capacity;
@@ -87,7 +87,7 @@ public:
         density = physical.get("density", T{1}).template as<T>();
     }
 
-    Json::Value to_json() const {
+    operator Json::Value() const {
         Json::Value result;
         result["conductivity"] = save_conductivity();
         result["capacity"] = capacity;
