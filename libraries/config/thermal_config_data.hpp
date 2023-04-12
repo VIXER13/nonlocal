@@ -1,75 +1,19 @@
 #ifndef NONLOCAL_THERMAL_CONFIG_DATA_HPP
 #define NONLOCAL_THERMAL_CONFIG_DATA_HPP
 
-#include "general_config_data.hpp"
-
-#include <exception>
+#include "save_data.hpp"
+#include "mesh_data.hpp"
+#include "time_data.hpp"
+#include "boundaries_conditions_data.hpp"
+#include "material_data.hpp"
+#include "thermal_equation_data.hpp"
+#include "thermal_boundary_condition_data.hpp"
+#include "thermal_material_data.hpp"
 
 namespace nonlocal::config {
 
-template<std::floating_point T>
-struct thermal_equation_data final {
-    T energy = 0;               // Used for Neumann problem
-    T right_part = 0;
-    T initial_distribution = 0; // Used for nonstationary and nonlinear problems
-
-    explicit constexpr thermal_equation_data() noexcept = default;
-    explicit thermal_equation_data(const Json::Value& equation);
-
-    Json::Value to_json() const;
-};
-
-template<std::floating_point T, size_t Dimension = 0>
-struct thermal_boundary_condition_data final {
-    thermal::boundary_condition_t kind = thermal::boundary_condition_t::FLUX; // required
-    T temperature = T{0};   // required if kind == TEMPERATURE or kind == CONVECTION
-                            // used for TEMPERATURE condition, but if condition is CONVECTION used like ambient_temperature
-    T flux = T{0};          // required if kind == FLUX
-    T heat_transfer = T{0}; // required if kind == CONVECTION
-    T emissivity = T{0};    // required if kind == RADIATION
-
-    explicit constexpr thermal_boundary_condition_data() noexcept = default;
-    explicit thermal_boundary_condition_data(const Json::Value& condition);
-
-    Json::Value to_json() const;
-};
-
-template<std::floating_point T, size_t Dimension>
-struct thermal_material_data;
-
-template<std::floating_point T>
-struct thermal_material_data<T, 1> final {
-    T conductivity = T{1}; // required
-    T capacity = T{1};
-    T density = T{1};
-
-    explicit constexpr thermal_material_data() noexcept = default;
-    explicit thermal_material_data(const Json::Value& physical);
-
-    Json::Value to_json() const;
-};
-
-template<std::floating_point T>
-class thermal_material_data<T, 2> final {
-    void read_conductivity(const Json::Value& conduct);
-    Json::Value save_conductivity() const;
-
-public:
-    material_t material = material_t::ISOTROPIC; // not json field
-    std::array<T, 4> conductivity = {T{1}};      // required
-    T capacity = T{1};
-    T density = T{1};
-
-    explicit constexpr thermal_material_data() noexcept = default;
-    explicit thermal_material_data(const Json::Value& physical);
-
-    Json::Value to_json() const;
-};
-
 template<std::floating_point T, size_t Dimension>
 using thermal_boundaries_conditions_data = boundaries_conditions_data<thermal_boundary_condition_data, T, Dimension>;
-
-
 
 template<std::floating_point T, size_t Dimension>
 struct stationary_thermal_data {
@@ -86,25 +30,73 @@ struct stationary_thermal_data {
     thermal_boundaries_conditions_data<T, Dimension> boundaries; // required
     materials_t materials;                                       // required
 
-    explicit stationary_thermal_data(const Json::Value& value);
+    explicit stationary_thermal_data(const Json::Value& value)
+        : other{value.get("other", {})}
+        , save{value.get("save", {})}
+        , equation{value.get("equation", {})} {
+        if constexpr (Dimension == 1) {
+            check_required_fields(value, { "boundaries", "materials" });
+            if (value.isMember("mesh"))
+                mesh = mesh_data<Dimension>{value["mesh"]};
+            const Json::Value& segments = value["materials"];
+            if (!segments.isArray() || segments.empty())
+                throw std::domain_error{"Field \"materials\" must be not empty array."};
+            materials.reserve(segments.size());
+            for(const Json::Value& segment : segments)
+                materials.emplace_back(segment);
+        } else {
+            check_required_fields(value, { "boundaries", "materials", "mesh" });
+            mesh = mesh_data<Dimension>{value["mesh"]};
+            const Json::Value& areas = value["materials"];
+            if (!areas.isObject())
+                throw std::domain_error{"Field \"materials\" must be a key-value map, where key is material name and value is material parameters."};
+            for(const std::string& name : areas.getMemberNames())
+                materials.emplace(name, areas[name]);
+        }
+        boundaries = thermal_boundaries_conditions_data<T, Dimension>{value["boundaries"]};
+    }
+
     virtual ~stationary_thermal_data() noexcept = default;
 
-    Json::Value to_json() const;
+    Json::Value to_json() const {
+        Json::Value result;
+        result["other"] = other;
+        result["save"] = save.to_json();
+        result["mesh"] = mesh.to_json();
+        result["equation"] = equation.to_json();
+        result["boundaries"] = boundaries.to_json();
+        if constexpr (Dimension == 1) {
+            Json::Value& segments = result["materials"] = Json::arrayValue;
+            for(const auto& segment : materials)
+                segments.append(segment.to_json());
+        } else {
+            Json::Value& areas = result["materials"] = Json::objectValue;
+            for(const auto& [name, area] : materials)
+                areas[name] = area.to_json();
+        }
+        return result;
+    }
 };
 
 template<std::floating_point T, size_t Dimension>
 struct nonstationary_thermal_data final : public stationary_thermal_data<T, Dimension> {
     time_data<T> time;
 
-    explicit nonstationary_thermal_data(const Json::Value& value);
+    explicit nonstationary_thermal_data(const Json::Value& value)
+        : stationary_thermal_data<T, Dimension>{value} {
+        check_required_fields(value, { "time" });
+        time = time_data<T>{value["time"]};
+    }
 
     ~nonstationary_thermal_data() noexcept override = default;
 
-    Json::Value to_json() const;
+    Json::Value to_json() const {
+        Json::Value result = stationary_thermal_data<T, Dimension>::to_json();
+        result["time"] = time.to_json();
+        return result;
+    }
 };
 
 }
-
-#include "thermal_config_data_impl.hpp"
 
 #endif

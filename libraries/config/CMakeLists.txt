@@ -8,7 +8,7 @@ pkg_check_modules(JSONCPP jsoncpp)
 link_libraries(${JSONCPP_LIBRARIES})
 add_library(config_lib STATIC 
     config_utils.cpp
-    general_config_data.cpp
+    save_data.cpp
 )
 target_include_directories(config_lib PUBLIC "." ${JSONCPP_INCLUDE_DIRS})
 target_link_libraries(config_lib 

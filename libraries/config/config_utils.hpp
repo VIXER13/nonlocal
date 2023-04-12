@@ -1,13 +1,24 @@
 #ifndef NONLOCAL_CONFIG_UTILS_HPP
 #define NONLOCAL_CONFIG_UTILS_HPP
 
-#include <json/json.h>
+#include "nonlocal_constants.hpp"
+
+#include <json/value.h>
 
 #include <filesystem>
 #include <string>
 #include <vector>
 
 namespace nonlocal::config {
+
+thermal::boundary_condition_t get_thermal_condition(const Json::Value& kind);
+const std::string& get_thermal_condition(const thermal::boundary_condition_t kind);
+
+size_t get_order(const Json::Value& order);
+const std::string& get_order(const size_t order);
+
+material_t get_material(const Json::Value& material);
+const std::string& get_material(const material_t material);
 
 Json::Value read_json(const std::filesystem::path& path);
 Json::Value read_json(const char *const begin, const char *const end);
