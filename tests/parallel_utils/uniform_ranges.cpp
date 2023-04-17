@@ -6,8 +6,8 @@ namespace {
 
 using namespace parallel_utils;
 
-static constexpr size_t SIZE = 3;
-static constexpr size_t COUNTS = 6;
+constexpr size_t SIZE = 3;
+constexpr size_t COUNTS = 6;
 
 }
 
@@ -35,34 +35,28 @@ TEST(uniform_ranges, two_ranges) {
 
 TEST(uniform_ranges, three_ranges) {
     const auto three_ranges = init_uniform_ranges(SIZE, 3u);
-    EXPECT_EQ(three_ranges[0].front(), 0u);
-    EXPECT_EQ(three_ranges[0].back(),  0u);
-    EXPECT_EQ(three_ranges[1].front(), 1u);
-    EXPECT_EQ(three_ranges[1].back(),  1u);
-    EXPECT_EQ(three_ranges[2].front(), 2u);
-    EXPECT_EQ(three_ranges[2].back(),  SIZE - 1);
+    for(const size_t i : std::ranges::iota_view{0u, 3u}) {
+        EXPECT_EQ(three_ranges[i].front(), i);
+        EXPECT_EQ(three_ranges[i].back(),  i);
+    }
 }
 
 TEST(uniform_ranges, four_ranges) {
     const auto four_ranges = init_uniform_ranges(SIZE, 4u);
-    EXPECT_EQ(four_ranges[0].front(), 0u);
-    EXPECT_EQ(four_ranges[0].back(),  0u);
-    EXPECT_EQ(four_ranges[1].front(), 1u);
-    EXPECT_EQ(four_ranges[1].back(),  1u);
-    EXPECT_EQ(four_ranges[2].front(), 2u);
-    EXPECT_EQ(four_ranges[2].back(),  2u);
+    for(const size_t i : std::ranges::iota_view{0u, 3u}) {
+        EXPECT_EQ(four_ranges[i].front(), i);
+        EXPECT_EQ(four_ranges[i].back(),  i);
+    }
     EXPECT_EQ(four_ranges[3].front(), SIZE);
     EXPECT_EQ(four_ranges[3].back(),  SIZE - 1);
 }
 
 TEST(uniform_ranges, more_ranges) {
     const auto more_ranges = init_uniform_ranges(SIZE, COUNTS);
-    EXPECT_EQ(more_ranges[0].front(), 0u);
-    EXPECT_EQ(more_ranges[0].back(),  0u);
-    EXPECT_EQ(more_ranges[1].front(), 1u);
-    EXPECT_EQ(more_ranges[1].back(),  1u);
-    EXPECT_EQ(more_ranges[2].front(), 2u);
-    EXPECT_EQ(more_ranges[2].back(),  2u);
+    for(const size_t i : std::ranges::iota_view{0u, 3u}) {
+        EXPECT_EQ(more_ranges[i].front(), i);
+        EXPECT_EQ(more_ranges[i].back(),  i);
+    }
     for(const size_t i : std::ranges::iota_view{3u, more_ranges.size()}) {
         EXPECT_EQ(more_ranges[i].front(), SIZE);
         EXPECT_EQ(more_ranges[i].back(),  SIZE - 1);
