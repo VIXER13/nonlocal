@@ -1,8 +1,17 @@
+#include "config_test_types.hpp"
+
 #include "required_fields_json.h"
 
-#include "thermal_config_data.hpp"
-
 #include <gtest/gtest.h>
+
+namespace {
+
+using namespace nonlocal::config;
+using namespace nonlocal::config::test;
+
+const Json::Value tests = read_json(required_fields_json_data, std::next(required_fields_json_data, required_fields_json_size));
+
+}
 
 #define THROW_TEST(TYPE, FIELD, GTEST_MACRO) \
 TEST(config_required_fields, FIELD) { \
@@ -11,29 +20,6 @@ TEST(config_required_fields, FIELD) { \
 #define EXPECT_THROW_TEST(TYPE, FIELD) THROW_TEST(TYPE, FIELD, EXPECT_ANY_THROW)
 #define EXPECT_NO_THROW_TEST(TYPE, FIELD) THROW_TEST(TYPE, FIELD, EXPECT_NO_THROW)
 
-namespace {
-
-template<class T, size_t N>
-struct data_mock final {
-    explicit constexpr data_mock() noexcept = default;
-    explicit data_mock(const Json::Value&) noexcept {}
-};
-
-using namespace nonlocal::config;
-
-using mesh_data_2d = mesh_data<2u>;
-
-using model_data_1d = model_data<float, 1u>;
-using model_data_2d = model_data<float, 2u>;
-
-using boundaries_conditions_data_1d = boundaries_conditions_data<data_mock, float, 1u>;
-
-using material_data_1d = material_data<data_mock, float, 1u>;
-using material_data_2d = material_data<data_mock, float, 2u>;
-
-const Json::Value tests = read_json(required_fields_json_data, std::next(required_fields_json_data, required_fields_json_size));
-
-}
 
 EXPECT_THROW_TEST(mesh_data_2d, mesh_2d_missed_all);
 EXPECT_NO_THROW_TEST(mesh_data_2d, mesh_2d_all_required_exists);

@@ -60,7 +60,6 @@ const size_t ${c_name}_size = sizeof(${c_name}_data)\;"
     set(output_h 
 "#ifndef ${c_name}_H
 #define ${c_name}_H
-#include <stdint.h>
 #include <stddef.h>
 extern const char ${c_name}_data[]\;
 extern const size_t ${c_name}_size\;

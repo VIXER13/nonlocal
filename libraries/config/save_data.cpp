@@ -46,7 +46,7 @@ save_data::operator Json::Value() const {
 	for(const auto& [key, name] : _names)
 		result[key] = name;
 	if (_precision)
-		result["precision"] = *_precision;
+		result["precision"] = std::make_unsigned_t<std::streamsize>(*_precision);
 	return result;
 }
 

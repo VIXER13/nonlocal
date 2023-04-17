@@ -11,12 +11,12 @@ struct time_data final {
     uint64_t save_frequency = 1u;
 
     explicit constexpr time_data() noexcept = default;
-    explicit time_data(const Json::Value& nonstationary) {
-        check_required_fields(nonstationary, { "time_step", "steps_count"});
-        time_step = nonstationary["time_step"].template as<T>();
-        initial_time = nonstationary.get("initial_time", T{0}).template as<T>();
-        steps_count = nonstationary["steps_count"].asUInt64();
-        save_frequency = nonstationary.get("save_frequency", 1u).asUInt64();
+    explicit time_data(const Json::Value& time) {
+        check_required_fields(time, { "time_step", "steps_count"});
+        time_step = time["time_step"].template as<T>();
+        initial_time = time.get("initial_time", T{0}).template as<T>();
+        steps_count = time["steps_count"].asUInt64();
+        save_frequency = time.get("save_frequency", 1u).asUInt64();
     }
 
     operator Json::Value() const {

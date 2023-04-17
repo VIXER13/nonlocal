@@ -41,11 +41,11 @@ class thermal_material_data<T, 2> final {
         if (conduct.isNumeric())
             conductivity.front() = conduct.template as<T>();
         else if (conduct.isArray() && conduct.size() == 2) {
-            material == material_t::ORTHOTROPIC;
+            material = material_t::ORTHOTROPIC;
             conductivity.front() = conduct[0].template as<T>();
             conductivity.back() = conduct[1].template as<T>();
         } else if (conduct.isArray() && conduct.size() == 4) {
-            material == material_t::ANISOTROPIC;
+            material = material_t::ANISOTROPIC;
             for(const Json::ArrayIndex i : std::ranges::iota_view{0u, 4u})
                 conductivity[i] = conduct[i].template as<T>();
         } else
