@@ -24,20 +24,18 @@ template<class T>
 thermal::parameters_2d<T> make_parameters(const typename config::stationary_thermal_data<T, 2>::materials_t& materials) {
     thermal::parameters_2d<T> parameters;
     for(const auto& [name, material] : materials) {
-        auto& parameter = parameters[name] = equation_parameters<2, T, thermal::parameter_2d>{
+        parameters[name] = {
             .model = {
                 .influence = influence::polynomial_2d<T, 2, 1>{material.model.nonlocal_radius},
                 .local_weight = material.model.local_weight
             },
-            .physical = {
-                .capacity = material.physical.capacity,
-                .density = material.physical.density,
-                .material = material.physical.material
-            }
+            .physical = std::make_shared<thermal::parameter_2d<T, coefficients_t::CONSTANTS>>(
+                metamath::types::make_square_matrix<T, 2u>(material.physical.conductivity),
+                material.physical.capacity,
+                material.physical.density,
+                material.physical.material
+            )
         };
-        for(const size_t row : std::ranges::iota_view{0u, 2u})
-            for(const size_t col : std::ranges::iota_view{0u, 2u})
-                parameter.physical.conductivity[row][col] = material.physical.conductivity[2 * row + col];
     }
     return parameters;
 }

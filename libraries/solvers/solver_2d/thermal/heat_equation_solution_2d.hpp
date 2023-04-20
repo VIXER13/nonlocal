@@ -14,7 +14,7 @@ class heat_equation_solution_2d : public solution_2d<T, I> {
 
     std::vector<T> _temperature;
     std::array<std::vector<T>, 2> _flux;
-    std::unordered_map<std::string, parameter_2d<T>> _parameters;
+    std::unordered_map<std::string, parameter_2d_sptr<T>> _parameters;
 
     void add_flux(const material_t material, const metamath::types::square_matrix<T, 2>& factor, 
                   const std::array<T, 2>& gradient, const size_t qshift);
@@ -132,10 +132,13 @@ void heat_equation_solution_2d<T, I>::calc_flux() {
     _flux[X].resize(gradient[X].size(), T{0});
     _flux[Y].resize(gradient[Y].size(), T{0});
     for(const auto& [group, parameter] : _parameters) {
+        if (parameter->type == coefficients_t::SPACE_DEPENDENT || parameter->type == coefficients_t::SOLUTION_DEPENDENT)
+            throw std::domain_error{"Oops! Right now I can calc flux only if conductivity is constant!"};
+
         using namespace metamath::functions;
         const model_parameters<2, T>& model = _base::model(group);
-        const metamath::types::square_matrix<T, 2> local_factor = -model.local_weight * parameter.conductivity;
-        const metamath::types::square_matrix<T, 2> nonlocal_factor = -nonlocal_weight(model.local_weight) * parameter.conductivity;
+        const metamath::types::square_matrix<T, 2> local_factor = -model.local_weight * parameter_cast<coefficients_t::CONSTANTS>(*parameter).conductivity;
+        const metamath::types::square_matrix<T, 2> nonlocal_factor = -nonlocal_weight(model.local_weight) * parameter_cast<coefficients_t::CONSTANTS>(*parameter).conductivity;
         const auto elements = _base::mesh().container().elements(group);
 #pragma omp parallel for default(none) shared(gradient, model, parameter, local_factor, nonlocal_factor, elements) schedule(dynamic)
         for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
@@ -143,9 +146,9 @@ void heat_equation_solution_2d<T, I>::calc_flux() {
                 if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
                     const auto influence = [&influence = model.influence, &coordL = _base::mesh().quad_coord(qshiftL)]
                                            (const std::array<T, 2>& coordNL) { return influence(coordL, coordNL); };
-                    add_flux(parameter.material, nonlocal_factor, calc_nonlocal_gradient(eL, gradient, influence), qshiftL);
+                    add_flux(parameter->material, nonlocal_factor, calc_nonlocal_gradient(eL, gradient, influence), qshiftL);
                 }
-                add_flux(parameter.material, local_factor, {gradient[X][qshiftL], gradient[Y][qshiftL]}, qshiftL);
+                add_flux(parameter->material, local_factor, {gradient[X][qshiftL], gradient[Y][qshiftL]}, qshiftL);
             }
     }
     _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[X]);

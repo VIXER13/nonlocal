@@ -55,7 +55,7 @@ void heat_capacity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const parameters_2
     _base::calc_coeffs(theories, is_inner,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& parameter = parameters.at(group).physical;
-            return parameter.density * parameter.capacity * integrate_basic_pair(e, i, j); 
+            return parameter->density * parameter->capacity * integrate_basic_pair(e, i, j); 
         },
         [](const std::string&, const size_t, const size_t, const size_t, const size_t) constexpr noexcept { return T{0}; }
     );
