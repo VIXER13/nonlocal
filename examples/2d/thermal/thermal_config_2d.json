@@ -1,6 +1,6 @@
 {
 	"other" : {
-		"precision": 3
+		"precision": 10
 	},
 	"save" : {
 		"folder" : "/home/vixer/projects/results/test_calc_2d",
@@ -36,13 +36,9 @@
 		"Right": {
 			"kind" : "flux",
 			"temperature" : 0.0,
-			"flux" : 2.0,
+			"flux" : 1.0,
 			"heat_transfer" : 0.0,
 			"emissivity" : 0.0
-		},
-		"Down": {
-			"kind": "flux",
-			"flux": 0.0
 		}
 	},
 	"materials": {

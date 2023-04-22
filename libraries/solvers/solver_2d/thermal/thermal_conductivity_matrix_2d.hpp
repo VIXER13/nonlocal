@@ -74,7 +74,7 @@ template<class Integrator>
 void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j, const Integrator& integrator) const {
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
-        integrator(q, el.weight(q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q)),
+        integrator(q, el.weight(q) / mesh::jacobian(_base::mesh().jacobi_matrix(e, q)),
                    _base::mesh().derivatives(e, i, q), _base::mesh().derivatives(e, j, q));
 }
 
