@@ -1,0 +1,62 @@
+{
+	"other" : {
+		"precision": 3
+	},
+	"save" : {
+		"folder" : "/home/vixer/projects/results/test_calc_2d",
+		"precision": 15,
+		"config" : "config",
+		"temperature" : "T",
+		"flux_x" : "Tx",
+		"flux_y" : "Ty",
+		"vtk": "heat"
+	},
+	"mesh": {
+		"path": "/home/vixer/projects/mesh/Q/q25x25.su2"
+	},
+	"time": {
+		"initial_time" : 0.0,
+		"time_step" : 0.01,
+		"steps_count" : 100,
+		"save_frequency" : 5
+	},
+	"equation": {
+		"energy" : 0.0,
+		"initial_distribution" : 0.0,
+		"right_part" : 0.0
+	},
+	"boundaries": {
+		"Left" :  {
+			"kind" : "temperature",
+			"temperature" : -1.0,
+			"flux" : 0.0,
+			"heat_transfer" : 0.0,
+			"emissivity" : 0.0
+		},
+		"Right": {
+			"kind" : "flux",
+			"temperature" : 0.0,
+			"flux" : 2.0,
+			"heat_transfer" : 0.0,
+			"emissivity" : 0.0
+		},
+		"Down": {
+			"kind": "flux",
+			"flux": 0.0
+		}
+	},
+	"materials": {
+		"Default": {
+			"model": {
+				"local_weight" : 1.0,
+				"nonlocal_radius" : 0.05,
+				"search_radius" : 0.06
+			},
+			"physical": {
+				"capacity" : 1.0,
+				"conductivity" : 1.0,
+				"density" : 1.0
+			}
+		}
+	}
+}

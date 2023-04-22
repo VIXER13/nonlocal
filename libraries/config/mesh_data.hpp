@@ -9,17 +9,17 @@ namespace nonlocal::config {
 
 template<size_t Dimension>
 struct mesh_data final {
-    std::filesystem::path mesh; // required
+    std::filesystem::path path; // required
 
     explicit mesh_data() = default;
     explicit mesh_data(const Json::Value& value) {
-        check_required_fields(value, { "mesh" });
-        mesh = value["mesh"].asString();
+        check_required_fields(value, { "path" });
+        path = value["path"].asString();
     }
 
     operator Json::Value() const {
         Json::Value result;
-        result["mesh"] = mesh.string();
+        result["path"] = path.string();
         return result;
     }
 };

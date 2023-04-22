@@ -297,9 +297,9 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameter
             case CONSTANTS:
                 return nonlocal_weight(model.local_weight) * integrate_nonloc(parameter_cast<CONSTANTS>(*physic), model.influence, eL, eNL, iL, jNL);
             case SPACE_DEPENDENT:
-                return nonlocal_weight(model.local_weight) * std::numeric_limits<T>::quiet_NaN();
+                return nonlocal_weight(model.local_weight) * integrate_nonloc(parameter_cast<SPACE_DEPENDENT>(*physic), model.influence, eL, eNL, iL, jNL);
             case SOLUTION_DEPENDENT:
-                return nonlocal_weight(model.local_weight) * std::numeric_limits<T>::quiet_NaN();
+                return nonlocal_weight(model.local_weight) * integrate_nonloc(parameter_cast<SOLUTION_DEPENDENT>(*physic), model.influence, eL, eNL, iL, jNL);
             }
             return std::numeric_limits<T>::quiet_NaN();
         });

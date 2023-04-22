@@ -44,7 +44,7 @@ int main(const int argc, const char *const *const argv) {
         const nonlocal::config::nonstationary_thermal_data<T, 2> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
-        const auto mesh = nonlocal::make_mesh<T, I>(config_data.mesh.mesh, config_data.materials);
+        const auto mesh = nonlocal::make_mesh<T, I>(config_data.mesh.path, config_data.materials);
         const auto parameters = nonlocal::make_parameters<T>(config_data.materials);
         const auto boundaries_conditions = nonlocal::make_boundaries_conditions(config_data.boundaries);
         nonlocal::thermal::nonstationary_heat_equation_solver_2d<T, I, I> solver{mesh, config_data.time.time_step};
