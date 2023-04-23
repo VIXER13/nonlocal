@@ -112,9 +112,9 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
         const T qcoordL = _base::mesh().qnode_coord(eL, qL);
         for(const size_t qNL : std::ranges::iota_view{size_t{0}, el.qnodes_count()}) {
             const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
-            inner_integral += el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qNxi(jNL, qNL);
+            inner_integral += el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qNxi(jNL, qNL) * conductivity(qcoordNL);
         }
-        integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral * conductivity(qcoordL);
+        integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
     }
     return integral;
 }
