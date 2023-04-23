@@ -66,7 +66,13 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const T conductivity, cons
 template<class T, class I>
 T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
     const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const {
-    return 0;
+    T integral = T{0};
+    const auto& el = _base::mesh().element();
+    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}){
+        const T qcoord = _base::mesh().qnode_coord(e, q);
+        integral += el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord);
+    }
+    return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
 
 template<class T, class I>
@@ -99,7 +105,18 @@ template<class Influence_Function>
 T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
     const std::function<T(const T)>& conductivity, const Influence_Function& influence,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return 0;
+    T integral = T{0};
+    const auto& el = _base::mesh().element();
+    for(const size_t qL : std::ranges::iota_view{0u, el.qnodes_count()}) {
+        T inner_integral = T{0};
+        const T qcoordL = _base::mesh().qnode_coord(eL, qL);
+        for(const size_t qNL : std::ranges::iota_view{size_t{0}, el.qnodes_count()}) {
+            const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
+            inner_integral += el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qNxi(jNL, qNL) * conductivity(qcoordNL);
+        }
+        integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
+    }
+    return integral;
 }
 
 template<class T, class I>
