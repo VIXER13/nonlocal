@@ -46,6 +46,26 @@ std::vector<T> gradient_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x)
 }
 
 template<class T, class Vector>
+std::vector<T> approx_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
+    const auto& el = mesh.element();
+    if (mesh.nodes_count() != x.size())
+        throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
+    size_t qshift = 0;
+    std::vector<T> gradient(el.qnodes_count() * mesh.elements_count(), T{0});
+    for(const size_t segment : mesh.segments()) {
+        const T jacobian = mesh.jacobian(segment);
+        for(const size_t e : mesh.elements(segment))
+            for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
+                for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+                    gradient[qshift] += el.qN(i, q) * x[mesh.node_number(e, i)];
+                gradient[qshift] /= jacobian;
+                ++qshift;
+            }
+    }
+    return gradient;
+}
+
+template<class T, class Vector>
 std::vector<T> from_qnodes_to_nodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
     const auto& el = mesh.element();
     if (el.qnodes_count() * mesh.elements_count() != x.size())

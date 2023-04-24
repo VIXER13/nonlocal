@@ -71,6 +71,7 @@ public:
     size_t nodes_count(const size_t segment) const;
     size_t segment_number(const size_t e) const;
     size_t node_number(const size_t e, const size_t i) const;
+    size_t qnode_number(const size_t e, const size_t q) const;
     std::ranges::iota_view<size_t, size_t> segments() const noexcept;
     std::ranges::iota_view<size_t, size_t> elements() const noexcept;
     std::ranges::iota_view<size_t, size_t> nodes() const;
@@ -147,6 +148,11 @@ size_t mesh_1d<T>::segment_number(const size_t e) const {
 template<class T>
 size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const {
     return e * (element().nodes_count() - 1) + i;
+}
+
+template<class T>
+size_t mesh_1d<T>::qnode_number(const size_t e, const size_t q) const {
+    return e * (element().qnodes_count() - 1) + i;
 }
 
 template<class T>
