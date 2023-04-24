@@ -25,44 +25,39 @@ T integrate(const mesh::mesh_1d<T>& mesh, const Vector& x) {
     return integral;
 }
 
-template<class T, class Vector>
-std::vector<T> gradient_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
-    const auto& el = mesh.element();
-    if (mesh.nodes_count() != x.size())
-        throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
+template<class T, class Callback>
+std::vector<T> approximation_in_qnodes(const mesh::mesh_1d<T>& mesh, const Callback& callback) {
     size_t qshift = 0;
-    std::vector<T> gradient(el.qnodes_count() * mesh.elements_count(), T{0});
+    std::vector<T> approximation(mesh.element().qnodes_count() * mesh.elements_count(), T{0});
     for(const size_t segment : mesh.segments()) {
         const T jacobian = mesh.jacobian(segment);
         for(const size_t e : mesh.elements(segment))
-            for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-                for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
-                    gradient[qshift] += el.qNxi(i, q) * x[mesh.node_number(e, i)];
-                gradient[qshift] /= jacobian;
+            for(const size_t q : mesh.element().qnodes()) {
+                for(const size_t i : mesh.element().nodes())
+                    approximation[qshift] += callback(e, i, q);
+                approximation[qshift] /= jacobian;
                 ++qshift;
             }
     }
-    return gradient;
+    return approximation;
 }
 
 template<class T, class Vector>
-std::vector<T> approx_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
-    const auto& el = mesh.element();
+std::vector<T> gradient_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
     if (mesh.nodes_count() != x.size())
-        throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
-    size_t qshift = 0;
-    std::vector<T> gradient(el.qnodes_count() * mesh.elements_count(), T{0});
-    for(const size_t segment : mesh.segments()) {
-        const T jacobian = mesh.jacobian(segment);
-        for(const size_t e : mesh.elements(segment))
-            for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-                for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
-                    gradient[qshift] += el.qN(i, q) * x[mesh.node_number(e, i)];
-                gradient[qshift] /= jacobian;
-                ++qshift;
-            }
-    }
-    return gradient;
+        throw std::logic_error{"The gradient approximation cannot be found because the vector size does not match the number of nodes."};
+    return approximation_in_qnodes(mesh, [&mesh, &x](const size_t e, const size_t i, const size_t q) {
+        return mesh.element().qNxi(i, q) * x[mesh.node_number(e, i)];
+    });
+}
+
+template<class T, class Vector>
+std::vector<T> from_nodes_to_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
+    if (mesh.nodes_count() != x.size())
+        throw std::logic_error{"The approximation cannot be found because the vector size does not match the number of nodes."};
+    return approximation_in_qnodes(mesh, [&mesh, &x](const size_t e, const size_t i, const size_t q) {
+        return mesh.element().qN(i, q) * x[mesh.node_number(e, i)];
+    });
 }
 
 template<class T, class Vector>

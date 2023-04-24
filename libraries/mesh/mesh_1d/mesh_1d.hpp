@@ -152,7 +152,7 @@ size_t mesh_1d<T>::node_number(const size_t e, const size_t i) const {
 
 template<class T>
 size_t mesh_1d<T>::qnode_number(const size_t e, const size_t q) const {
-    return e * (element().qnodes_count() - 1) + q;
+    return e * element().qnodes_count() + q;
 }
 
 template<class T>
