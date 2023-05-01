@@ -6,6 +6,8 @@
 #include "finite_element_matrix_1d.hpp"
 #include "thermal_parameters_1d.hpp"
 
+#include <optional>
+
 namespace nonlocal::thermal {
 
 template<class T, class I>
@@ -17,7 +19,8 @@ protected:
 
     T integrate_loc(const T conductivity, const size_t e, const size_t i, const size_t j) const;
     T integrate_loc(const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const;
-    T integrate_loc(const std::function<T(const T, const T)>& conductivity, const size_t e, const size_t i, const size_t j) const;
+    T integrate_loc(const std::function<T(const T, const T)>& conductivity, const std::vector<T>& solution,
+                    const size_t e, const size_t i, const size_t j) const;
 
     template<class Influence_Function>
     T integrate_nonloc(const T conductivity, const Influence_Function& influence,
@@ -27,6 +30,7 @@ protected:
                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
     template<class Influence_Function>
     T integrate_nonloc(const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence,
+                       const std::vector<T>& solution,
                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
 
@@ -39,6 +43,9 @@ public:
     ~thermal_conductivity_matrix_1d() override = default;
 
     void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann = false);
+
+    void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann = false,
+                     const std::optional<std::vector<T>>& solution = std::nullopt);
 };
 
 template<class T, class I>
@@ -68,7 +75,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
     const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     const auto& el = _base::mesh().element();
-    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}){
+    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
         const T qcoord = _base::mesh().qnode_coord(e, q);
         integral += el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord);
     }
@@ -76,9 +83,17 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
 }
 
 template<class T, class I>
-T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
-    const std::function<T(const T, const T)>& conductivity, const size_t e, const size_t i, const size_t j) const {
-    return 0;
+T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const std::function<T(const T, const T)>& conductivity, 
+                                                      const std::vector<T>& solution, 
+                                                      const size_t e, const size_t i, const size_t j) const {
+    T integral = T{0};
+    const auto& el = _base::mesh().element();
+    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
+        const T qcoord = _base::mesh().qnode_coord(e, q);
+        const size_t qshift = _base::mesh().qnode_number(e, q); 
+        integral += el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord, solution[qshift]);
+    }
+    return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
 
 template<class T, class I>
@@ -122,9 +137,21 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
 template<class T, class I>
 template<class Influence_Function>
 T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
-    const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence,
+    const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence,  const std::vector<T>& solution,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return 0;
+    T integral = T{0};
+    const auto& el = _base::mesh().element();
+    for(const size_t qL : std::ranges::iota_view{0u, el.qnodes_count()}) {
+        T inner_integral = T{0};
+        const T qcoordL = _base::mesh().qnode_coord(eL, qL);
+        for(const size_t qNL : std::ranges::iota_view{size_t{0}, el.qnodes_count()}) {
+            const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
+            const size_t qshiftNL = _base::mesh().qnode_number(eNL, qNL);
+            inner_integral += el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qNxi(jNL, qNL) * conductivity(qcoordNL, solution[qshiftNL]);
+        }
+        integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
+    }
+    return integral;
 }
 
 template<class T, class I>
@@ -185,6 +212,52 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
                 return nonlocal_weight * integrate_nonloc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
             case SOLUTION_DEPENDENT:
                 return nonlocal_weight * integrate_nonloc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
+            default:
+                return std::numeric_limits<T>::quiet_NaN();
+            }
+        }
+    );
+    if (is_neumann)
+        neumann_problem_col_fill();
+}
+
+
+template<class T, class I>
+void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann,
+                                                       const std::optional<std::vector<T>>& solution) {
+    if (parameters.size() != _base::mesh().segments_count())
+        throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
+    _base::clear();
+    const size_t matrix_size = _base::mesh().nodes_count() + is_neumann;
+    _base::matrix_inner().resize(matrix_size, matrix_size);
+    const std::vector<theory_t> theories = theories_types(parameters);
+    create_matrix_portrait(theories, is_first_kind, is_neumann);
+    _base::template calc_matrix(theories, is_first_kind,
+        [this, &parameters, solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
+            using enum coefficients_t;
+            const auto& [model, physic] = parameters[segment];
+            switch (physic->type) {
+            case CONSTANTS:
+                return model.local_weight * integrate_loc(parameter_cast<CONSTANTS>(*physic).conductivity, e, i, j);
+            case SPACE_DEPENDENT:
+                return model.local_weight * integrate_loc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, e, i, j);
+            case SOLUTION_DEPENDENT:
+                return model.local_weight * integrate_loc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, *solution, e, i, j);
+            default:
+                return std::numeric_limits<T>::quiet_NaN();
+            }
+        },
+        [this, &parameters, solution](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            using enum coefficients_t;
+            const auto& [model, physic] = parameters[segment];
+            const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
+            switch (physic->type) {
+            case CONSTANTS:
+                return nonlocal_weight * integrate_nonloc(parameter_cast<CONSTANTS>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
+            case SPACE_DEPENDENT:
+                return nonlocal_weight * integrate_nonloc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
+            case SOLUTION_DEPENDENT:
+                return nonlocal_weight * integrate_nonloc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, model.influence, *solution, eL, eNL, iL, jNL);
             default:
                 return std::numeric_limits<T>::quiet_NaN();
             }

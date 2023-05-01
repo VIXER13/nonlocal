@@ -68,6 +68,7 @@ const Eigen::Matrix<T, Eigen::Dynamic, 1>& nonstationary_heat_equation_solver_1d
     return _temperature_curr;
 }
 
+
 template<class T, class I>
 template<class Init_Dist>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::thermal::parameters_1d<T>& parameters,
