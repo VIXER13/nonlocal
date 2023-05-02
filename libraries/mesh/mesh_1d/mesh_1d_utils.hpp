@@ -35,7 +35,6 @@ std::vector<T> approximation_in_qnodes(const mesh::mesh_1d<T>& mesh, const Callb
             for(const size_t q : mesh.element().qnodes()) {
                 for(const size_t i : mesh.element().nodes())
                     approximation[qshift] += callback(e, i, q);
-                approximation[qshift] /= jacobian;
                 ++qshift;
             }
     }
@@ -47,7 +46,9 @@ std::vector<T> gradient_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x)
     if (mesh.nodes_count() != x.size())
         throw std::logic_error{"The gradient approximation cannot be found because the vector size does not match the number of nodes."};
     return approximation_in_qnodes(mesh, [&mesh, &x](const size_t e, const size_t i, const size_t q) {
-        return mesh.element().qNxi(i, q) * x[mesh.node_number(e, i)];
+        const size_t segment = mesh.segment_number(e);
+        const T jacobian = mesh.jacobian(segment);
+        return mesh.element().qNxi(i, q) * x[mesh.node_number(e, i)] / jacobian;
     });
 }
 
