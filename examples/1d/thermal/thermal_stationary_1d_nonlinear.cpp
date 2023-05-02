@@ -12,7 +12,7 @@ int main(const int argc, const char *const *const argv) {
         const nonlocal::config::stationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
-        constexpr T eps = T{10};
+        constexpr T eps = T{15};
         constexpr T sigma = T{1};
 
         auto params = nonlocal::make_thermal_parameters(config_data.materials);
@@ -38,15 +38,17 @@ int main(const int argc, const char *const *const argv) {
         //     config_data.equation.energy
         // );
 
-        auto solution = nonlocal::thermal::stationary_nonlinear_heat_equation_solver_1d<T, I>(
+        auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
             mesh, params, //nonlocal::make_thermal_parameters(config_data.materials),
             nonlocal::thermal::thermal_boundaries_conditions_1d<T>{
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
             },
-            [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
-            config_data.equation.initial_distribution,
-            config_data.equation.energy
+            nonlocal::thermal::stationary_equation_parameters<T>{
+                .right_part = [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
+                .initial_distribution = [value = config_data.equation.initial_distribution](const T x) constexpr noexcept { return value; },
+                .energy = config_data.equation.energy
+            }
         );
 
         

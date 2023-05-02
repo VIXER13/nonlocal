@@ -13,132 +13,90 @@
 
 namespace nonlocal::thermal {
 
-template<class T, class I, class Right_Part>
+template<class T>
+struct stationary_equation_parameters final {
+    std::optional<std::function<T(const T)>> right_part;
+    std::optional<std::function<T(const T)>> initial_distribution;
+    T tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
+    size_t max_iterations = 1000;
+    T energy = T{0};
+};
+
+template<class T, class I>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                                 const parameters_1d<T>& parameters,
-                                                                const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                                                                const Right_Part& right_part,
-                                                                const T energy = T{0}) {
-    static constexpr auto is_flux = [](const auto& condition) {
+                                                                const thermal_boundaries_conditions_1d<T>& boundaries_conditions,  
+                                                                const stationary_equation_parameters<T>& additional_parameters) {
+    static constexpr auto is_flux = [](const auto& condition) noexcept {
         return bool(dynamic_cast<const flux_1d<T>*>(condition.get()));
     };
     const bool is_neumann = std::all_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_flux);
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count() + is_neumann);
     boundary_condition_second_kind_1d(f, boundaries_conditions, is_neumann);
-    if constexpr (!std::is_same_v<Right_Part, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
-        integrate_right_part(f, *mesh, right_part);
-    if (is_neumann && std::abs(std::reduce(f.begin(), f.end())) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
+    if (additional_parameters.right_part)
+        integrate_right_part(f, *mesh, *additional_parameters.right_part);
+    if (is_neumann && std::abs(std::reduce(f.begin(), f.end(), T{0})) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
         throw std::domain_error{"It's unsolvable Neumann problem."};
-
-    auto start_time = std::chrono::high_resolution_clock::now();
-    thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
-    conductivity.template calc_matrix(
-        parameters,
-        { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
-          bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) },
-        is_neumann
-    );
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    std::cout << "Conductivity matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
-
-    start_time = std::chrono::high_resolution_clock::now();
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
-    if (is_neumann) {
-        f[f.size() - 1] = energy;
-        const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
-        temperature = solver.solve(f);
-        std::cout << "Iterations: " << solver.iterations() << std::endl;
-    } else {
-        convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
-        boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);
-        const Eigen::SimplicialCholesky<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper, Eigen::NaturalOrdering<I>> solver{conductivity.matrix_inner()};
-        temperature = solver.solve(f);
-    }
-    elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    std::cout << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
-    return heat_equation_solution_1d<T>{mesh, parameters, temperature};
-}
-
-
-
-template<class T, class I, class Right_Part, class Initial_distribution>
-heat_equation_solution_1d<T> stationary_nonlinear_heat_equation_solver_1d  (const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                                            const parameters_1d<T>& parameters,
-                                                                            const thermal_boundaries_conditions_1d<T>& boundaries_conditions,  
-                                                                            const Right_Part& right_part,
-                                                                            const Initial_distribution& initial_dist,
-                                                                            const T energy = T{0}) {
-    static constexpr auto is_flux = [](const auto& condition) {
-        return bool(dynamic_cast<const flux_1d<T>*>(condition.get()));
-    };
-    const bool is_neumann = std::all_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_flux);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count() + is_neumann);
-    boundary_condition_second_kind_1d(f, boundaries_conditions, is_neumann);
-    if constexpr (!std::is_same_v<Right_Part, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
-        integrate_right_part(f, *mesh, right_part);
-
-    if (is_neumann && std::abs(std::reduce(f.begin(), f.end())) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
-        throw std::domain_error{"It's unsolvable Neumann problem."};
-
-    // Запуск итерационного процесса
     if (is_neumann) 
-        f[f.size() - 1] = energy;
+        f[f.size() - 1] = additional_parameters.energy;
+    const Eigen::Matrix<T, Eigen::Dynamic, 1> initial_f = f;
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count());
-    for(size_t i = 0; i < temperature_prev.size(); ++i) 
-        temperature_prev[i] = initial_dist;
-
+    if (additional_parameters.initial_distribution)
+        for(const size_t node : mesh->nodes())
+            temperature_prev[node] = (*additional_parameters.initial_distribution)(mesh->node_coord(node));
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr = temperature_prev;
+
+    static constexpr auto is_nonlinear_parameter = [](const auto& parameter) noexcept {
+        return parameter.physical->type == coefficients_t::SOLUTION_DEPENDENT;
+    };
+    const bool is_nonlinear = std::any_of(parameters.begin(), parameters.end(), is_nonlinear_parameter);
+
+    T difference = T{1};
+    size_t iteration = 0;
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
-    const Eigen::Matrix<T, Eigen::Dynamic, 1> initial_f = f;
-    size_t iters = 0;
-    const size_t maxiters = temperature_curr.size() * 1.3;
-    T norm = 0;
-
-    using namespace nonlocal::mesh::utils;
-
     auto start_time = std::chrono::high_resolution_clock::now();
-    do{
-        iters++;
+    while (iteration < additional_parameters.max_iterations && 
+           difference > additional_parameters.tolerance) {
         std::swap(temperature_prev, temperature_curr);
-
-        //Проецируем решение с nodes на qnodes
-        // std::vector<T> sol_in_qnodes(mesh->nodes_count(), T{0});
-        // std::copy(temperature_prev.begin(), temperature_prev.end(), sol_in_qnodes.begin());
-        const std::vector<T> sol_in_qnodes = from_nodes_to_qnodes(*mesh, temperature_prev);
-
-        // Откатываем правую часть к изначальному значению
         std::copy(initial_f.begin(), initial_f.end(), f.begin());
-
-        // На каждой итерации корректируем (пересобираем) матрицу, хотим сойтись к точному решению стационарной задачи
+        using namespace nonlocal::mesh::utils;
         conductivity.template calc_matrix(
             parameters,
             { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
               bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) },
             is_neumann,
-            sol_in_qnodes
+            is_nonlinear ? from_nodes_to_qnodes(*mesh, temperature_prev) : std::vector<T>{}
         );
 
         if (is_neumann) {
-            const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{conductivity.matrix_inner()};
+            const Eigen::ConjugateGradient<
+                Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
+                Eigen::Upper
+            > solver{conductivity.matrix_inner()};
             temperature_curr = solver.solve(f);
         } else {
             convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
             boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);
-            const Eigen::SimplicialCholesky<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper, Eigen::NaturalOrdering<I>> solver{conductivity.matrix_inner()};
+            const Eigen::SimplicialCholesky<
+                Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
+                Eigen::Upper, 
+                Eigen::NaturalOrdering<I>
+            > solver{conductivity.matrix_inner()};
             temperature_curr = solver.solve(f);
         }
 
-        norm = (temperature_curr - temperature_prev).norm();
-        std::cout << "norm(prev - curr) = " << norm << std::endl;
-    } while ((iters < maxiters) && (norm > 1e-10));
-    std::cout << "Iterations: " << iters << std::endl;
+        if (!is_nonlinear)
+            break;
+
+        ++iteration;
+        difference = (temperature_curr - temperature_prev).norm() / (temperature_curr.norm() ?: T{1});
+        std::cout << "norm(prev - curr) = " << difference << std::endl;
+    }
+    std::cout << "Iterations: " << iteration << std::endl;
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "Time: " << elapsed_seconds.count() << 's' << std::endl;
-    std::cout << "Mean iteration time: " << elapsed_seconds.count() / iters << 's' << std::endl;
-
     return heat_equation_solution_1d<T>{mesh, parameters, temperature_curr};
-   
 }
 
 }

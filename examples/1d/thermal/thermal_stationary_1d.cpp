@@ -20,11 +20,13 @@ int main(const int argc, const char *const *const argv) {
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
             },
-            [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
-            config_data.equation.energy
+            nonlocal::thermal::stationary_equation_parameters<T>{
+                .right_part = [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
+                .initial_distribution = [value = config_data.equation.initial_distribution](const T x) constexpr noexcept { return value; },
+                .energy = config_data.equation.energy
+            }
         );
 
-        
         std::cout << "integral = " << nonlocal::mesh::utils::integrate(*mesh, solution.temperature()) << std::endl;
         if (!std::filesystem::exists(config_data.save.folder()))
             std::filesystem::create_directories(config_data.save.folder());
