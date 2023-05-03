@@ -1,3 +1,4 @@
+#include <iostream>
 #include "make_mesh.hpp"
 
 int main(const int argc, const char *const *const argv) {
@@ -13,16 +14,24 @@ int main(const int argc, const char *const *const argv) {
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
         constexpr T eps = T{15};
-        constexpr T sigma = T{1};
+        constexpr T sigma = T{2};
 
         auto params = nonlocal::make_thermal_parameters(config_data.materials);
-        params[0].physical = std::make_shared<nonlocal::thermal::parameter_1d<T, nonlocal::coefficients_t::SOLUTION_DEPENDENT>>(
-                // [eps] (const T x, const T temp) { return (T{1} + eps * temp); },
-                [sigma] (const T x, const T temp) { return std::pow(temp, sigma); },
-                //[] (const T x, const T temp) { return lambda_0 * (1 + eps * temp); },
-                config_data.materials[0].physical.capacity,
-                config_data.materials[0].physical.density
-            );
+        // params[0].physical = std::make_shared<nonlocal::thermal::parameter_1d<T, nonlocal::coefficients_t::SOLUTION_DEPENDENT>>(
+        //         // [eps] (const T x, const T temp) { return (T{1} + eps * temp); },
+        //         [sigma] (const T x, const T temp) { return std::pow(temp, sigma); },
+        //         //[] (const T x, const T temp) { return lambda_0 * (1 + eps * temp); },
+        //         config_data.materials[0].physical.capacity,
+        //         config_data.materials[0].physical.density
+        //     );
+
+        params[0].physical = std::make_shared<nonlocal::thermal::parameter_1d<T, nonlocal::coefficients_t::SPACE_DEPENDENT>>(
+            // [eps] (const T x, const T temp) { return (T{1} + eps * temp); },
+            [](const T x) { return std::exp(x); },
+            //[] (const T x, const T temp) { return lambda_0 * (1 + eps * temp); },
+            config_data.materials[0].physical.capacity,
+            config_data.materials[0].physical.density
+        );
 
 
         const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.mesh.element_order, config_data.mesh.quadrature_order);

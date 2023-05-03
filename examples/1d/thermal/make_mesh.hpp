@@ -24,8 +24,8 @@ std::shared_ptr<nonlocal::mesh::mesh_1d<T>> make_mesh(
         search_radii[i] = materials[i].model.search_radius;
     }
     auto mesh = std::make_shared<nonlocal::mesh::mesh_1d<T>>(
-        nonlocal::make_element<T>(nonlocal::element_1d_order_t(1), 
-                                  nonlocal::quadrature_1d_order_t(1)), segments);
+        nonlocal::make_element<T>(nonlocal::element_1d_order_t(element_order), 
+                                  nonlocal::quadrature_1d_order_t(quadrature_order)), segments);
     mesh->find_neighbours(search_radii);
     return mesh;
 }

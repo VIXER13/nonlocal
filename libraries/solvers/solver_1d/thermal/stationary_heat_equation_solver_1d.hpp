@@ -18,7 +18,7 @@ struct stationary_equation_parameters final {
     std::optional<std::function<T(const T)>> right_part;
     std::optional<std::function<T(const T)>> initial_distribution;
     T tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
-    size_t max_iterations = 1000;
+    size_t max_iterations = 100;
     T energy = T{0};
 };
 
@@ -74,7 +74,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                 Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                 Eigen::Upper
             > solver{conductivity.matrix_inner()};
-            temperature_curr = solver.solve(f);
+            temperature_curr = solver.solveWithGuess(f, temperature_prev);
         } else {
             convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
             boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);

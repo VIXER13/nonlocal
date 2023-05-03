@@ -54,7 +54,7 @@ std::vector<T> gradient_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x)
 
 template<class T, class Vector>
 std::vector<T> from_nodes_to_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x) {
-    if (mesh.nodes_count() != x.size())
+    if (mesh.nodes_count() > x.size())
         throw std::logic_error{"The approximation cannot be found because the vector size does not match the number of nodes."};
     return approximation_in_qnodes(mesh, [&mesh, &x](const size_t e, const size_t i, const size_t q) {
         return mesh.element().qN(i, q) * x[mesh.node_number(e, i)];
