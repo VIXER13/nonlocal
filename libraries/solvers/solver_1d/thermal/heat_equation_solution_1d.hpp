@@ -93,12 +93,11 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
             }
         }
 
-        flux_nonlocal.clear();
-        flux_nonlocal.resize(theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL ?
-                             segment_elements.size() * el.qnodes_count() : 0, T{0});
-        if (!flux_nonlocal.empty()) {
-            size_t qshiftL = segment_elements.front() * el.qnodes_count();
+        if (theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL) {
+            flux_nonlocal.clear();
+            flux_nonlocal.resize(segment_elements.size() * el.qnodes_count(), T{0});
             for(const size_t eL : segment_elements) {
+                size_t qshiftL = eL * el.qnodes_count();
                 for(const size_t qL : el.qnodes()) {
                     for(const size_t eNL : mesh().neighbours(eL)) {
                         size_t qshiftNL = eNL * el.qnodes_count();
@@ -113,18 +112,11 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
                 }
             }
             using namespace metamath::functions;
+            flux *= _base::model(segment).local_weight;
             flux_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * mesh().jacobian(segment);
-        }
-
-        const size_t qshift = segment_elements.front() * el.qnodes_count();
-        for(const size_t eL : segment_elements) {
-            size_t qshiftL = eL * el.qnodes_count();
-            for(const size_t qL : el.qnodes()) {
-                flux[qshiftL] *= _base::model(segment).local_weight;
-                if (!flux_nonlocal.empty())
-                    flux[qshiftL] += flux_nonlocal[qshiftL - qshift];
-                ++qshiftL;
-            }
+            size_t qshift = segment_elements.front() * el.qnodes_count();
+            for(const T value : flux_nonlocal)
+                flux[qshift++] += value;
         }
     }
 
