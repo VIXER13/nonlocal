@@ -190,31 +190,26 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
     _base::template calc_matrix(theories, is_first_kind,
         [this, &parameters, &solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
-            switch (const auto& [model, physic] = parameters[segment]; physic->type) {
-            case CONSTANTS:
-                return model.local_weight * integrate_loc(parameter_cast<CONSTANTS>(*physic).conductivity, e, i, j);
-            case SPACE_DEPENDENT:
-                return model.local_weight * integrate_loc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, e, i, j);
-            case SOLUTION_DEPENDENT:
-                return model.local_weight * integrate_loc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, *solution, e, i, j);
-            default:
-                return std::numeric_limits<T>::quiet_NaN();
-            }
+            const auto& [model, physic] = parameters[segment];
+            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
+                return model.local_weight * integrate_loc(parameter->conductivity, e, i, j);
+            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
+                return model.local_weight * integrate_loc(parameter->conductivity, e, i, j);
+            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
+                return model.local_weight * integrate_loc(parameter->conductivity, *solution, e, i, j);
+            return std::numeric_limits<T>::quiet_NaN();
         },
         [this, &parameters, &solution](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             using enum coefficients_t;
             const auto& [model, physic] = parameters[segment];
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
-            switch (physic->type) {
-            case CONSTANTS:
-                return nonlocal_weight * integrate_nonloc(parameter_cast<CONSTANTS>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
-            case SPACE_DEPENDENT:
-                return nonlocal_weight * integrate_nonloc(parameter_cast<SPACE_DEPENDENT>(*physic).conductivity, model.influence, eL, eNL, iL, jNL);
-            case SOLUTION_DEPENDENT:
-                return nonlocal_weight * integrate_nonloc(parameter_cast<SOLUTION_DEPENDENT>(*physic).conductivity, model.influence, *solution, eL, eNL, iL, jNL);
-            default:
-                return std::numeric_limits<T>::quiet_NaN();
-            }
+            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
+                return model.local_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
+            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
+                return model.local_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
+            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
+                return model.local_weight * integrate_nonloc(parameter->conductivity, model.influence, *solution, eL, eNL, iL, jNL);
+            return std::numeric_limits<T>::quiet_NaN();
         }
     );
     if (is_neumann)
