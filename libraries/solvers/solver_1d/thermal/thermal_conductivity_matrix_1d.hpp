@@ -204,11 +204,11 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
             const auto& [model, physic] = parameters[segment];
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
             if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
-                return model.local_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
+                return nonlocal_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
             if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
-                return model.local_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
+                return nonlocal_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
             if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
-                return model.local_weight * integrate_nonloc(parameter->conductivity, model.influence, *solution, eL, eNL, iL, jNL);
+                return nonlocal_weight * integrate_nonloc(parameter->conductivity, model.influence, *solution, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         }
     );
