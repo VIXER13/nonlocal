@@ -110,8 +110,8 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const 
     const auto qnodes = el.qnodes();
     for(const size_t qL : qnodes) {
         const T inner_integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0},
-            [&integrator, qcoordL = _base::mesh().qnode_coord(eL, qL)](const size_t integral, const size_t q) {
-                return integral + integrator(qcoordL, q);
+            [&integrator, qcoordL = _base::mesh().qnode_coord(eL, qL)](const T integral, const size_t qNL) {
+                return integral + integrator(qcoordL, qNL);
             });
         integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
     }

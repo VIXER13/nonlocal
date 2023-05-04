@@ -71,56 +71,58 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
     });
     const auto temperature_in_qnodes = is_nonlinear ? mesh::utils::from_nodes_to_qnodes(mesh(), temperature()) : std::vector<T>{};
     std::vector<T> flux = mesh::utils::gradient_in_qnodes(mesh(), temperature());
-    std::vector<T> gradient_nonlocal;
+    std::vector<T> flux_nonlocal;
 
     for(const size_t segment : mesh().segments()) {
-        gradient_nonlocal.clear();
-        gradient_nonlocal.resize(theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL ? 
-                                 mesh().elements_count(segment) * el.qnodes_count() : 0, T{0});
-        const auto segment_elements = mesh().elements(segment);
         const auto& param = *parameter(segment);
+        const auto segment_elements = mesh().elements(segment);
+        for(const size_t e : segment_elements) {
+            size_t qshift = e * el.qnodes_count();
+            for(const size_t q : el.qnodes()) {
+                using enum coefficients_t;
+                const T conductivity =
+                    param.type == CONSTANTS ?
+                    parameter_cast<CONSTANTS>(param).conductivity :
+                    param.type == SPACE_DEPENDENT ?
+                    parameter_cast<SPACE_DEPENDENT>(param).conductivity(mesh().qnode_coord(e, q)) :
+                    param.type == SOLUTION_DEPENDENT ?
+                    parameter_cast<SOLUTION_DEPENDENT>(param).conductivity(mesh().qnode_coord(e, q), temperature_in_qnodes[qshift]) :
+                    throw std::domain_error{"Unknown parameter type"};
+                flux[qshift] *= -conductivity;
+                ++qshift;
+            }
+        }
 
-        if (!gradient_nonlocal.empty()) {
+        flux_nonlocal.clear();
+        flux_nonlocal.resize(theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL ?
+                             segment_elements.size() * el.qnodes_count() : 0, T{0});
+        if (!flux_nonlocal.empty()) {
+            size_t qshiftL = segment_elements.front() * el.qnodes_count();
             for(const size_t eL : segment_elements) {
-                const size_t qshiftL = (eL - segment_elements.front()) * el.qnodes_count();
-                for(const size_t eNL : mesh().neighbours(eL)) {
-                    const size_t qshiftNL = eNL * el.qnodes_count();
-                    for(const size_t qL : el.qnodes())
+                for(const size_t qL : el.qnodes()) {
+                    for(const size_t eNL : mesh().neighbours(eL)) {
+                        size_t qshiftNL = eNL * el.qnodes_count();
                         for(const size_t qNL : el.qnodes()) {
-                            using enum coefficients_t;
-                            const T conductivity = 
-                                param.type == CONSTANTS ?
-                                parameter_cast<CONSTANTS>(param).conductivity :
-                                param.type == SPACE_DEPENDENT ?
-                                parameter_cast<SPACE_DEPENDENT>(param).conductivity(mesh().qnode_coord(eNL, qNL)) :
-                                param.type == SOLUTION_DEPENDENT ?
-                                parameter_cast<SOLUTION_DEPENDENT>(param).conductivity(mesh().qnode_coord(eNL, qNL), temperature_in_qnodes[qshiftNL + qNL]) :
-                                throw std::domain_error{"Unknown parameter type"};
-                            const T influence_weight = _base::model(segment).influence(mesh().qnode_coord(eL,  qL), 
+                            const T influence_weight = _base::model(segment).influence(mesh().qnode_coord(eL,  qL),
                                                                                        mesh().qnode_coord(eNL, qNL));
-                            gradient_nonlocal[qshiftL + qL] -= el.weight(qNL) * influence_weight * conductivity * flux[qshiftNL + qNL];
+                            flux_nonlocal[qshiftL] += el.weight(qNL) * influence_weight * flux[qshiftNL];
+                            ++qshiftNL;
                         }
+                    }
+                    ++qshiftL;
                 }
             }
             using namespace metamath::functions;
-            gradient_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * mesh().jacobian(segment);
+            flux_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * mesh().jacobian(segment);
         }
 
-        const size_t qshiftNL = el.qnodes_count() * segment_elements.front();
+        const size_t qshift = segment_elements.front() * el.qnodes_count();
         for(const size_t eL : segment_elements) {
-            size_t qshiftL = el.qnodes_count() * eL;
-            for(const size_t qL : mesh().element().qnodes()) {
-                using enum coefficients_t;
-                const T conductivity = param.type == CONSTANTS ?
-                                       parameter_cast<CONSTANTS>(param).conductivity :
-                                       param.type == SPACE_DEPENDENT ?
-                                       parameter_cast<SPACE_DEPENDENT>(param).conductivity(mesh().qnode_coord(eL, qL)) :
-                                       param.type == SOLUTION_DEPENDENT ?
-                                       parameter_cast<SOLUTION_DEPENDENT>(param).conductivity(mesh().qnode_coord(eL, qL), temperature_in_qnodes[qshiftL]) :
-                                       throw std::domain_error{"Unknown parameter type"};
-                flux[qshiftL] *= -_base::model(segment).local_weight * conductivity;
-                if (!gradient_nonlocal.empty())
-                    flux[qshiftL] += gradient_nonlocal[qshiftL - qshiftNL];
+            size_t qshiftL = eL * el.qnodes_count();
+            for(const size_t qL : el.qnodes()) {
+                flux[qshiftL] *= _base::model(segment).local_weight;
+                if (!flux_nonlocal.empty())
+                    flux[qshiftL] += flux_nonlocal[qshiftL - qshift];
                 ++qshiftL;
             }
         }
@@ -129,51 +131,6 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
     _flux = mesh::utils::from_qnodes_to_nodes(mesh(), flux);
     return *_flux;
 }
-
-// template<class T>
-// const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
-//     const auto& el = mesh().element();
-//     const auto quadratures = std::ranges::iota_view{0u, el.qnodes_count()};
-//     std::vector<T> gradient = mesh::utils::gradient_in_qnodes(mesh(), temperature());
-
-//     for(const size_t segment : mesh().segments()) {
-//         const auto segment_elements = mesh().elements(segment);
-//         const theory_t theory = theory_type(_base::model(segment).local_weight);
-//         std::vector<T> gradient_nonlocal(theory == theory_t::NONLOCAL ? mesh().elements_count(segment) * el.qnodes_count() : 0, T{0});
-
-//         if (parameter(segment)->type == coefficients_t::SPACE_DEPENDENT || parameter(segment)->type == coefficients_t::SOLUTION_DEPENDENT)
-//             throw std::domain_error{"Oops! Right now I can calc flux only if conductivity is constant!"};
-
-//         if (theory == theory_t::NONLOCAL) {
-//             for(const size_t eL : segment_elements) {
-//                 const size_t qshiftL = (eL - segment_elements.front()) * el.qnodes_count();
-//                 for(const size_t eNL : mesh().neighbours(eL)) {
-//                     const size_t qshiftNL = eNL * el.qnodes_count();
-//                     for(const size_t qL : quadratures)
-//                         for(const size_t qNL : quadratures) {
-//                             const T influence_weight = _base::model(segment).influence(mesh().qnode_coord(eL,  qL), 
-//                                                                                        mesh().qnode_coord(eNL, qNL));
-//                             gradient_nonlocal[qshiftL + qL] -= el.weight(qNL) * influence_weight * gradient[qshiftNL + qNL];
-//                         }
-//                 }
-//             }
-//             using namespace metamath::functions;
-//             gradient_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * 
-//                                  parameter_cast<coefficients_t::CONSTANTS>(*parameter(segment)).conductivity * 
-//                                  mesh().jacobian(segment);
-//         }
-
-//         const size_t qshiftNL = el.qnodes_count() * segment_elements.front();
-//         for(const size_t qshiftL : std::ranges::iota_view{qshiftNL, el.qnodes_count() * *segment_elements.end()}) {
-//             gradient[qshiftL] *= -_base::model(segment).local_weight * parameter_cast<coefficients_t::CONSTANTS>(*parameter(segment)).conductivity;
-//             if (theory == theory_t::NONLOCAL)
-//                 gradient[qshiftL] += gradient_nonlocal[qshiftL - qshiftNL];
-//         }
-//     }
-
-//     _flux = mesh::utils::from_qnodes_to_nodes(mesh(), gradient);
-//     return *_flux;
-// }
 
 }
 

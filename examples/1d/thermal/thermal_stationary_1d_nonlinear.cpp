@@ -26,9 +26,8 @@ int main(const int argc, const char *const *const argv) {
         //     );
 
         params[0].physical = std::make_shared<nonlocal::thermal::parameter_1d<T, nonlocal::coefficients_t::SPACE_DEPENDENT>>(
-            // [eps] (const T x, const T temp) { return (T{1} + eps * temp); },
             [](const T x) { return std::exp(x); },
-            //[] (const T x, const T temp) { return lambda_0 * (1 + eps * temp); },
+            //[](const T x) { return x; },
             config_data.materials[0].physical.capacity,
             config_data.materials[0].physical.density
         );
