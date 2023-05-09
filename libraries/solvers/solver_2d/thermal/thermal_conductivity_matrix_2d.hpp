@@ -118,20 +118,36 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
 template<class T, class I, class Matrix_Index>
 T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
     const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter, const size_t e, const size_t i, const size_t j) const {
+    T integral = T{0};
     switch(const auto& conductivity = parameter.conductivity; parameter.material) {
-    case material_t::ISOTROPIC: {
-        return std::numeric_limits<T>::quiet_NaN();
-    }
+    case material_t::ISOTROPIC:
+        integrate_loc(e, i, j, [this, &integral, &conductivity, e](const size_t q, const T factor, const std::array<T, 2>& dNi, const std::array<T, 2>& dNj) {
+            integral += factor * conductivity[X][X](_base::mesh().quad_coord(e, q)) * (dNi[X] * dNj[X] + dNi[Y] * dNj[Y]);
+        });
+    break;
 
-    case material_t::ORTHOTROPIC: {
-        return std::numeric_limits<T>::quiet_NaN();
-    }
+    case material_t::ORTHOTROPIC:
+        integrate_loc(e, i, j, [this, &integral, &conductivity, e](const size_t q, const T factor, const std::array<T, 2>& dNi, const std::array<T, 2>& dNj) {
+            const std::array<T, 2>& qcoord = _base::mesh().quad_coord(e, q);
+            integral += factor * (conductivity[X][X](qcoord) * dNi[X] * dNj[X] + conductivity[Y][Y](qcoord) * dNi[Y] * dNj[Y]);
+        });
+    break;
 
-    case material_t::ANISOTROPIC: {
-        return std::numeric_limits<T>::quiet_NaN();
+    case material_t::ANISOTROPIC:
+        integrate_loc(e, i, j, [this, &integral, &conductivity, e](const size_t q, const T factor, const std::array<T, 2>& dNi, const std::array<T, 2>& dNj) {
+            T integral_term = T{0};
+            const std::array<T, 2>& qcoord = _base::mesh().quad_coord(e, q);
+            for(const size_t row : std::ranges::iota_view{0u, 2u})
+                for(const size_t col : std::ranges::iota_view{0u, 2u})
+                    integral_term += conductivity[row][col](qcoord) * dNi[row] * dNj[col];
+            integral += factor * integral_term;
+        });
+    break;
+
+    default:
+        unknown_material(parameter.material);
     }
-    }
-    unknown_material(parameter.material);
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
@@ -230,7 +246,22 @@ template<class Influence_Function>
 T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter, const Influence_Function& influence,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return 0;
+    switch (const auto& conductivity = parameter.conductivity; parameter.material) {
+    case material_t::ISOTROPIC: {
+        T integral = T{0};
+        const auto inner_integrator = [&influence, &conductivity](const size_t, const T weightNL, const std::array<T, 2>& qcoordL, const std::array<T, 2>& qcoordNL) {
+            return weightNL * conductivity[X][X](qcoordNL) * influence(qcoordL, qcoordNL);
+        };
+        integrate_nonloc(eL, eNL, iL, jNL, inner_integrator,
+        [&integral](const T weightL, const std::array<T, 2>& dNi, const std::array<T, 2>& inner_integral) {
+            integral += weightL * (dNi[X] * inner_integral[X] + dNi[Y] * inner_integral[Y]);
+        });
+        return integral;
+    }
+
+    default:
+        unknown_material(parameter.material);
+    }
 }
 
 template<class T, class I, class Matrix_Index>
@@ -281,26 +312,25 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameter
     _base::calc_coeffs(theories, is_inner,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
-            switch (const auto& [model, physic] = parameters.at(group); physic->type) {
-            case CONSTANTS:
-                return model.local_weight * integrate_loc(parameter_cast<CONSTANTS>(*physic), e, i, j);
-            case SPACE_DEPENDENT:
-                return model.local_weight * integrate_loc(parameter_cast<SPACE_DEPENDENT>(*physic), e, i, j);
-            case SOLUTION_DEPENDENT:
-                return model.local_weight * integrate_loc(parameter_cast<SOLUTION_DEPENDENT>(*physic), e, i, j);
-            }
+            const auto& [model, physic] = parameters.at(group);
+            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
+                return model.local_weight * integrate_loc(*parameter, e, i, j);
+            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
+                return model.local_weight * integrate_loc(*parameter, e, i, j);
+            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
+                return model.local_weight * integrate_loc(*parameter, e, i, j);
             return std::numeric_limits<T>::quiet_NaN();
         },
         [this, &parameters](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             using enum coefficients_t;
-            switch (const auto& [model, physic] = parameters.at(group); physic->type) {
-            case CONSTANTS:
-                return nonlocal_weight(model.local_weight) * integrate_nonloc(parameter_cast<CONSTANTS>(*physic), model.influence, eL, eNL, iL, jNL);
-            case SPACE_DEPENDENT:
-                return nonlocal_weight(model.local_weight) * integrate_nonloc(parameter_cast<SPACE_DEPENDENT>(*physic), model.influence, eL, eNL, iL, jNL);
-            case SOLUTION_DEPENDENT:
-                return nonlocal_weight(model.local_weight) * integrate_nonloc(parameter_cast<SOLUTION_DEPENDENT>(*physic), model.influence, eL, eNL, iL, jNL);
-            }
+            const auto& [model, physic] = parameters.at(group);
+            const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
+            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
+                return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
+            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
+                return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
+            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
+                return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         });
     if (is_neumann)

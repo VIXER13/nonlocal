@@ -24,7 +24,7 @@ template<class T>
 thermal::parameters_2d<T> make_parameters(const typename config::stationary_thermal_data<T, 2>::materials_t& materials) {
     thermal::parameters_2d<T> parameters;
     for(const auto& [name, material] : materials) {
-        parameters[name] = {
+        auto& parameter = parameters[name] = {
             .model = {
                 .influence = influence::polynomial_2d<T, 2, 1>{material.model.nonlocal_radius},
                 .local_weight = material.model.local_weight
@@ -32,10 +32,10 @@ thermal::parameters_2d<T> make_parameters(const typename config::stationary_ther
             .physical = std::make_shared<thermal::parameter_2d<T, coefficients_t::CONSTANTS>>(
                 metamath::types::make_square_matrix<T, 2u>(material.physical.conductivity),
                 material.physical.capacity,
-                material.physical.density,
-                material.physical.material
+                material.physical.density
             )
         };
+        parameter.physical->material = material.physical.material;
     }
     return parameters;
 }

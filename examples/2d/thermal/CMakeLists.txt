@@ -15,3 +15,10 @@ target_link_libraries(thermal_nonstationary_2d
     finite_element_solver_2d_lib
     config_lib
 )
+
+add_executable(thermal_stationary_2d_nonlinear thermal_stationary_2d_nonlinear.cpp)
+target_include_directories(thermal_stationary_2d_nonlinear PUBLIC ".")
+target_link_libraries(thermal_stationary_2d_nonlinear 
+    finite_element_solver_2d_lib
+    config_lib
+)
