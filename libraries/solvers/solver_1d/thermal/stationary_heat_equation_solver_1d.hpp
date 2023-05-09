@@ -41,7 +41,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         f[f.size() - 1] = additional_parameters.energy;
     const Eigen::Matrix<T, Eigen::Dynamic, 1> initial_f = f;
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count());
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
     if (additional_parameters.initial_distribution)
         for(const size_t node : mesh->nodes())
             temperature_prev[node] = (*additional_parameters.initial_distribution)(mesh->node_coord(node));

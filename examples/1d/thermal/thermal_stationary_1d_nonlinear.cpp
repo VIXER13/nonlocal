@@ -11,6 +11,12 @@ int main(const int argc, const char *const *const argv) {
         using T = double;
         using I = int64_t;
         const nonlocal::config::stationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
+
+        if (!std::filesystem::exists(config_data.save.folder()))
+            std::filesystem::create_directories(config_data.save.folder());
+        if (config_data.save.contains("config"))
+            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
+
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
         constexpr T eps = T{15};
@@ -26,28 +32,16 @@ int main(const int argc, const char *const *const argv) {
         //     );
 
         params[0].physical = std::make_shared<nonlocal::thermal::parameter_1d<T, nonlocal::coefficients_t::SPACE_DEPENDENT>>(
-            [](const T x) { return std::exp(x); },
-            //[](const T x) { return x; },
+            //[](const T x) { return std::exp(x); },
+            [](const T x) { return x + 1.0; },
+            //[](const T x) { return 1.0; },
             config_data.materials[0].physical.capacity,
             config_data.materials[0].physical.density
         );
 
-
         const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.mesh.element_order, config_data.mesh.quadrature_order);
-
-
-        // auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
-        //     mesh, params, //nonlocal::make_thermal_parameters(config_data.materials),
-        //     nonlocal::thermal::thermal_boundaries_conditions_1d<T>{
-        //         nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
-        //         nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
-        //     },
-        //     [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
-        //     config_data.equation.energy
-        // );
-
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_1d<T, I>(
-            mesh, params, //nonlocal::make_thermal_parameters(config_data.materials),
+            mesh, params,
             nonlocal::thermal::thermal_boundaries_conditions_1d<T>{
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
@@ -59,12 +53,7 @@ int main(const int argc, const char *const *const argv) {
             }
         );
 
-        
         std::cout << "integral = " << nonlocal::mesh::utils::integrate(*mesh, solution.temperature()) << std::endl;
-        if (!std::filesystem::exists(config_data.save.folder()))
-            std::filesystem::create_directories(config_data.save.folder());
-        if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
         if (config_data.save.contains("temperature"))
             nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), config_data.save.path("temperature", ".csv"), config_data.save.precision());
         if (config_data.save.contains("flux"))

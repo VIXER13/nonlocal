@@ -138,13 +138,12 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
             if (node_data) {
                 const auto& [eL, iL] = node_data;
                 if constexpr (Theory == theory_t::LOCAL)
-                    for(const size_t jL : std::ranges::iota_view{0u, mesh().element().nodes_count()})
+                    for(const size_t jL : mesh().element().nodes())
                         callback(eL, iL, jL);
                 if constexpr (Theory == theory_t::NONLOCAL)
                     for(const size_t eNL : mesh().neighbours(eL))
-                        for(const size_t jNL : std::ranges::iota_view{0u, mesh().element().nodes_count()}) {
+                        for(const size_t jNL : mesh().element().nodes())
                             callback(eL, eNL, iL, jNL);
-                        }
             }            
     }
 }

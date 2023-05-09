@@ -99,13 +99,13 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
             for(const size_t eL : segment_elements) {
                 size_t qshiftL = eL * el.qnodes_count();
                 for(const size_t qL : el.qnodes()) {
+                    const T qcoordL = mesh().qnode_coord(eL,  qL);
                     for(const size_t eNL : mesh().neighbours(eL)) {
                         size_t qshiftNL = eNL * el.qnodes_count();
                         for(const size_t qNL : el.qnodes()) {
-                            const T influence_weight = _base::model(segment).influence(mesh().qnode_coord(eL,  qL),
-                                                                                       mesh().qnode_coord(eNL, qNL));
-                            flux_nonlocal[qshiftL] += el.weight(qNL) * influence_weight * flux[qshiftNL];
-                            ++qshiftNL;
+                            const T qcoordNL = mesh().qnode_coord(eNL, qNL);
+                            const T influence_weight = _base::model(segment).influence(qcoordL, qcoordNL);
+                            flux_nonlocal[qshiftL] += el.weight(qNL) * influence_weight * flux[qshiftNL++];
                         }
                     }
                     ++qshiftL;
