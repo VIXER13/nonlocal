@@ -12,7 +12,10 @@ class heat_equation_solution_1d : public solution_1d<T> {
 
     const std::vector<T> _temperature;
     const std::vector<parameter_1d_sptr<T>> _parameters;
-    std::optional<std::vector<T>> _flux;
+    std::vector<T> _flux;
+
+    void calc_local_flux();
+    void calc_nonlocal_flux();
     
 public:
     using _base::mesh;
@@ -47,7 +50,7 @@ const std::vector<T>& heat_equation_solution_1d<T>::temperature() const noexcept
 
 template<class T>
 const std::vector<T>& heat_equation_solution_1d<T>::flux() const {
-    return *_flux;
+    return _flux;
 }
 
 template<class T>
@@ -57,26 +60,21 @@ const parameter_1d_sptr<T>& heat_equation_solution_1d<T>::parameter(const size_t
 
 template<class T>
 bool heat_equation_solution_1d<T>::is_flux_calculated() const noexcept {
-    return _flux.has_value();
+    return !_flux.empty();
 }
 
 template<class T>
-const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
-    if (is_flux_calculated())
-        return *_flux;
-
+void heat_equation_solution_1d<T>::calc_local_flux() {
     const auto& el = mesh().element();
-    const bool is_nonlinear = std::any_of(_parameters.begin(), _parameters.end(), [](const auto& parameter) noexcept {
-        return parameter->type == coefficients_t::SOLUTION_DEPENDENT;
-    });
-    const auto temperature_in_qnodes = is_nonlinear ? mesh::utils::from_nodes_to_qnodes(mesh(), temperature()) : std::vector<T>{};
-    std::vector<T> flux = mesh::utils::gradient_in_qnodes(mesh(), temperature());
-    std::vector<T> flux_nonlocal;
-
+    _flux = mesh::utils::gradient_in_qnodes(mesh(), temperature());
+    const bool is_any_nonlinear = 
+        std::any_of(_parameters.begin(), _parameters.end(), [](const auto& parameter) constexpr noexcept {
+            return parameter->type == coefficients_t::SOLUTION_DEPENDENT;
+        });
+    const auto temperature_in_qnodes = is_any_nonlinear ? mesh::utils::from_nodes_to_qnodes(mesh(), temperature()) : std::vector<T>{};
     for(const size_t segment : mesh().segments()) {
         const auto& param = *parameter(segment);
-        const auto segment_elements = mesh().elements(segment);
-        for(const size_t e : segment_elements) {
+        for(const size_t e : mesh().elements(segment)) {
             size_t qshift = e * el.qnodes_count();
             for(const size_t q : el.qnodes()) {
                 using enum coefficients_t;
@@ -88,40 +86,47 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
                     param.type == SOLUTION_DEPENDENT ?
                     parameter_cast<SOLUTION_DEPENDENT>(param).conductivity(mesh().qnode_coord(e, q), temperature_in_qnodes[qshift]) :
                     throw std::domain_error{"Unknown parameter type"};
-                flux[qshift] *= -conductivity;
-                ++qshift;
+                _flux[qshift++] *= -conductivity;
             }
         }
+    }
+}
 
+template<class T>
+void heat_equation_solution_1d<T>::calc_nonlocal_flux() {
+    const auto& el = mesh().element();
+    const std::vector<T> flux = _flux;
+    for(const size_t segment : mesh().segments())
         if (theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL) {
-            flux_nonlocal.clear();
-            flux_nonlocal.resize(segment_elements.size() * el.qnodes_count(), T{0});
-            for(const size_t eL : segment_elements) {
+            for(const size_t eL : mesh().elements(segment)) {
                 size_t qshiftL = eL * el.qnodes_count();
                 for(const size_t qL : el.qnodes()) {
+                    T nonlocal_flux = T{0};
                     const T qcoordL = mesh().qnode_coord(eL,  qL);
                     for(const size_t eNL : mesh().neighbours(eL)) {
                         size_t qshiftNL = eNL * el.qnodes_count();
                         for(const size_t qNL : el.qnodes()) {
                             const T qcoordNL = mesh().qnode_coord(eNL, qNL);
                             const T influence_weight = _base::model(segment).influence(qcoordL, qcoordNL);
-                            flux_nonlocal[qshiftL] += el.weight(qNL) * influence_weight * flux[qshiftNL++];
+                            nonlocal_flux += el.weight(qNL) * influence_weight * flux[qshiftNL++];
                         }
                     }
-                    ++qshiftL;
+                    nonlocal_flux *= nonlocal_weight(_base::model(segment).local_weight) * mesh().jacobian(segment);
+                    _flux[qshiftL] *= _base::model(segment).local_weight;
+                    _flux[qshiftL++] += nonlocal_flux;
                 }
             }
-            using namespace metamath::functions;
-            flux *= _base::model(segment).local_weight;
-            flux_nonlocal *= nonlocal_weight(_base::model(segment).local_weight) * mesh().jacobian(segment);
-            size_t qshift = segment_elements.front() * el.qnodes_count();
-            for(const T value : flux_nonlocal)
-                flux[qshift++] += value;
         }
-    }
+}
 
-    _flux = mesh::utils::from_qnodes_to_nodes(mesh(), flux);
-    return *_flux;
+template<class T>
+const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
+    if (!is_flux_calculated()) {
+        calc_local_flux();
+        calc_nonlocal_flux();
+        _flux = mesh::utils::from_qnodes_to_nodes(mesh(), _flux);
+    }
+    return _flux;
 }
 
 }
