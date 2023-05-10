@@ -4,6 +4,7 @@
 #include "../solvers_utils.hpp"
 
 #include "mesh_1d.hpp"
+#include "OMP_utils.hpp"
 
 #include <eigen3/Eigen/Sparse>
 
@@ -27,7 +28,7 @@ protected:
     template<theory_t Theory, class Callback>
     void mesh_run(const size_t segment, const Callback& callback) const;
     template<class Integrate_Loc, class Integrate_Nonloc>
-    void calc_matrix(const std::vector<theory_t>& theories,   const std::array<bool, 2> is_first_kind,
+    void calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_symmetric,
                      const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
@@ -87,25 +88,26 @@ template<class T, class I>
 void finite_element_matrix_1d<T, I>::calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind) {
     const size_t last_node = mesh().nodes_count() - 1;
     const size_t nodes_in_element = mesh().element().nodes_count() - 1;
+    if (is_first_kind.front())
+        matrix_inner().outerIndexPtr()[1] = 1;
 #pragma omp parallel for default(none) shared(theories, is_first_kind, last_node, nodes_in_element)
-    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
-        if (is_first_kind.front() && node == 0 || is_first_kind.back() && node == last_node)
-            matrix_inner().outerIndexPtr()[node + 1] = 1;
-        else {
-            const auto [left, right] = mesh().node_elements(node);
-            const auto [e, i] = right ? right : left;
-            const size_t neighbour = theories[mesh().segment_number(e)] == theory_t::LOCAL ? e + 1 : *mesh().neighbours(e).end();
-            const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
-            matrix_inner().outerIndexPtr()[node + 1] += (neighbour - e) * nodes_in_element + 1 - i - is_last_first_kind;
-        }
+    for(size_t node = is_first_kind.front(); node < mesh().nodes_count() - is_first_kind.back(); ++node) {
+        const auto [left, right] = mesh().node_elements(node);
+        const auto [e, i] = right ? right : left;
+        const size_t neighbour = theories[mesh().segment_number(e)] == theory_t::LOCAL ? e + 1 : *mesh().neighbours(e).end();
+        const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
+        const size_t count = (neighbour - e) * nodes_in_element + 1 - i - is_last_first_kind;
+        matrix_inner().outerIndexPtr()[node + 1] += count;
     }
+    if (is_first_kind.back())
+        matrix_inner().outerIndexPtr()[mesh().nodes_count()] = 1;
 }
 
 template<class T, class I>
 void finite_element_matrix_1d<T, I>::init_indices() {
     for(const size_t i : std::ranges::iota_view{0u, size_t(matrix_inner().rows())})
-        for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j, ++k)
-            matrix_inner().innerIndexPtr()[j] = k;
+        for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j)
+            matrix_inner().innerIndexPtr()[j] = k++;
 }
 
 template<class T, class I>
@@ -150,7 +152,7 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
 
 template<class T, class I>
 template<class Integrate_Loc, class Integrate_Nonloc>
-void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind,
+void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_symmetric,
                                                  const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
         if (col == row)
@@ -159,7 +161,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& th
             it->second += integral;
     };
 
-    const auto assemble = [this, is_first_kind, &assemble_bound, last_node = mesh().nodes_count() - 1]
+    const auto assemble = [this, is_first_kind, is_symmetric, &assemble_bound, last_node = mesh().nodes_count() - 1]
                           <class Integrate, class... Model_Args>
                           (const size_t row, const size_t col, const Integrate& integrate_rule, const Model_Args&... args) {
         if (is_first_kind.front() && (row == 0 || col == 0)) {
@@ -168,7 +170,7 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& th
         } else if (is_first_kind.back() && (row == last_node || col == last_node)) {
             if (row == last_node)
                 assemble_bound(matrix_bound().back(), row, col, integrate_rule(args...));
-        } else if (row <= col)
+        } else if (!is_symmetric || row <= col)
             matrix_inner().coeffRef(row, col) += integrate_rule(args...);
     };
 

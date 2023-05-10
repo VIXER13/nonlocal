@@ -38,7 +38,7 @@ protected:
                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
 
-    void neumann_problem_col_fill();
+    void integral_condition(); // for Neumann problem
     void create_matrix_portrait(const std::vector<theory_t>& theories,
                                 const std::array<bool, 2> is_first_kind, const bool is_neumann);
 
@@ -46,7 +46,8 @@ public:
     explicit thermal_conductivity_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
     ~thermal_conductivity_matrix_1d() override = default;
 
-    void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann = false,
+    void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind,
+                     const bool is_neumann = false, const bool is_symmetric = true,
                      const std::optional<std::vector<T>>& solution = std::nullopt);
 };
 
@@ -156,7 +157,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
 }
 
 template<class T, class I>
-void thermal_conductivity_matrix_1d<T, I>::neumann_problem_col_fill() {
+void thermal_conductivity_matrix_1d<T, I>::integral_condition() {
 #pragma omp parallel for default(none)
     for(size_t node = 0; node < _base::mesh().nodes_count(); ++node) {
         T& val = _base::matrix_inner().coeffRef(node, _base::mesh().nodes_count());
@@ -178,16 +179,22 @@ void thermal_conductivity_matrix_1d<T, I>::create_matrix_portrait(const std::vec
 }
 
 template<class T, class I>
-void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind, const bool is_neumann,
+void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind,
+                                                       const bool is_neumann, const bool is_symmetric,
                                                        const std::optional<std::vector<T>>& solution) {
     if (parameters.size() != _base::mesh().segments_count())
-        throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
+        throw std::domain_error{"The number of segments and the number of material parameters do not match."};
     _base::clear();
     const size_t matrix_size = _base::mesh().nodes_count() + is_neumann;
     _base::matrix_inner().resize(matrix_size, matrix_size);
     const std::vector<theory_t> theories = theories_types(parameters);
     create_matrix_portrait(theories, is_first_kind, is_neumann);
-    _base::template calc_matrix(theories, is_first_kind,
+    if (is_neumann)
+        integral_condition();
+    if (!is_symmetric)
+        _base::matrix_inner() = Eigen::SparseMatrix<T, Eigen::RowMajor, I>(_base::matrix_inner().template selfadjointView<Eigen::Upper>());
+
+    _base::template calc_matrix(theories, is_first_kind, is_symmetric,
         [this, &parameters, &solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
             const auto& [model, physic] = parameters[segment];
@@ -212,8 +219,6 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
             return std::numeric_limits<T>::quiet_NaN();
         }
     );
-    if (is_neumann)
-        neumann_problem_col_fill();
 }
 
 }

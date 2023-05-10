@@ -47,10 +47,17 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
             temperature_prev[node] = (*additional_parameters.initial_distribution)(mesh->node_coord(node));
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr = temperature_prev;
 
-    static constexpr auto is_nonlinear_parameter = [](const auto& parameter) noexcept {
+    static constexpr auto is_solution_depend_parameter = [](const auto& parameter) noexcept {
         return parameter.physical->type == coefficients_t::SOLUTION_DEPENDENT;
     };
-    const bool is_nonlinear = std::any_of(parameters.begin(), parameters.end(), is_nonlinear_parameter);
+    const bool is_sol_depend = std::any_of(parameters.begin(), parameters.end(), is_solution_depend_parameter);
+
+    static constexpr auto check_nonlinear = [](const auto& parameter) { return parameter.physical->type != coefficients_t::CONSTANTS; };
+    const bool is_nonlinear = std::any_of(parameters.begin(), parameters.end(), check_nonlinear);
+    static constexpr auto check_nonlocal = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
+    const std::vector<theory_t> theories = theories_types(parameters);
+    const bool is_nonlocal = std::any_of(theories.begin(), theories.end(), check_nonlocal);
+    const bool is_symmetric = !(is_nonlinear && is_nonlocal);
 
     T difference = T{1};
     size_t iteration = 0;
@@ -65,28 +72,44 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
             parameters,
             { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
               bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) },
-            is_neumann,
-            is_nonlinear ? from_nodes_to_qnodes(*mesh, temperature_prev) : std::vector<T>{}
+            is_neumann, is_symmetric,
+            is_sol_depend ? std::optional{from_nodes_to_qnodes(*mesh, temperature_prev)} : std::nullopt
         );
 
         if (is_neumann) {
-            const Eigen::ConjugateGradient<
-                Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
-                Eigen::Upper
-            > solver{conductivity.matrix_inner()};
-            temperature_curr = solver.solveWithGuess(f, temperature_prev);
+            std::cout << "neumann problem" << std::endl;
+            if (is_symmetric) {
+                std::cout << "symmetric problem" << std::endl;
+                const Eigen::ConjugateGradient<
+                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
+                    Eigen::Upper
+                > solver{conductivity.matrix_inner()};
+                temperature_curr = solver.solveWithGuess(f, temperature_prev);
+            } else {
+                std::cout << "asymmetric problem" << std::endl;
+                const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix_inner()};
+                temperature_curr = solver.solveWithGuess(f, temperature_prev);
+            }
         } else {
             convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
             boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);
-            const Eigen::SimplicialCholesky<
-                Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
-                Eigen::Upper, 
-                Eigen::NaturalOrdering<I>
-            > solver{conductivity.matrix_inner()};
-            temperature_curr = solver.solve(f);
+            if (is_symmetric) {
+                const Eigen::SimplicialCholesky<
+                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
+                    Eigen::Upper, 
+                    Eigen::NaturalOrdering<I>
+                > solver{conductivity.matrix_inner()};
+                temperature_curr = solver.solve(f);
+            } else {
+                const Eigen::SparseLU<
+                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
+                    Eigen::NaturalOrdering<I>
+                > solver{conductivity.matrix_inner()};
+                temperature_curr = solver.solve(f);
+            }
         }
 
-        if (!is_nonlinear)
+        if (!is_sol_depend)
             break;
 
         ++iteration;
