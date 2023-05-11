@@ -4,7 +4,6 @@
 #include "../solvers_utils.hpp"
 
 #include "mesh_1d.hpp"
-#include "OMP_utils.hpp"
 
 #include <eigen3/Eigen/Sparse>
 
