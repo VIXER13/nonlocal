@@ -41,7 +41,7 @@ int main(const int argc, const char *const *const argv) {
 
         auto parameters = nonlocal::make_parameters<T>(config_data.materials);
         parameters["Default"].physical = std::make_shared<nonlocal::thermal::parameter_2d<T, nonlocal::coefficients_t::SPACE_DEPENDENT>>(
-            [](const std::array<T, 2>& x) { return x[1] + 1.0; }
+            [](const std::array<T, 2>& x) { return x[0] + 1.0; }
             //[](const std::array<T, 2>& x) { return 1.0; }
         );
 

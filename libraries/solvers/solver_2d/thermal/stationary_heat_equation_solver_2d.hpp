@@ -36,9 +36,16 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         f[f.size() - 1] = energy;
     }
 
+    static constexpr auto check_nonlinear = [](const auto& parameter) { return parameter.second.physical->type != coefficients_t::CONSTANTS; };
+    const bool is_nonlinear = std::any_of(parameters.begin(), parameters.end(), check_nonlinear);
+    static constexpr auto check_nonlocal = [](const auto& theory) noexcept { return theory.second == theory_t::NONLOCAL; };
+    const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
+    const bool is_nonlocal = std::any_of(theories.begin(), theories.end(), check_nonlocal);
+    const bool is_symmetric = !(is_nonlinear && is_nonlocal);
+
     auto start_time = std::chrono::high_resolution_clock::now();
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
-    conductivity.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_neumann);
+    conductivity.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "Conductivity matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
     convection_condition_2d(conductivity.matrix_inner(), *mesh, boundaries_conditions);
@@ -46,12 +53,21 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     if (!is_neumann)
         boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix_bound());
 
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
     start_time = std::chrono::high_resolution_clock::now();
-    const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
-    const auto temperature = solver.solve(f);
+    if (is_symmetric) {
+        std::cout << "symmetric problem" << std::endl;
+        const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
+        temperature = solver.solve(f);
+        std::cout << "Iterations: " << solver.iterations() << std::endl;
+    } else {
+        std::cout << "asymmetric problem" << std::endl;
+        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix_inner()};
+        temperature = solver.solve(f);
+        std::cout << "Iterations: " << solver.iterations() << std::endl;
+    }
     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
     std::cout << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
-    std::cout << "Iterations: " << solver.iterations() << std::endl;
     return heat_equation_solution_2d<T, I>{mesh, parameters, temperature};
 }
 

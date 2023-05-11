@@ -16,7 +16,7 @@ class integrator final : public matrix_separator_base<T, I>  {
 
 public:
     explicit integrator(matrix_parts_t<T, I>& matrix, const mesh::mesh_container_2d<T, I>& mesh, 
-                        const std::vector<bool>& is_inner, const size_t node_shift,
+                        const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric,
                         const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc);
     ~integrator() noexcept override = default;
 
@@ -27,9 +27,9 @@ public:
 template<size_t DoF, class T, class I, class Integrate_Loc, class Integrate_Nonloc>
 integrator<DoF, T, I, Integrate_Loc, Integrate_Nonloc>::integrator(
     matrix_parts_t<T, I>& matrix, const mesh::mesh_container_2d<T, I>& mesh, 
-    const std::vector<bool>& is_inner, const size_t node_shift,
+    const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric,
     const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc)
-    : _base{matrix, is_inner, node_shift}
+    : _base{matrix, is_inner, node_shift, is_symmetric}
     , _mesh{mesh}
     , _integrate_loc{integrate_loc}
     , _integrate_nonloc{integrate_nonloc} {}

@@ -20,7 +20,7 @@ class shift_initializer final : public matrix_separator_base<T, I>
 
 public:
     explicit shift_initializer(matrix_parts_t<T, I>& matrix, const mesh::mesh_container_2d<T, I>& mesh, 
-                               const std::vector<bool>& is_inner, const size_t node_shift);
+                               const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric);
     ~shift_initializer() noexcept override = default;
 
     void operator()(const std::string&, const size_t e, const size_t i, const size_t j);
@@ -29,9 +29,9 @@ public:
 
 template<size_t DoF, class T, class I>
 shift_initializer<DoF, T, I>::shift_initializer(matrix_parts_t<T, I>& matrix, const mesh::mesh_container_2d<T, I>& mesh, 
-                                                const std::vector<bool>& is_inner, const size_t node_shift)
-    : _matrix{matrix, is_inner, node_shift}
-    , _indexator{is_inner.size()}
+                                                const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric)
+    : _matrix{matrix, is_inner, node_shift, is_symmetric}
+    , _indexator{is_inner.size(), is_symmetric}
     , _mesh{mesh} {}
 
 template<size_t DoF, class T, class I>

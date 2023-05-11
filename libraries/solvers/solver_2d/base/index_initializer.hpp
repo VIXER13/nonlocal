@@ -11,6 +11,7 @@ class index_initializer final : public matrix_separator_base<T, I>
                               , public indexator_base<DoF> {
     using _matrix = matrix_separator_base<T, I>;
     using _indexator = indexator_base<DoF>;
+
     const mesh::mesh_container_2d<T, I>& _mesh;
     std::array<std::array<size_t, DoF>, 2> _current_indices = {};
 
@@ -18,7 +19,7 @@ class index_initializer final : public matrix_separator_base<T, I>
 
 public:
     explicit index_initializer(matrix_parts_t<T, I>& matrix, const mesh::mesh_container_2d<T, I>& mesh, 
-                               const std::vector<bool>& is_inner, const size_t node_shift);
+                               const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric);
     ~index_initializer() noexcept override = default;
 
     void reset(const size_t node);
@@ -29,9 +30,9 @@ public:
 
 template<size_t DoF, class T, class I>
 index_initializer<DoF, T, I>::index_initializer(matrix_parts_t<T, I>& matrix, const mesh::mesh_container_2d<T, I>& mesh, 
-                                                const std::vector<bool>& is_inner, const size_t node_shift)
-    : _matrix{matrix, is_inner, node_shift}
-    , _indexator{is_inner.size()}
+                                                const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric)
+    : _matrix{matrix, is_inner, node_shift, is_symmetric}
+    , _indexator{is_inner.size(), is_symmetric}
     , _mesh{mesh} {}
 
 template<size_t DoF, class T, class I>

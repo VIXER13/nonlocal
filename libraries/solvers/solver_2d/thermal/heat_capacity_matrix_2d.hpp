@@ -9,6 +9,8 @@ template<class T, class I, class Matrix_Index>
 class heat_capacity_matrix_2d : public finite_element_matrix_2d<1, T, I, Matrix_Index> {
     using _base = finite_element_matrix_2d<1, T, I, Matrix_Index>;
 
+    static constexpr bool SYMMETRIC = true;
+
 protected:
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
 
@@ -42,8 +44,8 @@ void heat_capacity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(const s
     const size_t cols = _base::mesh().container().nodes_count();
     _base::matrix_inner().resize(rows, cols);
     _base::matrix_bound().resize(rows, cols);
-    _base::init_shifts(theories, is_inner);
-    _base::init_indices(theories, is_inner);
+    _base::init_shifts(theories, is_inner, SYMMETRIC);
+    _base::init_indices(theories, is_inner, SYMMETRIC);
 }
 
 template<class T, class I, class Matrix_Index>
@@ -52,7 +54,7 @@ void heat_capacity_matrix_2d<T, I, Matrix_Index>::calc_matrix(const parameters_2
                                   std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
     const std::unordered_map<std::string, theory_t> theories(theroires_setter.begin(), theroires_setter.end());
     create_matrix_portrait(theories, is_inner);
-    _base::calc_coeffs(theories, is_inner,
+    _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& parameter = parameters.at(group).physical;
             return parameter->density * parameter->capacity * integrate_basic_pair(e, i, j); 

@@ -20,6 +20,10 @@ int MPI_size() {
     return size;
 }
 
+bool is_last_process() {
+    return MPI_rank() == MPI_size() - 1;
+}
+
 MPI_ranges::MPI_ranges(const size_t size)
     : _ranges{init_uniform_ranges(size, MPI_size())} {}
 

@@ -13,6 +13,7 @@ namespace parallel_utils {
 
 int MPI_rank();
 int MPI_size();
+bool is_last_process();
 
 class MPI_ranges final {
     std::vector<std::ranges::iota_view<size_t, size_t>> _ranges;

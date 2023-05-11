@@ -34,10 +34,11 @@ protected:
     template<class Initializer>
     void mesh_run(const std::unordered_map<std::string, theory_t>& theories, Initializer&& initializer);
 
-    void init_shifts(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner);
-    void init_indices(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool sort_indices = true);
+    void init_shifts(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool is_symmetric);
+    void init_indices(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner,
+                      const bool is_symmetric, const bool sort_indices = true);
     template<class Integrate_Loc, class Integrate_Nonloc>
-    void calc_coeffs(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner,
+    void calc_coeffs(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool is_symmetric,
                      Integrate_Loc&& integrate_loc, Integrate_Nonloc&& integrate_nonloc);
 
 public:
@@ -133,10 +134,10 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::mesh_run(const std::unor
 template<size_t DoF, class T, class I, class Matrix_Index>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::init_shifts(
     const std::unordered_map<std::string, theory_t>& theories, 
-    const std::vector<bool>& is_inner) {
+    const std::vector<bool>& is_inner, const bool is_symmetric) {
     const auto process_nodes = mesh().process_nodes();
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    mesh_run(theories, shift_initializer<DoF, T, Matrix_Index>{_matrix, mesh().container(), is_inner, process_nodes.front()});
+    mesh_run(theories, shift_initializer<DoF, T, Matrix_Index>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++matrix_inner().outerIndexPtr()[row + 1]; });
     utils::accumulate_shifts(matrix_inner());
     utils::accumulate_shifts(matrix_bound());
@@ -145,13 +146,13 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::init_shifts(
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::init_indices(
-    const std::unordered_map<std::string, theory_t>& theories, 
-    const std::vector<bool>& is_inner, const bool sort_indices) {
+    const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, 
+    const bool is_symmetric, const bool sort_indices) {
     const auto process_nodes = mesh().process_nodes();
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     utils::allocate_matrix(matrix_inner());
     utils::allocate_matrix(matrix_bound());
-    mesh_run(theories, index_initializer<DoF, T, Matrix_Index>{_matrix, mesh().container(), is_inner, process_nodes.front()});
+    mesh_run(theories, index_initializer<DoF, T, Matrix_Index>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
         matrix_inner().innerIndexPtr()[matrix_inner().outerIndexPtr()[row]] = row + shift; 
     });
@@ -164,12 +165,12 @@ void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::init_indices(
 template<size_t DoF, class T, class I, class Matrix_Index>
 template<class Integrate_Loc, class Integrate_Nonloc>
 void finite_element_matrix_2d<DoF, T, I, Matrix_Index>::calc_coeffs(
-    const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner,
+    const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool is_symmetric,
     Integrate_Loc&& integrate_loc, Integrate_Nonloc&& integrate_nonloc) {
     const auto process_nodes = mesh().process_nodes();
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     mesh_run(theories, integrator<DoF, T, Matrix_Index, Integrate_Loc, Integrate_Nonloc>{
-        _matrix, mesh().container(), is_inner, process_nodes.front(), integrate_loc, integrate_nonloc});
+        _matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric, integrate_loc, integrate_nonloc});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
         matrix_inner().valuePtr()[matrix_inner().outerIndexPtr()[row]] = T{1};
     });
