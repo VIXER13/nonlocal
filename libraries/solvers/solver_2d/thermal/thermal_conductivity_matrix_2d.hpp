@@ -4,6 +4,8 @@
 #include "finite_element_matrix_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
+#include <string>
+
 namespace nonlocal::thermal {
 
 template<class T, class I, class Matrix_Index>
@@ -19,9 +21,9 @@ protected:
     void integrate_loc(const size_t e, const size_t i, const size_t j, const Integrator& integrator) const;
     T integrate_loc(const parameter_2d<T, coefficients_t::CONSTANTS>& parameter, 
                     const size_t e, const size_t i, const size_t j) const;
-    T integrate_loc(const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter, 
+    T integrate_loc(const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter,  
                     const size_t e, const size_t i, const size_t j) const;
-    T integrate_loc(const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter, 
+    T integrate_loc(const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter,  const std::vector<T>& solution,
                     const size_t e, const size_t i, const size_t j) const;
     
     template<class Integrator>
@@ -37,6 +39,7 @@ protected:
                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
     template<class Influence_Function>
     T integrate_nonloc(const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter, const Influence_Function& influence,
+                       const std::vector<T>& solution,
                        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
@@ -48,7 +51,9 @@ public:
     explicit thermal_conductivity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     ~thermal_conductivity_matrix_2d() noexcept override = default;
 
-    void compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, const bool is_symmetric = true, const bool is_neumann = false);
+    void compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner,
+                 const bool is_symmetric = true, const bool is_neumann = false,
+                 const std::optional<std::vector<T>>& solution = std::nullopt);
 };
 
 template<class T, class I, class Matrix_Index>
@@ -152,21 +157,29 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
 
 template<class T, class I, class Matrix_Index>
 T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
-    const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter, const size_t e, const size_t i, const size_t j) const {
+    const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter,  const std::vector<T>& solution, const size_t e, const size_t i, const size_t j) const {
+    T integral = T{0};
     switch(const auto& conductivity = parameter.conductivity; parameter.material) {
-    case material_t::ISOTROPIC: {
-        return std::numeric_limits<T>::quiet_NaN();
-    }
+    case material_t::ISOTROPIC: 
+        integrate_loc(e, i, j, [this, &integral, &conductivity, &solution, e](const size_t q, const T factor, const std::array<T, 2>& dNi, const std::array<T, 2>& dNj) {
+            const size_t qshift = _base::mesh().quad_shift(e) + q;
+            const std::array<T, 2>& qcoord = _base::mesh().quad_coord(qshift);
+            integral += factor * conductivity[X][X](qcoord, solution[qshift]) * (dNi[X] * dNj[X] + dNi[Y] * dNj[Y]);
+        });
+    break;
 
-    case material_t::ORTHOTROPIC: {
+    case material_t::ORTHOTROPIC: 
         return std::numeric_limits<T>::quiet_NaN();
-    }
+    break;
 
-    case material_t::ANISOTROPIC: {
+    case material_t::ANISOTROPIC: 
         return std::numeric_limits<T>::quiet_NaN();
+    break;
+
+    default:
+        unknown_material(parameter.material);
     }
-    }
-    unknown_material(parameter.material);
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
@@ -246,30 +259,47 @@ template<class Influence_Function>
 T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter, const Influence_Function& influence,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
+    T integral = T{0};
     switch (const auto& conductivity = parameter.conductivity; parameter.material) {
     case material_t::ISOTROPIC: {
-        T integral = T{0};
         const auto inner_integrator = [&influence, &conductivity](const size_t, const T weightNL, const std::array<T, 2>& qcoordL, const std::array<T, 2>& qcoordNL) {
             return weightNL * conductivity[X][X](qcoordNL) * influence(qcoordL, qcoordNL);
         };
         integrate_nonloc(eL, eNL, iL, jNL, inner_integrator,
         [&integral](const T weightL, const std::array<T, 2>& dNi, const std::array<T, 2>& inner_integral) {
             integral += weightL * (dNi[X] * inner_integral[X] + dNi[Y] * inner_integral[Y]);
-        });
-        return integral;
-    }
+        }); 
+    } break;
 
     default:
         unknown_material(parameter.material);
     }
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
 template<class Influence_Function>
 T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter, const Influence_Function& influence,
+    const std::vector<T>& solution,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return 0;
+    T integral = T{0};
+    switch (const auto& conductivity = parameter.conductivity; parameter.material) {
+    case material_t::ISOTROPIC: {
+        const auto inner_integrator = [this, &influence, &conductivity, &solution, eNL](const size_t qNL, const T weightNL, const std::array<T, 2>& qcoordL, const std::array<T, 2>& qcoordNL) {
+            const size_t qshift = _base::mesh().quad_shift(eNL) + qNL;
+            return weightNL * conductivity[X][X](qcoordNL, solution[qshift]) * influence(qcoordL, qcoordNL);
+        };
+        integrate_nonloc(eL, eNL, iL, jNL, inner_integrator,
+        [&integral](const T weightL, const std::array<T, 2>& dNi, const std::array<T, 2>& inner_integral) {
+            integral += weightL * (dNi[X] * inner_integral[X] + dNi[Y] * inner_integral[Y]);
+        });
+    } break;
+
+    default:
+        unknown_material(parameter.material);
+    }
+    return integral;
 }
 
 template<class T, class I, class Matrix_Index>
@@ -314,11 +344,12 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integral_condition(cons
 
 template<class T, class I, class Matrix_Index>
 void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
-                                                                 const bool is_symmetric, const bool is_neumann) {
+                                                                 const bool is_symmetric, const bool is_neumann,
+                                                                 const std::optional<std::vector<T>>& solution) {
     const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
     create_matrix_portrait(theories, is_inner, is_symmetric, is_neumann);
     _base::calc_coeffs(theories, is_inner, is_symmetric,
-        [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
+        [this, &parameters, &solution](const std::string& group, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
             const auto& [model, physic] = parameters.at(group);
             if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
@@ -326,10 +357,10 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameter
             if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
                 return model.local_weight * integrate_loc(*parameter, e, i, j);
             if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
-                return model.local_weight * integrate_loc(*parameter, e, i, j);
+                return model.local_weight * integrate_loc(*parameter, *solution, e, i, j);
             return std::numeric_limits<T>::quiet_NaN();
         },
-        [this, &parameters](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+        [this, &parameters, &solution](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             using enum coefficients_t;
             const auto& [model, physic] = parameters.at(group);
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
@@ -338,7 +369,7 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameter
             if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
             if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
-                return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
+                return nonlocal_weight * integrate_nonloc(*parameter, model.influence, *solution, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         });
     if (is_neumann)
