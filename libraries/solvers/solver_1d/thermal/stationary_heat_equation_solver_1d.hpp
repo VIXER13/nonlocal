@@ -14,7 +14,7 @@
 namespace nonlocal::thermal {
 
 template<class T>
-struct stationary_equation_parameters final {
+struct stationary_equation_parameters_1d final {
     std::optional<std::function<T(const T)>> right_part;
     std::optional<std::function<T(const T)>> initial_distribution;
     T tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
@@ -26,7 +26,7 @@ template<class T, class I>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                                 const parameters_1d<T>& parameters,
                                                                 const thermal_boundaries_conditions_1d<T>& boundaries_conditions,  
-                                                                const stationary_equation_parameters<T>& additional_parameters) {
+                                                                const stationary_equation_parameters_1d<T>& additional_parameters) {
     static constexpr auto is_flux = [](const auto& condition) noexcept {
         return bool(dynamic_cast<const flux_1d<T>*>(condition.get()));
     };

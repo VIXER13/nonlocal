@@ -48,6 +48,23 @@ std::array<std::vector<T>, 2> gradient_in_qnodes(const mesh_2d<T, I>& mesh, cons
 }
 
 template<class T, class I, class Vector>
+std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
+    if (mesh.container().nodes_count() != size_t(x.size()))
+        throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
+    const size_t quadratures_count = mesh.quad_shift(mesh.container().elements_2d_count());
+    std::vector<T> values(quadratures_count, T{0});
+#pragma parallel for default(none) shared(gradient, mesh, x, values)
+    for(size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
+        const auto& el = mesh.container().element_2d(e);
+        for(size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
+            for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()}) 
+                values[qshift] += x[mesh.container().node_number(e, i)] * el.qN(i, q);
+        }
+    }
+    return values;
+}
+
+template<class T, class I, class Vector>
 std::vector<T> qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.quad_shift(mesh.container().elements_2d_count()) != size_t(x.size()))
         throw std::logic_error{"Cannot approximate node values because vector size does not match number of quadrature nodes"};

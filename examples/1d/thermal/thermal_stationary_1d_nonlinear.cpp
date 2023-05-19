@@ -48,7 +48,7 @@ int main(const int argc, const char *const *const argv) {
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
             },
-            nonlocal::thermal::stationary_equation_parameters<T>{
+            nonlocal::thermal::stationary_equation_parameters_1d<T>{
                 .right_part = [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
                 .initial_distribution = [value = config_data.equation.initial_distribution](const T x) constexpr noexcept { return value; },
                 .energy = config_data.equation.energy

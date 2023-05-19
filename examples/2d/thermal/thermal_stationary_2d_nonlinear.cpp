@@ -39,18 +39,25 @@ int main(const int argc, const char *const *const argv) {
         const nonlocal::config::stationary_thermal_data<T, 2> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
         std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
 
+        constexpr T sigma = T{7};
+        constexpr T epsilon = T{10.0};
+
         auto parameters = nonlocal::make_parameters<T>(config_data.materials);
-        parameters["Default"].physical = std::make_shared<nonlocal::thermal::parameter_2d<T, nonlocal::coefficients_t::SPACE_DEPENDENT>>(
-            [](const std::array<T, 2>& x) { return x[0] + 1.0; }
+        parameters["Default"].physical = std::make_shared<nonlocal::thermal::parameter_2d<T, nonlocal::coefficients_t::SOLUTION_DEPENDENT>>(
+            [epsilon, sigma](const std::array<T, 2>& x, const T solution) { return (T{0.1} + epsilon * std::pow(std::abs(solution), sigma)); }
             //[](const std::array<T, 2>& x) { return 1.0; }
         );
+        const auto additional_parameters = nonlocal::thermal::stationary_equation_parameters_2d<T>{
+            .right_part = [value = config_data.equation.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
+            .initial_distribution = [value = config_data.equation.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return value; },
+            .energy = config_data.equation.energy
+        };
 
         const auto mesh = nonlocal::make_mesh<T, I>(config_data.mesh.path, config_data.materials);
-        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
+        auto solution = nonlocal::thermal::stationary_heat_equation_solver_nonlinear_2d<I>(
             mesh, parameters, 
             nonlocal::make_boundaries_conditions(config_data.boundaries), 
-            [value = config_data.equation.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
-            config_data.equation.energy
+            additional_parameters
         );
         solution.calc_flux();
 
