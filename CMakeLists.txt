@@ -38,8 +38,9 @@ add_subdirectory(examples/2d/thermal)
 add_subdirectory(examples/2d/mechanical)
 add_subdirectory(examples/2d/thermomechanical)
 
-find_package(GTest)
-if(GTEST_FOUND)
+#unit tests
+find_package(ut REQUIRED)
+if(ut_FOUND)
     include(CMakeTools/EmbeddedFiles.cmake)
     add_subdirectory(tests)
 endif()
