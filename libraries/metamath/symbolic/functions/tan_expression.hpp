@@ -4,7 +4,7 @@
 #include "cos_expression.hpp"
 #include "power_expression.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E>
 class tan_expression : public unary_expression<E, tan_expression> {

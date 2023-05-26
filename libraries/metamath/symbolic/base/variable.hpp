@@ -7,7 +7,7 @@
 #include <tuple>
 #include <vector>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<auto N>
 struct variable : expression<variable<N>> {

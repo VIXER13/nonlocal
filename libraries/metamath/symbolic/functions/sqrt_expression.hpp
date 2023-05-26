@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E>
 class sqrt_expression : public unary_expression<E, sqrt_expression> {

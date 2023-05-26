@@ -4,7 +4,7 @@
 #include "integral_constant.hpp"
 #include "unary_expression.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E>
 class sign_expression : public unary_expression<E, sign_expression> {

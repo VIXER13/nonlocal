@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<auto N>
 struct integral_constant : expression<integral_constant<N>> {

@@ -7,7 +7,7 @@
 #include <tuple>
 #include <utility>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 class _derivative final {
     constexpr explicit _derivative() noexcept = default;

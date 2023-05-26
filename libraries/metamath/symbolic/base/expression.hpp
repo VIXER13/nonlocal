@@ -1,9 +1,7 @@
 #ifndef SYMBOLIC_EXPRESSION_HPP
 #define SYMBOLIC_EXPRESSION_HPP
 
-#define SYMBOLIC_NAMESPACE metamath::symbolic
-
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E>
 struct expression {

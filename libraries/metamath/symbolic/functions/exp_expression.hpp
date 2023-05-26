@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E>
 class exp_expression : public unary_expression<E, exp_expression> {

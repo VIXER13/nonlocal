@@ -12,9 +12,9 @@ class _uniform_partition final {
     static constexpr std::array<T, N> uniform_partition(const std::array<T, 2>& segment, const std::index_sequence<I...>) noexcept {
         static_assert(N > 0, "Unable to create 0 nodes on a segment.");
         if constexpr (N == 1)
-            return {(segment.front() + segment.back()) / 2};
-        const T step = (segment.back() - segment.front()) / (N - 1);
-        return {segment.front() + step * I...};
+            return {(segment.front() + segment.back()) / T(2)};
+        const T step = (segment.back() - segment.front()) / T(N - 1);
+        return {segment.front() + step * T(I)...};
     }
 
 public:

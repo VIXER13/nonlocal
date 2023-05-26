@@ -12,7 +12,7 @@ template<class T>
 class triangle<T, 0> : public geometry_2d<T, triangle_element_geometry> {
 protected:
     static inline constexpr std::array<std::array<T, 2>, 1> nodes = { T{1} / T{3}, T{1} / T{3} };
-    static inline constexpr auto basis = std::make_tuple(SYMBOLIC_NAMESPACE::integral_constant<1>{});
+    static inline constexpr auto basis = std::make_tuple(metamath::symbolic::integral_constant<1>{});
 
     explicit triangle() = default;
     ~triangle() override = default;
@@ -43,9 +43,9 @@ protected:
 
 template<class T>
 class triangle<T, 2> : public barycentric<T> {
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<2> _2{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<4> _4{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<2> _2{};
+    static inline constexpr metamath::symbolic::integral_constant<4> _4{};
 
 protected:
     using barycentric<T>::L1;
@@ -82,11 +82,11 @@ protected:
 
 template<class T>
 class triangle<T, 3> : public barycentric<T> {
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<2> _2{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<3> _3{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<9> _9{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<27> _27{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<2> _2{};
+    static inline constexpr metamath::symbolic::integral_constant<3> _3{};
+    static inline constexpr metamath::symbolic::integral_constant<9> _9{};
+    static inline constexpr metamath::symbolic::integral_constant<27> _27{};
 
 protected:
     using barycentric<T>::L1;

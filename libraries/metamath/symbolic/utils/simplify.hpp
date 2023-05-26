@@ -5,7 +5,7 @@
 
 #include <tuple>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 class _simplify final {
     constexpr explicit _simplify() noexcept = default;

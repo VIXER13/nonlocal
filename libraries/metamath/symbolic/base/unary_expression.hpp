@@ -3,7 +3,7 @@
 
 #include "expression.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E, template<class, auto...> class Op, auto... Args>
 class unary_expression : public expression<Op<E, Args...>> {

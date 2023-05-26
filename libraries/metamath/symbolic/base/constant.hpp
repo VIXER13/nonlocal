@@ -3,7 +3,7 @@
 
 #include "integral_constant.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class T>
 class constant : public expression<constant<T>> {

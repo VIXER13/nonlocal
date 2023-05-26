@@ -29,7 +29,7 @@ template<class T>
 class serendipity<T, 0> : public geometry_2d<T, rectangle_element_geometry> {
 protected:
     static inline constexpr std::array<std::array<T, 2>, 1> nodes = { T{0}, T{0} };
-    static inline constexpr auto basis = std::make_tuple(SYMBOLIC_NAMESPACE::integral_constant<1>{});
+    static inline constexpr auto basis = std::make_tuple(metamath::symbolic::integral_constant<1>{});
 
     explicit serendipity() = default;
     ~serendipity() override = default;
@@ -41,8 +41,8 @@ class serendipity<T, 1> : public geometry_2d<T, rectangle_element_geometry> {
 
     using _base = geometry_2d<T, rectangle_element_geometry>;
 
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<4> _4{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<4> _4{};
 
 protected:
     using _base::x;
@@ -76,11 +76,11 @@ class serendipity<T, 2> : public serendipity_base<T> {
 
     using _base = serendipity_base<T>;
 
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<3> _3{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<5> _5{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<9> _9{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<16> _16{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<3> _3{};
+    static inline constexpr metamath::symbolic::integral_constant<5> _5{};
+    static inline constexpr metamath::symbolic::integral_constant<9> _9{};
+    static inline constexpr metamath::symbolic::integral_constant<16> _16{};
 
 protected:
     using _base::x;
@@ -125,13 +125,13 @@ class serendipity<T, 3> : public serendipity_base<T> {
 
     using _base = serendipity_base<T>;
 
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<2> _2{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<9> _9{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<18> _18{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<32> _32{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<54> _54{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<64> _64{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<2> _2{};
+    static inline constexpr metamath::symbolic::integral_constant<9> _9{};
+    static inline constexpr metamath::symbolic::integral_constant<18> _18{};
+    static inline constexpr metamath::symbolic::integral_constant<32> _32{};
+    static inline constexpr metamath::symbolic::integral_constant<54> _54{};
+    static inline constexpr metamath::symbolic::integral_constant<64> _64{};
 
 protected:
     using _base::x;
@@ -187,21 +187,21 @@ class serendipity<T, 4> : public geometry_2d<T, rectangle_element_geometry> {
 
     using _base = geometry_2d<T, rectangle_element_geometry>;
 
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<2> _2{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<3> _3{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<61> _61{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<141> _141{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<203> _203{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<311> _311{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<500> _500{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<561> _561{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<800> _800{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1141> _1141{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1600> _1600{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<2000> _2000{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<3000> _3000{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<4000> _4000{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<2> _2{};
+    static inline constexpr metamath::symbolic::integral_constant<3> _3{};
+    static inline constexpr metamath::symbolic::integral_constant<61> _61{};
+    static inline constexpr metamath::symbolic::integral_constant<141> _141{};
+    static inline constexpr metamath::symbolic::integral_constant<203> _203{};
+    static inline constexpr metamath::symbolic::integral_constant<311> _311{};
+    static inline constexpr metamath::symbolic::integral_constant<500> _500{};
+    static inline constexpr metamath::symbolic::integral_constant<561> _561{};
+    static inline constexpr metamath::symbolic::integral_constant<800> _800{};
+    static inline constexpr metamath::symbolic::integral_constant<1141> _1141{};
+    static inline constexpr metamath::symbolic::integral_constant<1600> _1600{};
+    static inline constexpr metamath::symbolic::integral_constant<2000> _2000{};
+    static inline constexpr metamath::symbolic::integral_constant<3000> _3000{};
+    static inline constexpr metamath::symbolic::integral_constant<4000> _4000{};
 
 protected:
     using _base::x;
@@ -266,15 +266,15 @@ class serendipity<T, 5> : public geometry_2d<T, rectangle_element_geometry> {
 
     using _base = geometry_2d<T, rectangle_element_geometry>;
 
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1> _1{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<3> _3{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<5> _5{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<9> _9{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<25> _25{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<125> _125{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<384> _384{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<768> _768{};
-    static inline constexpr SYMBOLIC_NAMESPACE::integral_constant<1536> _1536{};
+    static inline constexpr metamath::symbolic::integral_constant<1> _1{};
+    static inline constexpr metamath::symbolic::integral_constant<3> _3{};
+    static inline constexpr metamath::symbolic::integral_constant<5> _5{};
+    static inline constexpr metamath::symbolic::integral_constant<9> _9{};
+    static inline constexpr metamath::symbolic::integral_constant<25> _25{};
+    static inline constexpr metamath::symbolic::integral_constant<125> _125{};
+    static inline constexpr metamath::symbolic::integral_constant<384> _384{};
+    static inline constexpr metamath::symbolic::integral_constant<768> _768{};
+    static inline constexpr metamath::symbolic::integral_constant<1536> _1536{};
 
 protected:
     using _base::x;

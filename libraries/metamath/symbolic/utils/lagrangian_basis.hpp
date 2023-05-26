@@ -3,18 +3,19 @@
 
 #include "variable.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 class _lagrangian_function final {
     explicit constexpr _lagrangian_function() noexcept = default;
 
     template<size_t X, size_t K, size_t I, class T, size_t N>
     static constexpr auto generate_term(const std::array<T, N>& nodes) noexcept {
-        if constexpr (K != I) {
+        if constexpr(K == I)
+            return metamath::symbolic::integral_constant<1>{};
+        else {
             constexpr variable<X> x;
             return (x - nodes[I]) / (nodes[K] - nodes[I]);
-        } else
-            return SYMBOLIC_NAMESPACE::integral_constant<1>{};
+        }
     }
 
     template<size_t X, size_t K, class T, size_t N, size_t... I>

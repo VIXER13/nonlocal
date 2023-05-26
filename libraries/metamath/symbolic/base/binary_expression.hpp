@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E1, class E2, template<class, class> class Op>
 class binary_expression : public expression<Op<E1, E2>> {

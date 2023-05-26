@@ -5,7 +5,7 @@
 
 #include "variable.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 class _make_variables final {
     constexpr explicit _make_variables() noexcept = default;

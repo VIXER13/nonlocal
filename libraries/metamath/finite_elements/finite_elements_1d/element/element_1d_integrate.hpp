@@ -20,6 +20,8 @@ class element_1d_integrate : public element_1d_integrate_base<T>,
 public:
     using element_integrate_1d_t::qnodes_count;
     using element_integrate_1d_t::nodes_count;
+    using element_integrate_1d_t::qnodes;
+    using element_integrate_1d_t::nodes;
     using element_1d_t::boundary;
     using element_1d_t::node;
     using element_1d_t::N;

@@ -6,7 +6,7 @@
 
 #include <cmath>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E>
 struct cos_expression;

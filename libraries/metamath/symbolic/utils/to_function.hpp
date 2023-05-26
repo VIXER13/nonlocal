@@ -5,7 +5,7 @@
 #include <tuple>
 #include <functional>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class T, size_t N, class E>
 std::function<T(const std::array<T, N>&)> to_function(const E& e) {

@@ -5,7 +5,7 @@
 #include "constant.hpp"
 #include "negate.hpp"
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E1, class E2>
 class minus : public binary_expression<E1, E2, minus> {

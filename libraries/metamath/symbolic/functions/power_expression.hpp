@@ -9,7 +9,7 @@
 
 #include <type_traits>
 
-namespace SYMBOLIC_NAMESPACE {
+namespace metamath::symbolic {
 
 template<class E, auto N>
 class power_expression : public unary_expression<E, power_expression, N> {
