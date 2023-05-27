@@ -1,15 +1,12 @@
-#include "init_element.hpp"
+#include "init_elements.hpp"
 
 #include <boost/ut.hpp>
 
 #include <numeric>
-#include <memory>
-#include <iostream>
 
 namespace {
 
 using namespace boost::ut;
-using namespace metamath::utils;
 using namespace metamath::finite_element;
 
 template<class T>
@@ -25,14 +22,19 @@ struct basis_summator final {
     }
 };
 
-const suite<"lagrangian_element_1d"> _ = [] {
+const suite<"element_1d"> _ = [] {
+    static constexpr std::array<size_t, 6> qnodes_count = {1, 1, 2, 2, 3, 3};
     test("lagrangian_element_1d") = []<class T> {
         size_t order = 0;
-        for(const auto& element : unit_tests::init_elements<T>()) {
+        for(const auto& element : unit_tests::init_lagrangian_elements_1d<T>()) {
             const std::string suffix = "_order_" + std::to_string(order) + '_' + std::string{reflection::type_name<T>()};
 
             test("nodes_count" + suffix) = [&element, order] {
                 expect(eq(element->nodes_count(), order + 1)) << "Unexpected nodes count.";
+            };
+
+            test("qnodes_count" + suffix) = [&element, count = qnodes_count[order]] {
+                expect(eq(element->qnodes_count(), count)) << "Unexpected qnodes count.";
             };
 
             test("boundaries" + suffix) = [&element] {
@@ -51,9 +53,7 @@ const suite<"lagrangian_element_1d"> _ = [] {
 
             test("weights_sum" + suffix) = [&element, element_length] {
                 const auto qnodes = element->qnodes();
-                const auto weight_summator = [&element](const T sum, const size_t qnode) {
-                    return sum + element->weight(qnode);
-                };
+                const auto weight_summator = [&element](const T sum, const size_t qnode) { return sum + element->weight(qnode); };
                 const T weights_sum = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, weight_summator);
                 static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{1e-16};
                 expect(approx(weights_sum, element_length, epsilon)) <<
@@ -70,7 +70,7 @@ const suite<"lagrangian_element_1d"> _ = [] {
                 const T integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, integrator);
                 static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{5e-16};
                 expect(approx(integral, element_length, epsilon)) << 
-                    "The sum of the integrals of all basis functions does not match with the element length";
+                    "The sum of the integrals of all basis functions does not match with the element length.";
             };
 
             static constexpr auto points = std::array{T{-0.89}, T{-0.5234}, T{-0.03}, T{0.11}, T{0.57}, T{0.9844}}; // some test points
@@ -93,10 +93,11 @@ const suite<"lagrangian_element_1d"> _ = [] {
                 for(const T point : points) {
                     summator.point = point;
                     const auto [N_sum, Nxi_sum] = std::accumulate(nodes.begin(), std::ranges::prev(nodes.end()), std::pair{T{0}, T{0}}, summator);
-                    static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{1e-16};
-                    expect(ge(std::abs(N_sum - T{1}), element->nodes_count() > 1 ? epsilon : T{0}))
+                    static constexpr T epsilon_basis = T{1e-3};
+                    expect(ge(std::abs(N_sum - T{1}), element->nodes_count() > 1 ? epsilon_basis : T{0}))
                         << "The partial sum at point " + std::to_string(point) + " must not be equal to 1.";
-                    expect(ge(std::abs(Nxi_sum), element->nodes_count() > 1 ? epsilon : T{0}))
+                    static constexpr T epsilon_derivatives = T{1e-2};
+                    expect(ge(std::abs(Nxi_sum), element->nodes_count() > 1 ? epsilon_derivatives : T{0}))
                         << "The partial sum at point " + std::to_string(point) + " must not be equal to 0.";
                 }
             };
