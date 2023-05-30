@@ -1,11 +1,7 @@
 #ifndef NONLOCAL_CONFIG_BOUNDARIES_CONDITIONS_DATA_HPP
 #define NONLOCAL_CONFIG_BOUNDARIES_CONDITIONS_DATA_HPP
 
-#include <json/value.h>
-
-#include <type_traits>
-#include <unordered_map>
-#include <string>
+#include "config_utils.hpp"
 
 namespace nonlocal::config {
 
@@ -14,18 +10,15 @@ struct boundaries_conditions_data final {
     std::unordered_map<std::string, Condition<T, Dimension>> conditions;
 
     explicit constexpr boundaries_conditions_data() noexcept = default;
-    explicit boundaries_conditions_data(const Json::Value& boundaries) {
+    explicit boundaries_conditions_data(const nlohmann::json& boundaries) {
         if constexpr (Dimension == 1)
             check_required_fields(boundaries, { "left", "right" });
-        for(const std::string& name : boundaries.getMemberNames())
-            conditions[name] = Condition<T, Dimension>{boundaries[name]};
+        for(const auto& [name, condition] : boundaries.items())
+            conditions[name] = Condition<T, Dimension>{condition};
     }
 
-    operator Json::Value() const {
-        Json::Value result;
-        for(const auto& [name, condition] : conditions)
-            result[name] = condition;
-        return result;
+    operator nlohmann::json() const {
+        return conditions;
     }
 };
 

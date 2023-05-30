@@ -37,7 +37,7 @@ const boost::ut::suite<"uniform_ranges"> _ = [] {
     };
 
     for(const size_t count : std::ranges::iota_view{3u, COUNTS}) {
-        test("ranges_count_" + std::to_string(count)) = [count] {
+        test("ranges_" + std::to_string(count)) = [count] {
             const auto more_ranges = init_uniform_ranges(SIZE, count);
             for(const size_t i : std::ranges::iota_view{0u, SIZE}) {
                 expect(eq(more_ranges[i].front(), i));
