@@ -16,7 +16,7 @@
         "time_step": 0.1
     },
 
-    "boundaries_conditions_all_missed": {},
+    "boundaries_conditions_missed_all": {},
     "boundaries_conditions_missed_left": {
         "right": {}
     },
@@ -28,31 +28,27 @@
         "left": {}
     },
 
-    "model_1d_missed_all": {},
-    "model_1d_missed_local_weight": {
+    "model_dim_missed_all": {},
+    "model_dim_missed_local_weight": {
         "nonlocal_radius": 0.1
     },
-    "model_1d_missed_nonlocal_radius": {
+    "model_dim_missed_nonlocal_radius": {
         "local_weight": 0.5
     },
     "model_1d_all_required_exists": {
         "local_weight": 0.5,
         "nonlocal_radius": 0.1
     },
-
-    "model_2d_missed_all": {},
-    "model_2d_missed_local_weight": {
-        "nonloca_radius": [0.1, 0.2]
-    },
-    "model_2d_missed_nonlocal_radius": {
-        "local_weight": 0.5
-    },
     "model_2d_all_required_exists": {
         "local_weight": 0.5,
         "nonlocal_radius": [0.1, 0.2]
     },
+    "model_3d_all_required_exists": {
+        "local_weight": 0.5,
+        "nonlocal_radius": [0.1, 0.2, 0.3]
+    },
 
-    "material_1d_missed_all": {},
+    "material_dim_missed_all": {},
     "material_1d_missed_elements_count": {
         "length": 1.0,
         "physical": {}
@@ -70,9 +66,7 @@
         "length": 1.0,
         "physical": {}
     },
-
-    "material_2d_missed_all": {},
-    "material_2d_all_required_exists": {
+    "material_dim_all_required_exists": {
         "physical": {}
     },
 
@@ -119,5 +113,16 @@
     },
     "combined_condition_flux_missed_all": {
         "kind": "combined"
+    },
+
+    "thermal_material_dim_missed_all": {},
+    "thermal_material_dim_all_required_exists": {
+        "conductivity": 1.0
+    },
+    "thermal_material_2d_orthotropic_all_required_exists": {
+        "conductivity": [1.0, 2.0]
+    },
+    "thermal_material_2d_anisotropic_all_required_exists": {
+        "conductivity": [1.0, 2.0, 3.0, 4.0]
     }
 }
