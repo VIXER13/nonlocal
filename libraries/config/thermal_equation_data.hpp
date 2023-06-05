@@ -23,7 +23,7 @@ struct thermal_equation_data final {
             {"energy", energy},
             {"right_part", right_part},
             {"initial_distribution", initial_distribution}
-        }
+        };
     }
 };
 

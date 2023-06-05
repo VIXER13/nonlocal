@@ -68,11 +68,17 @@ public:
     }
 
     operator nlohmann::json() const {
-        return {
-            {"conductivity", conductivity},
+        nlohmann::json result = {
             {"capacity", capacity},
             {"density", density}
         };
+        if (material == material_t::ISOTROPIC)
+            result["conductivity"] = conductivity.front();
+        else if (material == material_t::ORTHOTROPIC)
+            result["conductivity"] = std::array{conductivity.front(), conductivity.back()};
+        else
+            result["conductivity"] = conductivity;
+        return result;
     }
 };
 

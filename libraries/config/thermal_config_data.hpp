@@ -31,7 +31,7 @@ struct stationary_thermal_data {
     materials_t materials;                                       // required
 
     explicit stationary_thermal_data(const nlohmann::json& value)
-        : other{value.value("other", nlohmann::json{})}
+        : other(value.value("other", nlohmann::json{}))
         , save{value.value("save", nlohmann::json{})}
         , equation{value.value("equation", nlohmann::json{})} {
         if constexpr (Dimension == 1) {

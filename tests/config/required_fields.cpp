@@ -1,4 +1,4 @@
-#include <iostream>
+#include "tests_config_utils.hpp"
 
 #include "mesh_data.hpp"
 #include "time_data.hpp"
@@ -15,21 +15,8 @@
 namespace {
 
 using namespace boost::ut;
+using namespace unit_tests;
 using namespace nonlocal::config;
-
-template<class T, size_t N>
-class mock_data final {
-    nlohmann::json _value;
-
-public:
-    explicit constexpr mock_data() noexcept = default;
-    explicit constexpr mock_data(const nlohmann::json& value) 
-        : _value{value} {}
-
-    constexpr operator nlohmann::json() const {
-        return _value;
-    }
-};
 
 template<class T>
 auto expect_throw(const nlohmann::json& name) {

@@ -1,4 +1,5 @@
 function(FileEmbedSetup)
+    message("CMAKE_BINARY_DIR = ${CMAKE_BINARY_DIR}")
 
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/embedded_files)
         file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/embedded_files)
