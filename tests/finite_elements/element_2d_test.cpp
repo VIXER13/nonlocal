@@ -46,7 +46,7 @@ std::vector<std::array<T, 2>> init_points(const std::string& element_type) {
     return points;
 }
 
-const suite<"element_2d"> _ = [] {
+const suite _ = [] {
     using namespace std::literals;
     for(const auto element_type : {"triangle"s, "serendipity"s, "lagrangian"s}) {
         test(element_type + "_element_2d") = [element_type]<class T> {
@@ -63,7 +63,7 @@ const suite<"element_2d"> _ = [] {
                     static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
                     for(const size_t i : nodes)
                         for(const size_t j : nodes)
-                            expect(approx(element->N(i, element->node(j)), T(i == j), epsilon)) <<
+                            expect(lt(std::abs(element->N(i, element->node(j)) - T(i == j)), epsilon)) <<
                                 "Unexpected value of function " + std::to_string(i) + " at node " + std::to_string(j) + '.';
                 };
 
@@ -72,7 +72,7 @@ const suite<"element_2d"> _ = [] {
                     const auto weight_summator = [&element](const T sum, const size_t qnode) { return sum + element->weight(qnode); };
                     const T weights_sum = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, weight_summator);
                     static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{1e-16};
-                    expect(approx(weights_sum, element_area, epsilon)) <<
+                    expect(lt(std::abs(weights_sum - element_area), epsilon)) <<
                         "The weights sum does not match the element area.";
                 };
 
@@ -85,7 +85,7 @@ const suite<"element_2d"> _ = [] {
                     const auto qnodes = element->qnodes();
                     const T integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, integrator);
                     static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
-                    expect(approx(integral, element_area, epsilon)) << 
+                    expect(lt(std::abs(integral - element_area), epsilon)) << 
                         "The sum of the integrals of all basis functions does not match with the element area.";
                 };
 
@@ -95,13 +95,13 @@ const suite<"element_2d"> _ = [] {
                         summator.point = point;
                         const auto [N_sum, Nxi_sum, Neta_sum] = std::accumulate(nodes.begin(), nodes.end(), std::array{T{0}, T{0}, T{0}}, summator);
                         static constexpr T epsilon_N = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
-                        expect(approx(N_sum, T{1}, epsilon_N)) << 
+                        expect(lt(std::abs(N_sum - T{1}), epsilon_N)) << 
                             "Unexpected basis functions sum in point = " + to_string(point) + '.';
                         static constexpr T epsilon_Nxi = std::is_same_v<T, float> ? T{2e-6} : T{3e-15};
-                        expect(approx(Nxi_sum, T{0}, epsilon_Nxi)) << 
+                        expect(lt(std::abs(Nxi_sum), epsilon_Nxi)) << 
                             "Unexpected Nxi sum in point = " + to_string(point) + '.';
                         static constexpr T epsilon_Neta = std::is_same_v<T, float> ? T{2e-6} : T{3e-15};
-                        expect(approx(Neta_sum, T{0}, epsilon_Neta)) << 
+                        expect(lt(std::abs(Neta_sum), epsilon_Neta)) << 
                             "Unexpected Neta sum in point = " + to_string(point) + '.';
                     }
                 };

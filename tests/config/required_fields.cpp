@@ -133,7 +133,7 @@ auto thermal_material_data_test(const nlohmann::json& config) {
     };
 }
 
-const suite<"config_required_fields"> _ = [] {
+const suite _ = [] {
     const nlohmann::json config = nlohmann::json::parse(required_fields_json_data);
     
     test("mesh_data") = mesh_data_test(config);

@@ -29,7 +29,7 @@ auto reverse_conversion(const nlohmann::json& config) {
     };
 }
     
-const suite<"config_reverse_conversion"> _ = [] {
+const suite _ = [] {
     const nlohmann::json config = nlohmann::json::parse(reverse_conversion_json_data);
 
     test("save") = reverse_conversion<save_data>(config["save"]);

@@ -21,7 +21,7 @@ std::array<std::unique_ptr<quadrature_1d_base<T>>, 5> init_quadratures() {
     };
 }
 
-const suite<"quadratures_1d"> _ = [] {
+const suite _ = [] {
     test("gauss_quadratures_1d") = []<class T> {
         size_t order = 1;
         for(const auto& quadrature : init_quadratures<T>()) {
@@ -44,7 +44,7 @@ const suite<"quadratures_1d"> _ = [] {
                 const T weights_sum = std::accumulate(nodes.begin(), nodes.end(), T{0}, weight_summator);
                 const T length = quadrature->boundary(side_1d::RIGHT) - quadrature->boundary(side_1d::LEFT);
                 static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{1e-16};
-                expect(approx(weights_sum, length, epsilon)) << "Unexpected weights sum.";
+                expect(lt(std::abs(weights_sum - length), epsilon)) << "Unexpected weights sum.";
             };
 
             ++order;

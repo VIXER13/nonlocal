@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(nonlocalMPI)
+project(nonlocal)
 
 if (WITH_MPI)
     find_package(MPI)
@@ -20,6 +20,9 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-O2)
+
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup()
 
 #libraries
 add_subdirectory(libraries/parallel_utils)

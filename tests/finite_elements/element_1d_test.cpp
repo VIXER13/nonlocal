@@ -22,7 +22,7 @@ struct basis_summator final {
     }
 };
 
-const suite<"element_1d"> _ = [] {
+const suite _ = [] {
     static constexpr std::array<size_t, 6> qnodes_count = {1, 1, 2, 2, 3, 3};
     test("lagrangian_element_1d") = []<class T> {
         size_t order = 0;
@@ -56,7 +56,7 @@ const suite<"element_1d"> _ = [] {
                 const auto weight_summator = [&element](const T sum, const size_t qnode) { return sum + element->weight(qnode); };
                 const T weights_sum = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, weight_summator);
                 static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{1e-16};
-                expect(approx(weights_sum, element_length, epsilon)) <<
+                expect(lt(std::abs(weights_sum - element_length), epsilon)) <<
                     "The weights sum does not match the element length.";
             };
 
@@ -69,7 +69,7 @@ const suite<"element_1d"> _ = [] {
                 const auto qnodes = element->qnodes();
                 const T integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, integrator);
                 static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{5e-16};
-                expect(approx(integral, element_length, epsilon)) << 
+                expect(lt(std::abs(integral - element_length), epsilon)) << 
                     "The sum of the integrals of all basis functions does not match with the element length.";
             };
 
@@ -81,10 +81,10 @@ const suite<"element_1d"> _ = [] {
                     summator.point = point;
                     const auto [N_sum, Nxi_sum] = std::accumulate(nodes.begin(), nodes.end(), std::pair{T{0}, T{0}}, summator);
                     static constexpr T epsilon_N = std::is_same_v<T, float> ? T{2e-7} : T{4e-16};
-                    expect(approx(N_sum, T{1}, epsilon_N)) << 
+                    expect(lt(std::abs(N_sum - T{1}), epsilon_N)) << 
                         "Unexpected basis functions sum in point = " + std::to_string(point) + '.';
                     static constexpr T epsilon_Nxi = std::is_same_v<T, float> ? T{3e-6} : T{5e-15};
-                    expect(approx(Nxi_sum, T{0}, epsilon_Nxi)) << 
+                    expect(lt(std::abs(Nxi_sum), epsilon_Nxi)) << 
                         "Unexpected basis functions derivatives sum in point = " + std::to_string(point) + '.';
                 }                
             };
