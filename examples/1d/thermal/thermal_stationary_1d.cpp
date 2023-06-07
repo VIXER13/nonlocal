@@ -9,8 +9,12 @@ int main(const int argc, const char *const *const argv) {
     try {
         using T = double;
         using I = int64_t;
-        const nonlocal::config::stationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
-        std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
+        const nonlocal::config::stationary_thermal_data<T, 1> config_data{nonlocal::config::parse_json(std::filesystem::path{argv[1]})};
+        if (!std::filesystem::exists(config_data.save.folder()))
+            std::filesystem::create_directories(config_data.save.folder());
+        if (config_data.save.contains("config"))
+            nonlocal::config::dump_json(config_data, config_data.save.path("config", ".json"));
+        std::cout.precision(config_data.other.value("precision", std::cout.precision()));
 
         const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.mesh.element_order, config_data.mesh.quadrature_order);
 
@@ -20,7 +24,7 @@ int main(const int argc, const char *const *const argv) {
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("left")),
                 nonlocal::make_boundary_condition<T>(config_data.boundaries.conditions.at("right"))
             },
-            nonlocal::thermal::stationary_equation_parameters<T>{
+            nonlocal::thermal::stationary_equation_parameters_1d<T>{
                 .right_part = [value = config_data.equation.right_part](const T x) constexpr noexcept { return value; },
                 .initial_distribution = [value = config_data.equation.initial_distribution](const T x) constexpr noexcept { return value; },
                 .energy = config_data.equation.energy
@@ -28,10 +32,6 @@ int main(const int argc, const char *const *const argv) {
         );
 
         std::cout << "integral = " << nonlocal::mesh::utils::integrate(*mesh, solution.temperature()) << std::endl;
-        if (!std::filesystem::exists(config_data.save.folder()))
-            std::filesystem::create_directories(config_data.save.folder());
-        if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
         if (config_data.save.contains("temperature"))
             nonlocal::mesh::utils::save_as_csv(*mesh, solution.temperature(), config_data.save.path("temperature", ".csv"), config_data.save.precision());
         if (config_data.save.contains("flux"))

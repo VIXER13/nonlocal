@@ -28,8 +28,12 @@ int main(const int argc, const char *const *const argv) {
     try {
         using T = double;
         using I = int64_t;
-        const nonlocal::config::nonstationary_thermal_data<T, 1> config_data{nonlocal::config::read_json(std::filesystem::path{argv[1]})};
-        std::cout.precision(config_data.other.get("precision", std::cout.precision()).asInt());
+        const nonlocal::config::nonstationary_thermal_data<T, 1> config_data{nonlocal::config::parse_json(std::filesystem::path{argv[1]})};
+        if (!std::filesystem::exists(config_data.save.folder()))
+            std::filesystem::create_directories(config_data.save.folder());
+        if (config_data.save.contains("config"))
+            nonlocal::config::dump_json(config_data, config_data.save.path("config", ".json"));
+        std::cout.precision(config_data.other.value("precision", std::cout.precision()));
 
         const auto mesh = nonlocal::make_mesh(config_data.materials, config_data.mesh.element_order, config_data.mesh.quadrature_order);
         const auto parameters = nonlocal::make_thermal_parameters(config_data.materials);
@@ -41,10 +45,6 @@ int main(const int argc, const char *const *const argv) {
         solver.compute(parameters, boundaries_conditions,
             [init_dist = config_data.equation.initial_distribution](const T x) constexpr noexcept { return init_dist; });
             
-        if (!std::filesystem::exists(config_data.save.folder()))
-            std::filesystem::create_directories(config_data.save.folder());
-        if (config_data.save.contains("config"))
-            nonlocal::config::save_json(config_data.save.path("config", ".json"), config_data);
         save_step(nonlocal::thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, config_data.save, 0u);
         for(const uint64_t step : std::ranges::iota_view{1u, config_data.time.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,
