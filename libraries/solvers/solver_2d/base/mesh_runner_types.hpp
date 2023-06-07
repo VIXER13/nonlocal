@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_MESH_RUNNER_TYPES_HPP
 #define NONLOCAL_MESH_RUNNER_TYPES_HPP
 
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 
 #include <array>
 

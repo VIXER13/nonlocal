@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_SOLVERS_UTILS_HPP
 #define NONLOCAL_SOLVERS_UTILS_HPP
 
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 
 #include <algorithm>
 #include <array>

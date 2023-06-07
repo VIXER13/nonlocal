@@ -2,7 +2,7 @@
 #define NONLOCAL_CONVECTION_CONDITION_1D_HPP
 
 #include "thermal_boundary_conditions_1d.hpp"
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 #include <ranges>
 
 namespace nonlocal::thermal {

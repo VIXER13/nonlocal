@@ -42,8 +42,5 @@ add_subdirectory(examples/2d/mechanical)
 add_subdirectory(examples/2d/thermomechanical)
 
 #unit tests
-find_package(ut REQUIRED)
-if(ut_FOUND)
-    include(CMakeTools/EmbeddedFiles.cmake)
-    add_subdirectory(tests)
-endif()
+include(CMakeTools/EmbeddedFiles.cmake)
+add_subdirectory(tests)

@@ -2,7 +2,7 @@
 #define NONLOCAL_CONJUGATE_GRADIENT_HPP
 
 #include "MPI_utils.hpp"
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 #include <cmath>
 #undef I // for new version GCC, when use I macros
 

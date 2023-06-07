@@ -4,7 +4,7 @@
 #include "mesh_2d.hpp"
 #include "mechanical_solution_2d.hpp"
 #include "../solvers_utils.hpp"
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 
 namespace nonlocal::mechanical {
 

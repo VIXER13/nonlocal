@@ -6,7 +6,7 @@
 
 #include "mesh_2d.hpp"
 
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 
 namespace nonlocal {
 

@@ -5,7 +5,7 @@
 
 #include "mesh_1d.hpp"
 
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 
 #include <iostream>
 

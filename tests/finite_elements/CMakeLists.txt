@@ -12,8 +12,10 @@ add_library(finite_elements_test_lib OBJECT
     element_2d_test.cpp
 )
 
-target_include_directories(finite_elements_test_lib PUBLIC ".")
+target_include_directories(finite_elements_test_lib PUBLIC 
+    "."
+    ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
+)
 target_link_libraries(finite_elements_test_lib
-    Boost::ut
     metamath_lib
 )

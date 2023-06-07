@@ -3,7 +3,7 @@
 
 #include "OMP_utils.hpp"
 
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 #include <iostream>
 #include <optional>
 

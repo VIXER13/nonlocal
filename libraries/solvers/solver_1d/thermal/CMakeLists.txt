@@ -14,7 +14,9 @@ target_sources(
     nonstationary_heat_equation_solver_1d.hpp
     heat_equation_solution_1d.hpp
 )
-target_include_directories(heat_equation_solver_1d_lib INTERFACE ${HEAT_EQUATION_SOLVER_2D_LIB_DIR})
-target_link_libraries(heat_equation_solver_1d_lib INTERFACE 
+target_include_directories(heat_equation_solver_1d_lib INTERFACE 
+    ${HEAT_EQUATION_SOLVER_2D_LIB_DIR}
+)
+target_link_libraries(heat_equation_solver_1d_lib INTERFACE
     mesh_1d_lib
 )

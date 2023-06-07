@@ -10,12 +10,14 @@ add_library(config_test_lib OBJECT
     required_fields.cpp
     reverse_conversion.cpp
 )
-target_include_directories(config_test_lib PRIVATE ".")
+target_include_directories(config_test_lib PRIVATE
+    "."
+    ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
+)
 target_link_libraries(config_test_lib 
     PRIVATE
     embedded_files
 
     PUBLIC
-    Boost::ut
     config_lib
 )
