@@ -4,6 +4,7 @@
 #include "config_utils.hpp"
 
 #include <exception>
+#include <iostream>
 
 namespace nonlocal::config {
 
@@ -19,7 +20,8 @@ struct thermal_boundary_condition_data final {
     explicit constexpr thermal_boundary_condition_data() noexcept = default;
     explicit thermal_boundary_condition_data(const nlohmann::json& condition) {
         check_required_fields(condition, { "kind" });
-        switch (kind = get_thermal_condition(condition["kind"])) {
+
+        switch (kind = condition["kind"]) {
         case thermal::boundary_condition_t::TEMPERATURE: {
             check_required_fields(condition, { "temperature" });
             temperature = condition["temperature"].get<T>();
@@ -55,7 +57,7 @@ struct thermal_boundary_condition_data final {
 
     operator nlohmann::json() const {
         return {
-            {"kind", get_thermal_condition(kind)},
+            {"kind", kind},
             {"temperature", temperature},
             {"flux", flux},
             {"heat_transfer", heat_transfer},

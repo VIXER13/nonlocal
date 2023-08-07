@@ -26,9 +26,9 @@ nlohmann::json parse_json(const std::filesystem::path& path) {
     return nlohmann::json::parse(file);
 }
 
-void dump_json(const nlohmann::json& value, const std::filesystem::path& path) {
+void dump_json(const nlohmann::json& value, const std::filesystem::path& path, const int indent, const char indent_char) {
     std::ofstream file{path};
-    file << value.dump();
+    file << value.dump(indent, indent_char);
 }
 
 void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required) {
@@ -38,32 +38,6 @@ void check_required_fields(const nlohmann::json& value, const std::vector<std::s
 			error_message += "Field \"" + field + "\" missed.\n";
 	if (!error_message.empty())
 		throw std::domain_error{"Some required fields are missing:\n" + error_message};
-}
-
-thermal::boundary_condition_t get_thermal_condition(const nlohmann::json& kind) {
-    static const std::unordered_map<std::string, thermal::boundary_condition_t> kinds = {
-        {"temperature", thermal::boundary_condition_t::TEMPERATURE},
-        {"flux",        thermal::boundary_condition_t::FLUX},
-        {"convection",  thermal::boundary_condition_t::CONVECTION},
-        {"radiation",   thermal::boundary_condition_t::RADIATION},
-        {"combined",    thermal::boundary_condition_t::COMBINED}
-    };
-    return kind.is_number_integer() ?
-           thermal::boundary_condition_t(kind.get<uint>()) :                     
-           get(kind, kinds, "Boundary condition kind must be an integer or string.", "Unknown boundary condition type: ");
-}
-
-const std::string& get_thermal_condition(const thermal::boundary_condition_t kind) {
-    static const std::unordered_map<thermal::boundary_condition_t, std::string> kinds {
-        {thermal::boundary_condition_t::TEMPERATURE, "temperature"},
-        {thermal::boundary_condition_t::FLUX,        "flux"},
-        {thermal::boundary_condition_t::CONVECTION,  "convection"},
-        {thermal::boundary_condition_t::RADIATION,   "radiation"},
-        {thermal::boundary_condition_t::COMBINED,    "combined"}
-    };
-    if (const auto it = kinds.find(kind); it != kinds.cend())
-        return it->second;
-    throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(kind))};
 }
 
 size_t get_order(const nlohmann::json& order) {
