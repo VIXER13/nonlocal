@@ -39,7 +39,6 @@ add_subdirectory(libraries/config)
 add_subdirectory(examples/1d/thermal)
 add_subdirectory(examples/2d/thermal)
 add_subdirectory(examples/2d/mechanical)
-add_subdirectory(examples/2d/thermomechanical)
 
 #unit tests
 include(CMakeTools/EmbeddedFiles.cmake)

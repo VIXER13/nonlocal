@@ -13,6 +13,8 @@ class stiffness_matrix : public finite_element_matrix_2d<2, T, I, J> {
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
 
+    static constexpr bool SYMMETRIC = true;
+
 protected:
     template<theory_t Theory>
     static hooke_parameters to_hooke(const parameters_2d<T>& parameters, const plane_t plane);
@@ -110,15 +112,15 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
     const size_t cols = 2 * _base::mesh().container().nodes_count();
     _base::matrix_inner().resize(rows, cols);
     _base::matrix_bound().resize(rows, cols);
-    _base::init_shifts(theories, is_inner);
-    _base::init_indices(theories, is_inner);
+    _base::init_shifts(theories, is_inner, SYMMETRIC);
+    _base::init_indices(theories, is_inner, SYMMETRIC);
 }
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner) {
     const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
     create_matrix_portrait(theories, is_inner);
-    _base::calc_coeffs(theories, is_inner,
+    _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, hooke = to_hooke<theory_t::LOCAL>(parameters, plane)]
         (const std::string& group, const size_t e, const size_t i, const size_t j) {
             return integrate_loc(hooke.at(group).physical, e, i, j);

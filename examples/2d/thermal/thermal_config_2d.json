@@ -42,7 +42,7 @@
 		}
 	},
 	"materials": {
-		"Default": {
+		"DEFAULT": {
 			"model": {
 				"local_weight" : 1.0,
 				"nonlocal_radius" : 0.05,

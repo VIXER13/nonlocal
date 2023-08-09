@@ -144,8 +144,8 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
     size_t elements_2d_shift = 0;
     size_t elements_shift = _mesh.elements_2d_count();
     for(const auto& [group, types] : elements_types) {
-        if (group == "Default")
-            throw std::domain_error{"The group name cannot be called \"Default\", as it is a reserved group name."};
+        if (group == "DEFAULT")
+            throw std::domain_error{"The group name cannot be called \"DEFAULT\", as it is a reserved group name."};
         if (_mesh.get_elements_set().is_element_1d(types.front())) {
             _mesh._elements_groups[group] = std::ranges::iota_view{elements_shift, elements_shift + types.size()};
             elements_shift += types.size();
@@ -183,8 +183,8 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
 
     if (elements_2d_shift < elements_2d.size()) {
         const auto default_range = std::ranges::iota_view{elements_2d_shift, elements_2d.size()};
-        _mesh._groups_2d.insert("Default");
-        _mesh._elements_groups["Default"] = default_range;
+        _mesh._groups_2d.insert("DEFAULT");
+        _mesh._elements_groups["DEFAULT"] = default_range;
         for(const size_t current_element : default_range)
             for(const size_t e : std::ranges::iota_view{0u, _mesh.elements_2d_count()}) {
                 if (elements_2d[e].empty())

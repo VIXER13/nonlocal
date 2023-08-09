@@ -43,7 +43,7 @@ int main(const int argc, const char *const *const argv) {
         constexpr T epsilon = T{10.0};
 
         auto parameters = nonlocal::make_parameters<T>(config_data.materials);
-        parameters["Default"].physical = std::make_shared<nonlocal::thermal::parameter_2d<T, nonlocal::coefficients_t::SOLUTION_DEPENDENT>>(
+        parameters["DEFAULT"].physical = std::make_shared<nonlocal::thermal::parameter_2d<T, nonlocal::coefficients_t::SOLUTION_DEPENDENT>>(
             [epsilon, sigma](const std::array<T, 2>& x, const T solution) { return (T{0.1} + epsilon * std::pow(std::abs(solution), sigma)); }
             //[](const std::array<T, 2>& x) { return 1.0; }
         );

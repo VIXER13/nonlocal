@@ -8,6 +8,7 @@
 #include "boundary_condition_second_kind_2d.hpp"
 #include "right_part_2d.hpp"
 #include "mechanical_solution_2d.hpp"
+#include "temperature_condition_2d.hpp"
 
 #include "conjugate_gradient.hpp"
 

@@ -66,11 +66,11 @@ int main(const int argc, const char *const *const argv) {
 
     auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(argv[1]);
     mesh->find_neighbours({
-        {"Default", 3 * r}
+        {"DEFAULT", 3 * r}
     });
 
     nonlocal::thermal::parameters_2d<T> parameters;
-    parameters["Default"] = {
+    parameters["DEFAULT"] = {
         .model = {
             .influence = influence,
             .local_weight = p1

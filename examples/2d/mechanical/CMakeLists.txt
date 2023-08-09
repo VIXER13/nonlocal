@@ -2,18 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 
 project(mechanical_2d)
 
-add_executable(mechanical_T mechanical_T.cpp)
-target_include_directories(mechanical_T PUBLIC ".")
-target_link_libraries(mechanical_T metamath_lib nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(mechanical_circle mechanical_circle.cpp)
-target_include_directories(mechanical_circle PUBLIC ".")
-target_link_libraries(mechanical_circle metamath_lib nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(mechanical_quad mechanical_quad.cpp)
-target_include_directories(mechanical_quad PUBLIC ".")
-target_link_libraries(mechanical_quad metamath_lib nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
-
-add_executable(thermomechanic thermomechanic.cpp)
-target_include_directories(thermomechanic PUBLIC ".")
-target_link_libraries(thermomechanic metamath_lib nonlocal_constants_lib slae_solver_lib finite_element_solver_2d_lib parallel_utils_lib)
+add_executable(thermomechanical thermomechanical.cpp)
+target_include_directories(thermomechanical PUBLIC ".")
+target_link_libraries(thermomechanical 
+    finite_element_solver_2d_lib
+    config_lib
+)
