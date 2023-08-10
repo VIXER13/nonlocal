@@ -24,6 +24,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(2 * mesh->container().nodes_count());
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
     integrate_right_part<2>(f, *mesh, right_part);
+    temperature_condition(f, *mesh, parameters);
 
     auto start_time = std::chrono::high_resolution_clock::now();
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
