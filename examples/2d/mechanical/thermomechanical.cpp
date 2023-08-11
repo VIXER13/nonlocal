@@ -37,9 +37,9 @@ template<class T, class I, class Influence>
 nonlocal::mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                                                         const std::vector<T>& temperature,
                                                                         const T local_weight, const Influence& influence) {
-    static constexpr T E = 210;
+    static constexpr T E = 400;
     static constexpr T nu = 0.3;
-    static constexpr T alpha = 5.75e-3;
+    static constexpr T alpha = 2.5e-3;
     const nonlocal::mechanical::mechanical_parameters_2d<T> parameters = {
         .materials = {{
             "DEFAULT",

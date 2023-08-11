@@ -21,6 +21,7 @@ class mechanical_solution_2d : public solution_2d<T, I> {
     plane_t _plane;
 
     std::array<std::vector<T>, 3> strains_in_quadratures() const;
+    void substract_temperature_strains(std::array<std::vector<T>, 3>& strain) const;
     template<class Influence>
     std::array<T, 3> calc_nonlocal_strain(const size_t eL, const std::array<std::vector<T>, 3>& strains, const Influence& influence) const;
     void add_stress(const hooke_matrix<T>& hooke, const std::array<T, 3>& strain, const size_t qshift);
@@ -139,6 +140,22 @@ std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratur
 }
 
 template<class T, class I>
+void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std::vector<T>, 3>& strain) const {
+    if (!_delta_temperature.empty()) {
+        const std::vector<T> temperature_in_qnodes = nonlocal::mesh::utils::nodes_to_qnodes(_base::mesh(), _delta_temperature);
+        for(const std::string& group : _base::mesh().container().groups_2d()) {
+            const auto& parameter = parameters(group);
+            for(const size_t e : _base::mesh().container().elements(group))
+                for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
+                    const T temperature_strain = temperature_in_qnodes[qshift] * parameter.thermal_expansion;
+                    strain[_11][qshift] -= temperature_strain;
+                    strain[_22][qshift] -= temperature_strain;
+                }
+        }
+    }
+}
+
+template<class T, class I>
 template<class Influence>
 std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_strain(const size_t eL,
                                                                     const std::array<std::vector<T>, 3>& strains,
@@ -172,8 +189,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
         _strain[i] = mesh::utils::qnodes_to_nodes(_base::mesh(), strains[i]);
         _stress[i].resize(strains[i].size(), T{0});
     }
-    // strains[_11] -= temperature_strains; // TODO: thermoelasticity problem
-    // strains[_22] -= temperature_strains; // TODO: thermoelasticity problem
+    substract_temperature_strains(strains);
     for(const auto& [group, parameter] : _parameters) {
         using namespace metamath::functions;
         const model_parameters<2, T>& model = _base::model(group);
