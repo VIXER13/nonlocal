@@ -24,7 +24,7 @@ add_compile_options(-O2)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
-#libraries
+# libraries
 add_subdirectory(libraries/parallel_utils)
 add_subdirectory(libraries/metamath)
 add_subdirectory(libraries/constants)
@@ -35,11 +35,9 @@ add_subdirectory(libraries/solvers/solver_1d)
 add_subdirectory(libraries/solvers/solver_2d)
 add_subdirectory(libraries/config)
 
-#examples
-add_subdirectory(examples/1d/thermal)
-add_subdirectory(examples/2d/thermal)
-add_subdirectory(examples/2d/mechanical)
+# NonLocFEM
+add_subdirectory(src)
 
-#unit tests
+# unit tests
 include(CMakeTools/EmbeddedFiles.cmake)
 add_subdirectory(tests)

@@ -72,13 +72,16 @@ template<class T, class I>
 void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                            const mesh::mesh_2d<T, I>& mesh,
                            const mechanical_parameters_2d<T>& parameters) {
-    using namespace metamath::functions;
+    if (parameters.delta_temperature.empty())
+        return;
+    
     const _temperature_condition<T, I> integrator{mesh, parameters};
     const auto process_node = mesh.process_nodes();
 #pragma omp parallel for default(none) shared(f, mesh, parameters, integrator, process_node) schedule(dynamic)
     for(size_t node = process_node.front(); node < *process_node.end(); ++node) {
         std::array<T, 2> integral = {};
         for(const I eL : mesh.elements(node)) {
+            using namespace metamath::functions;
             const size_t iL = mesh.global_to_local(eL, node);
             const auto& parameter = parameters.materials.at(mesh.container().group(eL));
             if (theory_type(parameter.model.local_weight) == theory_t::NONLOCAL) {

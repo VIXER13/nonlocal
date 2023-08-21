@@ -31,11 +31,12 @@ void dump_json(const nlohmann::json& value, const std::filesystem::path& path, c
     file << value.dump(indent, indent_char);
 }
 
-void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required) {
+void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path) {
     std::string error_message;
 	for(const std::string& field : required)
 		if (!value.contains(field))
-			error_message += "Field \"" + field + "\" missed.\n";
+			error_message += path.empty() ? "Field \"" + field + "\" missed.\n"
+                                          : "Field \"" + path + '.' + field + "\" missed.\n";
 	if (!error_message.empty())
 		throw std::domain_error{"Some required fields are missing:\n" + error_message};
 }

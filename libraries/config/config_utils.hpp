@@ -36,7 +36,7 @@ nlohmann::json parse_json(const std::filesystem::path& path);
 void dump_json(const nlohmann::json& value, const std::filesystem::path& path, const int indent = 4, const char indent_char = ' ');
 
 // Throws an exception if at least one required field is missing.
-void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required);
+void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path = "");
 
 size_t get_order(const nlohmann::json& order);
 const std::string& get_order(const size_t order);

@@ -25,7 +25,10 @@ protected:
     block_t integrate_nonloc(const hooke_parameter& parameter, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
-                                const std::vector<bool>& is_inner);
+                                const std::vector<bool>& is_inner, const bool is_neumann);
+
+    T integrate_basic(const size_t e, const size_t i) const;
+    void integral_condition();
 
 public:
     explicit stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
@@ -107,19 +110,49 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonloc(
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
-                                                       const std::vector<bool>& is_inner) {
-    const size_t rows = 2 * _base::mesh().process_nodes().size();
-    const size_t cols = 2 * _base::mesh().container().nodes_count();
+                                                       const std::vector<bool>& is_inner, const bool is_neumann) {
+    const size_t rows = 2 * _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::is_last_process());
+    const size_t cols = 2 * _base::mesh().container().nodes_count() + is_neumann;
     _base::matrix_inner().resize(rows, cols);
     _base::matrix_bound().resize(rows, cols);
+    if (is_neumann)
+        for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
+            _base::matrix_inner().outerIndexPtr()[2 * row + 1] = 1;
     _base::init_shifts(theories, is_inner, SYMMETRIC);
-    _base::init_indices(theories, is_inner, SYMMETRIC);
+    static constexpr bool SORT_INDICES = false;
+    _base::init_indices(theories, is_inner, SYMMETRIC, SORT_INDICES);
+    if (is_neumann)
+        for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
+            _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
+    utils::sort_indices(_base::matrix_inner());
+    utils::sort_indices(_base::matrix_bound());
+}
+
+template<class T, class I, class J>
+T stiffness_matrix<T, I, J>::integrate_basic(const size_t e, const size_t i) const {
+    T integral = 0;
+    const auto& el = _base::mesh().container().element_2d(e);
+    for(const size_t q : el.qnodes())
+        integral += el.weight(q) * el.qN(i, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+    return integral;
+}
+
+template<class T, class I, class J>
+void stiffness_matrix<T, I, J>::integral_condition() {
+    const auto process_nodes = _base::mesh().process_nodes();
+#pragma omp parallel for default(none) shared(process_nodes)
+    for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+        T& val = _base::matrix_inner().coeffRef(2 * (node - process_nodes.front()), 2 * _base::mesh().container().nodes_count());
+        for(const I e : _base::mesh().elements(node))
+            val += integrate_basic(e, _base::mesh().global_to_local(e, node));
+    }
 }
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner) {
     const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
-    create_matrix_portrait(theories, is_inner);
+    static constexpr bool NEUMANN = false;
+    create_matrix_portrait(theories, is_inner, NEUMANN);
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, hooke = to_hooke<theory_t::LOCAL>(parameters, plane)]
         (const std::string& group, const size_t e, const size_t i, const size_t j) {
@@ -130,6 +163,8 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
             return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
+    if (NEUMANN)
+        integral_condition();
 }
 
 }
