@@ -5,14 +5,32 @@
 
 namespace nonlocal::config {
 
+enum class order_t : uint8_t {
+    UNKNOWN,
+    LINEAR,
+    QUADRATIC,
+    QUBIC,
+    QUARTIC,
+    QUINTIC
+};
+
+NLOHMANN_JSON_SERIALIZE_ENUM(order_t, {
+    {order_t::UNKNOWN, nullptr},
+    {order_t::LINEAR, "linear"},
+    {order_t::QUADRATIC, "quadratic"},
+    {order_t::QUBIC, "qubic"},
+    {order_t::QUARTIC, "quartic"},
+    {order_t::QUINTIC, "quintic"}
+})
+
 template<size_t Dimension>
 struct mesh_data final {
     std::filesystem::path path; // required
 
     explicit mesh_data() = default;
-    explicit mesh_data(const nlohmann::json& value) {
-        check_required_fields(value, { "path" });
-        path = value["path"].get<std::string>();
+    explicit mesh_data(const nlohmann::json& config, const std::string& path = "") {
+        check_required_fields(config, { "path" }, append_access_sign(path));
+        path = config["path"].get<std::string>();
     }
 
     operator nlohmann::json() const {
@@ -22,20 +40,13 @@ struct mesh_data final {
 
 template<>
 struct mesh_data<1u> final {
-    size_t element_order = 1;
-    size_t quadrature_order = 1;
+    order_t element_order = order_t::LINEAR;
+    order_t quadrature_order = element_order;
 
     explicit constexpr mesh_data() noexcept = default;
-    explicit mesh_data(const nlohmann::json& value)
-        : element_order{get_order(value.value<nlohmann::json>("element_order", 1))}
-        , quadrature_order{get_order(value.value<nlohmann::json>("quadrature_order", element_order))} {}
+    explicit mesh_data(const nlohmann::json& config);
 
-    operator nlohmann::json() const {
-        return {
-            {"element_order", get_order(element_order)},
-            {"quadrature_order", get_order(quadrature_order)}
-        };
-    }
+    operator nlohmann::json() const;
 };
 
 }

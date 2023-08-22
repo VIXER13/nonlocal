@@ -4,6 +4,7 @@ project(NonLocFEM)
 
 add_executable(NonLocFEM 
     main.cpp
+    init_utils.cpp
 )
 
 target_include_directories(NonLocFEM PUBLIC 

@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <variant>
 
 namespace nonlocal::thermal {
 
@@ -33,13 +34,17 @@ NLOHMANN_JSON_SERIALIZE_ENUM(boundary_condition_t, {
 namespace nonlocal::config {
 
 nlohmann::json parse_json(const std::filesystem::path& path);
+
 void dump_json(const nlohmann::json& value, const std::filesystem::path& path, const int indent = 4, const char indent_char = ' ');
 
-// Throws an exception if at least one required field is missing.
-void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path = "");
+std::string append_access_sign(std::string path, const std::variant<std::string, size_t>& index = "");
 
-size_t get_order(const nlohmann::json& order);
-const std::string& get_order(const size_t order);
+// Throws an exception if at least one required field is missing.
+// Specify a path for nested fields to get more descriptive error messages.
+void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path = {});
+
+// Log info about missed optional fields
+void check_optional_fields(const nlohmann::json& value, const std::vector<std::string>& optional, const std::string& path = {});
     
 }
 

@@ -2,5 +2,25 @@
     "task": {
         "dimension": 1,
         "problem": "thermal_stationary"
-    }
+    },
+    "save": {
+        "folder": "./test",
+        "config": "config"
+    },
+    "materials": [
+        {
+            "elements_count": 10,
+            "length": 1.0,
+            "physical": {
+                "conductivity": 1.0
+            }
+        },
+        {
+            "elements_count": 10,
+            "length": 1.0,
+            "physical": {
+                "conductivity": 1.0
+            }
+        }
+    ]
 }

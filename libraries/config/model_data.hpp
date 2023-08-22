@@ -35,12 +35,14 @@ public:
     radius_t search_radius = {T{0}};   // if skipped sets equal nonlocal_radius
 
     explicit constexpr model_data() noexcept = default;
-    explicit model_data(const nlohmann::json& model) {
-        check_required_fields(model, { "local_weight", "nonlocal_radius" });
-        local_weight = model["local_weight"].get<T>();
-        nonlocal_radius = read_radius(model["nonlocal_radius"], "nonlocal_radius");
-        search_radius = !model.contains("search_radius") ? nonlocal_radius :
-                        read_radius(model["search_radius"], "search_radius");
+    explicit model_data(const nlohmann::json& config, const std::string& path = "") {
+        const std::string right_path = append_access_sign(path);
+        check_required_fields(config, { "local_weight", "nonlocal_radius" }, right_path);
+        check_optional_fields(config, {"search_radius"}, right_path);
+        local_weight = config["local_weight"].get<T>();
+        nonlocal_radius = read_radius(config["nonlocal_radius"], "nonlocal_radius");
+        search_radius = !config.contains("search_radius") ? nonlocal_radius :
+                        read_radius(config["search_radius"], "search_radius");
     }
 
     operator nlohmann::json() const {

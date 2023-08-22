@@ -19,11 +19,13 @@ struct thermal_material_data<T, 1> final {
     T density = T{1};
 
     explicit constexpr thermal_material_data() noexcept = default;
-    explicit thermal_material_data(const nlohmann::json& physical) {
-        check_required_fields(physical, { "conductivity" });
-        conductivity = physical["conductivity"].get<T>();
-        capacity = physical.value("capacity", T{1});
-        density = physical.value("density", T{1});
+    explicit thermal_material_data(const nlohmann::json& config, const std::string& path = "") {
+        const std::string right_part = append_access_sign(path);
+        check_required_fields(config, { "conductivity" }, right_part);
+        check_optional_fields(config, {"capacity", "density"}, right_part);
+        conductivity = config["conductivity"].get<T>();
+        capacity = config.value("capacity", T{1});
+        density = config.value("density", T{1});
     }
 
     operator nlohmann::json() const {
@@ -60,11 +62,13 @@ public:
     T density = T{1};
 
     explicit constexpr thermal_material_data() noexcept = default;
-    explicit thermal_material_data(const nlohmann::json& physical) {
-        check_required_fields(physical, { "conductivity" });
-        read_conductivity(physical["conductivity"]);
-        capacity = physical.value("capacity", T{1});
-        density = physical.value("density", T{1});
+    explicit thermal_material_data(const nlohmann::json& config, const std::string& path = "") {
+        const std::string right_part = append_access_sign(path);
+        check_required_fields(config, { "conductivity" }, right_part);
+        check_optional_fields(config, {"capacity", "density"}, right_part);
+        read_conductivity(config["conductivity"]);
+        capacity = config.value("capacity", T{1});
+        density = config.value("density", T{1});
     }
 
     operator nlohmann::json() const {

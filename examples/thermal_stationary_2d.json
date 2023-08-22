@@ -2,5 +2,9 @@
     "task": {
         "dimension": 2,
         "problem": "thermal_stationary"
+    },
+    "save": {
+        "folder": "./test",
+        "config": "config"
     }
 }

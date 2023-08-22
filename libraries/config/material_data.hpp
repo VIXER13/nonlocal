@@ -11,11 +11,12 @@ struct material_data final {
     model_data<T, Dimension> model;
 
     explicit constexpr material_data() noexcept = default;
-    explicit material_data(const nlohmann::json& material) {
-        check_required_fields(material, { "physical" });
-        physical = Physics<T, Dimension>{material["physical"]};
-        if (material.contains("model"))
-            model = model_data<T, Dimension>{material["model"]};
+    explicit material_data(const nlohmann::json& config, const std::string& path = "") {
+        const std::string right_path = append_access_sign(path);
+        check_required_fields(config, { "physical" }, right_path);
+        physical = Physics<T, Dimension>{config["physical"], right_path + "physical"};
+        if (config.contains("model"))
+            model = model_data<T, Dimension>{config["model"], right_path + "model"};
     }
 
     operator nlohmann::json() const {
@@ -34,13 +35,15 @@ struct material_data<Physics, T, 1> final {
     model_data<T, 1> model;
 
     explicit constexpr material_data() noexcept = default;
-    explicit material_data(const nlohmann::json& material) {
-        check_required_fields(material, { "elements_count", "length", "physical" });
-        elements_count = material["elements_count"].get<size_t>();
-        length = material["length"].get<T>();
-        physical = Physics<T, 1>{material["physical"]};
-        if (material.contains("model"))
-            model = model_data<T, 1>{material["model"]};
+    explicit material_data(const nlohmann::json& config, const std::string& path = "") {
+        const std::string right_path = append_access_sign(path);
+        check_required_fields(config, { "elements_count", "length", "physical" }, right_path);
+        check_optional_fields(config, {"model"}, right_path);
+        elements_count = config["elements_count"].get<size_t>();
+        length = config["length"].get<T>();
+        physical = Physics<T, 1>{config["physical"], right_path + "physical"};
+        if (config.contains("model"))
+            model = model_data<T, 1>{config["model"], right_path + "model"};
     }
 
     operator nlohmann::json() const {

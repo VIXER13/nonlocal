@@ -1,12 +1,15 @@
 #include "save_data.hpp"
 
+#include "config_utils.hpp"
+
 namespace nonlocal::config {
 
-save_data::save_data(const nlohmann::json& save) 
-	: _folder{save.value("folder", std::filesystem::current_path().string())} {
-	if (const nlohmann::json precision = save.value("precision", nlohmann::json{}); precision.is_number_integer())
+save_data::save_data(const nlohmann::json& config, const std::string& path) 
+	: _folder{config.value("folder", std::filesystem::current_path().string())} {
+	check_optional_fields(config, {"folder", "precision"}, append_access_sign(path));
+	if (const nlohmann::json precision = config.value("precision", nlohmann::json{}); precision.is_number_integer())
 		_precision = precision.get<std::streamsize>();
-	for(const auto& [field, value] : save.items())
+	for(const auto& [field, value] : config.items())
 		if (field != "folder" && field != "precision")
 			_names[field] = value.get<std::string>();
 }
@@ -32,7 +35,7 @@ std::string save_data::get_name(const std::string& key, const std::optional<std:
 }
 
 std::filesystem::path save_data::make_path(const std::string& name, const std::string& extension) const {
-	return folder() / (name + extension);
+	return folder() / (name + '.' + extension);
 }
 
 std::filesystem::path save_data::path(const std::string& key, const std::string& extension,
