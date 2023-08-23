@@ -6,21 +6,6 @@
 
 namespace {
 
-bool has_value(const std::variant<std::string, size_t>& index) {
-    if (std::holds_alternative<size_t>(index))
-        return true;
-    return !std::get<std::string>(index).empty();
-}
-
-std::string index_value(const std::variant<std::string, size_t>& index) {
-    std::string result = "[";
-    if (std::holds_alternative<size_t>(index))
-        result += std::to_string(std::get<size_t>(index));
-    else
-        result += std::get<std::string>(index);
-    return result + "]";
-}
-
 void check_fields(const nlohmann::json& value, const std::vector<std::string>& fields, const std::string& path, const bool is_required) {
     std::string message;
 	for(const std::string& field : fields)
@@ -47,9 +32,10 @@ void dump_json(const nlohmann::json& value, const std::filesystem::path& path, c
     file << value.dump(indent, indent_char);
 }
 
-std::string append_access_sign(std::string path, const std::variant<std::string, size_t>& index) {
-    return path += path.empty()     ? std::string{}      :
-                   has_value(index) ? index_value(index) : std::string{'.'};
+std::string append_access_sign(std::string path, const std::optional<size_t> index) {
+    using namespace std::literals;
+    return path += path.empty() ? ""s :
+                   index        ? '[' + std::to_string(*index) + ']' : "."s;
 }
 
 void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path) {

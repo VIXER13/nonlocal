@@ -43,6 +43,7 @@ struct left_right_element final {
 template<class T>
 struct segment_data final {
     T length = T{1};
+    T search_radius = T{0};
     size_t elements = 1;
 };
 
@@ -58,6 +59,7 @@ class mesh_1d final {
     std::vector<size_t> _neighbours_count;
 
     static std::vector<segment_data<T>> accumulate(const std::vector<segment_data<T>>& segments);
+    void find_neighbours();
 
 public:
     explicit mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments);
@@ -83,6 +85,7 @@ public:
     T length() const noexcept;
     T length(const size_t segment) const;
     T element_length(const size_t segment) const;
+    T search_radius(const size_t segment) const;
     T jacobian(const size_t segment) const;
     T node_coord(const size_t node) const;
     T qnode_coord(const size_t e, const size_t q) const;
@@ -95,7 +98,9 @@ template<class T>
 mesh_1d<T>::mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments)
     : _element{std::move(element)}
     , _segments{accumulate(segments)}
-    , _neighbours_count(_segments.size(), 1) {}
+    , _neighbours_count(_segments.size(), 1) {
+        find_neighbours();
+    }
 
 template<class T>
 std::vector<segment_data<T>> mesh_1d<T>::accumulate(const std::vector<segment_data<T>>& segments) {
@@ -105,6 +110,12 @@ std::vector<segment_data<T>> mesh_1d<T>::accumulate(const std::vector<segment_da
         accumulated[i].elements += accumulated[i - 1].elements;
     }
     return accumulated;
+}
+
+template<class T>
+void mesh_1d<T>::find_neighbours() {
+    for(const size_t segment : segments())
+        _neighbours_count[segment] = std::round(search_radius(segment) / element_length(segment));
 }
 
 template<class T>
@@ -232,6 +243,11 @@ T mesh_1d<T>::element_length(const size_t segment) const {
 }
 
 template<class T>
+T mesh_1d<T>::search_radius(const size_t segment) const {
+    return _segments[segment].search_radius;
+}
+
+template<class T>
 T mesh_1d<T>::jacobian(const size_t segment) const {
     using enum metamath::finite_element::side_1d;
     return element_length(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
@@ -267,8 +283,9 @@ template<class T>
 void mesh_1d<T>::find_neighbours(const std::vector<T>& radii) {
     if (radii.size() != _neighbours_count.size())
         throw std::runtime_error{"The number of radii does not match the number of segments."};
-    for(const size_t segment : std::ranges::iota_view{0u, segments_count()})
-        _neighbours_count[segment] = std::round(radii[segment] / element_length(segment));
+    for(const size_t segment : segments())
+        _segments[segment].search_radius = radii[segment];
+    find_neighbours();
 }
 
 }

@@ -36,9 +36,9 @@ public:
 
     explicit constexpr model_data() noexcept = default;
     explicit model_data(const nlohmann::json& config, const std::string& path = "") {
-        const std::string right_path = append_access_sign(path);
-        check_required_fields(config, { "local_weight", "nonlocal_radius" }, right_path);
-        check_optional_fields(config, {"search_radius"}, right_path);
+        const std::string path_with_access = append_access_sign(path);
+        check_required_fields(config, { "local_weight", "nonlocal_radius" }, path_with_access);
+        check_optional_fields(config, {"search_radius"}, path_with_access);
         local_weight = config["local_weight"].get<T>();
         nonlocal_radius = read_radius(config["nonlocal_radius"], "nonlocal_radius");
         search_radius = !config.contains("search_radius") ? nonlocal_radius :

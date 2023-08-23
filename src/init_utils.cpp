@@ -19,4 +19,13 @@ std::string init_available_problems_list(const std::set<config::problem_t>& avai
     return result + " ]";
 }
 
+bool is_thermal_problem(const config::problem_t problem) {
+    return problem == config::problem_t::THERMAL_STATIONARY ||
+           problem == config::problem_t::THERMAL_NONSTATIONARY;
+}
+
+bool is_mechanical_problem(const config::problem_t problem) {
+    return problem == config::problem_t::MECHANICAL_EQUILIBRIUM;
+}
+
 }

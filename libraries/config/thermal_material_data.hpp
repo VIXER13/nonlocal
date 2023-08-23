@@ -3,6 +3,8 @@
 
 #include "config_utils.hpp"
 
+#include "nonlocal_constants.hpp"
+
 #include <type_traits>
 #include <exception>
 #include <ranges>
