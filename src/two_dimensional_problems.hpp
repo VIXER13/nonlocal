@@ -1,7 +1,7 @@
 #ifndef NONLOCFEM_TWO_DIMENSIONAM_PROBLEMS_HPP
 #define NONLOCFEM_TWO_DIMENSIONAM_PROBLEMS_HPP
 
-#include "init_utils.hpp"
+#include "problems_utils.hpp"
 
 namespace nonlocal {
 

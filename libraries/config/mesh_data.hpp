@@ -43,8 +43,10 @@ struct mesh_data<1u> final {
     order_t element_order = order_t::LINEAR;
     order_t quadrature_order = element_order;
 
+    static bool is_valid_order(const size_t order) noexcept;
+
     explicit constexpr mesh_data() noexcept = default;
-    explicit mesh_data(const nlohmann::json& config);
+    explicit mesh_data(const nlohmann::json& config, const std::string& path = "");
 
     operator nlohmann::json() const;
 };

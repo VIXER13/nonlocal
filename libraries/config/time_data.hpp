@@ -13,12 +13,14 @@ struct time_data final {
     uint64_t save_frequency = 1ull;
 
     explicit constexpr time_data() noexcept = default;
-    explicit time_data(const nlohmann::json& time) {
-        check_required_fields(time, { "time_step", "steps_count" });
-        time_step = time["time_step"].get<T>();
-        initial_time = time.value("initial_time", T{0});
-        steps_count = time["steps_count"].get<uint64_t>();
-        save_frequency = time.value("save_frequency", 1ull);
+    explicit time_data(const nlohmann::json& config, const std::string& path) {
+        const std::string path_with_access = append_access_sign(path);
+        check_required_fields(config, {"time_step", "steps_count"}, path);
+        check_optional_fields(config, {"initial_time", "save_frequency"}, path);
+        time_step = config["time_step"].get<T>();
+        initial_time = config.value("initial_time", T{0});
+        steps_count = config["steps_count"].get<uint64_t>();
+        save_frequency = config.value("save_frequency", 1ull);
     }
 
     operator nlohmann::json() const {

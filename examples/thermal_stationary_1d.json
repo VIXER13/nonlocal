@@ -5,21 +5,57 @@
     },
     "save": {
         "folder": "./test",
-        "config": "config"
+        "config": "config",
+        "temperature": "temperature",
+        "flux": "flux",
+        "precision": 18
+    },
+    "mesh": {
+        "element_order": "linear",
+        "quadrature_order": "linear"
+    },
+    "auxiliary": {
+        "energy": 0,
+        "right_part": 0,
+        "initial_distribution": 0
+    },
+    "boundaries": {
+        "left": {
+            "kind": "temperature",
+            "temperature": 0
+        },
+        "right": {
+            "kind": "flux",
+            "flux": 1
+        }
     },
     "materials": [
         {
-            "elements_count": 10,
+            "elements_count": 100,
             "length": 1.0,
             "physical": {
-                "conductivity": 1.0
+                "conductivity": 1.0,
+                "capacity": 1.0,
+                "density": 1.0
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
             }
         },
         {
-            "elements_count": 10,
-            "length": 1.0,
+            "elements_count": 100,
+            "length": 2.0,
             "physical": {
-                "conductivity": 1.0
+                "conductivity": 10.0,
+                "capacity": 1.0,
+                "density": 1.0
+            },
+            "model": {
+                "local_weight": 0.1,
+                "nonlocal_radius": 0.1,
+                "search_radius": 0.1
             }
         }
     ]
