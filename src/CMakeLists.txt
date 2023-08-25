@@ -5,6 +5,7 @@ project(NonLocFEM)
 add_executable(NonLocFEM 
     main.cpp
     problems_utils.cpp
+    determine_problem.cpp
 )
 
 target_include_directories(NonLocFEM PUBLIC 

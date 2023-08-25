@@ -15,6 +15,7 @@ std::string init_available_problems_list(const std::set<config::problem_t>& avai
 
 bool is_thermal_problem(const config::problem_t problem);
 bool is_mechanical_problem(const config::problem_t problem);
+bool is_time_dependent_problem(const config::problem_t problem);
 
 template<std::floating_point T, template<class, size_t> class Physics>
 std::vector<mesh::segment_data<T>> get_segments_data(const config::materials_data<Physics, T, 1>& material_data) {

@@ -15,8 +15,8 @@ struct time_data final {
     explicit constexpr time_data() noexcept = default;
     explicit time_data(const nlohmann::json& config, const std::string& path) {
         const std::string path_with_access = append_access_sign(path);
-        check_required_fields(config, {"time_step", "steps_count"}, path);
-        check_optional_fields(config, {"initial_time", "save_frequency"}, path);
+        check_required_fields(config, {"time_step", "steps_count"}, path_with_access);
+        check_optional_fields(config, {"initial_time", "save_frequency"}, path_with_access);
         time_step = config["time_step"].get<T>();
         initial_time = config.value("initial_time", T{0});
         steps_count = config["steps_count"].get<uint64_t>();

@@ -28,4 +28,8 @@ bool is_mechanical_problem(const config::problem_t problem) {
     return problem == config::problem_t::MECHANICAL_EQUILIBRIUM;
 }
 
+bool is_time_dependent_problem(const config::problem_t problem) {
+    return problem == config::problem_t::THERMAL_NONSTATIONARY;
+}
+
 }
