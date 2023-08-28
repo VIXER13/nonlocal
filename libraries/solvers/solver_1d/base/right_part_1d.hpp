@@ -11,7 +11,7 @@ void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_P
         T integral = T{0};
         const auto& el = mesh.element();
         for(const size_t q : std::ranges::iota_view{size_t{0}, el.qnodes_count()})
-            integral += el.weight(q) * el.qN(i, q) * func(mesh.qnode_coord(e, q));
+            integral += el.weight(q) * el.qN(0, i, q) * func(mesh.qnode_coord(e, q));
         return integral * mesh.jacobian(mesh.segment_number(e));
     };
 #pragma omp parallel for default(none) shared(f, mesh, integrate_function_on_element)

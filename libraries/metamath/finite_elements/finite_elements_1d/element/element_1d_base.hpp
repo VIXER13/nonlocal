@@ -15,11 +15,9 @@ class element_1d_base : public element_base {
 public:
     ~element_1d_base() override = default;
 
+    virtual size_t max_derivative_order() const = 0;
     virtual T node(const size_t i) const = 0;
-
-    virtual T N  (const size_t i, const T xi) const = 0;
-    virtual T Nxi(const size_t i, const T xi) const = 0;
-
+    virtual T N(const size_t d, const size_t i, const T xi) const = 0;
     virtual T boundary(const side_1d bound) const = 0;
 };
 

@@ -19,7 +19,7 @@ T integrate(const mesh::mesh_1d<T>& mesh, const Vector& x) {
         for(const size_t e : mesh.elements(segment))
             for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
                 for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
-                    segment_integral += el.weight(q) * el.qN(i, q) * x[mesh.node_number(e, i)];
+                    segment_integral += el.weight(q) * el.qN(0, i, q) * x[mesh.node_number(e, i)];
         integral += segment_integral * mesh.jacobian(segment);
     }
     return integral;
@@ -48,7 +48,7 @@ std::vector<T> gradient_in_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& x)
     return approximation_in_qnodes(mesh, [&mesh, &x](const size_t e, const size_t i, const size_t q) {
         const size_t segment = mesh.segment_number(e);
         const T jacobian = mesh.jacobian(segment);
-        return mesh.element().qNxi(i, q) * x[mesh.node_number(e, i)] / jacobian;
+        return mesh.element().qN(1, i, q) * x[mesh.node_number(e, i)] / jacobian;
     });
 }
 
@@ -57,7 +57,7 @@ std::vector<T> from_nodes_to_qnodes(const mesh::mesh_1d<T>& mesh, const Vector& 
     if (mesh.nodes_count() > x.size())
         throw std::logic_error{"The approximation cannot be found because the vector size does not match the number of nodes."};
     return approximation_in_qnodes(mesh, [&mesh, &x](const size_t e, const size_t i, const size_t q) {
-        return mesh.element().qN(i, q) * x[mesh.node_number(e, i)];
+        return mesh.element().qN(0, i, q) * x[mesh.node_number(e, i)];
     });
 }
 

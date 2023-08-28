@@ -15,7 +15,7 @@ class _make_element_1d final {
     template<class T, size_t Order>
     using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, Order>;
     template<class T, size_t Order>
-    using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, Order>;
+    using element_1d = metamath::finite_element::element_1d_integrate<T, 2, metamath::finite_element::lagrangian_element_1d, Order>;
 
     explicit constexpr _make_element_1d() noexcept = default;
 

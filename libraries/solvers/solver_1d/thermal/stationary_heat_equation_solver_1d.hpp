@@ -57,7 +57,8 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     static constexpr auto check_nonlocal = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
     const std::vector<theory_t> theories = theories_types(parameters);
     const bool is_nonlocal = std::any_of(theories.begin(), theories.end(), check_nonlocal);
-    const bool is_symmetric = !(is_nonlinear && is_nonlocal);
+    //const bool is_symmetric = !(is_nonlinear && is_nonlocal);
+    const bool is_symmetric = false;
 
     T difference = T{1};
     size_t iteration = 0;

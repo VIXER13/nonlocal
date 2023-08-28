@@ -60,7 +60,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_basic(const size_t e, const si
     T integral = T{0};
     const auto& el = _base::mesh().element();
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
-        integral += el.weight(q) * el.qN(i, q);
+        integral += el.weight(q) * el.qN(0, i, q);
     return integral * _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
 
@@ -73,10 +73,14 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const Integrator& integrat
 
 template<class T, class I>
 T thermal_conductivity_matrix_1d<T, I>::integrate_loc(const T conductivity, const size_t e, const size_t i, const size_t j) const {
-    const T integral = integrate_loc([&el = _base::mesh().element(), i, j](const T integral, const size_t q) {
-        return integral + el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q);
+    // const T integral = integrate_loc([&el = _base::mesh().element(), i, j](const T integral, const size_t q) {
+    //     return integral + el.weight(q) * el.qN(1, i, q) * el.qN(1, j, q);
+    // });
+    const T jacobian = _base::mesh().jacobian(_base::mesh().segment_number(e));
+    const T integral = integrate_loc([jacobian, &el = _base::mesh().element(), i, j](const T integral, const size_t q) {
+        return integral + el.weight(q) * el.qN(1, i, q) * (el.qN(1, j, q) + el.qN(2, j, q) / jacobian);
     });
-    return conductivity * integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
+    return conductivity * integral / jacobian;
 }
 
 template<class T, class I>
@@ -85,7 +89,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
     const T integral = integrate_loc([this, &conductivity, e, i, j](const T integral, const size_t q) {
         const auto& el = _base::mesh().element();
         const T qcoord = _base::mesh().qnode_coord(e, q);
-        return integral + el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord);
+        return integral + el.weight(q) * el.qN(1, i, q) * el.qN(1, j, q) * conductivity(qcoord);
     });
     return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
@@ -98,7 +102,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_loc(
         const auto& el = _base::mesh().element();
         const T qcoord = _base::mesh().qnode_coord(e, q);
         const size_t qshift = _base::mesh().qnode_number(e, q); 
-        return integral + el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord, solution[qshift]);
+        return integral + el.weight(q) * el.qN(1, i, q) * el.qN(1, j, q) * conductivity(qcoord, solution[qshift]);
     });
     return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
@@ -114,7 +118,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(const size_t eL, const 
             [&integrator, qcoordL = _base::mesh().qnode_coord(eL, qL)](const T integral, const size_t qNL) {
                 return integral + integrator(qcoordL, qNL);
             });
-        integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
+        integral += el.weight(qL) * el.qN(1, iL, qL) * inner_integral;
     }
     return integral;
 }
@@ -127,7 +131,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
     return conductivity * integrate_nonloc(eL, iL, [this, &influence, eNL, jNL](const T qcoordL, const size_t qNL) {
         const auto& el = _base::mesh().element();
         const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
-        return el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qNxi(jNL, qNL);
+        return el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qN(1, jNL, qNL);
     });
 }
 
@@ -139,7 +143,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
     return integrate_nonloc(eL, iL, [this, &conductivity, &influence, eNL, jNL](const T qcoordL, const size_t qNL) {
         const auto& el = _base::mesh().element();
         const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
-        return el.weight(qNL) * influence(qcoordL, qcoordNL) * conductivity(qcoordNL) * el.qNxi(jNL, qNL);
+        return el.weight(qNL) * influence(qcoordL, qcoordNL) * conductivity(qcoordNL) * el.qN(1, jNL, qNL);
     });
 }
 
@@ -152,7 +156,7 @@ T thermal_conductivity_matrix_1d<T, I>::integrate_nonloc(
         const auto& el = _base::mesh().element();
         const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
         const size_t qshiftNL = _base::mesh().qnode_number(eNL, qNL);
-        return el.weight(qNL) * influence(qcoordL, qcoordNL) * conductivity(qcoordNL, solution[qshiftNL]) * el.qNxi(jNL, qNL);
+        return el.weight(qNL) * influence(qcoordL, qcoordNL) * conductivity(qcoordNL, solution[qshiftNL]) * el.qN(1, jNL, qNL);
     });
 }
 

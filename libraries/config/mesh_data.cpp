@@ -5,10 +5,15 @@ namespace {
 using namespace nonlocal::config;
 
 order_t get_order(const nlohmann::json& config, const std::string& field, const order_t default_order = order_t::LINEAR) {
-    if (config.contains("element_order"))
-        if (const nlohmann::json& value = config["element_order"]; value.is_number_integer())
+    if (config.contains("element_order")) {
+        if (const nlohmann::json& value = config["element_order"]; value.is_number_integer()) {
             if (const size_t order = value.get<size_t>(); mesh_data<1u>::is_valid_order(order))
                 return order_t(order);
+        } else if (value.is_string()) {
+            if (const order_t order = value.get<order_t>(); order != order_t::UNKNOWN)
+                return order;
+        }
+    }
     return default_order;
 }
 

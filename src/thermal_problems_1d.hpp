@@ -68,7 +68,7 @@ template<std::floating_point T>
 void save_solution(thermal::heat_equation_solution_1d<T>&& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
-    if (step);
+    if (step)
         std::cout << "INFO: step = " << *step << std::endl;
     const auto save_vector = [&solution, &save, step](const std::vector<T>& x, const std::string& name) {
         const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + name, "csv") : save.path(name, "csv");

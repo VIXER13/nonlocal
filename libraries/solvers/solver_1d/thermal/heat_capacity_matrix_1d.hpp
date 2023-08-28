@@ -42,7 +42,7 @@ T heat_capacity_matrix_1d<T, I>::integrate(const size_t e, const size_t i, const
     T integral = T{0};
     const auto& el = _base::mesh().element();
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
-        integral += el.weight(q) * el.qN(i, q) * el.qN(j, q);
+        integral += el.weight(q) * el.qN(0, i, q) * el.qN(0, j, q);
     return integral * _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
 
