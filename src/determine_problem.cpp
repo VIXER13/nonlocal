@@ -19,11 +19,13 @@ std::string _determine_problem::init_available_problems_list(const std::set<conf
     return result + " ]";
 }
 
-std::vector<std::string> _determine_problem::get_required_fields(const bool is_time_dependent) {
+std::vector<std::string> _determine_problem::get_required_fields(const uint64_t dimension, const bool is_time_dependent) {
+    std::vector<std::string> fields = {"boundaries", "materials"};
+    if (dimension > 1)
+        fields.push_back("mesh");
     if (is_time_dependent)
-        return {"boundaries", "materials", "time"};
-    else
-        return {"boundaries", "materials"};
+        fields.push_back("time");
+    return fields;
 }
 
 bool _determine_problem::is_thermal_problem(const config::problem_t problem) {

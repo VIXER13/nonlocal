@@ -1,5 +1,5 @@
-#ifndef NONLOCAL_THERMAL_PARAMETERS_1D
-#define NONLOCAL_THERMAL_PARAMETERS_1D
+#ifndef NONLOCAL_THERMAL_PARAMETERS_2D
+#define NONLOCAL_THERMAL_PARAMETERS_2D
 
 #include "metamath.hpp"
 #include "../../equation_parameters.hpp"

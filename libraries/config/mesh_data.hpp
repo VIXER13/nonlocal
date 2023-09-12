@@ -28,8 +28,8 @@ struct mesh_data final {
     std::filesystem::path path; // required
 
     explicit mesh_data() = default;
-    explicit mesh_data(const nlohmann::json& config, const std::string& path = "") {
-        check_required_fields(config, { "path" }, append_access_sign(path));
+    explicit mesh_data(const nlohmann::json& config, const std::string& config_path = "") {
+        check_required_fields(config, { "path" }, append_access_sign(config_path));
         path = config["path"].get<std::string>();
     }
 

@@ -85,8 +85,7 @@ mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh)
     , _quad_node_shift{utils::element_node_shits_quadrature_shifts_2d(container())}
     , _derivatives{utils::derivatives_in_quad(container(), _quad_shifts, _quad_node_shift, _jacobi_matrices)}
     , _MPI_ranges{container().nodes_count()}
-    , _elements_neighbors(container().elements_2d_count())
-{}
+    , _elements_neighbors(container().elements_2d_count()) {}
 
 template<class T, class I>
 const mesh_container_2d<T, I>& mesh_2d<T, I>::container() const {
@@ -217,6 +216,8 @@ void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& ra
     _elements_neighbors.resize(container().elements_2d_count());
     const std::vector<std::array<T, 2>> centers = utils::approx_centers_of_elements(container());
     for(const auto& [group, radius] : radii) {
+        if (radius == T{0})
+            continue;
         const auto elements_range = container().elements(group);
         for(const size_t eL : elements_range) {
             _elements_neighbors[eL].reserve(elements_range.size());

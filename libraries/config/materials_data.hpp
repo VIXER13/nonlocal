@@ -35,8 +35,8 @@ struct materials_data final {
         } else {
             if (!config.is_object() || config.empty())
                 _materials_data::throw_error(path, "object");
-            for(const auto& [name, material] : config)
-                materials.emplace(name, material, append_access_sign(path, name));
+            for(const auto& [name, material] : config.items())
+                materials.emplace(name, material_data<Physics, T, Dimension>{material, append_access_sign(path + '.' + name)});
         }
     }
 };

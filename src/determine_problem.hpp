@@ -2,6 +2,7 @@
 #define NONLOCFEM_DETERMINE_PROBLEM_HPP
 
 #include "thermal_problems_1d.hpp"
+#include "thermal_problems_2d.hpp"
 
 #include <set>
 
@@ -13,7 +14,7 @@ class _determine_problem final {
     static void init_save_data(const nonlocal::config::save_data& save, const nlohmann::json& config);
 
     static std::string init_available_problems_list(const std::set<config::problem_t>& available_problems);
-    static std::vector<std::string> get_required_fields(const bool is_time_dependent);
+    static std::vector<std::string> get_required_fields(const uint64_t dimension, const bool is_time_dependent);
 
     static bool is_thermal_problem(const config::problem_t problem);
     static bool is_mechanical_problem(const config::problem_t problem);
@@ -43,8 +44,8 @@ void problems_1d(const nlohmann::json& config, const config::save_data& save, co
         };
     }
 
-    config::check_required_fields(config, _determine_problem::get_required_fields(_determine_problem::is_time_dependent_problem(problem)));
-    config::check_required_fields(config, {"mesh", "auxiliary"});
+    config::check_required_fields(config, _determine_problem::get_required_fields(1, _determine_problem::is_time_dependent_problem(problem)));
+    config::check_optional_fields(config, {"mesh", "auxiliary"});
     if (_determine_problem::is_thermal_problem(problem))
         thermal::solve_thermal_1d_problem<T, I>(config, save, problem);
 }
@@ -63,12 +64,10 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
         };
     }
 
-    if (problem == config::problem_t::THERMAL_STATIONARY)
-        std::cout << "thermal_stationary_2d" << std::endl;
-    else if (problem == config::problem_t::THERMAL_NONSTATIONARY)
-        std::cout << "thermal_nonstationary_2d" << std::endl;
-    else if (problem == config::problem_t::MECHANICAL_EQUILIBRIUM)
-        std::cout << "equilibrium" << std::endl;
+    config::check_required_fields(config, _determine_problem::get_required_fields(2, _determine_problem::is_time_dependent_problem(problem)));
+    config::check_optional_fields(config, {"auxiliary"});
+    if (_determine_problem::is_thermal_problem(problem))
+        thermal::solve_thermal_2d_problem<T, I>(config, save, problem);
 }
 
 template<std::floating_point T, std::signed_integral I>

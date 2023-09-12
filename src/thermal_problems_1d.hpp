@@ -1,5 +1,5 @@
-#ifndef NONLOCFEM_THERMAL_PROBLEMS_UTILS_HPP
-#define NONLOCFEM_THERMAL_PROBLEMS_UTILS_HPP
+#ifndef NONLOCFEM_THERMAL_PROBLEMS_1D_HPP
+#define NONLOCFEM_THERMAL_PROBLEMS_1D_HPP
 
 #include "make_element_1d.hpp"
 
@@ -106,38 +106,38 @@ void save_solution(thermal::heat_equation_solution_1d<T>&& solution,
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const config::problem_t problem) {
     const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
-        const auto mesh = make_mesh_1d(get_segments_data(materials), 
-                                       config::mesh_data<1u>{config.value("mesh", nlohmann::json::object()), "mesh"});
-        const auto parameters = thermal::make_thermal_parameters<T>(materials.materials);
-        const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
-        const auto boundaries_conditions = thermal::make_thermal_boundaries_conditions_1d(
-            config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
-        );
+    const auto mesh = make_mesh_1d(get_segments_data(materials), 
+                                   config::mesh_data<1u>{config.value("mesh", nlohmann::json::object()), "mesh"});
+    const auto parameters = thermal::make_thermal_parameters<T>(materials.materials);
+    const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
+    const auto boundaries_conditions = thermal::make_thermal_boundaries_conditions_1d(
+        config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
+    );
 
-        if (problem == config::problem_t::THERMAL_STATIONARY) {
-            auto solution = thermal::stationary_heat_equation_solver_1d<T, I>(
-                mesh, parameters, boundaries_conditions,
-                thermal::stationary_equation_parameters_1d<T>{
-                    .right_part = [value = auxiliary.right_part](const T x) constexpr noexcept { return value; },
-                    .initial_distribution = [value = auxiliary.initial_distribution](const T x) constexpr noexcept { return value; },
-                    .energy = auxiliary.energy
-                }
-            );
-            save_solution(std::move(solution), save);
-        } else if (problem == config::problem_t::THERMAL_NONSTATIONARY) {
-            config::check_required_fields(config, {"time"});
-            const config::time_data<T> time{config["time"], "time"};
-            thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-            solver.compute(parameters, boundaries_conditions,
-                [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
-            save_solution(thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, 0u);
-            for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-                solver.calc_step(boundaries_conditions,
-                    [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
-                if (step % time.save_frequency == 0)
-                    save_solution(thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, step);
+    if (problem == config::problem_t::THERMAL_STATIONARY) {
+        auto solution = thermal::stationary_heat_equation_solver_1d<T, I>(
+            mesh, parameters, boundaries_conditions,
+            thermal::stationary_equation_parameters_1d<T>{
+                .right_part = [value = auxiliary.right_part](const T x) constexpr noexcept { return value; },
+                .initial_distribution = [value = auxiliary.initial_distribution](const T x) constexpr noexcept { return value; },
+                .energy = auxiliary.energy
             }
+        );
+        save_solution(std::move(solution), save);
+    } else if (problem == config::problem_t::THERMAL_NONSTATIONARY) {
+        config::check_required_fields(config, {"time"});
+        const config::time_data<T> time{config["time"], "time"};
+        thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+        solver.compute(parameters, boundaries_conditions,
+            [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
+        save_solution(thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, 0u);
+        for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+            solver.calc_step(boundaries_conditions,
+                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
+            if (step % time.save_frequency == 0)
+                save_solution(thermal::heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, step);
         }
+    }
 }
 
 }
