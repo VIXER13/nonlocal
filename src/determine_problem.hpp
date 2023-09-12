@@ -3,16 +3,31 @@
 
 #include "thermal_problems_1d.hpp"
 
+#include <set>
+
 namespace nonlocal {
 
 class _determine_problem final {
     constexpr explicit _determine_problem() noexcept = default;
 
+    static void init_save_data(const nonlocal::config::save_data& save, const nlohmann::json& config);
+
+    static std::string init_available_problems_list(const std::set<config::problem_t>& available_problems);
     static std::vector<std::string> get_required_fields(const bool is_time_dependent);
+
+    static bool is_thermal_problem(const config::problem_t problem);
+    static bool is_mechanical_problem(const config::problem_t problem);
+    static bool is_time_dependent_problem(const config::problem_t problem);
 
 public:
     template<std::floating_point T, std::signed_integral I>
     friend void problems_1d(const nlohmann::json& config, const config::save_data& save, const config::problem_t problem);
+
+    template<std::floating_point T, std::signed_integral I>
+    friend void problems_2d(const nlohmann::json& config, const config::save_data& save, const config::problem_t problem);
+
+    template<std::floating_point T, std::signed_integral I>
+    friend void determine_problem(const nlohmann::json& config);
 };
 
 template<std::floating_point T, std::signed_integral I>
@@ -24,18 +39,18 @@ void problems_1d(const nlohmann::json& config, const config::save_data& save, co
     if (!available_problems.contains(problem)) {
         throw std::domain_error{
             "In the one-dimensional case, the following problems are available: " +
-            init_available_problems_list(available_problems)
+            _determine_problem::init_available_problems_list(available_problems)
         };
     }
 
-    config::check_required_fields(config, _determine_problem::get_required_fields(is_time_dependent_problem(problem)));
+    config::check_required_fields(config, _determine_problem::get_required_fields(_determine_problem::is_time_dependent_problem(problem)));
     config::check_required_fields(config, {"mesh", "auxiliary"});
-    if (is_thermal_problem(problem))
+    if (_determine_problem::is_thermal_problem(problem))
         thermal::solve_thermal_1d_problem<T, I>(config, save, problem);
 }
 
 template<std::floating_point T, std::signed_integral I>
-void problems_2d(const nlohmann::json& config, const nonlocal::config::save_data& save, const config::problem_t problem) {
+void problems_2d(const nlohmann::json& config, const config::save_data& save, const config::problem_t problem) {
     static const std::set<config::problem_t> available_problems = {
         config::problem_t::THERMAL_STATIONARY,
         config::problem_t::THERMAL_NONSTATIONARY,
@@ -44,7 +59,7 @@ void problems_2d(const nlohmann::json& config, const nonlocal::config::save_data
     if (!available_problems.contains(problem)) {
         throw std::domain_error{
             "In the two-dimensional case, the following problems are available: " +
-            init_available_problems_list(available_problems)
+            _determine_problem::init_available_problems_list(available_problems)
         };
     }
 
@@ -61,7 +76,7 @@ void determine_problem(const nlohmann::json& config) {
     const bool contains_save = config.contains("save");
     const auto save = contains_save ? nonlocal::config::save_data{config["save"], "save"} : nonlocal::config::save_data{};
     if (contains_save)
-        init_save_data(save, config);
+        _determine_problem::init_save_data(save, config);
     else
         std::cerr << "WARNING: There is no \"save\" field in the config. Required data may not be saved." << std::endl;
 
