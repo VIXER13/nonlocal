@@ -80,7 +80,7 @@ std::vector<T> from_qnodes_to_nodes(const mesh::mesh_1d<T>& mesh, const Vector& 
 }
 
 template<class T, std::ranges::random_access_range Vector>
-void save_as_csv(const mesh::mesh_1d<T>& mesh, const Vector& x, const std::filesystem::path& path, 
+void save_as_csv(const std::filesystem::path& path, const mesh::mesh_1d<T>& mesh, const Vector& x,
                  const std::optional<std::streamsize> precision = std::nullopt) {
     if (mesh.nodes_count() != x.size())
         throw std::logic_error{"The result cannot be saved because the mesh nodes number and elements in the vector do not match."};

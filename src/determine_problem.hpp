@@ -11,7 +11,7 @@ namespace nonlocal {
 class _determine_problem final {
     constexpr explicit _determine_problem() noexcept = default;
 
-    static void init_save_data(const nonlocal::config::save_data& save, const nlohmann::json& config);
+    static void init_save_data(const config::save_data& save, const nlohmann::json& config);
 
     static std::string init_available_problems_list(const std::set<config::problem_t>& available_problems);
     static std::vector<std::string> get_required_fields(const uint64_t dimension, const bool is_time_dependent);
@@ -73,14 +73,14 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
 template<std::floating_point T, std::signed_integral I>
 void determine_problem(const nlohmann::json& config) {
     const bool contains_save = config.contains("save");
-    const auto save = contains_save ? nonlocal::config::save_data{config["save"], "save"} : nonlocal::config::save_data{};
+    const auto save = contains_save ? config::save_data{config["save"], "save"} : nonlocal::config::save_data{};
     if (contains_save)
         _determine_problem::init_save_data(save, config);
     else
         std::cerr << "WARNING: There is no \"save\" field in the config. Required data may not be saved." << std::endl;
 
-    nonlocal::config::check_required_fields(config, {"task"});
-    if (const nonlocal::config::task_data task{config["task"], "task"}; task.dimension == 1)
+    config::check_required_fields(config, {"task"});
+    if (const config::task_data task{config["task"], "task"}; task.dimension == 1)
         problems_1d<T, I>(config, save, task.problem);
     else if (task.dimension == 2)
         problems_2d<T, I>(config, save, task.problem);
