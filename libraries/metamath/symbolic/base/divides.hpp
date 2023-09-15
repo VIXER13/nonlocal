@@ -72,6 +72,14 @@ constexpr auto simplify(const divides<E, integral_constant<N>>& d) noexcept {
     return simplify(e);
 }
 
+template<class E1U, class E1D, class E2U, class E2D>
+constexpr auto simplify(const multiplies<divides<E1U, E1D>, divides<E2U, E2D>>& e) noexcept {
+    const auto [l, r] = e.expr();
+    const auto [lu, ld] = l.expr();
+    const auto [ru, rd] = r.expr();
+    return simplify((lu * ru) / (ld * rd));
+}
+
 }
 
 #endif
