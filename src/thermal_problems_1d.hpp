@@ -3,6 +3,7 @@
 
 #include "make_element_1d.hpp"
 
+#include "logger.hpp"
 #include "nonlocal_config.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
@@ -92,7 +93,7 @@ void save_solution(thermal::heat_equation_solution_1d<T>&& solution,
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (step);
-        std::cout << "INFO: step = " << *step << std::endl;
+        logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;
     const auto save_vector = [&solution, &save, step](const std::vector<T>& x, const std::string& name) {
         const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + name, "csv") : save.path(name, "csv");
         mesh::utils::save_as_csv(path, solution.mesh(), x, save.precision());

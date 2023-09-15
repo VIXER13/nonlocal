@@ -25,6 +25,7 @@ include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
 conan_basic_setup()
 
 # libraries
+add_subdirectory(libraries/logger)
 add_subdirectory(libraries/parallel_utils)
 add_subdirectory(libraries/metamath)
 add_subdirectory(libraries/constants)

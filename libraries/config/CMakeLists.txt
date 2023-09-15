@@ -16,4 +16,5 @@ target_include_directories(config_lib PUBLIC
 )
 target_link_libraries(config_lib 
     nonlocal_constants_lib
+    logger_lib
 )

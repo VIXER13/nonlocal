@@ -77,7 +77,7 @@ void determine_problem(const nlohmann::json& config) {
     if (contains_save)
         _determine_problem::init_save_data(save, config);
     else
-        std::cerr << "WARNING: There is no \"save\" field in the config. Required data may not be saved." << std::endl;
+        logger::get().log(logger::log_level::WARNING) << "There is no \"save\" field in the config. Required data may not be saved." << std::endl;
 
     config::check_required_fields(config, {"task"});
     if (const config::task_data task{config["task"], "task"}; task.dimension == 1)
