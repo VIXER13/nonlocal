@@ -17,7 +17,7 @@ class save_data final {
 
 public:
     explicit save_data() = default;
-    explicit save_data(const nlohmann::json& config, const std::string& path = "");
+    explicit save_data(const nlohmann::json& config, const std::string& path = {});
 
     std::optional<std::streamsize> precision() const noexcept;
     const std::filesystem::path& folder() const noexcept;

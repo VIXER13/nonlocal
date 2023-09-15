@@ -82,7 +82,7 @@
         "emissivity": 4.0
     },
 
-    "thermal_equation": {
+    "thermal_auxiliary": {
         "energy": 1.0,
         "right_part": 2.0,
         "initial_distribution": 3.0

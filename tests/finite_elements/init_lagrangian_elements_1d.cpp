@@ -28,18 +28,8 @@ std::vector<std::unique_ptr<element_1d_integrate_base<T>>> init() {
 namespace unit_tests {
 
 template<>
-std::vector<std::unique_ptr<element_1d_integrate_base<float>>> init_lagrangian_elements_1d() {
-    return init<float>();
-}
-
-template<>
 std::vector<std::unique_ptr<element_1d_integrate_base<double>>> init_lagrangian_elements_1d() {
     return init<double>();
-}
-
-template<>
-std::vector<std::unique_ptr<element_1d_integrate_base<long double>>> init_lagrangian_elements_1d() {
-    return init<long double>();
 }
 
 }

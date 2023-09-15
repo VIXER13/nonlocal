@@ -13,7 +13,7 @@ struct material_data final {
     model_data<T, Dimension> model;
 
     explicit constexpr material_data() noexcept = default;
-    explicit material_data(const nlohmann::json& config, const std::string& path = "") {
+    explicit material_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string path_with_access = append_access_sign(path);
         check_required_fields(config, { "physical" }, path_with_access);
         physical = Physics<T, Dimension>{config["physical"], path_with_access + "physical"};
@@ -37,7 +37,7 @@ struct material_data<Physics, T, 1> final {
     model_data<T, 1> model;
 
     explicit constexpr material_data() noexcept = default;
-    explicit material_data(const nlohmann::json& config, const std::string& path = "") {
+    explicit material_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string path_with_access = append_access_sign(path);
         check_required_fields(config, { "elements_count", "length", "physical" }, path_with_access);
         check_optional_fields(config, {"model"}, path_with_access);

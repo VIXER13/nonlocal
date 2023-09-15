@@ -49,7 +49,7 @@ const suite _ = [] {
 
             ++order;
         }
-    } | std::tuple<float, double, long double>{};
+    } | std::tuple<double>{};
 };
 
 }

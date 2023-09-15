@@ -29,18 +29,8 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init() {
 namespace unit_tests {
 
 template<>
-std::vector<std::unique_ptr<element_2d_integrate_base<float>>> init_serendipity_elements_2d() {
-    return init<float>();
-}
-
-template<>
 std::vector<std::unique_ptr<element_2d_integrate_base<double>>> init_serendipity_elements_2d() {
     return init<double>();
-}
-
-template<>
-std::vector<std::unique_ptr<element_2d_integrate_base<long double>>> init_serendipity_elements_2d() {
-    return init<long double>();
 }
 
 }

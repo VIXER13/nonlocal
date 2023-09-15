@@ -11,7 +11,7 @@ class mock_data final {
 
 public:
     explicit constexpr mock_data() noexcept = default;
-    explicit constexpr mock_data(const nlohmann::json& value) 
+    explicit constexpr mock_data(const nlohmann::json& value, const std::string&) 
         : _value(value) {}
 
     constexpr operator nlohmann::json() const {

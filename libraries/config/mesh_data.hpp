@@ -28,7 +28,7 @@ struct mesh_data final {
     std::filesystem::path path; // required
 
     explicit mesh_data() = default;
-    explicit mesh_data(const nlohmann::json& config, const std::string& config_path = "") {
+    explicit mesh_data(const nlohmann::json& config, const std::string& config_path = {}) {
         check_required_fields(config, { "path" }, append_access_sign(config_path));
         path = config["path"].get<std::string>();
     }
@@ -43,10 +43,8 @@ struct mesh_data<1u> final {
     order_t element_order = order_t::LINEAR;
     order_t quadrature_order = element_order;
 
-    static bool is_valid_order(const size_t order) noexcept;
-
     explicit constexpr mesh_data() noexcept = default;
-    explicit mesh_data(const nlohmann::json& config, const std::string& path = "");
+    explicit mesh_data(const nlohmann::json& config, const std::string& path = {});
 
     operator nlohmann::json() const;
 };

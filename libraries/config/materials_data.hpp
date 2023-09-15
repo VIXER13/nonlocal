@@ -24,7 +24,7 @@ struct materials_data final {
 
     materials_t materials;
 
-    explicit materials_data(const nlohmann::json& config, const std::string& path = "") {
+    explicit materials_data(const nlohmann::json& config, const std::string& path = {}) {
         using namespace std::literals;
         if constexpr (Dimension == 1) {
             if (!config.is_array() || config.empty())

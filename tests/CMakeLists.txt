@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(nonlocal_tests)
 
+FileEmbedSetup()
+
 add_subdirectory(config)
 add_subdirectory(finite_elements)
 add_subdirectory(parallel_utils)

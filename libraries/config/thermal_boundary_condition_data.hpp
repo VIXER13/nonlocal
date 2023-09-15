@@ -36,7 +36,7 @@ struct thermal_boundary_condition_data final {
     T emissivity = T{0};    // required if kind == RADIATION
 
     explicit constexpr thermal_boundary_condition_data() noexcept = default;
-    explicit thermal_boundary_condition_data(const nlohmann::json& config, const std::string& path) {
+    explicit thermal_boundary_condition_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string path_with_access = append_access_sign(path);
         check_required_fields(config, { "kind" }, path_with_access);
 

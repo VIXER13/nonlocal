@@ -12,7 +12,7 @@ struct thermal_auxiliary_data final {
     T initial_distribution = 0; // Used for nonstationary and nonlinear problems
 
     explicit constexpr thermal_auxiliary_data() noexcept = default;
-    explicit thermal_auxiliary_data(const nlohmann::json& config, const std::string& path = "") {
+    explicit thermal_auxiliary_data(const nlohmann::json& config, const std::string& path = {}) {
         check_optional_fields(config, {"energy", "right_part", "initial_distribution"}, append_access_sign(path));
         energy = config.value("energy", T{0});
         right_part = config.value("right_part", T{0});

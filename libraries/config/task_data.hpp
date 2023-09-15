@@ -23,7 +23,7 @@ struct task_data final {
     uint64_t dimension = 0;
     problem_t problem = problem_t::UNKNOWN;
 
-    explicit task_data(const nlohmann::json& config, const std::string& path);
+    explicit task_data(const nlohmann::json& config, const std::string& path = {});
 
     operator nlohmann::json() const;
 };

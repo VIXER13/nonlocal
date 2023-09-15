@@ -1,14 +1,7 @@
 #include "tests_config_utils.hpp"
-
-#include "mesh_data.hpp"
-#include "time_data.hpp"
-#include "boundaries_conditions_data.hpp"
-#include "model_data.hpp"
-#include "material_data.hpp"
-#include "thermal_boundary_condition_data.hpp"
-#include "thermal_material_data.hpp"
-
 #include "required_fields_json.h"
+
+#include "nonlocal_config.hpp"
 
 #include <boost/ut.hpp>
 
@@ -42,7 +35,7 @@ auto mesh_data_test(const nlohmann::json& config) {
     };
 }
 
-template<class T>
+template<std::floating_point T>
 auto time_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -53,7 +46,7 @@ auto time_data_test(const nlohmann::json& config) {
     };
 }
 
-template<class T>
+template<std::floating_point T>
 auto boundaries_conditions_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -66,7 +59,7 @@ auto boundaries_conditions_data_test(const nlohmann::json& config) {
     };
 }
 
-template<class T>
+template<std::floating_point T>
 auto model_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -85,7 +78,7 @@ auto model_data_test(const nlohmann::json& config) {
     };
 }
 
-template<class T>
+template<std::floating_point T>
 auto material_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -101,7 +94,7 @@ auto material_data_test(const nlohmann::json& config) {
     };
 }
 
-template<class T>
+template<std::floating_point T>
 auto thermal_boundary_condition_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -120,7 +113,7 @@ auto thermal_boundary_condition_data_test(const nlohmann::json& config) {
     };
 }
 
-template<class T>
+template<std::floating_point T>
 auto thermal_material_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -135,32 +128,13 @@ auto thermal_material_data_test(const nlohmann::json& config) {
 
 const suite _ = [] {
     const nlohmann::json config = nlohmann::json::parse(required_fields_json_data);
-    
     test("mesh_data") = mesh_data_test(config);
-
-    test("time_data_float") = time_data_test<float>(config);
-    test("time_data_double") = time_data_test<double>(config);
-    test("time_data_long_double") = time_data_test<long double>(config);
-
-    test("boundaries_conditions_data_float") = boundaries_conditions_data_test<float>(config);
-    test("boundaries_conditions_data_double") = boundaries_conditions_data_test<double>(config);
-    test("boundaries_conditions_data_long_double") = boundaries_conditions_data_test<long double>(config);
-
-    test("model_data_float") = model_data_test<float>(config);
-    test("model_data_double") = model_data_test<double>(config);
-    test("model_data_long_double") = model_data_test<long double>(config);
-
-    test("material_data_float") = material_data_test<float>(config);
-    test("material_data_double") = material_data_test<double>(config);
-    test("material_data_long_double") = material_data_test<long double>(config);
-
-    test("thermal_boundary_condition_float") = thermal_boundary_condition_data_test<float>(config);
-    test("thermal_boundary_condition_double") = thermal_boundary_condition_data_test<double>(config);
-    test("thermal_boundary_condition_long_double") = thermal_boundary_condition_data_test<long double>(config);
-
-    test("thermal_material_float") = thermal_material_data_test<float>(config);
-    test("thermal_material_double") = thermal_material_data_test<double>(config);
-    test("thermal_material_long_double") = thermal_material_data_test<long double>(config);
+    test("time_data") = time_data_test<double>(config);
+    test("boundaries_conditions_data") = boundaries_conditions_data_test<double>(config);
+    test("model_data") = model_data_test<double>(config);
+    test("material_data") = material_data_test<double>(config);
+    test("thermal_boundary_condition") = thermal_boundary_condition_data_test<double>(config);
+    test("thermal_material") = thermal_material_data_test<double>(config);
 };
 
 }

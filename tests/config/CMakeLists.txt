@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(config_tests)
 
-FileEmbedSetup()
 FileEmbedAdd(required_fields.json)
 FileEmbedAdd(reverse_conversion.json)
 
