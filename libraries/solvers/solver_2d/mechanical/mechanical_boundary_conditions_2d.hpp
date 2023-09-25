@@ -40,6 +40,12 @@ public:
 };
 
 template<class T>
+using mechanical_boundary_condition_2d = boundary_condition_2d<T, physics_t::MECHANICAL>;
+
+template<class T>
+using mechanical_boundary_conditions_2d = boundary_conditions_2d<T, physics_t::MECHANICAL, 2>;
+
+template<class T>
 using mechanical_boundaries_conditions_2d = boundaries_conditions_2d<T, physics_t::MECHANICAL, 2>;
 
 }

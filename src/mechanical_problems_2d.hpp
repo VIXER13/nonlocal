@@ -25,39 +25,57 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
     return parameters;
 }
 
-// template<std::floating_point T>
-// mechanical_boundaries_conditions_2d<T> make_boundary_condition(const config::thermal_boundary_condition_data<T, 2>& condition) {
-//     switch (condition.kind) {
-//     case config::thermal_boundary_condition_t::TEMPERATURE:
-//         return std::make_unique<temperature_2d<T>>(condition.temperature);
+template<std::floating_point T>
+std::unique_ptr<mechanical_boundary_condition_2d<T>> make_boundary_condition(
+    const std::optional<config::mechanical_boundary_condition_data<T>>& condition) {
+    if (!condition)
+        return nullptr;
 
-//     case config::thermal_boundary_condition_t::FLUX:
-//         return std::make_unique<flux_2d<T>>(condition.flux);
+    switch (condition->kind) {
+    case config::mechanical_boundary_condition_t::DISPLACEMENT:
+        return std::make_unique<displacement_2d<T>>(condition->value);
+    
+    case config::mechanical_boundary_condition_t::PRESSURE:
+        return std::make_unique<pressure_2d<T>>(condition->value);
+    
+    default:
+        throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(condition->kind))};
+    }
+}
 
-//     case config::thermal_boundary_condition_t::CONVECTION:
-//         return std::make_unique<convection_2d<T>>(condition.heat_transfer, condition.temperature);
+template<std::floating_point T>
+mechanical_boundary_conditions_2d<T> make_boundary_conditions(const config::mechanical_boundary_conditions_data<T, 2u>& conditions) {
+    mechanical_boundary_conditions_2d<T> result;
+    result[0] = make_boundary_condition(conditions.conditions[0]);
+    result[1] = make_boundary_condition(conditions.conditions[1]);
+    return result;
+}
 
-//     case config::thermal_boundary_condition_t::RADIATION:
-//         return std::make_unique<radiation_2d<T>>(condition.emissivity);
-
-//     case config::thermal_boundary_condition_t::COMBINED:
-//         return std::make_unique<combined_flux_2d<T>>(
-//             condition.flux,
-//             condition.heat_transfer, condition.temperature,
-//             condition.emissivity);
-
-//     default:
-//         throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(condition.kind))};
-//     }
-// }
+template<std::floating_point T>
+mechanical_boundaries_conditions_2d<T> make_boundaries_conditions(const config::mechanical_boundaries_conditions_2d<T>& conditions) {
+    mechanical_boundaries_conditions_2d<T> result;
+    for(const auto& [name, conditions] : conditions.conditions)
+        result[name] = make_boundary_conditions(conditions);
+    return result;
+}
 
 template<std::floating_point T, std::signed_integral I>
 void solve_mechanical_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
     const config::save_data& save, const bool time_dependency) {
+    if (time_dependency)
+        throw std::domain_error{"Mechanical problem does not support time dependence."};
+
     const config::mechanical_materials_2d<T> materials{config["materials"], "materials"};
     mesh->find_neighbours(get_search_radii(materials));
     const auto parameters = make_parameters(materials);
+    const auto boundaries_conditions = make_boundaries_conditions(
+        config::mechanical_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});
+    auto solution = nonlocal::mechanical::equilibrium_equation<I>(
+        mesh, parameters, boundaries_conditions,
+        [](const std::array<T, 2>&) constexpr noexcept { return std::array<T, 2>{}; }
+    );
+    solution.calc_strain_and_stress();
 }
     
 }

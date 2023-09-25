@@ -103,6 +103,7 @@ void solve_thermal_2d_problem(
         );
         save_solution(std::move(solution), save);
     } else {
+        config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
         nonstationary_heat_equation_solver_2d<T, I, int64_t> solver{mesh, time.time_step};
         solver.compute(parameters, boundaries_conditions,

@@ -22,10 +22,10 @@ template<class T>
 using thermal_boundaries_conditions_2d = boundaries_conditions_data<thermal_boundary_condition_data, T, 2>;
 
 template<class T>
-using mechanical_boundaries_conditions_1d = boundaries_conditions_data<mechanical_boundary_condition_data, T, 1>;
+using mechanical_boundaries_conditions_1d = boundaries_conditions_data<mechanical_boundary_conditions_data, T, 1>;
 
 template<class T>
-using mechanical_boundaries_conditions_2d = boundaries_conditions_data<mechanical_boundary_condition_data, T, 2>;
+using mechanical_boundaries_conditions_2d = boundaries_conditions_data<mechanical_boundary_conditions_data, T, 2>;
 
 template<class T>
 using thermal_materials_1d = materials_data<thermal_material_data, T, 1>;
