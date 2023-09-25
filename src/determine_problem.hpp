@@ -3,6 +3,7 @@
 
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
+#include "mechanical_problems_2d.hpp"
 
 #include <set>
 
@@ -66,8 +67,11 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
 
     config::check_required_fields(config, _determine_problem::get_required_fields(2, _determine_problem::is_time_dependent_problem(problem)));
     config::check_optional_fields(config, {"auxiliary"});
+    auto mesh = std::make_shared<mesh::mesh_2d<T, I>>(config::mesh_data<2>{config["mesh"], "mesh"}.path);
     if (_determine_problem::is_thermal_problem(problem))
-        thermal::solve_thermal_2d_problem<T, I>(config, save, problem);
+        thermal::solve_thermal_2d_problem(mesh, config, save, problem);
+    else if (_determine_problem::is_mechanical_problem(problem))
+        mechanical::solve_mechanical_2d_problem(mesh, config, save, problem);
 }
 
 template<std::floating_point T, std::signed_integral I>

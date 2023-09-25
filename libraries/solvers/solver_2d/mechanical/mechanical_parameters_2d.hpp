@@ -22,7 +22,7 @@ using hooke_matrix = std::array<T, 3>;
 
 template<class T>
 struct parameter_2d final {
-    T young_modulus = 210;
+    T youngs_modulus = 210;
     T poissons_ratio = 0.3;
     T thermal_expansion = 13e-6;
 
@@ -43,7 +43,7 @@ struct mechanical_parameters_2d final {
 
 template<class T>
 constexpr T parameter_2d<T>::E(const plane_t plane) const noexcept {
-    return plane == plane_t::STRESS ? young_modulus : young_modulus / (T{1} - poissons_ratio * poissons_ratio);
+    return plane == plane_t::STRESS ? youngs_modulus : youngs_modulus / (T{1} - poissons_ratio * poissons_ratio);
 }
 
 template<class T>

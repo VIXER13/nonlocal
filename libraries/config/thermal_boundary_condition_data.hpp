@@ -9,7 +9,7 @@
 namespace nonlocal::config {
 
 enum class thermal_boundary_condition_t : uint8_t {
-    UNKNOWN,
+    UNDEFINED,
     TEMPERATURE,
     FLUX,
     CONVECTION,
@@ -18,7 +18,7 @@ enum class thermal_boundary_condition_t : uint8_t {
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(thermal_boundary_condition_t, {
-    {thermal_boundary_condition_t::UNKNOWN, nullptr},
+    {thermal_boundary_condition_t::UNDEFINED, nullptr},
     {thermal_boundary_condition_t::TEMPERATURE, "temperature"},
     {thermal_boundary_condition_t::FLUX, "flux"},
     {thermal_boundary_condition_t::CONVECTION, "convection"},
@@ -26,7 +26,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(thermal_boundary_condition_t, {
     {thermal_boundary_condition_t::COMBINED, "combined"}
 })
 
-template<std::floating_point T, size_t Dimension = 0> // Dimension == 0, because it does not depend on the dimension 
+template<std::floating_point T, size_t Dimension>
 struct thermal_boundary_condition_data final {
     thermal_boundary_condition_t kind = thermal_boundary_condition_t::FLUX; // required
     T temperature = T{0};   // required if kind == TEMPERATURE or kind == CONVECTION
@@ -37,37 +37,39 @@ struct thermal_boundary_condition_data final {
 
     explicit constexpr thermal_boundary_condition_data() noexcept = default;
     explicit thermal_boundary_condition_data(const nlohmann::json& config, const std::string& path = {}) {
-        const std::string path_with_access = append_access_sign(path);
-        check_required_fields(config, { "kind" }, path_with_access);
+        const nlohmann::json& conf = config.contains("thermal") ? config["thermal"] : config;
+        const std::string& config_path = config.contains("thermal") ? append_access_sign(path) + "thermal" : path;
+        const std::string path_with_access = append_access_sign(config_path);
+        check_required_fields(conf, { "kind" }, path_with_access);
 
-        switch (kind = config["kind"]) {
+        switch (kind = conf["kind"]) {
         case thermal_boundary_condition_t::TEMPERATURE: {
-            check_required_fields(config, { "temperature" }, path_with_access);
-            temperature = config["temperature"].get<T>();
+            check_required_fields(conf, { "temperature" }, path_with_access);
+            temperature = conf["temperature"].get<T>();
         } break;
 
         case thermal_boundary_condition_t::FLUX: {
-            check_required_fields(config, { "flux" }, path_with_access);
-            flux = config["flux"].get<T>();
+            check_required_fields(conf, { "flux" }, path_with_access);
+            flux = conf["flux"].get<T>();
         } break;
 
         case thermal_boundary_condition_t::CONVECTION: {
-            check_required_fields(config, { "temperature", "heat_transfer" }, path_with_access);
-            temperature = config["temperature"].get<T>();
-            heat_transfer = config["heat_transfer"].get<T>();
+            check_required_fields(conf, { "temperature", "heat_transfer" }, path_with_access);
+            temperature = conf["temperature"].get<T>();
+            heat_transfer = conf["heat_transfer"].get<T>();
         } break;
 
         case thermal_boundary_condition_t::RADIATION: {
-            check_required_fields(config, { "emissivity" }, path_with_access);
-            emissivity = config["emissivity"].get<T>();
+            check_required_fields(conf, { "emissivity" }, path_with_access);
+            emissivity = conf["emissivity"].get<T>();
         } break;
 
         case thermal_boundary_condition_t::COMBINED: {
-            check_optional_fields(config, {"temperature", "flux", "heat_transfer", "emissivity"}, path_with_access);
-            temperature = config.value("temperature", T{0});
-            flux = config.value("flux", T{0});
-            heat_transfer = config.value("heat_transfer", T{0});
-            emissivity = config.value("emissivity", T{0});
+            check_optional_fields(conf, {"temperature", "flux", "heat_transfer", "emissivity"}, path_with_access);
+            temperature = conf.value("temperature", T{0});
+            flux = conf.value("flux", T{0});
+            heat_transfer = conf.value("heat_transfer", T{0});
+            emissivity = conf.value("emissivity", T{0});
         } break;
 
         default:

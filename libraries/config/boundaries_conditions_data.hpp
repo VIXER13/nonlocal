@@ -1,8 +1,6 @@
 #ifndef NONLOCAL_CONFIG_BOUNDARIES_CONDITIONS_DATA_HPP
 #define NONLOCAL_CONFIG_BOUNDARIES_CONDITIONS_DATA_HPP
 
-#include "thermal_boundary_condition_data.hpp"
-
 namespace nonlocal::config {
 
 template<template<class, size_t> class Condition, std::floating_point T, size_t Dimension>
@@ -23,12 +21,6 @@ struct boundaries_conditions_data final {
         return conditions;
     }
 };
-
-template<class T>
-using thermal_boundaries_conditions_1d = boundaries_conditions_data<thermal_boundary_condition_data, T, 1>;
-
-template<class T>
-using thermal_boundaries_conditions_2d = boundaries_conditions_data<thermal_boundary_condition_data, T, 2>;
 
 }
 

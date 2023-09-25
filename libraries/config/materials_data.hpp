@@ -2,7 +2,6 @@
 #define NONLOCAL_CONFIG_THERMAL_MATERIALS_DATA_HPP
 
 #include "material_data.hpp"
-#include "thermal_material_data.hpp"
 
 namespace nonlocal::config {
 
@@ -40,12 +39,6 @@ struct materials_data final {
         }
     }
 };
-
-template<class T>
-using thermal_materials_1d = materials_data<thermal_material_data, T, 1>;
-
-template<class T>
-using thermal_materials_2d = materials_data<thermal_material_data, T, 2>;
 
 }
 
