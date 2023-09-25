@@ -1,7 +1,8 @@
 {
     "task": {
         "dimension": 1,
-        "problem": "thermal_nonstationary"
+        "problem": "thermal_nonstationary",
+        "time_dependency": true
     },
     "save": {
         "folder": "./test",

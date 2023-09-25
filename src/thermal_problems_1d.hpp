@@ -105,7 +105,7 @@ void save_solution(thermal::heat_equation_solution_1d<T>&& solution,
 }
 
 template<std::floating_point T, std::signed_integral I>
-void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const config::problem_t problem) {
+void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
     const auto mesh = make_mesh_1d(get_segments_data(materials), 
                                    config::mesh_data<1u>{config.value("mesh", nlohmann::json::object()), "mesh"});
@@ -115,7 +115,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
     );
 
-    if (problem == config::problem_t::THERMAL_STATIONARY) {
+    if (!time_dependency) {
         auto solution = stationary_heat_equation_solver_1d<T, I>(
             mesh, parameters, boundaries_conditions,
             stationary_equation_parameters_1d<T>{
@@ -125,7 +125,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
             }
         );
         save_solution(std::move(solution), save);
-    } else if (problem == config::problem_t::THERMAL_NONSTATIONARY) {
+    } else {
         const config::time_data<T> time{config["time"], "time"};
         nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
         solver.compute(parameters, boundaries_conditions,
@@ -137,7 +137,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
             if (step % time.save_frequency == 0)
                 save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, step);
         }
-    } else throw std::domain_error{"Unknown problem type: " + std::to_string(uint(problem))};
+    }
 }
 
 }

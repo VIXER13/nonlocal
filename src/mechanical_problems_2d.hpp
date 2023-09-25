@@ -54,7 +54,7 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
 template<std::floating_point T, std::signed_integral I>
 void solve_mechanical_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
-    const config::save_data& save, const config::problem_t problem) {
+    const config::save_data& save, const bool time_dependency) {
     const config::mechanical_materials_2d<T> materials{config["materials"], "materials"};
     mesh->find_neighbours(get_search_radii(materials));
     const auto parameters = make_parameters(materials);

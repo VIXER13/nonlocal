@@ -88,21 +88,21 @@ void save_solution(heat_equation_solution_2d<T, I>&& solution,
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
-    const config::save_data& save, const config::problem_t problem) {
+    const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
     mesh->find_neighbours(get_search_radii(materials));
     const auto parameters = make_parameters(materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = make_boundaries_conditions(
         config::thermal_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});
-    if (problem == config::problem_t::THERMAL_STATIONARY) {
+    if (!time_dependency) {
         auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
             mesh, parameters, boundaries_conditions, 
             [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
             auxiliary.energy
         );
         save_solution(std::move(solution), save);
-    } else if (problem == config::problem_t::THERMAL_NONSTATIONARY) {
+    } else {
         const config::time_data<T> time{config["time"], "time"};
         nonstationary_heat_equation_solver_2d<T, I, int64_t> solver{mesh, time.time_step};
         solver.compute(parameters, boundaries_conditions,
@@ -114,7 +114,7 @@ void solve_thermal_2d_problem(
             if (step % time.save_frequency == 0)
                 save_solution(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, save, step);
         }
-    } else throw std::domain_error{"Unknown problem type: " + std::to_string(uint(problem))};
+    }
 }
 
 }

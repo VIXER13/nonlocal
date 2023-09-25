@@ -1,7 +1,8 @@
 {
     "task": {
         "dimension": 1,
-        "problem": "thermal_stationary"
+        "problem": "thermal_stationary",
+        "time_dependency": false
     },
     "save": {
         "folder": "./test",
