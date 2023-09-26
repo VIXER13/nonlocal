@@ -1,14 +1,13 @@
 {
     "task": {
         "dimension": 1,
-        "problem": "thermal_nonstationary",
+        "problem": "thermal",
         "time_dependency": true
     },
     "save": {
         "folder": "./test",
         "config": "config",
-        "temperature": "temperature",
-        "flux": "flux",
+        "csv": "sol",
         "precision": 18
     },
     "mesh": {

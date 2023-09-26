@@ -79,19 +79,24 @@ std::vector<T> from_qnodes_to_nodes(const mesh::mesh_1d<T>& mesh, const Vector& 
     return gradient;
 }
 
-template<class T, std::ranges::random_access_range Vector>
-void save_as_csv(const std::filesystem::path& path, const mesh::mesh_1d<T>& mesh, const Vector& x,
+template<class T>
+void save_as_csv(const std::filesystem::path& path, const mesh::mesh_1d<T>& mesh,
+                 const std::vector<std::pair<std::string, const std::vector<T>&>>& data,
                  const std::optional<std::streamsize> precision = std::nullopt) {
-    if (mesh.nodes_count() != x.size())
-        throw std::logic_error{"The result cannot be saved because the mesh nodes number and elements in the vector do not match."};
+    for(const auto& [name, vec] : data)
+        if (mesh.nodes_count() != vec.size())
+            throw std::logic_error{"The result cannot be saved because the mesh nodes number "
+                                   "and elements in the vector \"" + name + "\" do not match."};
     std::ofstream csv{path};
     csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-    for(const size_t segment : std::ranges::iota_view{0u, mesh.segments_count()}) {
-        const auto nodes = mesh.nodes(segment);
-        for(const size_t node : std::ranges::iota_view{nodes.front(), nodes.back()}) // exclude last node
-            csv << mesh.node_coord(node) << ',' << x[node] << '\n';
+    csv << (data.empty() ? "x\n" : "x,");
+    for(const size_t j : std::ranges::iota_view{0u, data.size()})
+        csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
+    for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {
+        csv << mesh.node_coord(i) << (data.empty() ? '\n' : ',');
+        for(const size_t j : std::ranges::iota_view{0u, data.size()})
+            csv << data[j].second[i] << (j == data.size() - 1 ? '\n' : ',');
     }
-    csv << mesh.length() << ',' << x[x.size() - 1] << '\n';
 }
 
 }

@@ -70,15 +70,10 @@ void save_solution(thermal::heat_equation_solution_1d<T>&& solution,
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (step);
-        logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;
-    const auto save_vector = [&solution, &save, step](const std::vector<T>& x, const std::string& name) {
-        const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + name, "csv") : save.path(name, "csv");
-        mesh::utils::save_as_csv(path, solution.mesh(), x, save.precision());
-    };
-    if (save.contains("temperature"))
-        save_vector(solution.temperature(), "temperature");
-    if (save.contains("flux"))
-        save_vector(solution.calc_flux(), "flux");
+        logger::get().log(logger::log_level::INFO) << "save step " << *step << std::endl;
+    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
+                                              save.path("csv", "csv", "solution");
+    mesh::utils::save_as_csv(path, solution.mesh(), {{"temperature", solution.temperature()}, {"flux", solution.calc_flux()}}, save.precision());
 }
 
 template<std::floating_point T, std::signed_integral I>
