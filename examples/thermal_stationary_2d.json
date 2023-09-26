@@ -1,10 +1,57 @@
 {
     "task": {
         "dimension": 2,
-        "problem": "thermal_stationary"
+        "problem": "thermal",
+        "time_dependency": false
     },
     "save": {
         "folder": "./test",
-        "config": "config"
+        "config": "config",
+        "csv": "sol",
+        "precision": 18
+    },
+    "mesh": {
+        "path": "../tests/mesh/mesh_2d/sym_rect.su2"
+    },
+    "auxiliary": {
+        "energy": 0,
+        "right_part": 0,
+        "initial_distribution": 0
+    },
+    "boundaries": {
+        "Left": {
+            "kind": "temperature",
+            "temperature": 0
+        },
+        "Right": {
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "materials": {
+        "Left_Material": {
+            "physical": {
+                "conductivity": 1.0,
+                "capacity": 1.0,
+                "density": 1.0
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
+            }
+        },
+        "Right_Material": {
+            "physical": {
+                "conductivity": 10.0,
+                "capacity": 1.0,
+                "density": 1.0
+            },
+            "model": {
+                "local_weight": 0.1,
+                "nonlocal_radius": 0.1,
+                "search_radius": 0.11
+            }
+        }
     }
 }

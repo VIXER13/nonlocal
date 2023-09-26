@@ -89,7 +89,7 @@ void save_as_csv(const std::filesystem::path& path, const mesh::mesh_1d<T>& mesh
                                    "and elements in the vector \"" + name + "\" do not match."};
     std::ofstream csv{path};
     csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-    csv << (data.empty() ? "x\n" : "x,");
+    csv << 'x' << (data.empty() ? '\n' : ',');
     for(const size_t j : std::ranges::iota_view{0u, data.size()})
         csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
     for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {

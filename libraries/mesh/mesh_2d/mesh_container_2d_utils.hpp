@@ -202,16 +202,37 @@ void save_as_vtk(const std::filesystem::path& path_to_save, const mesh_container
     save_as_vtk(vtk, mesh);
 }
 
-template<class T, class I, class Vector>
-void save_as_csv(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh,
-                 const Vector& x, const std::optional<std::streamsize> precision = std::nullopt) {
-    if (x.size() != mesh.nodes_count())
-        throw std::runtime_error{"Cannot save csv file because the mesh points counts does not match the vector length"};
-    std::ofstream csv{path_to_save};
+template<class T, class I>
+void save_as_csv(const std::filesystem::path& path, const mesh_container_2d<T, I>& mesh,
+                 const std::vector<std::pair<std::string, const std::vector<T>&>>& data,
+                 const std::optional<std::streamsize> precision = std::nullopt) {
+    for(const auto& [name, vec] : data)
+        if (mesh.nodes_count() != vec.size())
+            throw std::logic_error{"The result cannot be saved because the mesh nodes number "
+                                   "and elements in the vector \"" + name + "\" do not match."};
+    std::ofstream csv{path};
     csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-    for(const size_t node : mesh.nodes())
-        csv << mesh.node_coord(node)[X] << ',' << mesh.node_coord(node)[Y] << ',' << x[node] << '\n';
+    csv << "x,y" << (data.empty() ? '\n' : ',');
+    for(const size_t j : std::ranges::iota_view{0u, data.size()})
+        csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
+    for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {
+        const std::array<T, 2>& node = mesh.node_coord(i);
+        csv << node[X] << ',' << node[Y] << (data.empty() ? '\n' : ',');
+        for(const size_t j : std::ranges::iota_view{0u, data.size()})
+            csv << data[j].second[i] << (j == data.size() - 1 ? '\n' : ',');
+    }
 }
+
+// template<class T, class I, class Vector>
+// void save_as_csv(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh,
+//                  const Vector& x, const std::optional<std::streamsize> precision = std::nullopt) {
+//     if (x.size() != mesh.nodes_count())
+//         throw std::runtime_error{"Cannot save csv file because the mesh points counts does not match the vector length"};
+//     std::ofstream csv{path_to_save};
+//     csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
+//     for(const size_t node : mesh.nodes())
+//         csv << mesh.node_coord(node)[X] << ',' << mesh.node_coord(node)[Y] << ',' << x[node] << '\n';
+// }
 
 }
 

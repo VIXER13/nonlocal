@@ -70,19 +70,13 @@ void save_solution(heat_equation_solution_2d<T, I>&& solution,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (step);
         logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;
-    const auto save_vector = [&solution, &save, step](const std::vector<T>& x, const std::string& name) {
-        const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + name, "csv") : save.path(name, "csv");
-        mesh::utils::save_as_csv(path, solution.mesh().container(), x, save.precision());
-    };
-    if (save.contains("temperature"))
-        save_vector(solution.temperature(), "temperature");
-    if (const bool contains_x = save.contains("flux_x"), contains_y = save.contains("flux_y"); contains_x || contains_y) {
-        solution.calc_flux();
-        if (contains_x)
-            save_vector(solution.flux()[X], "flux_x");
-        if (contains_y)
-            save_vector(solution.flux()[Y], "flux_y");
-    }
+    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
+                                              save.path("csv", "csv", "solution");
+    const auto& flux = solution.calc_flux();
+    mesh::utils::save_as_csv(path, solution.mesh().container(), 
+        {{"temperature", solution.temperature()}, {"flux_x", flux[X]}, {"flux_y", flux[Y]}},
+        save.precision()
+    );
 }
 
 template<std::floating_point T, std::signed_integral I>
