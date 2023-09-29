@@ -7,8 +7,8 @@
     "save": {
         "folder": "./test",
         "config": "config",
-        "csv": "sol",
-        "precision": 18
+        "csv": "solution_thermal_nonstationary_1d",
+        "precision": 7
     },
     "mesh": {
         "element_order": "linear",

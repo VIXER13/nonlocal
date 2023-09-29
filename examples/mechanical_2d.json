@@ -1,39 +1,41 @@
 {
     "task": {
         "dimension": 2,
-        "problem": "thermal",
+        "problem": "mechanical",
         "time_dependency": false
     },
     "save": {
         "folder": "./test",
         "config": "config",
-        "csv": "solution_thermal_stationary_2d",
-        "precision": 7
+        "csv": "solution_mechanical_2d",
+        "precision": 18
     },
     "mesh": {
         "path": "../tests/mesh/mesh_2d/sym_rect.su2"
     },
-    "auxiliary": {
-        "energy": 0,
-        "right_part": 0,
-        "initial_distribution": 0
-    },
     "boundaries": {
-        "Left": {
-            "kind": "temperature",
-            "temperature": 0
-        },
-        "Right": {
-            "kind": "flux",
-            "flux": 1
-        }
+        "Left": [
+            { "pressure": -1 },
+            null
+        ],
+        "Right": [
+            { "pressure": 1 },
+            null
+        ],
+        "Horizontal": [
+            null,
+            { "displacement": 0 }
+        ],
+        "Vertical": [
+            { "displacement": 0 },
+            null
+        ]
     },
     "materials": {
         "Left_Material": {
             "physical": {
-                "conductivity": 1.0,
-                "capacity": 1.0,
-                "density": 1.0
+                "youngs_modulus": 1.0,
+                "poissons_ratio": 0.3
             },
             "model": {
                 "local_weight": 1.0,
@@ -43,9 +45,8 @@
         },
         "Right_Material": {
             "physical": {
-                "conductivity": 10.0,
-                "capacity": 1.0,
-                "density": 1.0
+                "youngs_modulus": 2.0,
+                "poissons_ratio": 0.2
             },
             "model": {
                 "local_weight": 0.1,

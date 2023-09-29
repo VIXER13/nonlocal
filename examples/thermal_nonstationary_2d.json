@@ -7,8 +7,8 @@
     "save": {
         "folder": "./test",
         "config": "config",
-        "csv": "sol",
-        "precision": 18
+        "csv": "solution_thermal_nonstationary_2d",
+        "precision": 7
     },
     "mesh": {
         "path": "../tests/mesh/mesh_2d/sym_rect.su2"
