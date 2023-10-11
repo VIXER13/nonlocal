@@ -33,7 +33,7 @@ const suite _ = [] {
     test("model_2d") = reverse_conversion<model_data<double, 2>>(config["model_2d"]);
     test("material_1d") = reverse_conversion<material_data<mock_data, double, 1>>(config["material_1d"]);
     test("material_2d") = reverse_conversion<material_data<mock_data, double, 2>>(config["material_2d"]);
-    test("thermal_boundary_condition") = reverse_conversion<thermal_boundary_condition_data<double>>(config["thermal_boundary_condition"]);
+    test("thermal_boundary_condition") = reverse_conversion<thermal_boundary_condition_data<double, 1>>(config["thermal_boundary_condition"]);
     test("thermal_auxiliary") = reverse_conversion<thermal_auxiliary_data<double>>(config["thermal_auxiliary"]);
     test("thermal_material_1d") = reverse_conversion<thermal_material_data<double, 1>>(config["thermal_material_1d"]);
     for(const std::string material : {"thermal_isotropic_material_2d", "thermal_orthotropic_material_2d", "thermal_anisotropic_material_2d"})

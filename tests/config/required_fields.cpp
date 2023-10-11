@@ -98,18 +98,18 @@ template<std::floating_point T>
 auto thermal_boundary_condition_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
-        test("thermal_boundary_condition_missed_all" + suffix)     = expect_throw<thermal_boundary_condition_data<T>>(config["thermal_boundary_condition_missed_all"]);
-        test("thermal_boundary_condition_missed_kind" + suffix)    = expect_throw<thermal_boundary_condition_data<T>>(config["thermal_boundary_condition_missed_kind"]);
-        test("temperature_condition_missed_temperature" + suffix)  = expect_throw<thermal_boundary_condition_data<T>>(config["temperature_condition_missed_temperature"]);
-        test("flux_condition_missed_flux" + suffix)                = expect_throw<thermal_boundary_condition_data<T>>(config["flux_condition_missed_flux"]);
-        test("convection_condition_missed_temperature" + suffix)   = expect_throw<thermal_boundary_condition_data<T>>(config["convection_condition_missed_temperature"]);
-        test("convection_condition_missed_heat_transfer" + suffix) = expect_throw<thermal_boundary_condition_data<T>>(config["convection_condition_missed_heat_transfer"]);
-        test("radiation_condition_missed_emissivity" + suffix)     = expect_throw<thermal_boundary_condition_data<T>>(config["radiation_condition_missed_emissivity"]);
-        test("temperature_condition_all_required_exists" + suffix) = expect_no_throw<thermal_boundary_condition_data<T>>(config["temperature_condition_all_required_exists"]);
-        test("flux_condition_all_required_exists" + suffix)        = expect_no_throw<thermal_boundary_condition_data<T>>(config["flux_condition_all_required_exists"]);
-        test("convection_condition_all_required_exists" + suffix)  = expect_no_throw<thermal_boundary_condition_data<T>>(config["convection_condition_all_required_exists"]);
-        test("radiation_condition_all_required_exists" + suffix)   = expect_no_throw<thermal_boundary_condition_data<T>>(config["radiation_condition_all_required_exists"]);
-        test("combined_condition_flux_missed_all" + suffix)        = expect_no_throw<thermal_boundary_condition_data<T>>(config["combined_condition_flux_missed_all"]);
+        test("thermal_boundary_condition_missed_all" + suffix)     = expect_throw<thermal_boundary_condition_data<T, 1>>(config["thermal_boundary_condition_missed_all"]);
+        test("thermal_boundary_condition_missed_kind" + suffix)    = expect_throw<thermal_boundary_condition_data<T, 1>>(config["thermal_boundary_condition_missed_kind"]);
+        test("temperature_condition_missed_temperature" + suffix)  = expect_throw<thermal_boundary_condition_data<T, 1>>(config["temperature_condition_missed_temperature"]);
+        test("flux_condition_missed_flux" + suffix)                = expect_throw<thermal_boundary_condition_data<T, 1>>(config["flux_condition_missed_flux"]);
+        test("convection_condition_missed_temperature" + suffix)   = expect_throw<thermal_boundary_condition_data<T, 1>>(config["convection_condition_missed_temperature"]);
+        test("convection_condition_missed_heat_transfer" + suffix) = expect_throw<thermal_boundary_condition_data<T, 1>>(config["convection_condition_missed_heat_transfer"]);
+        test("radiation_condition_missed_emissivity" + suffix)     = expect_throw<thermal_boundary_condition_data<T, 1>>(config["radiation_condition_missed_emissivity"]);
+        test("temperature_condition_all_required_exists" + suffix) = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["temperature_condition_all_required_exists"]);
+        test("flux_condition_all_required_exists" + suffix)        = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["flux_condition_all_required_exists"]);
+        test("convection_condition_all_required_exists" + suffix)  = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["convection_condition_all_required_exists"]);
+        test("radiation_condition_all_required_exists" + suffix)   = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["radiation_condition_all_required_exists"]);
+        test("combined_condition_flux_missed_all" + suffix)        = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["combined_condition_flux_missed_all"]);
     };
 }
 
