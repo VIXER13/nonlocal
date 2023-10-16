@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(nonlocalMPI)
+project(nonlocal)
 
 if (WITH_MPI)
     find_package(MPI)
     if(MPI_FOUND)
-        add_definitions(-DMPI_USE=1)
+        add_definitions(-DMPI_USED=1)
 #        set(CMAKE_C_COMPILER ${MPI_C_COMPILER})
 #        set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
     endif()
@@ -21,17 +21,24 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-O2)
 
-#libraries
-add_subdirectory(include/MPI_utils)
-add_subdirectory(include/metamath)
-add_subdirectory(include/mesh/mesh_1d)
-add_subdirectory(include/mesh/mesh_2d)
-add_subdirectory(include/solvers/slae)
-add_subdirectory(include/solvers/solver_1d)
-add_subdirectory(include/solvers/solver_2d)
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup()
 
-#tests
-add_subdirectory(src/1d/thermal)
-add_subdirectory(src/2d/thermal)
-add_subdirectory(src/2d/mechanical)
-add_subdirectory(src/2d/thermomechanical)
+# libraries
+add_subdirectory(libraries/logger)
+add_subdirectory(libraries/parallel_utils)
+add_subdirectory(libraries/metamath)
+add_subdirectory(libraries/constants)
+add_subdirectory(libraries/mesh/mesh_1d)
+add_subdirectory(libraries/mesh/mesh_2d)
+add_subdirectory(libraries/solvers/slae)
+add_subdirectory(libraries/solvers/solver_1d)
+add_subdirectory(libraries/solvers/solver_2d)
+add_subdirectory(libraries/config)
+
+# NonLocFEM
+add_subdirectory(src)
+
+# unit tests
+include(CMakeTools/EmbeddedFiles.cmake)
+add_subdirectory(tests)

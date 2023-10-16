@@ -1,0 +1,58 @@
+{
+    "task": {
+        "dimension": 2,
+        "problem": "mechanical",
+        "time_dependency": false
+    },
+    "save": {
+        "folder": "./test",
+        "config": "config",
+        "csv": "solution_mechanical_2d",
+        "precision": 18
+    },
+    "mesh": {
+        "path": "../tests/mesh/mesh_2d/sym_rect.su2"
+    },
+    "boundaries": {
+        "Left": [
+            { "pressure": -1 },
+            null
+        ],
+        "Right": [
+            { "pressure": 1 },
+            null
+        ],
+        "Horizontal": [
+            null,
+            { "displacement": 0 }
+        ],
+        "Vertical": [
+            { "displacement": 0 },
+            null
+        ]
+    },
+    "materials": {
+        "Left_Material": {
+            "physical": {
+                "youngs_modulus": 1.0,
+                "poissons_ratio": 0.3
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
+            }
+        },
+        "Right_Material": {
+            "physical": {
+                "youngs_modulus": 2.0,
+                "poissons_ratio": 0.2
+            },
+            "model": {
+                "local_weight": 0.1,
+                "nonlocal_radius": 0.1,
+                "search_radius": 0.11
+            }
+        }
+    }
+}

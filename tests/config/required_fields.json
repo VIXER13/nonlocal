@@ -1,0 +1,128 @@
+{
+    "mesh_dim_missed_all": {},
+    "mesh_dim_all_required_exists": {
+        "path": "path/to/mesh.su2"
+    },
+
+    "time_missed_all": {},
+    "time_missed_time_step": {
+        "steps_count": 5
+    },
+    "time_missed_steps_count": {
+        "time_step": 0.1
+    },
+    "time_all_required_exists": {
+        "steps_count": 5,
+        "time_step": 0.1
+    },
+
+    "boundaries_conditions_missed_all": {},
+    "boundaries_conditions_missed_left": {
+        "right": {}
+    },
+    "boundaries_conditions_missed_right": {
+        "left": {}
+    },
+    "boundaries_conditions_all_required_exists": {
+        "right": {},
+        "left": {}
+    },
+
+    "model_dim_missed_all": {},
+    "model_dim_missed_local_weight": {
+        "nonlocal_radius": 0.1
+    },
+    "model_dim_missed_nonlocal_radius": {
+        "local_weight": 0.5
+    },
+    "model_1d_all_required_exists": {
+        "local_weight": 0.5,
+        "nonlocal_radius": 0.1
+    },
+    "model_2d_all_required_exists": {
+        "local_weight": 0.5,
+        "nonlocal_radius": [0.1, 0.2]
+    },
+    "model_3d_all_required_exists": {
+        "local_weight": 0.5,
+        "nonlocal_radius": [0.1, 0.2, 0.3]
+    },
+
+    "material_dim_missed_all": {},
+    "material_1d_missed_elements_count": {
+        "length": 1.0,
+        "physical": {}
+    },
+    "material_1d_missed_length": {
+        "elements_count": 100,
+        "physical": {}
+    },
+    "material_1d_missed_physical": {
+        "elements_count": 100,
+        "length": 1.0
+    },
+    "material_1d_all_required_exists": {
+        "elements_count": 100,
+        "length": 1.0,
+        "physical": {}
+    },
+    "material_dim_all_required_exists": {
+        "physical": {}
+    },
+
+    "thermal_boundary_condition_missed_all": {},
+    "thermal_boundary_condition_missed_kind": {
+        "temperature": 1.0,
+        "flux": 2.0,
+        "heat_transfer": 3.0,
+        "emissivity": 4.0
+    },
+    "temperature_condition_missed_temperature": {
+        "kind": "temperature"
+    },
+    "flux_condition_missed_flux": {
+        "kind": "flux"
+    },
+    "convection_condition_missed_temperature": {
+        "kind": "convection",
+        "heat_transfer": 1.0
+    },
+    "convection_condition_missed_heat_transfer": {
+        "kind": "convection",
+        "temperature": 1.0
+    },
+    "radiation_condition_missed_emissivity": {
+        "kind": "radiation"
+    },
+    "temperature_condition_all_required_exists": {
+        "kind": "temperature",
+        "temperature": 1.0
+    },
+    "flux_condition_all_required_exists": {
+        "kind": "flux",
+        "flux": 2.0
+    },
+    "convection_condition_all_required_exists": {
+        "kind": "convection",
+        "temperature": 1.0,
+        "heat_transfer": 1.0
+    },
+    "radiation_condition_all_required_exists": {
+        "kind": "radiation",
+        "emissivity": 1.0
+    },
+    "combined_condition_flux_missed_all": {
+        "kind": "combined"
+    },
+
+    "thermal_material_dim_missed_all": {},
+    "thermal_material_dim_all_required_exists": {
+        "conductivity": 1.0
+    },
+    "thermal_material_2d_orthotropic_all_required_exists": {
+        "conductivity": [1.0, 2.0]
+    },
+    "thermal_material_2d_anisotropic_all_required_exists": {
+        "conductivity": [1.0, 2.0, 3.0, 4.0]
+    }
+}

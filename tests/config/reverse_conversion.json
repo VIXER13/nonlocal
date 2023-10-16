@@ -1,0 +1,114 @@
+{
+    "save": {
+        "folder": "path/to/folder",
+        "field1": "name1",
+        "field2": "name2",
+        "field3": "name3"
+    },
+
+    "save_with_precision": {
+        "folder": "path/to/folder",
+        "field1": "name1",
+        "field2": "name2",
+        "field3": "name3",
+        "precision": 25
+    },
+    
+    "mesh_1d": {
+        "element_order": "qubic",
+        "quadrature_order": "quadratic"
+    },
+
+    "mesh_2d": {
+        "path": "path/to/mesh.su2"
+    },
+
+    "time": {
+        "time_step": 1.0,
+        "initial_time": -2.0,
+        "steps_count": 123,
+        "save_frequency": 17
+    },
+
+    "boundaries_conditions_1d": {
+        "right": "mock",
+        "left": 42
+    },
+
+    "boundaries_conditions_2d": {
+        "right": "mock",
+        "left": 42,
+        "up": 3.0,
+        "down": false
+    },
+
+    "model_1d": {
+        "local_weight": 2.0,
+        "nonlocal_radius": 3.0,
+        "search_radius": 4.0
+    },
+
+    "model_2d": {
+        "local_weight": 2.0,
+        "nonlocal_radius": [3.0, 4.0],
+        "search_radius": [5.0, 6.0]
+    },
+
+    "material_1d": {
+        "elements_count": 253000000000,
+        "length": 23.0,
+        "physical": "mock",
+        "model": {
+            "local_weight": 2.0,
+            "nonlocal_radius": 3.0,
+            "search_radius": 4.0
+        }
+    },
+
+    "material_2d": {
+        "physical": "mock",
+        "model": {
+            "local_weight": 2.0,
+            "nonlocal_radius": [3.0, 4.0],
+            "search_radius": [5.0, 6.0]
+        }
+    },
+
+    "thermal_boundary_condition": {
+        "kind": "combined",
+        "temperature": 1.0,
+        "flux": 2.0,
+        "heat_transfer": 3.0,
+        "emissivity": 4.0
+    },
+
+    "thermal_auxiliary": {
+        "energy": 1.0,
+        "right_part": 2.0,
+        "initial_distribution": 3.0
+    },
+
+    "thermal_material_1d": {
+        "conductivity": 2.0,
+        "capacity": 3.0,
+        "density": 4.0
+    },
+
+    "thermal_isotropic_material_2d": {
+        "conductivity": 2.0,
+        "capacity": 3.0,
+        "density": 4.0
+    },
+
+    "thermal_orthotropic_material_2d": {
+        "conductivity": [2.0, 3.0],
+        "capacity": 3.0,
+        "density": 4.0
+    },
+
+    "thermal_anisotropic_material_2d": {
+        "conductivity": [2.0, 3.0, 1.0, 2.0],
+        "capacity": 3.0,
+        "density": 4.0
+    }
+}
