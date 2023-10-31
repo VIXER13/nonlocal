@@ -5,7 +5,7 @@
         "time_dependency": true
     },
     "save": {
-        "folder": "./test",
+        "folder": "/home/mikhail/CW7/calc_results2",
         "config": "config",
         "csv": "solution_thermal_nonstationary_1d",
         "precision": 7
@@ -20,48 +20,35 @@
         "initial_distribution": 0
     },
     "time": {
-        "time_step": 0.01,
+        "time_step": 1.0,
         "initial_time": 0.0,
-        "steps_count": 100,
-        "save_frequency": 5
+        "steps_count": 10,
+        "save_frequency": 1
     },
     "boundaries": {
         "left": {
-            "kind": "temperature",
-            "temperature": 0
+            "kind": "flux",
+            "flux": 1
         },
         "right": {
             "kind": "flux",
-            "flux": 1
+            "flux": 0
         }
     },
     "materials": [
         {
-            "elements_count": 100,
-            "length": 1.0,
+            "elements_count": 10,
+            "length": 10.0,
             "physical": {
-                "conductivity": 1.0,
-                "capacity": 1.0,
-                "density": 1.0
+                "conductivity": 7.0,
+                "capacity": 4.0,
+                "density": 2.0,
+                "relaxation_time": 1.0
             },
             "model": {
                 "local_weight": 1.0,
                 "nonlocal_radius": 0,
                 "search_radius": 0
-            }
-        },
-        {
-            "elements_count": 100,
-            "length": 2.0,
-            "physical": {
-                "conductivity": 10.0,
-                "capacity": 1.0,
-                "density": 1.0
-            },
-            "model": {
-                "local_weight": 0.1,
-                "nonlocal_radius": 0.1,
-                "search_radius": 0.1
             }
         }
     ]

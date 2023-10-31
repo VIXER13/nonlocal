@@ -5,8 +5,11 @@
 
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
-#include "thermal/nonstationary_heat_equation_solver_1d.hpp"
+//#include "thermal/nonstationary_heat_equation_solver_1d.hpp" // Подкючение старого класса
+#include "thermal/nonstationary_relax_time_heat_equation_solver_1d.hpp" // Подкючение измененного класса
 #include "influence_functions_1d.hpp"
+
+#include<iostream>
 
 namespace nonlocal::thermal {
 
@@ -23,7 +26,8 @@ parameters_1d<T> make_thermal_parameters(
             .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(
                 materials[i].physical.conductivity,
                 materials[i].physical.capacity,
-                materials[i].physical.density
+                materials[i].physical.density,
+                materials[i].physical.relaxation_time // added relaxation time
             )
         };
     return parameters;
@@ -87,6 +91,9 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
     );
 
+    /*
+        Тут происходит расчет задачи
+    */
     if (!time_dependency) {
         auto solution = stationary_heat_equation_solver_1d<T, I>(
             mesh, parameters, boundaries_conditions,
@@ -100,7 +107,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
-        nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+        nonstationary_relax_time_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
         solver.compute(parameters, boundaries_conditions,
             [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
         save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, 0u);
