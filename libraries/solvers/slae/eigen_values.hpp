@@ -14,20 +14,20 @@
 
 namespace nonlocal::slae {
 
-template<int UpLo = Eigen::Upper, class T, int Major, class I>
-T find_eigen_value(const Eigen::SparseMatrix<T, Major, I>& matrix, const bool is_symmetric, const Spectra::SortRule rule) {
-    if (is_symmetric) {
+template<bool Is_Symmetric, int UpLo = Eigen::Upper, class T, int Major, class I>
+auto find_eigen_value(const Eigen::SparseMatrix<T, Major, I>& matrix, const Spectra::SortRule rule) {
+    if constexpr (Is_Symmetric) {
         Spectra::SparseSymMatProd<T, UpLo, Major, I> op{matrix};
         Spectra::SymEigsSolver<Spectra::SparseSymMatProd<T, UpLo, Major, I>> eigs{op, 1, 256};
         eigs.init();
         eigs.compute(rule);
-        return eigs[1];
+        return eigs.eigenvalues();
     } else {
-        Spectra::SparseGenMatProd<T, Major, I> op{mmm};
+        Spectra::SparseGenMatProd<T, Major, I> op{matrix};
         Spectra::GenEigsSolver<Spectra::SparseGenMatProd<T, Major, I>> eigs{op, 1, 256};
         eigs.init();
         eigs.compute(rule);
-        return eigs[1];
+        return eigs.eigenvalues();
     }
 }
 

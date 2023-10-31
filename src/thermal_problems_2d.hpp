@@ -90,12 +90,22 @@ void solve_thermal_2d_problem(
     const auto boundaries_conditions = make_boundaries_conditions(
         config::thermal_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});
     if (!time_dependency) {
-        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
-            mesh, parameters, boundaries_conditions, 
-            [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
-            auxiliary.energy
-        );
-        save_solution(std::move(solution), save);
+        for(const T s : {-3./9., -2./9., -1./9., 0., 1./9., 2./9., 3./9., 4./9., 5./9., 6./9., 7./9.}) {
+            std::cout << "s = " << s << std::endl;
+            using namespace metamath::finite_element;
+            auto& e = dynamic_cast<element_2d_integrate<T, serendipity, 2>&>(
+                const_cast<mesh::element_integrate_2d<T>&>(mesh->container().element_2d(0))
+            );
+            e.set_parameter(s);
+            e.set_quadrature(quadrature_1d<T, gauss, 3>{}, quadrature_1d<T, gauss, 3>{});
+            mesh->update();
+            auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
+                mesh, parameters, boundaries_conditions, 
+                [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
+                auxiliary.energy
+            );
+            save_solution(std::move(solution), save);
+        }
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};

@@ -11,6 +11,7 @@
 #include "heat_equation_solution_2d.hpp"
 
 #include "conjugate_gradient.hpp"
+#include "eigen_values.hpp"
 
 #include <chrono>
 
@@ -62,11 +63,22 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     if (!is_neumann)
         boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix_bound());
 
+    // start_time = std::chrono::high_resolution_clock::now();
+    // const auto evalue = slae::find_eigen_value<true>(conductivity.matrix_inner(), Spectra::SortRule::SmallestMagn);
+    // elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
+    // std::cout << "Eigen Values time: " << elapsed_seconds.count() << 's' << std::endl;
+    // std::cout << "MaxValue = " << evalue << std::endl;
+
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
     start_time = std::chrono::high_resolution_clock::now();
     if (is_symmetric) {
         std::cout << "symmetric problem" << std::endl;
         const slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix_inner()};
+        // const Eigen::ConjugateGradient<
+        //     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>,
+        //     Eigen::Upper,
+        //     Eigen::IdentityPreconditioner
+        // > solver{conductivity.matrix_inner()};
         temperature = solver.solve(f);
         std::cout << "Iterations: " << solver.iterations() << std::endl;
     } else {
