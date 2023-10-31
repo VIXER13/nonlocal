@@ -25,7 +25,7 @@ class nonstationary_relax_time_heat_equation_solver_1d final {
     thermal_conductivity_matrix_1d<T, I> _conductivity;             // Матрица K
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> _left_matrix;        // Матрица левой части системы
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;                // Правая часть
-    Eigen::Matrix<T, Eigen::Dynamic, 1> _integral_vec;              // Вектор P из курсовой, который аппроксимирует интеграл в уравнении
+    Eigen::Matrix<T, Eigen::Dynamic, 1> _integral_approx;           // Вектор P из курсовой, который аппроксимирует интеграл в уравнении
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;          // Предыдущая температура
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;          // Текущая температура
     const T _relaxation_time = T{2};                                // Время релаксации !!! Пока вызывается из класса
@@ -67,7 +67,7 @@ nonstationary_relax_time_heat_equation_solver_1d<T, I>::nonstationary_relax_time
     , _capacity{mesh}
     , _left_matrix{_conductivity.matrix_inner()}   // Инициализация матрицы левой части 
     , _right_part{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count())}
-    , _integral_vec{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count())}
+    , _integral_approx{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count())}
     , _temperature_prev{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count())}
     , _temperature_curr{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count())}
     , _time_step{time_step} {}
@@ -93,7 +93,7 @@ void nonstationary_relax_time_heat_equation_solver_1d<T, I>::compute(const nonlo
     };
     _capacity.calc_matrix(parameters, is_first_kind);
     _conductivity.template calc_matrix(parameters, is_first_kind);
-    //convection_condition_1d(_conductivity.matrix_inner(), boundaries_conditions); Т.к. рассматриваются только ГУ второго рода
+    convection_condition_1d(_conductivity.matrix_inner(), boundaries_conditions); //Т.к. рассматриваются только ГУ второго рода
 
     // Новый код с _left_matrix
 
@@ -142,28 +142,27 @@ template<class T, class I>
 template<class Right_Part>
 void nonstationary_relax_time_heat_equation_solver_1d<T, I>::calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                             const Right_Part& right_part) {
-
-    //std::cout << "||P|| = " << _integral_vec.norm() << '\n'; // Вывод нормы вектора                                              
+                                          
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
     reset_to_init_values(_conductivity.matrix_inner(), _conductivity_initial_values);
     reset_to_init_values(_capacity.matrix_inner(), _capacity_initial_values);
     reset_to_init_values(_left_matrix, _left_matrix_initial_values);
 
-    //radiation_condition_1d(_capacity.matrix_inner(), boundaries_conditions, time_step());
+    radiation_condition_1d(_capacity.matrix_inner(), boundaries_conditions, time_step());
     boundary_condition_second_kind_1d<T>(_right_part, boundaries_conditions);
     if constexpr (!std::is_same_v<Right_Part, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
         integrate_right_part(_right_part, _conductivity.mesh(), right_part);
     _right_part *= time_step();
     _right_part += (_capacity.matrix_inner() - _relaxation_time * (1. - exp(-time_step() / _relaxation_time)) * _conductivity.matrix_inner()).template selfadjointView<Eigen::Upper>() * _temperature_prev;
-    _right_part += _integral_vec;
+    _right_part += _integral_approx;
     radiation_condition_1d(_conductivity.matrix_inner(), boundaries_conditions, time_step());
     boundary_condition_first_kind_1d(_right_part, _conductivity.matrix_bound(), boundaries_conditions);
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{_left_matrix};
     _temperature_curr = solver.solveWithGuess(_right_part, _temperature_prev);
 
-    _integral_vec = exp(-time_step() / _relaxation_time) * ((_relaxation_time * (1. - exp(-time_step() / _relaxation_time)) * _conductivity.matrix_inner()).template selfadjointView<Eigen::Upper>() * (_temperature_curr - _temperature_prev) + _integral_vec);
+    _integral_approx = exp(-time_step() / _relaxation_time) * ((_relaxation_time * (1. - exp(-time_step() / _relaxation_time)) * _conductivity.matrix_inner()).template selfadjointView<Eigen::Upper>() * (_temperature_curr - _temperature_prev) + _integral_approx);
 }
 
 }

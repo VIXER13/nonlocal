@@ -91,9 +91,6 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
     );
 
-    /*
-        Тут происходит расчет задачи
-    */
     if (!time_dependency) {
         auto solution = stationary_heat_equation_solver_1d<T, I>(
             mesh, parameters, boundaries_conditions,
