@@ -12,11 +12,10 @@ add_library(config_test_lib OBJECT
 target_include_directories(config_test_lib PRIVATE
     "."
     ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
+    embedded_files
 )
 target_link_libraries(config_test_lib 
     PRIVATE
     embedded_files
-
-    PUBLIC
     config_lib
 )

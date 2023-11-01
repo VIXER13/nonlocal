@@ -17,5 +17,6 @@ target_include_directories(finite_elements_test_lib PUBLIC
     ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
 )
 target_link_libraries(finite_elements_test_lib
+    PRIVATE
     metamath_lib
 )

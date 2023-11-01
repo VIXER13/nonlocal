@@ -46,7 +46,7 @@ std::vector<std::array<T, 2>> init_points(const std::string& element_type) {
     return points;
 }
 
-const suite _ = [] {
+const suite<"element_2d"> _ = [] {
     using namespace std::literals;
     for(const auto element_type : {"triangle"s, "serendipity"s, "lagrangian"s}) {
         test(element_type + "_element_2d") = [element_type]<class T> {

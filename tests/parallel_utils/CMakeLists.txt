@@ -10,5 +10,6 @@ target_include_directories(parallel_utils_test_lib PUBLIC
     ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
 )
 target_link_libraries(parallel_utils_test_lib
+    PRIVATE
     parallel_utils_lib
 )

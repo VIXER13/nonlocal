@@ -4,7 +4,7 @@
 
 namespace {
 
-const boost::ut::suite _ = [] {
+const boost::ut::suite<"uniform_range"> _ = [] {
     using namespace boost::ut;
     using namespace parallel_utils;
 

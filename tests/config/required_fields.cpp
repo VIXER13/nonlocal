@@ -50,9 +50,9 @@ template<std::floating_point T>
 auto boundaries_conditions_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
-        test("boundaries_conditions_1d_missed_all" + suffix)          = expect_throw<boundaries_conditions_data<mock_data, T, 1>>(config["boundaries_conditions_all_missed"]);
-        test("boundaries_conditions_2d_missed_all" + suffix)          = expect_no_throw<boundaries_conditions_data<mock_data, T, 2>>(config["boundaries_conditions_all_missed"]);
-        test("boundaries_conditions_3d_missed_all" + suffix)          = expect_no_throw<boundaries_conditions_data<mock_data, T, 3>>(config["boundaries_conditions_all_missed"]);
+        test("boundaries_conditions_1d_missed_all" + suffix)          = expect_throw<boundaries_conditions_data<mock_data, T, 1>>(config["boundaries_conditions_missed_all"]);
+        test("boundaries_conditions_2d_missed_all" + suffix)          = expect_no_throw<boundaries_conditions_data<mock_data, T, 2>>(config["boundaries_conditions_missed_all"]);
+        test("boundaries_conditions_3d_missed_all" + suffix)          = expect_no_throw<boundaries_conditions_data<mock_data, T, 3>>(config["boundaries_conditions_missed_all"]);
         test("boundaries_conditions_1d_missed_left" + suffix)         = expect_throw<boundaries_conditions_data<mock_data, T, 1>>(config["boundaries_conditions_missed_left"]);
         test("boundaries_conditions_1d_missed_right" + suffix)        = expect_throw<boundaries_conditions_data<mock_data, T, 1>>(config["boundaries_conditions_missed_right"]);
         test("boundaries_conditions_1d_all_required_exists" + suffix) = expect_no_throw<boundaries_conditions_data<mock_data, T, 1>>(config["boundaries_conditions_all_required_exists"]);
@@ -126,7 +126,7 @@ auto thermal_material_data_test(const nlohmann::json& config) {
     };
 }
 
-const suite _ = [] {
+const suite<"config_required_fields"> _ = [] {
     const nlohmann::json config = nlohmann::json::parse(required_fields_json_data);
     test("mesh_data") = mesh_data_test(config);
     test("time_data") = time_data_test<double>(config);

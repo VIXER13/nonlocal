@@ -1,6 +1,4 @@
 function(FileEmbedSetup)
-    message("CMAKE_BINARY_DIR = ${CMAKE_BINARY_DIR}")
-
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/embedded_files)
         file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/embedded_files)
     endif ()
@@ -53,7 +51,7 @@ function(FileEmbedGenerate file generated_c)
     set(output_c 
 "#include \"${c_name}.h\"
 const char ${c_name}_data[] = {
-    ${output_c}
+    ${output_c}0
 }\;
 const size_t ${c_name}_size = sizeof(${c_name}_data)\;"
 )
