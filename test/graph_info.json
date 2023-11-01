@@ -1,0 +1,18 @@
+{
+ "options": [
+  [
+   "boost-ext-ut:disable_module",
+   "False"
+  ],
+  [
+   "eigen:MPL2_only",
+   "False"
+  ]
+ ],
+ "root": {
+  "name": null,
+  "version": null,
+  "user": null,
+  "channel": null
+ }
+}

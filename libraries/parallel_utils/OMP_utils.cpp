@@ -1,6 +1,6 @@
 #include "OMP_utils.hpp"
 
-#include "init_uniform_ranges.hpp"
+#include "uniform_ranges.hpp"
 
 #ifdef _OPENMP
     #include <omp.h>
@@ -21,7 +21,7 @@ int threads_count() {
 }
 
 OMP_ranges::OMP_ranges(const size_t size, const size_t threads)
-    : _ranges{init_uniform_ranges(size, threads)} {}
+    : _ranges{uniform_ranges(size, threads)} {}
 
 std::ranges::iota_view<size_t, size_t> OMP_ranges::get(const size_t thread) const {
     return _ranges[thread];

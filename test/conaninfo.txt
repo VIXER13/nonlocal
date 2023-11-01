@@ -1,0 +1,42 @@
+[settings]
+    arch=x86_64
+    build_type=Release
+    compiler=gcc
+    compiler.libcxx=libstdc++
+    compiler.version=11
+    os=Linux
+
+[requires]
+    boost-ext-ut/1.Y.Z
+    eigen/3.Y.Z
+    nlohmann_json/3.Y.Z
+    spectra/1.Y.Z
+
+[options]
+
+
+[full_settings]
+    arch=x86_64
+    arch_build=x86_64
+    build_type=Release
+    compiler=gcc
+    compiler.libcxx=libstdc++
+    compiler.version=11
+    os=Linux
+    os_build=Linux
+
+[full_requires]
+    boost-ext-ut/1.1.9:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    eigen/3.4.0:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    nlohmann_json/3.11.2:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+    spectra/1.0.1:5ab84d6acfe1f23c4fae0ab88f26e3a396351ac9
+
+[full_options]
+    boost-ext-ut:disable_module=False
+    eigen:MPL2_only=False
+
+[recipe_hash]
+
+
+[env]
+

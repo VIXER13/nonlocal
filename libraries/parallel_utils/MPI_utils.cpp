@@ -1,6 +1,6 @@
 #include "MPI_utils.hpp"
 
-#include "init_uniform_ranges.hpp"
+#include "uniform_ranges.hpp"
 
 namespace parallel_utils {
 
@@ -25,7 +25,7 @@ bool is_last_process() {
 }
 
 MPI_ranges::MPI_ranges(const size_t size)
-    : _ranges{init_uniform_ranges(size, MPI_size())} {}
+    : _ranges{uniform_ranges(size, MPI_size())} {}
 
 std::ranges::iota_view<size_t, size_t> MPI_ranges::get(const size_t process) const {
     return _ranges[process];
