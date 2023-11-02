@@ -13,7 +13,7 @@ template<class I>
 class unrelated_rows final {
     template<class T>
     static bool has_related_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
-                                 const std::vector<bool>& related_rows, 
+                                 const std::vector<bool>& is_related, 
                                  const std::ranges::iota_view<I, I> indices);
 
 public:
@@ -40,10 +40,10 @@ unrelated_rows<I>::unrelated_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, 
 template<class I>
 template<class T>
 bool unrelated_rows<I>::has_related_rows(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
-                                         const std::vector<bool>& related_rows, 
+                                         const std::vector<bool>& is_related, 
                                          const std::ranges::iota_view<I, I> indices) {
     for(const I i : indices)
-        if (related_rows[matrix.innerIndexPtr()[i]])
+        if (is_related[matrix.innerIndexPtr()[i]])
             return true;
     return false;
 }
@@ -54,25 +54,25 @@ void unrelated_rows<I>::init(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& m
     clear();
     shifts.push_back(0);
     rows.reserve(matrix.rows());
-    std::vector<bool> added_rows(matrix.rows(), false);
-    std::vector<bool> related_rows(matrix.rows(), false);
-    for(const I start_row : std::ranges::iota_view{0, matrix.rows()}) {
-        if (added_rows[start_row])
+    std::vector<bool> is_added(matrix.rows(), false);
+    std::vector<bool> is_related(matrix.rows(), false);
+    for(const I start_row : std::ranges::iota_view{I{0}, matrix.rows()}) {
+        if (is_added[start_row])
             continue;
         I& shift = shifts.emplace_back(shifts.back());
         for(const I row : std::ranges::iota_view{start_row, matrix.rows()}) {
-            if (added_rows[row])
+            if (is_added[row])
                 continue;
             if (const auto inner_indices = std::ranges::iota_view{matrix.outerIndexPtr()[row], matrix.outerIndexPtr()[row + 1]};
-                !has_related_rows(matrix, related_rows, inner_indices)) {
+                !has_related_rows(matrix, is_related, inner_indices)) {
                 for(const size_t i : inner_indices)
-                    related_rows[matrix.innerIndexPtr()[i]] = true;
-                added_rows[row] = true;
+                    is_related[matrix.innerIndexPtr()[i]] = true;
+                is_added[row] = true;
                 rows.push_back(row);
                 ++shift;
             }
         }
-        std::fill(related_rows.begin(), related_rows.end(), false);
+        std::fill(is_related.begin(), is_related.end(), false);
     }
 }
 
