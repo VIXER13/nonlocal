@@ -23,6 +23,13 @@ int threads_count() {
 OMP_ranges::OMP_ranges(const size_t size, const size_t threads)
     : _ranges{uniform_ranges(size, threads)} {}
 
+OMP_ranges::OMP_ranges(const std::vector<std::ranges::iota_view<size_t, size_t>>& ranges)
+    : _ranges{ranges} {}
+
+size_t OMP_ranges::size() const noexcept {
+    return _ranges.size();
+}
+
 std::ranges::iota_view<size_t, size_t> OMP_ranges::get(const size_t thread) const {
     return _ranges[thread];
 }

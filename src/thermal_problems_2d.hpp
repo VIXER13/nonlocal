@@ -68,11 +68,13 @@ template<std::floating_point T, std::signed_integral I>
 void save_solution(heat_equation_solution_2d<T, I>&& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
+    const auto& flux = solution.calc_flux();
+    if (parallel_utils::MPI_rank() != 0) // Only the master process saves data
+        return;
     if (step);
         logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;
     const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
                                               save.path("csv", "csv", "solution");
-    const auto& flux = solution.calc_flux();
     mesh::utils::save_as_csv(path, solution.mesh().container(), 
         {{"temperature", solution.temperature()}, {"flux_x", flux[X]}, {"flux_y", flux[Y]}},
         save.precision()

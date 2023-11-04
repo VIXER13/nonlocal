@@ -1,6 +1,7 @@
 #ifndef NONLOCAL_SLAE_SOLVER_BASE_HPP
 #define NONLOCAL_SLAE_SOLVER_BASE_HPP
 
+#include "MPI_utils.hpp"
 #include "OMP_utils.hpp"
 
 #include <Eigen/Sparse>
@@ -11,15 +12,21 @@ namespace nonlocal::slae {
 template<class T, class I>
 class solver_base {
     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _matrix;
+    parallel_utils::MPI_ranges _process_rows;
     size_t _threads_count = parallel_utils::threads_count();
 
 public:
     explicit solver_base(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix)
-        : _matrix{matrix} {}
+        : _matrix{matrix}
+        , _process_rows{parallel_utils::rows_distribution(matrix.rows())} {}
     virtual ~solver_base() noexcept = default;
 
     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix() const noexcept {
         return _matrix;
+    }
+
+    std::ranges::iota_view<size_t, size_t> process_rows(const size_t process = parallel_utils::MPI_rank()) const {
+        return _process_rows.get(process);
     }
 
     size_t threads_count() const noexcept {

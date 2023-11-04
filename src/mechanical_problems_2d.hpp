@@ -62,6 +62,8 @@ mechanical_boundaries_conditions_2d<T> make_boundaries_conditions(const config::
 template<std::floating_point T, std::signed_integral I>
 void save_solution(const mechanical::mechanical_solution_2d<T, I>& solution,
                    const config::save_data& save) {
+    if (parallel_utils::MPI_rank() != 0) // Only the master process saves data
+        return;
     const std::filesystem::path path = save.path("csv", "csv", "solution");
     mesh::utils::save_as_csv(path, solution.mesh().container(),
         {

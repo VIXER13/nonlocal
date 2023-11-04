@@ -2,15 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(nonlocal)
 
-if (WITH_MPI)
-    find_package(MPI)
-    if(MPI_FOUND)
-        add_definitions(-DMPI_USED=1)
-#        set(CMAKE_C_COMPILER ${MPI_C_COMPILER})
-#        set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
-    endif()
-endif()
-
 find_package(OpenMP)
 if(OPENMP_FOUND)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")

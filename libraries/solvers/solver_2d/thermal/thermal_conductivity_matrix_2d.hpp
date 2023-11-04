@@ -319,11 +319,15 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, is_symmetric, SORT_INDICES);
     if (is_neumann) {
-        for(const size_t row : std::ranges::iota_view{0u, rows})
-            _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[row + 1] - 1] = _base::mesh().container().nodes_count();
-        if (!is_symmetric && parallel_utils::is_last_process())
-            for(const size_t col : std::ranges::iota_view{0u, cols})
-                _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[rows - 1] + col] = col;
+        for(const size_t row : std::ranges::iota_view{0u, rows}) {
+            const size_t index = _base::matrix_inner().outerIndexPtr()[row + 1] - 1;
+            _base::matrix_inner().innerIndexPtr()[index] = _base::mesh().container().nodes_count();
+        }
+        if (!is_symmetric && parallel_utils::is_last_process()) 
+            for(const size_t col : std::ranges::iota_view{0u, cols}) {
+                const size_t index = _base::matrix_inner().outerIndexPtr()[rows - 1] + col;
+                _base::matrix_inner().innerIndexPtr()[index] = col;
+            }
     }
     utils::sort_indices(_base::matrix_inner());
     utils::sort_indices(_base::matrix_bound());
@@ -337,8 +341,16 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integral_condition(cons
         T& val = _base::matrix_inner().coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
         for(const I e : _base::mesh().elements(node))
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
-        if (!is_symmetric && parallel_utils::is_last_process()) // TODO: fix for MPI
-            _base::matrix_inner().coeffRef(_base::matrix_inner().rows() - 1, node - process_nodes.front()) = val;
+        if (!is_symmetric && parallel_utils::is_last_process())
+            _base::matrix_inner().coeffRef(_base::matrix_inner().rows() - 1, node) = val;
+    }
+    if (!is_symmetric && parallel_utils::MPI_size() > 1 && parallel_utils::is_last_process()) {
+#pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
+        for(size_t node = 0; node < process_nodes.front(); ++node) {
+            T& val = _base::matrix_inner().coeffRef(_base::matrix_inner().rows() - 1, node);
+            for(const I e : _base::mesh().elements(node))
+                val += integrate_basic(e, _base::mesh().global_to_local(e, node));
+        }
     }
 }
 
@@ -348,6 +360,8 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameter
                                                                  const std::optional<std::vector<T>>& solution) {
     const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
     create_matrix_portrait(theories, is_inner, is_symmetric, is_neumann);
+    if (is_neumann)
+        integral_condition(is_symmetric);
     _base::calc_coeffs(theories, is_inner, is_symmetric,
         [this, &parameters, &solution](const std::string& group, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
@@ -372,8 +386,6 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameter
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, *solution, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         });
-    if (is_neumann)
-        integral_condition(is_symmetric);
 }
 
 }

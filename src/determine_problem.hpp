@@ -27,6 +27,8 @@ public:
 
 template<std::floating_point T, std::signed_integral I>
 void problems_1d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task) {
+    if (parallel_utils::MPI_rank() != 0) // Only the shared memory option is supported.
+        return;
     config::check_required_fields(config, {"boundaries", "materials"});
     config::check_optional_fields(config, {"mesh", "auxiliary"});
     if (task.problem == nonlocal::config::problem_t::THERMAL)
