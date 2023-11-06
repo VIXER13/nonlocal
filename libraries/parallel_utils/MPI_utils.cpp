@@ -2,6 +2,8 @@
 
 #include "uniform_ranges.hpp"
 
+#include <iostream>
+
 namespace parallel_utils {
 
 int MPI_rank() {
@@ -28,7 +30,9 @@ std::vector<std::ranges::iota_view<size_t, size_t>> rows_distribution(const size
     std::vector<std::ranges::iota_view<size_t, size_t>> ranges(MPI_size());
     std::ranges::iota_view<size_t, size_t> range = {0, rows};
 #if MPI_BUILD
-    MPI_Allgather(&range, sizeof(range), MPI_BYTE, ranges.data(), sizeof(range) * ranges.size(), MPI_BYTE, MPI_COMM_WORLD);
+    MPI_Allgather(&range, sizeof(range), MPI_BYTE, ranges.data(), sizeof(range), MPI_BYTE, MPI_COMM_WORLD);
+    for(const size_t i : std::ranges::iota_view{1u, ranges.size()})
+        ranges[i] = {*ranges[i - 1].end(), *ranges[i - 1].end() + ranges[i].size()};
 #else
     ranges = {range};
 #endif

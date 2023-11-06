@@ -25,6 +25,10 @@ public:
         return _matrix;
     }
 
+    const parallel_utils::MPI_ranges& processes_ranges() const noexcept {
+        return _process_rows;
+    }
+
     std::ranges::iota_view<size_t, size_t> process_rows(const size_t process = parallel_utils::MPI_rank()) const {
         return _process_rows.get(process);
     }

@@ -60,7 +60,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     convection_condition_2d(conductivity.matrix_inner(), *mesh, boundaries_conditions);
     integrate_right_part<DoF>(f, *mesh, right_part);
     if (!is_neumann)
-        boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix_bound());
+       boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix_bound());
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
     start_time = std::chrono::high_resolution_clock::now();

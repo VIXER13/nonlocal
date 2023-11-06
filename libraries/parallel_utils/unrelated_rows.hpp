@@ -54,8 +54,8 @@ void unrelated_rows<I>::init(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& m
     clear();
     shifts.push_back(0);
     rows.reserve(matrix.rows());
-    std::vector<bool> is_added(matrix.rows(), false);
-    std::vector<bool> is_related(matrix.rows(), false);
+    std::vector<bool> is_added(matrix.cols(), false);   // .cols() used firstly, because we believe that the matrix is square,
+    std::vector<bool> is_related(matrix.cols(), false); // and secondly, because of MPI, where the matrix is cut row by row
     for(const I start_row : std::ranges::iota_view{I{0}, matrix.rows()}) {
         if (is_added[start_row])
             continue;

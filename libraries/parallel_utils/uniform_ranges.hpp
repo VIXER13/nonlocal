@@ -13,7 +13,8 @@ std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const size_t 
 
 // Returns rows ranges where each range has approximately the same elements number.
 template<class T, class I>
-std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix, const size_t ranges_count) {
+std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix, 
+                                                                   const size_t ranges_count) {
     if (!ranges_count)
         throw std::domain_error{"The ranges count cannot be 0!"};
     size_t curr_row = 0u;

@@ -31,6 +31,7 @@ public:
     using _base::matrix;
     using _base::tolerance;
     using _base::max_iterations;
+    using _base::processes_ranges;
 
     explicit conjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
 
@@ -60,15 +61,14 @@ template<class T, class I, class Preconditioner, product_strategy Strategy>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Preconditioner, Strategy>::solve(
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
     const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0) const {
-    const Eigen::Matrix<T, Eigen::Dynamic, 1>& b_full = b;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(b_full.size()));
-    Eigen::Matrix<T, Eigen::Dynamic, 1> z = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(x.size());
+    Eigen::Matrix<T, Eigen::Dynamic, 1> z = parallel_utils::all_to_all(b, processes_ranges()); // It used as the right part in preparation calculation before iteration process
+    Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(z.size()));
     Eigen::Matrix<T, Eigen::Dynamic, 1> r = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(x.size());
     _base::matrix_vector_product(r, x);
-    r = b_full - r;
+    r = z - r;
     Eigen::Matrix<T, Eigen::Dynamic, 1> p = preconditioner().solve(r);
     T r_squared_norm = r.dot(p);
-    const T b_norm = b_full.norm();
+    const T b_norm = z.norm();
     _iterations = 0;
     _residual = std::sqrt(r_squared_norm) / b_norm;
     while(_iterations < max_iterations() && _residual > tolerance()) {
