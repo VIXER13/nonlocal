@@ -20,15 +20,15 @@
         "initial_distribution": 0
     },
     "time": {
-        "time_step": 1.0,
+        "time_step": 0.005,
         "initial_time": 0.0,
-        "steps_count": 10,
+        "steps_count": 1000,
         "save_frequency": 1
     },
     "boundaries": {
         "left": {
             "kind": "flux",
-            "flux": 1
+            "flux": 0
         },
         "right": {
             "kind": "flux",
@@ -37,12 +37,12 @@
     },
     "materials": [
         {
-            "elements_count": 10,
+            "elements_count": 1000,
             "length": 10.0,
             "physical": {
-                "conductivity": 7.0,
-                "capacity": 4.0,
-                "density": 2.0,
+                "conductivity": 1.0,
+                "capacity": 1.0,
+                "density": 1.0,
                 "relaxation_time": 1.0
             },
             "model": {

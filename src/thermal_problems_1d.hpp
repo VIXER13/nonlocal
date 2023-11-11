@@ -110,7 +110,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, 0u);
         for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,
-                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
+                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; }, step);
             if (step % time.save_frequency == 0)
                 save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, step);
         }
