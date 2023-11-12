@@ -29,7 +29,6 @@ class nonstationary_relax_time_heat_equation_solver_1d final {
     Eigen::Matrix<T, Eigen::Dynamic, 1> _integral_approx;           // Вектор P из курсовой, который аппроксимирует интеграл в уравнении
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;          // Предыдущая температура
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;          // Текущая температура
-    const T _relaxation_time = T{2};                                // Время релаксации !!! Пока вызывается из класса
     const int _m = 10;                                                // Параметр интенсивности имульсного нагрева !!! Пока вызывается из класса
     const T _time_step = T{1};                                      // Временной шаг
     std::array<T, 2> _capacity_initial_values = {T(0), T(0)};       // Видимо значения которые влияют на вид матрицы C  ??
@@ -47,6 +46,8 @@ class nonstationary_relax_time_heat_equation_solver_1d final {
     }
  
 public:
+    const T _relaxation_time = T{2};                                // Время релаксации !!! Пока вызывается из класса
+
     explicit nonstationary_relax_time_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const T time_step);
 
     const T time_step() const noexcept;
@@ -154,9 +155,7 @@ void nonstationary_relax_time_heat_equation_solver_1d<T, I>::calc_step(const the
     radiation_condition_1d(_capacity.matrix_inner(), boundaries_conditions, time_step());
     boundary_condition_second_kind_1d<T>(_right_part, boundaries_conditions);
     auto time = time_step() * time_iter;
-    //std::cout << time_iter << ' ' << time << ' ' << std::pow(_m, _m) << ' ' << std::tgamma(_m) << ' ' << std::pow(time, _m) << ' ' << std::exp(-_m * time) << '\n';
     _right_part(0) += std::pow(_m, _m) / std::tgamma(_m) * std::pow(time, _m) * std::exp(-_m * time); // Учет импульсного поверхностного нагрева
-    //std::cout << _right_part(0) << '\n';                                                                      
     if constexpr (!std::is_same_v<Right_Part, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
         integrate_right_part(_right_part, _conductivity.mesh(), right_part);
     _right_part *= time_step();
