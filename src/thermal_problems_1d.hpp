@@ -5,44 +5,9 @@
 
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
-//#include "thermal/nonstationary_heat_equation_solver_1d.hpp" // Подкючение старого класса
+//#include "thermal/nonstationary_heat_equation_solver_1d.hpp"          // Подкючение старого класса
 #include "thermal/nonstationary_relax_time_heat_equation_solver_1d.hpp" // Подкючение измененного класса
 #include "influence_functions_1d.hpp"
-
-#include<iostream> ///////////
-
-template<typename T>
-std::vector<T> operator+(const std::vector<T>&a, const std::vector<T>&b)
-{
-    if (a.size() != b.size())
-        throw("a.size() != b.size()");
-    std::vector<T> c(a.size());
-    for(size_t i = 0; i < a.size(); ++i)
-        c[i] = a[i] + b[i];
-    return c;
-}
-
-template<typename T>
-std::vector<T> operator-(const std::vector<T>&a, const std::vector<T>&b)
-{
-    if (a.size() != b.size())
-        throw("a.size() != b.size()");
-    std::vector<T> c(a.size());
-    for(size_t i = 0; i < a.size(); ++i)
-        c[i] = a[i] - b[i];
-    return c;
-}
-
-template<typename T>
-std::vector<T> operator*(T num, const std::vector<T>&vec)
-{
-    if (!vec.size())
-        throw("vector is empty!");
-    std::vector<T> res(vec.size());
-    for(size_t i = 0; i < vec.size(); ++i)
-        res[i] = num * vec[i];
-    return res;
-}
 
 namespace nonlocal::thermal {
 
@@ -106,7 +71,7 @@ template<std::floating_point T>
 void save_solution(thermal::heat_equation_solution_1d<T>&& solution, 
                    const config::save_data& save,
                    const std::vector<T> &flux,
-                   const std::optional<uint64_t> step = std::nullopt) { ///// Добавил поток 
+                   const std::optional<uint64_t> step = std::nullopt) {
     if (step);
         logger::get().log(logger::log_level::INFO) << "save step " << *step << std::endl;
     const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
@@ -151,11 +116,17 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
                 [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; }, step);
             classic_flux = heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}.calc_flux();
             curr_time = step * solver.time_step();
-            if (solver._relaxation_time)
-                flux_integral = exp(-solver.time_step() / solver._relaxation_time) * flux_integral + (solver.time_step() / solver._relaxation_time) * classic_flux;
+            if (solver._relaxation_time) {
+                using namespace metamath::functions;
+                flux_integral = exp(-solver.time_step() / solver._relaxation_time) * flux_integral;
+                flux_integral += (solver.time_step() / solver._relaxation_time) * classic_flux;
+            }
             if (step % time.save_frequency == 0) {
-                if (solver._relaxation_time)
-                    flux = exp(-curr_time / solver._relaxation_time) * classic_flux + flux_integral;
+                if (solver._relaxation_time) {
+                    using namespace metamath::functions;
+                    flux = exp(-curr_time / solver._relaxation_time) * classic_flux;
+                    flux += flux_integral;
+                }
                 else
                     flux = classic_flux;
                 save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, flux, step);
