@@ -1,1 +1,0 @@
-./build/bin/NonLocFEM ./examples/thermal_nonstationary_1d.json

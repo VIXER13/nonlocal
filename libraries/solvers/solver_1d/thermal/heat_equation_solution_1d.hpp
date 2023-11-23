@@ -32,6 +32,7 @@ public:
 
     bool is_flux_calculated() const noexcept;
     const std::vector<T>& calc_flux();
+    const std::vector<T>& calc_relaxation_flux(T curr_time, T relaxation_time, const std::vector<T> &flux_integral);
 };
 
 template<class T>
@@ -127,6 +128,15 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
         _flux = mesh::utils::from_qnodes_to_nodes(mesh(), _flux);
     }
     return _flux;
+}
+
+template<class T>
+const std::vector<T>& heat_equation_solution_1d<T>::calc_relaxation_flux(T curr_time, T relaxation_time, const std::vector<T> &flux_integral) {
+    using namespace metamath::functions;
+    _flux = this->calc_flux();
+    _flux *= exp(-curr_time / relaxation_time);
+    _flux += flux_integral;
+    return flux_integral;
 }
 
 }
