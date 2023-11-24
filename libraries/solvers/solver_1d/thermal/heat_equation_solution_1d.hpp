@@ -136,7 +136,7 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_relaxation_flux(T curr_
     _flux = this->calc_flux();
     _flux *= exp(-curr_time / relaxation_time);
     _flux += flux_integral;
-    return flux_integral;
+    return _flux;
 }
 
 }
