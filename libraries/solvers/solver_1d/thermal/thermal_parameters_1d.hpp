@@ -11,12 +11,14 @@ struct parameter_1d_base {
     const coefficients_t type;
     T capacity = T{1};
     T density = T{1};
+    T relaxation_time = T{0}; 
 
 protected:
-    explicit parameter_1d_base(const coefficients_t coefficients, const T capacity = T{1}, const T density = T{1}) noexcept
+    explicit parameter_1d_base(const coefficients_t coefficients, const T capacity = T{1}, const T density = T{1}, const T relaxation_time = T{1}) noexcept // added relaxation time
         : type{coefficients}
         , capacity{capacity}
-        , density{density} {}
+        , density{density} 
+        , relaxation_time{relaxation_time} {} 
 
 public:
     virtual ~parameter_1d_base() noexcept = default;
@@ -52,9 +54,9 @@ public:
     conductivity_t conductivity = init();
 
     constexpr parameter_1d() noexcept
-        : parameter_1d_base<T>{Coefficients} {}
-    explicit parameter_1d(const conductivity_t& conductivity, const T capacity = T{1}, const T density = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
-        : parameter_1d_base<T>{Coefficients, capacity, density}
+        : parameter_1d_base<T>{Coefficients} {}     
+    explicit parameter_1d(const conductivity_t& conductivity, const T capacity = T{1}, const T density = T{1}, const T relaxation_time = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
+        : parameter_1d_base<T>{Coefficients, capacity, density, relaxation_time}
         , conductivity{conductivity} {}
     ~parameter_1d() noexcept override = default;
 };

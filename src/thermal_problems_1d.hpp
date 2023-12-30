@@ -5,7 +5,8 @@
 
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
-#include "thermal/nonstationary_heat_equation_solver_1d.hpp"
+//#include "thermal/nonstationary_heat_equation_solver_1d.hpp"          
+#include "thermal/nonstationary_relax_time_heat_equation_solver_1d.hpp" 
 #include "influence_functions_1d.hpp"
 
 namespace nonlocal::thermal {
@@ -23,7 +24,8 @@ parameters_1d<T> make_thermal_parameters(
             .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(
                 materials[i].physical.conductivity,
                 materials[i].physical.capacity,
-                materials[i].physical.density
+                materials[i].physical.density,
+                materials[i].physical.relaxation_time 
             )
         };
     return parameters;
@@ -100,15 +102,27 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
-        nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+        nonstationary_relax_time_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
         solver.compute(parameters, boundaries_conditions,
             [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
-        save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, 0u);
+        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};                   
+        save_solution(std::move(solution), save, 0u);
+        std::vector<T> flux{solution.flux()};
+        std::vector<T> flux_integral(flux.size());                                                                                                                                               
+        auto curr_time{time.initial_time};                                                                              
         for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,
-                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
+                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; }, step);
+            heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()}; ////////
+            curr_time = step * solver.time_step();
+            if (solver._relaxation_time) {
+                using namespace metamath::functions;
+                flux_integral *= exp(-solver.time_step() / solver._relaxation_time);
+                flux_integral += (solver.time_step() / solver._relaxation_time) * solution.calc_flux();
+                solution.calc_relaxation_flux(curr_time, solver._relaxation_time, flux_integral);
+            }
             if (step % time.save_frequency == 0)
-                save_solution(heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()}, save, step);
+                save_solution(std::move(solution), save, step);
         }
     }
 }
