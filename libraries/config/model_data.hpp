@@ -2,6 +2,7 @@
 #define NONLOCAL_MODEL_DATA_HPP
 
 #include "config_utils.hpp"
+#include "influence_data.hpp"
 
 #include <type_traits>
 #include <array>
@@ -30,26 +31,30 @@ class model_data final {
     }
 
 public:
-    T local_weight = T{1};             // required
-    radius_t nonlocal_radius = {T{0}}; // required
-    radius_t search_radius = {T{0}};   // if skipped sets equal nonlocal_radius
+    T local_weight = T{1};                  // required
+    radius_t nonlocal_radius = {T{0}};      // required
+    radius_t search_radius = {T{0}};        // if skipped sets equal nonlocal_radius
+    influence_data<T, Dimension> influence; // optional, if skipped default parabola
 
     explicit constexpr model_data() noexcept = default;
     explicit model_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string path_with_access = append_access_sign(path);
         check_required_fields(config, { "local_weight", "nonlocal_radius" }, path_with_access);
-        check_optional_fields(config, {"search_radius"}, path_with_access);
+        check_optional_fields(config, { "search_radius", "influence" }, path_with_access);
         local_weight = config["local_weight"].get<T>();
         nonlocal_radius = read_radius(config["nonlocal_radius"], "nonlocal_radius");
         search_radius = !config.contains("search_radius") ? nonlocal_radius :
                         read_radius(config["search_radius"], "search_radius");
+        if (config.contains("influence"))
+            influence = influence_data<T, Dimension>{config["influence"], path_with_access + "influence"};
     }
 
     operator nlohmann::json() const {
         return {
             {"local_weight", local_weight},
             {"nonlocal_radius", nonlocal_radius},
-            {"search_radius", search_radius}
+            {"search_radius", search_radius},
+            {"influence", influence}
         };
     }
 };

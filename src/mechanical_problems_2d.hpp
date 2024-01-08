@@ -14,7 +14,7 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
     for(const auto& [name, material] : materials.materials)
         parameters.materials[name] = {
             .model = {
-                .influence = influence::polynomial_2d<T, 2, 1>{material.model.nonlocal_radius},
+                .influence = get_influence(material.model.influence, material.model.nonlocal_radius),
                 .local_weight = material.model.local_weight
             },
             .physical = {
@@ -78,6 +78,7 @@ void save_solution(const mechanical::mechanical_solution_2d<T, I>& solution,
         },
         save.precision()
     );
+    solution.save_as_vtk(save.path("vtk", "vtk", "solution"));
 }
 
 template<std::floating_point T, std::signed_integral I>

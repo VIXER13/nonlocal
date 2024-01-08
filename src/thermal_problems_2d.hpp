@@ -6,7 +6,7 @@
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_2d.hpp"
-#include "influence_functions_2d.hpp"
+
 
 namespace nonlocal::thermal {
 
@@ -16,7 +16,7 @@ parameters_2d<T> make_parameters(const config::thermal_materials_2d<T>& material
     for(const auto& [name, material] : materials.materials) {
         auto& parameter = parameters[name] = {
             .model = {
-                .influence = influence::polynomial_2d<T, 2, 1>{material.model.nonlocal_radius},
+                .influence = get_influence(material.model.influence, material.model.nonlocal_radius),
                 .local_weight = material.model.local_weight
             },
             .physical = std::make_shared<parameter_2d<T, coefficients_t::CONSTANTS>>(
@@ -65,10 +65,9 @@ thermal_boundaries_conditions_2d<T> make_boundaries_conditions(const config::the
 }
 
 template<std::floating_point T, std::signed_integral I>
-void save_solution(heat_equation_solution_2d<T, I>&& solution, 
+void save_solution(const heat_equation_solution_2d<T, I>& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
-    const auto& flux = solution.calc_flux();
     if (parallel_utils::MPI_rank() != 0) // Only the master process saves data
         return;
     if (step);
@@ -76,7 +75,7 @@ void save_solution(heat_equation_solution_2d<T, I>&& solution,
     const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
                                               save.path("csv", "csv", "solution");
     mesh::utils::save_as_csv(path, solution.mesh().container(), 
-        {{"temperature", solution.temperature()}, {"flux_x", flux[X]}, {"flux_y", flux[Y]}},
+        {{"temperature", solution.temperature()}, {"flux_x", solution.flux()[X]}, {"flux_y", solution.flux()[Y]}},
         save.precision()
     );
 }
@@ -97,19 +96,27 @@ void solve_thermal_2d_problem(
             [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
             auxiliary.energy
         );
-        save_solution(std::move(solution), save);
+        solution.calc_flux();
+        save_solution(solution, save);
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
         nonstationary_heat_equation_solver_2d<T, I, int64_t> solver{mesh, time.time_step};
         solver.compute(parameters, boundaries_conditions,
             [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
-        save_solution(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, save, 0u);
+        {
+            nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, parameters, solver.temperature()};
+            solution.calc_flux();
+            save_solution(solution, save, 0u);
+        }
         for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
             solver.calc_step(boundaries_conditions,
                 [right_part = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return right_part; });
-            if (step % time.save_frequency == 0)
-                save_solution(nonlocal::thermal::heat_equation_solution_2d<T, I>{mesh, parameters, solver.temperature()}, save, step);
+            if (step % time.save_frequency == 0) {
+                nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, parameters, solver.temperature()};
+                solution.calc_flux();
+                save_solution(solution, save, step);
+            }
         }
     }
 }

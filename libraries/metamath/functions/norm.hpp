@@ -34,6 +34,9 @@ T norm(const std::array<T, D>& x) {
         return std::sqrt(powered_norm<Exp>(x));
     if constexpr (Exp == 3)
         return std::cbrt(powered_norm<Exp>(x));
+    if constexpr (Exp == std::numeric_limits<size_t>::max()) // norm infinity
+        return *std::max_element(x.begin(), x.end(), [](const T a, const T b) { 
+            return std::abs(a) < std::abs(b); });
     return std::pow(powered_norm<Exp>(x), T{1} / Exp);
 }
 
