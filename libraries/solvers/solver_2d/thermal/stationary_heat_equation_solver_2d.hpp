@@ -66,10 +66,8 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     if (is_symmetric) {
         std::cout << "symmetric problem" << std::endl;
         start_time = std::chrono::high_resolution_clock::now();
-        auto local_params = parameters;
-        local_params["DEFAULT"].model.local_weight = T{1};
         thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
-        conductivity_local.compute(local_params, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
+        conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
         slae::conjugate_gradient<T, Matrix_Index> local_solver{conductivity_local.matrix()[matrix_part::INNER]};
         Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
         elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;

@@ -52,7 +52,7 @@ public:
     ~thermal_conductivity_matrix_2d() noexcept override = default;
 
     void compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner,
-                 const bool is_symmetric = true, const bool is_neumann = false,
+                 const bool is_symmetric = true, const bool is_neumann = false, const assemble_part part = assemble_part::FULL,
                  const std::optional<std::vector<T>>& solution = std::nullopt);
 };
 
@@ -356,33 +356,41 @@ void thermal_conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_s
 
 template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
-                                                                 const bool is_symmetric, const bool is_neumann,
+                                                                 const bool is_symmetric, const bool is_neumann, const assemble_part part,
                                                                  const std::optional<std::vector<T>>& solution) {
-    const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
+    const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
+                                                               local_theories(_base::mesh().container()) : 
+                                                               theories_types(parameters);
     create_matrix_portrait(theories, is_inner, is_symmetric, is_neumann);
     if (is_neumann)
         integral_condition(is_symmetric);
     _base::calc_coeffs(theories, is_inner, is_symmetric,
-        [this, &parameters, &solution](const std::string& group, const size_t e, const size_t i, const size_t j) {
+        [this, only_nonlocal = part == assemble_part::NONLOCAL, &parameters, &solution]
+        (const std::string& group, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
+            if (only_nonlocal)
+                return T{0};
             const auto& [model, physic] = parameters.at(group);
-            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
+            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()))
                 return model.local_weight * integrate_loc(*parameter, e, i, j);
-            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
+            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()))
                 return model.local_weight * integrate_loc(*parameter, e, i, j);
-            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
+            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()))
                 return model.local_weight * integrate_loc(*parameter, *solution, e, i, j);
             return std::numeric_limits<T>::quiet_NaN();
         },
-        [this, &parameters, &solution](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+        [this, only_local = part == assemble_part::LOCAL, &parameters, &solution]
+        (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             using enum coefficients_t;
+            if (only_local)
+                return T{0};
             const auto& [model, physic] = parameters.at(group);
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
-            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
+            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()))
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
-            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
+            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()))
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, eL, eNL, iL, jNL);
-            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
+            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()))
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, *solution, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         });

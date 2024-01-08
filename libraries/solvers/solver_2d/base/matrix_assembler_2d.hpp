@@ -13,6 +13,20 @@
 
 namespace nonlocal {
 
+enum class assemble_part : uint8_t {
+    LOCAL,
+    NONLOCAL,
+    FULL
+};
+
+template<class T, class I>
+std::unordered_map<std::string, theory_t> local_theories(const mesh::mesh_container_2d<T, I>& mesh) {
+    const auto theroires_setter = std::views::all(mesh.groups_2d()) |
+                                  std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
+    const std::unordered_map<std::string, theory_t> theories(theroires_setter.begin(), theroires_setter.end());
+    return theories;
+}
+
 template<class Callback>
 void first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows, 
                        const std::vector<bool>& is_inner, const Callback& callback) {

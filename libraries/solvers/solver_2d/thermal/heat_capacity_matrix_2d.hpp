@@ -50,9 +50,7 @@ void heat_capacity_matrix_2d<T, I, J>::create_matrix_portrait(const std::unorder
 
 template<class T, class I, class J>
 void heat_capacity_matrix_2d<T, I, J>::calc_matrix(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner) {
-    const auto theroires_setter = std::views::all(_base::mesh().container().groups_2d()) |
-                                  std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
-    const std::unordered_map<std::string, theory_t> theories(theroires_setter.begin(), theroires_setter.end());
+    const std::unordered_map<std::string, theory_t> theories = local_theories(_base::mesh().container());
     create_matrix_portrait(theories, is_inner);
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {

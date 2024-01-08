@@ -16,8 +16,7 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     static constexpr bool SYMMETRIC = true;
 
 protected:
-    template<theory_t Theory>
-    static hooke_parameters to_hooke(const parameters_2d<T>& parameters, const plane_t plane);
+    static hooke_parameters to_hooke(const parameters_2d<T>& parameters, const plane_t plane, const theory_t theory);
 
     static block_t calc_block(const hooke_matrix<T>& hooke, const block_t& integral) noexcept;
     static void add_to_integral(block_t& integral, const std::array<T, 2>& wdN, const std::array<T, 2>& dN) noexcept;
@@ -34,7 +33,7 @@ public:
     explicit stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     ~stiffness_matrix() noexcept override = default;
 
-    void compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner);
+    void compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part = assemble_part::FULL);
 };
 
 template<class T, class I, class J>
@@ -42,11 +41,10 @@ stiffness_matrix<T, I, J>::stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<
     : _base{mesh} {}
 
 template<class T, class I, class J>
-template<theory_t Theory>
-stiffness_matrix<T, I, J>::hooke_parameters stiffness_matrix<T, I, J>::to_hooke(const parameters_2d<T>& parameters, const plane_t plane) {
+stiffness_matrix<T, I, J>::hooke_parameters stiffness_matrix<T, I, J>::to_hooke(const parameters_2d<T>& parameters, const plane_t plane, const theory_t theory) {
     hooke_parameters params;
     for(const auto& [group, equation_parameters] : parameters) {
-        const T factor = Theory == theory_t::LOCAL ?
+        const T factor = theory == theory_t::LOCAL ?
                          equation_parameters.model.local_weight :
                          nonlocal_weight(equation_parameters.model.local_weight);
         using namespace metamath::functions;
@@ -149,18 +147,20 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 }
 
 template<class T, class I, class J>
-void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner) {
-    const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
+void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part) {
+    const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
+                                                               local_theories(_base::mesh().container()) :
+                                                               theories_types(parameters);
     static constexpr bool NEUMANN = false;
     create_matrix_portrait(theories, is_inner, NEUMANN);
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
-        [this, hooke = to_hooke<theory_t::LOCAL>(parameters, plane)]
+        [this, only_nonlocal = part == assemble_part::NONLOCAL, hooke = to_hooke(parameters, plane, theory_t::LOCAL)]
         (const std::string& group, const size_t e, const size_t i, const size_t j) {
-            return integrate_loc(hooke.at(group).physical, e, i, j);
+            return only_nonlocal ? block_t{} : integrate_loc(hooke.at(group).physical, e, i, j);
         },
-        [this, hooke = to_hooke<theory_t::NONLOCAL>(parameters, plane)]
+        [this, only_local = part == assemble_part::LOCAL, hooke = to_hooke(parameters, plane, theory_t::NONLOCAL)]
         (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
+            return only_local ? block_t{} : integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
     if (NEUMANN)

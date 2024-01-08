@@ -93,16 +93,24 @@ using parameter_2d_sptr = std::shared_ptr<parameter_2d_base<T>>;
 template<class T>
 using parameters_2d = std::unordered_map<std::string, equation_parameters<2, T, parameter_2d_sptr>>;
 
-template<coefficients_t Coefficients, class T>
-constexpr parameter_2d<T, Coefficients>* parameter_cast(parameter_2d_base<T> *const parameter) noexcept {
-    return parameter && parameter->type == Coefficients ? 
-        static_cast<parameter_2d<T, Coefficients>*>(parameter) : nullptr;
+template<coefficients_t Coefficients, bool Check_Nullptr = true, class T>
+constexpr parameter_2d<T, Coefficients>* parameter_cast(parameter_2d_base<T> *const parameter) noexcept(Check_Nullptr) {
+    if constexpr (Check_Nullptr)
+        return parameter && parameter->type == Coefficients ? 
+            static_cast<parameter_2d<T, Coefficients>*>(parameter) : nullptr;
+    else
+        return parameter->type == Coefficients ? 
+            static_cast<parameter_2d<T, Coefficients>*>(parameter) : nullptr;
 }
 
-template<coefficients_t Coefficients, class T>
-constexpr const parameter_2d<T, Coefficients>* parameter_cast(const parameter_2d_base<T> *const parameter) noexcept {
-    return parameter && parameter->type == Coefficients ? 
-        static_cast<const parameter_2d<T, Coefficients>*>(parameter) : nullptr;
+template<coefficients_t Coefficients, bool Check_Nullptr = true, class T>
+constexpr const parameter_2d<T, Coefficients>* parameter_cast(const parameter_2d_base<T> *const parameter) noexcept(Check_Nullptr) {
+    if constexpr (Check_Nullptr)
+        return parameter && parameter->type == Coefficients ? 
+            static_cast<const parameter_2d<T, Coefficients>*>(parameter) : nullptr;
+    else
+        return parameter->type == Coefficients ? 
+            static_cast<parameter_2d<T, Coefficients>*>(parameter) : nullptr;
 }
 
 template<coefficients_t Coefficients, class T>

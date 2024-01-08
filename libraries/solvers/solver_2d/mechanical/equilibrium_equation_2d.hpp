@@ -32,10 +32,8 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     integrate_right_part<2>(f, *mesh, right_part);
     temperature_condition(f, *mesh, parameters);
 
-    auto local_parameters = parameters;
-    local_parameters.materials["DEFAULT"].model.local_weight = T{1};
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
-    local_stiffness.compute(local_parameters.materials, local_parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions));
+    local_stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions), assemble_part::LOCAL);
     slae::conjugate_gradient<T, Matrix_Index> local_solver{local_stiffness.matrix()[matrix_part::INNER]};
     Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
 
