@@ -24,12 +24,12 @@ struct thermal_material_data<T, 1> final {
     explicit constexpr thermal_material_data() noexcept = default;
     explicit thermal_material_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string right_part = append_access_sign(path);
-        check_required_fields(config, { "conductivity", "relaxation_time"}, right_part);
-        check_optional_fields(config, {"capacity", "density"}, right_part); 
+        check_required_fields(config, { "conductivity" }, right_part);
+        check_optional_fields(config, { "capacity", "density", "relaxation_time" }, right_part); 
         conductivity = config["conductivity"].get<T>();
-        relaxation_time = config["relaxation_time"].get<T>();
         capacity = config.value("capacity", T{1});
         density = config.value("density", T{1});
+        relaxation_time = config.value("relaxation_time", T{0});
     }
 
     operator nlohmann::json() const {

@@ -149,7 +149,7 @@ void nonstationary_relax_time_heat_equation_solver_1d<T, I>::calc_step(const the
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{_left_matrix};
     _temperature_curr = solver.solveWithGuess(_right_part, _temperature_prev);
 
-    _integral_approx = exp(-time_step() / _relaxation_time) * ((_relaxation_time * (1. - exp(-time_step() / _relaxation_time)) * _conductivity.matrix_inner()).template selfadjointView<Eigen::Upper>() * (_temperature_curr - _temperature_prev) + _integral_approx);
+    _integral_approx = std::exp(-time_step() / _relaxation_time) * ((_relaxation_time * (T{1} - std::exp(-time_step() / _relaxation_time)) * _conductivity.matrix_inner()).template selfadjointView<Eigen::Upper>() * (_temperature_curr - _temperature_prev) + _integral_approx);
 }
 
 }
