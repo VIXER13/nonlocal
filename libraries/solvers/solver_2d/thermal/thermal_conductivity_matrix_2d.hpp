@@ -1,16 +1,16 @@
 #ifndef NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
 #define NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
 
-#include "finite_element_matrix_2d.hpp"
+#include "matrix_assembler_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
 #include <string>
 
 namespace nonlocal::thermal {
 
-template<class T, class I, class Matrix_Index>
-class thermal_conductivity_matrix_2d : public finite_element_matrix_2d<1, T, I, Matrix_Index> {
-    using _base = finite_element_matrix_2d<1, T, I, Matrix_Index>;
+template<class T, class I, class J>
+class thermal_conductivity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {
+    using _base = matrix_assembler_2d<T, I, J, 1>;
 
     [[noreturn]] static void unknown_material(const material_t material);
 
@@ -56,17 +56,17 @@ public:
                  const std::optional<std::vector<T>>& solution = std::nullopt);
 };
 
-template<class T, class I, class Matrix_Index>
-thermal_conductivity_matrix_2d<T, I, Matrix_Index>::thermal_conductivity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<class T, class I, class J>
+thermal_conductivity_matrix_2d<T, I, J>::thermal_conductivity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _base{mesh} {}
 
-template<class T, class I, class Matrix_Index>
-[[noreturn]] void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::unknown_material(const material_t material) {
+template<class T, class I, class J>
+[[noreturn]] void thermal_conductivity_matrix_2d<T, I, J>::unknown_material(const material_t material) {
     throw std::domain_error{"Unknown material type: " + std::to_string(std::underlying_type_t<material_t>(material))};
 }
 
-template<class T, class I, class Matrix_Index>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_basic(const size_t e, const size_t i) const {
+template<class T, class I, class J>
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
@@ -74,17 +74,17 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_basic(const size
     return integral;
 }
 
-template<class T, class I, class Matrix_Index>
+template<class T, class I, class J>
 template<class Integrator>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(const size_t e, const size_t i, const size_t j, const Integrator& integrator) const {
+void thermal_conductivity_matrix_2d<T, I, J>::integrate_loc(const size_t e, const size_t i, const size_t j, const Integrator& integrator) const {
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
         integrator(q, el.weight(q) / mesh::jacobian(_base::mesh().jacobi_matrix(e, q)),
                    _base::mesh().derivatives(e, i, q), _base::mesh().derivatives(e, j, q));
 }
 
-template<class T, class I, class Matrix_Index>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
+template<class T, class I, class J>
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_loc(
     const parameter_2d<T, coefficients_t::CONSTANTS>& parameter, const size_t e, const size_t i, const size_t j) const {
     switch(const auto& conductivity = parameter.conductivity; parameter.material) {
     case material_t::ISOTROPIC: {
@@ -120,8 +120,8 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
     unknown_material(parameter.material);
 }
 
-template<class T, class I, class Matrix_Index>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
+template<class T, class I, class J>
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_loc(
     const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter, const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     switch(const auto& conductivity = parameter.conductivity; parameter.material) {
@@ -155,8 +155,8 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
     return integral;
 }
 
-template<class T, class I, class Matrix_Index>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
+template<class T, class I, class J>
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_loc(
     const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter,  const std::vector<T>& solution, const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     switch(const auto& conductivity = parameter.conductivity; parameter.material) {
@@ -182,9 +182,9 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_loc(
     return integral;
 }
 
-template<class T, class I, class Matrix_Index>
+template<class T, class I, class J>
 template<class Integrator>
-std::array<T, 2> thermal_conductivity_matrix_2d<T, I, Matrix_Index>::inner_integral(
+std::array<T, 2> thermal_conductivity_matrix_2d<T, I, J>::inner_integral(
     const size_t qnodes_count, const size_t eNL, const size_t jNL, const Integrator& integrator) const {
     using namespace metamath::functions;
     std::array<T, 2> integral = {};
@@ -193,9 +193,9 @@ std::array<T, 2> thermal_conductivity_matrix_2d<T, I, Matrix_Index>::inner_integ
     return integral;
 }
 
-template<class T, class I, class Matrix_Index>
+template<class T, class I, class J>
 template<class Inner_Integrator, class Integrator>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
+void thermal_conductivity_matrix_2d<T, I, J>::integrate_nonloc(
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL,
     const Inner_Integrator& inner_integrator, const Integrator& integrator) const {
     const auto& elL  = _base::mesh().container().element_2d(eL );
@@ -209,9 +209,9 @@ void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     }
 }
 
-template<class T, class I, class Matrix_Index>
+template<class T, class I, class J>
 template<class Influence_Function>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_nonloc(
     const parameter_2d<T, coefficients_t::CONSTANTS>& parameter, const Influence_Function& influence,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     const auto inner_integrator = [&influence](const size_t, const T weightNL, const std::array<T, 2>& qcoordL, const std::array<T, 2>& qcoordNL) {
@@ -254,9 +254,9 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     unknown_material(parameter.material);
 }
 
-template<class T, class I, class Matrix_Index>
+template<class T, class I, class J>
 template<class Influence_Function>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_nonloc(
     const parameter_2d<T, coefficients_t::SPACE_DEPENDENT>& parameter, const Influence_Function& influence,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     T integral = T{0};
@@ -277,9 +277,9 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     return integral;
 }
 
-template<class T, class I, class Matrix_Index>
+template<class T, class I, class J>
 template<class Influence_Function>
-T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
+T thermal_conductivity_matrix_2d<T, I, J>::integrate_nonloc(
     const parameter_2d<T, coefficients_t::SOLUTION_DEPENDENT>& parameter, const Influence_Function& influence,
     const std::vector<T>& solution,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
@@ -302,60 +302,60 @@ T thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integrate_nonloc(
     return integral;
 }
 
-template<class T, class I, class Matrix_Index>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::create_matrix_portrait(
+template<class T, class I, class J>
+void thermal_conductivity_matrix_2d<T, I, J>::create_matrix_portrait(
     const std::unordered_map<std::string, theory_t> theories, const std::vector<bool>& is_inner, const bool is_symmetric, const bool is_neumann) {
     const size_t rows = _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::is_last_process());
     const size_t cols = _base::mesh().container().nodes_count() + is_neumann;
-    _base::matrix_inner().resize(rows, cols);
-    _base::matrix_bound().resize(rows, cols);
+    _base::matrix()[matrix_part::INNER].resize(rows, cols);
+    _base::matrix()[matrix_part::BOUND].resize(rows, cols);
     if (is_neumann) {
         for(const size_t row : std::views::iota(0u, rows))
-            _base::matrix_inner().outerIndexPtr()[row + 1] = 1;
+            _base::matrix()[matrix_part::INNER].outerIndexPtr()[row + 1] = 1;
         if (!is_symmetric && parallel_utils::is_last_process())
-            _base::matrix_inner().outerIndexPtr()[rows] = cols - 1;
+            _base::matrix()[matrix_part::INNER].outerIndexPtr()[rows] = cols - 1;
     }
     _base::init_shifts(theories, is_inner, is_symmetric);
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, is_symmetric, SORT_INDICES);
     if (is_neumann) {
         for(const size_t row : std::ranges::iota_view{0u, rows}) {
-            const size_t index = _base::matrix_inner().outerIndexPtr()[row + 1] - 1;
-            _base::matrix_inner().innerIndexPtr()[index] = _base::mesh().container().nodes_count();
+            const size_t index = _base::matrix()[matrix_part::INNER].outerIndexPtr()[row + 1] - 1;
+            _base::matrix()[matrix_part::INNER].innerIndexPtr()[index] = _base::mesh().container().nodes_count();
         }
         if (!is_symmetric && parallel_utils::is_last_process()) 
             for(const size_t col : std::ranges::iota_view{0u, cols}) {
-                const size_t index = _base::matrix_inner().outerIndexPtr()[rows - 1] + col;
-                _base::matrix_inner().innerIndexPtr()[index] = col;
+                const size_t index = _base::matrix()[matrix_part::INNER].outerIndexPtr()[rows - 1] + col;
+                _base::matrix()[matrix_part::INNER].innerIndexPtr()[index] = col;
             }
     }
-    utils::sort_indices(_base::matrix_inner());
-    utils::sort_indices(_base::matrix_bound());
+    utils::sort_indices(_base::matrix()[matrix_part::INNER]);
+    utils::sort_indices(_base::matrix()[matrix_part::BOUND]);
 }
 
-template<class T, class I, class Matrix_Index>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::integral_condition(const bool is_symmetric) {
+template<class T, class I, class J>
+void thermal_conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric) {
     const auto process_nodes = _base::mesh().process_nodes();
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        T& val = _base::matrix_inner().coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
+        T& val = _base::matrix()[matrix_part::INNER].coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
         for(const I e : _base::mesh().elements(node))
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         if (!is_symmetric && parallel_utils::is_last_process())
-            _base::matrix_inner().coeffRef(_base::matrix_inner().rows() - 1, node) = val;
+            _base::matrix()[matrix_part::INNER].coeffRef(_base::matrix()[matrix_part::INNER].rows() - 1, node) = val;
     }
     if (!is_symmetric && parallel_utils::MPI_size() > 1 && parallel_utils::is_last_process()) {
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
         for(size_t node = 0; node < process_nodes.front(); ++node) {
-            T& val = _base::matrix_inner().coeffRef(_base::matrix_inner().rows() - 1, node);
+            T& val = _base::matrix()[matrix_part::INNER].coeffRef(_base::matrix()[matrix_part::INNER].rows() - 1, node);
             for(const I e : _base::mesh().elements(node))
                 val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         }
     }
 }
 
-template<class T, class I, class Matrix_Index>
-void thermal_conductivity_matrix_2d<T, I, Matrix_Index>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
+template<class T, class I, class J>
+void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
                                                                  const bool is_symmetric, const bool is_neumann,
                                                                  const std::optional<std::vector<T>>& solution) {
     const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);

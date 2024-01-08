@@ -1,14 +1,14 @@
 #ifndef NONLOCAL_STIFFNESS_MATRIX_2D_HPP
 #define NONLOCAL_STIFFNESS_MATRIX_2D_HPP
 
-#include "finite_element_matrix_2d.hpp"
+#include "matrix_assembler_2d.hpp"
 #include "mechanical_parameters_2d.hpp"
 
 namespace nonlocal::mechanical {
 
 template<class T, class I, class J>
-class stiffness_matrix : public finite_element_matrix_2d<2, T, I, J> {
-    using _base = finite_element_matrix_2d<2, T, I, J>;
+class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
+    using _base = matrix_assembler_2d<T, I, J, 2>;
     using hooke_parameter = equation_parameters<2, T, hooke_matrix>;
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
@@ -113,19 +113,19 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
                                                        const std::vector<bool>& is_inner, const bool is_neumann) {
     const size_t rows = 2 * _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::is_last_process());
     const size_t cols = 2 * _base::mesh().container().nodes_count() + is_neumann;
-    _base::matrix_inner().resize(rows, cols);
-    _base::matrix_bound().resize(rows, cols);
+    _base::matrix()[matrix_part::INNER].resize(rows, cols);
+    _base::matrix()[matrix_part::BOUND].resize(rows, cols);
     if (is_neumann)
         for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
-            _base::matrix_inner().outerIndexPtr()[2 * row + 1] = 1;
+            _base::matrix()[matrix_part::INNER].outerIndexPtr()[2 * row + 1] = 1;
     _base::init_shifts(theories, is_inner, SYMMETRIC);
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, SYMMETRIC, SORT_INDICES);
     if (is_neumann)
         for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
-            _base::matrix_inner().innerIndexPtr()[_base::matrix_inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
-    utils::sort_indices(_base::matrix_inner());
-    utils::sort_indices(_base::matrix_bound());
+            _base::matrix()[matrix_part::INNER].innerIndexPtr()[_base::matrix()[matrix_part::INNER].outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
+    utils::sort_indices(_base::matrix()[matrix_part::INNER]);
+    utils::sort_indices(_base::matrix()[matrix_part::BOUND]);
 }
 
 template<class T, class I, class J>
@@ -142,7 +142,7 @@ void stiffness_matrix<T, I, J>::integral_condition() {
     const auto process_nodes = _base::mesh().process_nodes();
 #pragma omp parallel for default(none) shared(process_nodes)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        T& val = _base::matrix_inner().coeffRef(2 * (node - process_nodes.front()), 2 * _base::mesh().container().nodes_count());
+        T& val = _base::matrix()[matrix_part::INNER].coeffRef(2 * (node - process_nodes.front()), 2 * _base::mesh().container().nodes_count());
         for(const I e : _base::mesh().elements(node))
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
     }
