@@ -14,7 +14,7 @@ enum class matrix_part : size_t {
 };
 
 template<class T, class I>
-class matrix_parts final {
+class finite_element_matrix final {
     std::array<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 2> _part;
 
 public:

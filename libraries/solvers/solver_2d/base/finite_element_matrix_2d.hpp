@@ -26,7 +26,7 @@ class finite_element_matrix_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
 
     std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
-    matrix_parts<T, Matrix_Index> _matrix;
+    finite_element_matrix<T, Matrix_Index> _matrix;
 
 protected:
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
