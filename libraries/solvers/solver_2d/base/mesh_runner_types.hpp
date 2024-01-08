@@ -14,7 +14,23 @@ enum class matrix_part : size_t {
 };
 
 template<class T, class I>
-using matrix_parts_t = std::array<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 2>;
+class matrix_parts final {
+    std::array<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 2> _part;
+
+public:
+    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& operator[](const matrix_part part) {
+        return _part[size_t(part)];
+    }
+
+    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& operator[](const matrix_part part) const {
+        return _part[size_t(part)];
+    }
+
+    void clear() {
+        _part.front() = Eigen::SparseMatrix<T, Eigen::RowMajor, I>{};
+        _part.back() = Eigen::SparseMatrix<T, Eigen::RowMajor, I>{};
+    }
+};
 
 }
 

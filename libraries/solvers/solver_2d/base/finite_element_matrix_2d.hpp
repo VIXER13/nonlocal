@@ -26,7 +26,7 @@ class finite_element_matrix_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
 
     std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
-    matrix_parts_t<T, Matrix_Index> _matrix;
+    matrix_parts<T, Matrix_Index> _matrix;
 
 protected:
     explicit finite_element_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
@@ -82,7 +82,7 @@ Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix(const matrix_part part) noexcept {
-    return _matrix[size_t(part)];
+    return _matrix[part];
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
@@ -97,7 +97,7 @@ const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matr
 
 template<size_t DoF, class T, class I, class Matrix_Index>
 const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& finite_element_matrix_2d<DoF, T, I, Matrix_Index>::matrix(const matrix_part part) const noexcept {
-    return _matrix[size_t(part)];
+    return _matrix[part];
 }
 
 template<size_t DoF, class T, class I, class Matrix_Index>
