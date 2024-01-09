@@ -36,7 +36,7 @@ public:
     friend logger& get(const log_level level, std::unique_ptr<stream_base>&& init);
 };
 
-logger& get(const log_level level = log_level::ERROR, std::unique_ptr<stream_base>&& init = nullptr);
+logger& get(const log_level level = log_level::INFO, std::unique_ptr<stream_base>&& init = nullptr);
 
 struct cout_stream : public stream_base {
     explicit cout_stream() noexcept;

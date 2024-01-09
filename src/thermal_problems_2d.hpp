@@ -86,6 +86,7 @@ void solve_thermal_2d_problem(
     const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
     mesh->find_neighbours(get_search_radii(materials));
+    mesh->balancing(mesh::balancing_t::MEMORY, true);
     const auto parameters = make_parameters(materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = make_boundaries_conditions(

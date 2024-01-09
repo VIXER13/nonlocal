@@ -14,7 +14,7 @@ class OMP_ranges final {
 
 public:
     explicit OMP_ranges(const size_t size = 0, const size_t threads = threads_count());
-    explicit OMP_ranges(const std::vector<std::ranges::iota_view<size_t, size_t>>& ranges);
+    OMP_ranges(const std::vector<std::ranges::iota_view<size_t, size_t>>& ranges);
 
     size_t size() const noexcept;
 

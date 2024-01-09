@@ -4,13 +4,17 @@
 #include "mesh_container_2d_utils.hpp"
 
 #include "MPI_utils.hpp"
+#include "uniform_ranges.hpp"
+
+#include <set>
 
 namespace nonlocal::mesh {
 
 enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
+enum class diam_adding : uint8_t { NO, MAX, MIN, MEAN };
 
 template<class T>
-constexpr T jacobian(const std::array<T, 2>& J) {
+constexpr T jacobian(const std::array<T, 2>& J) noexcept {
     return std::sqrt(J[X] * J[X] + J[Y] * J[Y]);
 }
 
@@ -35,9 +39,16 @@ class mesh_2d final {
 
     parallel_utils::MPI_ranges _MPI_ranges;
 
+    std::unordered_map<std::string, T> _radii;
     std::vector<std::vector<I>> _elements_neighbors;
 
     T area(const std::ranges::iota_view<size_t, size_t> elements) const;
+    T diam_between_elements(const std::string& element_group, 
+                            const std::vector<std::array<T, 2>>& centers, 
+                            const diam_adding diam) const;
+    void set_search_radii(const std::unordered_map<std::string, T>& radii, 
+                          const std::vector<std::array<T, 2>>& centers,
+                          const diam_adding diam);
 
 public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
@@ -69,7 +80,8 @@ public:
     T area(const std::string& element_group) const;
     T area() const;
 
-    void find_neighbours(const std::unordered_map<std::string, T>& radii, const balancing_t balancing = balancing_t::MEMORY, const bool add_diam = true);
+    void find_neighbours(const std::unordered_map<std::string, T>& radii, const diam_adding add_diam = diam_adding::MAX);
+    void balancing(const balancing_t balance, const bool is_symmetric);
 
     void clear();
 };
@@ -210,16 +222,56 @@ T mesh_2d<T, I>::area() const {
 }
 
 template<class T, class I>
-void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& radii, const balancing_t balancing, const bool add_diam) {
+T mesh_2d<T, I>::diam_between_elements(const std::string& element_group, const std::vector<std::array<T, 2>>& centers, const diam_adding diam) const {
+    if (diam == diam_adding::NO)
+        return T{0};
+    std::unordered_map<diam_adding, T> diams = {
+        {diam_adding::MAX, std::numeric_limits<T>::min()},
+        {diam_adding::MIN, std::numeric_limits<T>::max()},
+        {diam_adding::MEAN, T{0}}
+    };
+    std::set<std::pair<I, I>> pairs;
+    for (const size_t element : container().elements(element_group))
+        for (const size_t node : container().nodes(element))
+            for (const size_t adjacent_element : elements(node)) {
+                const T distance = metamath::functions::distance(centers[element], centers[adjacent_element]);
+                if (distance > diams.at(diam_adding::MAX))
+                    diams[diam_adding::MAX] = distance;
+                if (distance < diams.at(diam_adding::MIN))
+                    diams[diam_adding::MIN] = distance;
+                if (!pairs.contains({element, adjacent_element}) && !pairs.contains({adjacent_element, element})) {
+                    pairs.insert({element, adjacent_element});
+                    diams[diam_adding::MEAN] += distance;
+                }
+            }
+    diams[diam_adding::MEAN] /= pairs.size();
+    return diams.at(diam);
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::set_search_radii(const std::unordered_map<std::string, T>& radii, 
+                                     const std::vector<std::array<T, 2>>& centers, const diam_adding diam) {
+    _radii = radii;
+    for (auto& [element_group, radius] : _radii)
+        radius += diam_between_elements(element_group, centers, diam);
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& radii, const diam_adding add_diam) {
     if (radii.empty())
         return;
+    _elements_neighbors.clear();
     _elements_neighbors.resize(container().elements_2d_count());
+    const std::unordered_set<I> proc_elements = process_elements();
     const std::vector<std::array<T, 2>> centers = utils::approx_centers_of_elements(container());
-    for(const auto& [group, radius] : radii) {
-        if (radius == T{0})
+    set_search_radii(radii, centers, add_diam);
+    for(const auto& [group, radius] : _radii) {
+        if (radius <= T{0})
             continue;
         const auto elements_range = container().elements(group);
         for(const size_t eL : elements_range) {
+            if (!proc_elements.contains(eL))
+                continue;
             _elements_neighbors[eL].reserve(elements_range.size());
             for(const size_t eNL : elements_range)
                 if (metamath::functions::distance(centers[eL], centers[eNL]) <= radius)
@@ -227,6 +279,33 @@ void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& ra
             _elements_neighbors[eL].shrink_to_fit();
         }
     }
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::balancing(const balancing_t balance, const bool is_symmetric) {
+    if (balance == balancing_t::NO || parallel_utils::MPI_size() == 1)
+        return;
+
+    const auto proc_nodes = process_nodes();
+    std::vector<bool> flags(container().nodes_count(), false);
+    std::vector<size_t> nonzero_elements_count(container().nodes_count());
+    for(size_t row = proc_nodes.front(); row < *proc_nodes.end(); ++row) {
+        for(const I eL : elements(row)) {
+            for(const size_t col : container().nodes(eL))
+                if (!is_symmetric || col >= row)
+                    flags[col] = true;
+            for(const size_t eNL : neighbours(eL))
+                for(const size_t col : container().nodes(eNL))
+                    if (!is_symmetric || col >= row)
+                        flags[col] = true;
+        }
+        nonzero_elements_count[row] = std::accumulate(flags.begin(), flags.end(), size_t{0});
+        std::fill(flags.begin(), flags.end(), false);
+    }
+
+    nonzero_elements_count = parallel_utils::all_to_all(nonzero_elements_count, _MPI_ranges);
+    _MPI_ranges = parallel_utils::uniform_ranges(nonzero_elements_count, parallel_utils::MPI_size());
+    find_neighbours(_radii, diam_adding::NO);
 }
 
 template<class T, class I>
@@ -252,96 +331,5 @@ void mesh_2d<T, I>::clear() {
 }
 
 }
-
-/*
-
-template<class T, class I>
-void mesh_proxy<T, I>::find_elements_neighbors(std::vector<std::vector<I>>& elements_neighbors,
-                                               const mesh_2d<T, I>& mesh,
-                                               const std::vector<std::array<T, 2>>& centres,
-                                               const std::unordered_set<I>& elements, const T r) {
-    elements_neighbors.resize(mesh.elements_count());
-    for(const I eL : elements)
-        if (elements_neighbors[eL].empty()) {
-            elements_neighbors[eL].reserve(mesh.elements_count());
-            for(size_t eNL = 0; eNL < mesh.elements_count(); ++eNL)
-                if(metamath::functions::distance(centres[eL], centres[eNL]) < r)
-                    elements_neighbors[eL].push_back(eNL);
-            elements_neighbors[eL].shrink_to_fit();
-        }
-}
-
-template<class T, class I>
-void mesh_proxy<T, I>::find_neighbours(const T r, const balancing_t balancing) {
-    _elements_neighbors.clear();
-    const std::vector<std::array<T, 2>> centres = approx_centres_of_elements(*_mesh);
-    std::unordered_set<I> elements;
-    for(size_t node = first_node(); node < last_node(); ++node)
-        for(const I e : nodes_elements_map(node))
-            elements.insert(e);
-    find_elements_neighbors(_elements_neighbors, *_mesh, centres, elements, r);
-
-    if (parallel_utils::MPI_size() > 1 && balancing != balancing_t::NO) {
-        std::vector<int> data_count_per_nodes(mesh().nodes_count(), 0);
-        switch(balancing) {
-            case balancing_t::MEMORY: {
-                std::vector<bool> nodes_flags(mesh().nodes_count());
-#pragma omp parallel for default(none) shared(data_count_per_nodes) firstprivate(nodes_flags) schedule(dynamic)
-                for(size_t node = first_node(); node < last_node(); ++node) {
-                    std::fill(std::next(nodes_flags.begin(), node), nodes_flags.end(), false);
-                    for(const I eL : nodes_elements_map(node))
-                        for(const I eNL : neighbors(eL))
-                            for(size_t j = 0; j < mesh().element_2d(eNL)->nodes_count(); ++j)
-                                if (node <= mesh().node_number(eNL, j))
-                                    if (!nodes_flags[mesh().node_number(eNL, j)]) {
-                                        ++data_count_per_nodes[node];
-                                        nodes_flags[mesh().node_number(eNL, j)] = true;
-                                    }
-                }
-            }
-            break;
-
-            case balancing_t::SPEED:
-#pragma omp parallel for default(none) shared(data_count_per_nodes) schedule(dynamic)
-                for(size_t node = first_node(); node < last_node(); ++node)
-                    for(const I eL : nodes_elements_map(node))
-                        for(const I eNL : neighbors(eL))
-                            for(size_t j = 0; j < mesh().element_2d(eNL)->nodes_count(); ++j)
-                                if (node <= mesh().node_number(eNL, j))
-                                    ++data_count_per_nodes[node];
-            break;
-
-            default:
-                throw std::invalid_argument{"Unknown balancing type"};
-        }
-
-        data_count_per_nodes = parallel_utils::all_to_all<int>(data_count_per_nodes, _ranges);
-
-        size_t sum = 0, curr_rank = 0;
-        const size_t mean = std::accumulate(data_count_per_nodes.cbegin(), data_count_per_nodes.cend(), size_t{0}) / parallel_utils::MPI_size();
-        for(size_t node = 0; node < data_count_per_nodes.size(); ++node) {
-            sum += data_count_per_nodes[node];
-            if (sum > mean) {
-                _ranges.range(curr_rank).back() = node;
-                _ranges.range(curr_rank+1).front() = node;
-                ++curr_rank;
-                sum = 0;
-            }
-        }
-
-        elements.clear();
-        for(size_t node = first_node(); node < last_node(); ++node)
-            for(const I e : nodes_elements_map(node))
-                elements.insert(e);
-        find_elements_neighbors(_elements_neighbors, *_mesh, centres, elements, r);
-        for(size_t e = 0; e < _elements_neighbors.size(); ++e)
-            if (elements.find(e) == elements.cend()) {
-                _elements_neighbors[e].clear();
-                _elements_neighbors[e].shrink_to_fit();
-            }
-    }
-}
-
-*/
 
 #endif

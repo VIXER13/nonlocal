@@ -90,6 +90,7 @@ void solve_mechanical_2d_problem(
 
     const config::mechanical_materials_2d<T> materials{config["materials"], "materials"};
     mesh->find_neighbours(get_search_radii(materials));
+    mesh->balancing(mesh::balancing_t::MEMORY, true);
     const auto parameters = make_parameters(materials);
     const auto boundaries_conditions = make_boundaries_conditions(
         config::mechanical_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});

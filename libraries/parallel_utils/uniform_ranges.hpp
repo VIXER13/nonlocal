@@ -10,6 +10,7 @@
 namespace parallel_utils {
 
 std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const size_t size, const size_t ranges_count);
+std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const std::vector<size_t> numbers, const size_t ranges_count);
 
 // Returns rows ranges where each range has approximately the same elements number.
 template<class T, class I>
@@ -22,7 +23,7 @@ std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const Eigen::
     const size_t mean = matrix.nonZeros() / ranges_count;
     std::vector<std::ranges::iota_view<size_t, size_t>> ranges(ranges_count);
     for(const size_t row : std::ranges::iota_view{0u, size_t(matrix.rows())})
-        if (const size_t sum = matrix.outerIndexPtr()[row + 1] - matrix.outerIndexPtr()[curr_row]; sum > mean) {
+        if (const size_t sum = matrix.outerIndexPtr()[row + 1] - matrix.outerIndexPtr()[curr_row]; sum >= mean) {
             if (curr_range < ranges_count - 1)
                 ranges[curr_range] = {curr_row, row};
             else {

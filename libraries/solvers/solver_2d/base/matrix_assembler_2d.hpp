@@ -99,7 +99,7 @@ void matrix_assembler_2d<T, I, J, DoF>::clear() {
 template<class T, class I, class J, size_t DoF>
 template<class Initializer>
 void matrix_assembler_2d<T, I, J, DoF>::mesh_run(const std::unordered_map<std::string, theory_t>& theories,
-                                                                 Initializer&& initializer) {
+                                                 Initializer&& initializer) {
     const auto process_nodes = mesh().process_nodes();
 #pragma omp parallel for default(none) shared(theories, process_nodes) firstprivate(initializer) schedule(dynamic)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
