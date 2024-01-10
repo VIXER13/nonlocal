@@ -14,6 +14,7 @@ class independent_symmetric_matrix_vector_product : public iterative_solver_base
 
     parallel_utils::OMP_ranges _thread_rows;
     mutable Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> _threaded_product;
+    bool _mpi_reduction = true;
 
 protected:
     void reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& result) const;
@@ -25,6 +26,8 @@ public:
     using _base::threads_count;
 
     explicit independent_symmetric_matrix_vector_product(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
+
+    void disable_mpi_reduction(const bool disable = true) noexcept;
 
     void set_threads_count(const size_t threads_count) override;
 };
@@ -38,20 +41,23 @@ independent_symmetric_matrix_vector_product<T, I>::independent_symmetric_matrix_
 
 template<class T, class I>
 void independent_symmetric_matrix_vector_product<T, I>::reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& result) const {
-    const size_t shift = _base::process_rows().front();
+    const size_t shift = _mpi_reduction ? _base::process_rows().front() : 0u;
     for(const size_t i : std::ranges::iota_view{1u, _thread_rows.size()}) {
         const size_t row = shift + _thread_rows.get(i).front();
         _threaded_product.block(row, 0, result.size() - row, 1) += 
         _threaded_product.block(row, i, result.size() - row, 1);
     }
-    parallel_utils::reduce_vector(result, _threaded_product.col(0));
+    if (_mpi_reduction)
+        parallel_utils::reduce_vector(result, _threaded_product.col(0));
+    else
+        result = _threaded_product.col(0);
 }
 
 template<class T, class I>
 void independent_symmetric_matrix_vector_product<T, I>::matrix_vector_product(
     Eigen::Matrix<T, Eigen::Dynamic, 1>& product,
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector) const {
-    const size_t shift = _base::process_rows().front();
+    const size_t shift = _mpi_reduction ? _base::process_rows().front() : 0u;
 #pragma omp parallel num_threads(threads_count())
 {
 #ifdef _OPENMP
@@ -71,6 +77,11 @@ void independent_symmetric_matrix_vector_product<T, I>::matrix_vector_product(
     }
 }
     reduction(product);
+}
+
+template<class T, class I>
+void independent_symmetric_matrix_vector_product<T, I>::disable_mpi_reduction(const bool disable) noexcept {
+    _mpi_reduction = !disable;
 }
 
 template<class T, class I>

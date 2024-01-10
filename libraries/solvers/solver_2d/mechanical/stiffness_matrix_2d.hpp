@@ -13,6 +13,7 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
 
+    static constexpr size_t DoF = 2;
     static constexpr bool SYMMETRIC = true;
 
 protected:
@@ -109,8 +110,9 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonloc(
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                                        const std::vector<bool>& is_inner, const bool is_neumann) {
-    const size_t rows = 2 * _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::is_last_process());
-    const size_t cols = 2 * _base::mesh().container().nodes_count() + is_neumann;
+    const size_t cols = _base::cols() + is_neumann;
+    const size_t rows = _base::rows() == _base::cols() ?
+                        cols : _base::rows() + (is_neumann && parallel_utils::is_last_process());
     _base::matrix()[matrix_part::INNER].resize(rows, cols);
     _base::matrix()[matrix_part::BOUND].resize(rows, cols);
     if (is_neumann)
@@ -158,9 +160,9 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
         (const std::string& group, const size_t e, const size_t i, const size_t j) {
             return only_nonlocal ? block_t{} : integrate_loc(hooke.at(group).physical, e, i, j);
         },
-        [this, only_local = part == assemble_part::LOCAL, hooke = to_hooke(parameters, plane, theory_t::NONLOCAL)]
+        [this, hooke = to_hooke(parameters, plane, theory_t::NONLOCAL)]
         (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            return only_local ? block_t{} : integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
+            return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
     if (NEUMANN)

@@ -4,6 +4,8 @@
 #include "independent_symmetric_matrix_vector_product.hpp"
 #include "unrelated_symmetric_matrix_vector_product.hpp"
 
+#include <vector>
+
 namespace nonlocal::slae {
 
 enum class product_strategy : bool {
@@ -61,7 +63,8 @@ template<class T, class I, class Preconditioner, product_strategy Strategy>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Preconditioner, Strategy>::solve(
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
     const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0) const {
-    Eigen::Matrix<T, Eigen::Dynamic, 1> z = parallel_utils::all_to_all(b, processes_ranges()); // It used as the right part in preparation calculation before iteration process
+    Eigen::Matrix<T, Eigen::Dynamic, 1> z = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix().cols()); // It used as the right part in preparation calculation before iteration process
+    parallel_utils::reduce_vector(z, b);
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(z.size()));
     Eigen::Matrix<T, Eigen::Dynamic, 1> r = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(x.size());
     _base::matrix_vector_product(r, x);

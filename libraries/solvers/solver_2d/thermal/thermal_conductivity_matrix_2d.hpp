@@ -305,8 +305,9 @@ T thermal_conductivity_matrix_2d<T, I, J>::integrate_nonloc(
 template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::create_matrix_portrait(
     const std::unordered_map<std::string, theory_t> theories, const std::vector<bool>& is_inner, const bool is_symmetric, const bool is_neumann) {
-    const size_t rows = _base::mesh().process_nodes().size() + (is_neumann && parallel_utils::is_last_process());
-    const size_t cols = _base::mesh().container().nodes_count() + is_neumann;
+    const size_t cols = _base::cols() + is_neumann;
+    const size_t rows = _base::rows() == _base::cols() ?
+                        cols : _base::rows() + (is_neumann && parallel_utils::is_last_process());
     _base::matrix()[matrix_part::INNER].resize(rows, cols);
     _base::matrix()[matrix_part::BOUND].resize(rows, cols);
     if (is_neumann) {
@@ -335,7 +336,9 @@ void thermal_conductivity_matrix_2d<T, I, J>::create_matrix_portrait(
 
 template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric) {
-    const auto process_nodes = _base::mesh().process_nodes();
+    const auto process_nodes = _base::rows() == _base::cols() ?
+                               std::ranges::iota_view<size_t, size_t>{0u, size_t(_base::matrix()[matrix_part::INNER].cols())} :
+                               std::get<std::ranges::iota_view<size_t, size_t>>(_base::nodes_for_processing());
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
         T& val = _base::matrix()[matrix_part::INNER].coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
@@ -356,8 +359,8 @@ void thermal_conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_s
 
 template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
-                                                                 const bool is_symmetric, const bool is_neumann, const assemble_part part,
-                                                                 const std::optional<std::vector<T>>& solution) {
+                                                      const bool is_symmetric, const bool is_neumann, const assemble_part part,
+                                                      const std::optional<std::vector<T>>& solution) {
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) : 
                                                                theories_types(parameters);
@@ -379,11 +382,9 @@ void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& pa
                 return model.local_weight * integrate_loc(*parameter, *solution, e, i, j);
             return std::numeric_limits<T>::quiet_NaN();
         },
-        [this, only_local = part == assemble_part::LOCAL, &parameters, &solution]
+        [this, &parameters, &solution]
         (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             using enum coefficients_t;
-            if (only_local)
-                return T{0};
             const auto& [model, physic] = parameters.at(group);
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
             if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()))

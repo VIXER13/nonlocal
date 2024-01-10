@@ -67,40 +67,25 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         std::cout << "symmetric problem" << std::endl;
         start_time = std::chrono::high_resolution_clock::now();
         thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
+        conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
         conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
         slae::conjugate_gradient<T, Matrix_Index> local_solver{conductivity_local.matrix()[matrix_part::INNER]};
+        local_solver.disable_mpi_reduction();
         Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
         elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
         std::cout << "local SLAE time: " << elapsed_seconds.count() << 's' << std::endl;
-
-        // {
-        //     start_time = std::chrono::high_resolution_clock::now();
-        //     slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix()[matrix_part::INNER]};
-        //     solver.solve(f);
-        //     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-        //     std::cout << "Iterations: " << solver.iterations() << std::endl;
-        //     std::cout << "nonprecond SLAE time: " << elapsed_seconds.count() << 's' << std::endl;
-        // }
 
         start_time = std::chrono::high_resolution_clock::now();
         slae::conjugate_gradient<
             T, 
             Matrix_Index,
             Eigen::IncompleteCholesky<T, Eigen::Upper, Eigen::NaturalOrdering<Matrix_Index>>
-            > solver{conductivity.matrix()[matrix_part::INNER]};
+        > solver{conductivity.matrix()[matrix_part::INNER]};
 
         start_time = std::chrono::high_resolution_clock::now();
         solver.preconditioner().compute(conductivity_local.matrix()[matrix_part::INNER]);
         elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
         std::cout << "ILLT time: " << elapsed_seconds.count() << 's' << std::endl;
-
-        // {
-        //     start_time = std::chrono::high_resolution_clock::now();
-        //     solver.solve(f);
-        //     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-        //     std::cout << "Iterations: " << solver.iterations() << std::endl;
-        //     std::cout << "precond SLAE time: " << elapsed_seconds.count() << 's' << std::endl;
-        // }
 
         start_time = std::chrono::high_resolution_clock::now();
         temperature = solver.solve(f, initial);

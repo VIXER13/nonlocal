@@ -15,6 +15,7 @@ class unrelated_symmetric_matrix_vector_product : public iterative_solver_base<T
     mutable Eigen::Matrix<T, Eigen::Dynamic, 1> _sendbuf;
 #endif
     parallel_utils::unrelated_rows<I> _unrelated;
+    bool _mpi_reduction = true;
 
 protected:
     void matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& result,
@@ -26,6 +27,8 @@ public:
     using _base::threads_count;
 
     explicit unrelated_symmetric_matrix_vector_product(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
+
+    void disable_mpi_reduction(const bool disable = true) noexcept;
 };
 
 template<class T, class I>
@@ -49,7 +52,7 @@ void unrelated_symmetric_matrix_vector_product<T, I>::matrix_vector_product(
 #endif
 
     product.setZero();
-    const size_t processor_shift = _base::process_rows().front();
+    const size_t processor_shift = _mpi_reduction ? _base::process_rows().front() : 0u;
     for(const size_t shift_index : std::ranges::iota_view<size_t, size_t>{0u, _unrelated.shifts.size() - 1}) {
 #pragma omp parallel for num_threads(threads_count())
         for(size_t shift = _unrelated.shifts[shift_index]; shift < _unrelated.shifts[shift_index + 1]; ++shift) {
@@ -65,8 +68,16 @@ void unrelated_symmetric_matrix_vector_product<T, I>::matrix_vector_product(
     }
 
 #ifdef MPI_BUILD
-    parallel_utils::reduce_vector(result, product);
+    if (_mpi_reduction)
+        parallel_utils::reduce_vector(result, product);
+    else
+        result = product;
 #endif
+}
+
+template<class T, class I>
+void unrelated_symmetric_matrix_vector_product<T, I>::disable_mpi_reduction(const bool disable) noexcept {
+    _mpi_reduction = !disable;
 }
 
 }
