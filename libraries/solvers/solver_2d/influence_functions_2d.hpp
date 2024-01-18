@@ -2,6 +2,7 @@
 #define NONLOCAL_INFLUENCE_FUNCTIONS_2D_HPP
 
 #include "metamath.hpp"
+#include "logger.hpp"
 
 namespace nonlocal::influence {
 
@@ -44,8 +45,7 @@ public:
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
         if constexpr (N == std::numeric_limits<size_t>::max())
             return metamath::functions::distance<N>(x, y, _base::radius()) < T{1} ? _base::norm() : T{0};
-        else
-            return metamath::functions::powered_distance<N>(x, y, _base::radius()) < T{1} ? _base::norm() : T{0};
+        return metamath::functions::powered_distance<N>(x, y, _base::radius()) < T{1} ? _base::norm() : T{0};
     }
 };
 
@@ -87,22 +87,18 @@ public:
 
     void set_radius(const T& radius) noexcept { set_radius(std::array{radius, radius}); }
     void set_radius(const std::array<T, 2>& radius) noexcept {
-        const T coeff = N == std::numeric_limits<size_t>::max() ? 0.5 : T{N} / std::beta(T{1} / N, T{1} / N);
+        const T coeff = N == std::numeric_limits<size_t>::max() ? 0.5 : N / std::beta(T{1} / N, T{1} / N);
         _base::set_parameters(radius, coeff * P / (4 * radius[0] * radius[1] * std::beta(T{2} / P, Q + T{1})));
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
-        if constexpr (N == std::numeric_limits<size_t>::max()) {
-            const T distance = metamath::functions::distance<N>(x, y, _base::radius());
-            return distance < T{1} ? _base::norm() * power<Q>(T{1} - power<P>(distance)) : T{0};
-        } else {
-            const T distance = metamath::functions::powered_distance<N>(x, y, _base::radius());
-            using metamath::functions::power;
-            if constexpr (P % N) // TODO: Optimize std::pow
-                return distance < T{1} ? _base::norm() * power<Q>(1 - std::pow(distance, T{P} / N)) : 0;
-            else
-                return distance < T{1} ? _base::norm() * power<Q>(1 - power<P / N>(distance)) : 0;
+        using namespace metamath::functions;
+        if constexpr (P % N) {
+            const T dist = distance<N>(x, y, _base::radius());
+            return dist < T{1} ? _base::norm() * power<Q>(T{1} - power<P>(dist)) : T{0};
         }
+        const T dist = metamath::functions::powered_distance<N>(x, y, _base::radius());
+        return dist < T{1} ? _base::norm() * power<Q>(1 - power<P / N>(dist)) : 0;
     }
 };
 
@@ -156,14 +152,25 @@ public:
 
     void set_parameters(const T& radius, const T q = 0.5) noexcept { set_parameters(std::array{radius, radius}, q); }
     void set_parameters(const std::array<T, 2>& radius, const T q = 0.5) noexcept {
-        const T coeff = N == std::numeric_limits<size_t>::max() ? T{1} : std::pow(T{4}, T{1} / N) / std::beta(T{0.5}, T{1} / N);
+        const T coeff = N == std::numeric_limits<size_t>::max() ? T{1} : N * std::pow(T{4}, T{1} / N) / std::beta(T{0.5}, T{1} / N);
         _base::set_parameters(radius, (coeff * P * std::pow(q, T{2} / P)) / (8 * radius[0] * radius[1] * std::tgamma(T{2} / P)));
         _q = -q;
+
+        std::cout << "radius[0] " << _base::radius()[0] << std::endl;
+        std::cout << "radius[1] " << _base::radius()[1] << std::endl;
+        std::cout << "q " << _q << std::endl;
+        std::cout << "norm " << _base::norm() << std::endl;
+        std::cout << "coeff " << coeff << std::endl;
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
         using namespace metamath::functions;
-        return _base::norm() * std::exp(_q * power<P>(distance<N>(x, y, _base::radius())));
+        if constexpr (P % N) {
+            const T dist = distance<N>(x, y, _base::radius());
+            return _base::norm() * std::exp(_q * power<P>(dist));
+        }
+        const T dist = powered_distance<N>(x, y, _base::radius());
+        return _base::norm() * std::exp(_q * power<P / N>(dist));
     }
 };
 
@@ -188,16 +195,17 @@ public:
         set_radius(std::array{radius, radius}, p, q, n);
     }
     void set_parameters(const std::array<T, 2>& radius, const T p, const T q, const T n = T{2}) noexcept {
-        const T coeff = std::pow(T{4}, 1 / n) / std::beta(T{0.5}, 1 / n);
+        const T coeff = n * std::pow(T{4}, 1 / n) / std::beta(T{0.5}, 1 / n);
         _base::set_parameters(radius, (coeff * p * std::pow(q, 2 / p)) / (8 * radius[0] * radius[1] * std::tgamma(2 / p)));
         _p = p;
-        _q = q;
+        _q = -q;
         _n = n;
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
         using namespace metamath::functions;
-        return _base::norm() * std::exp(_q * std::pow(distance(x, y, _base::radius(), _n), _p));
+        const T distance = metamath::functions::powered_distance(x, y, _base::radius(), _n);
+        return _base::norm() * std::exp(_q * std::pow(distance, _p / _n));
     }
 };
 

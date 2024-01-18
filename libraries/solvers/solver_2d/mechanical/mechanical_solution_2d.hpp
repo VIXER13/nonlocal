@@ -209,8 +209,6 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
     }
     for(const size_t i : std::ranges::iota_view{0u, 3u}) {
         _stress[i] = mesh::utils::qnodes_to_nodes(_base::mesh(), _stress[i]);
-        std::cout << "_stress[i].size() " << _stress[i].size() << std::endl;
-        std::cout << "_base::mesh().MPI_ranges().size() " << _base::mesh().MPI_ranges().get(parallel_utils::MPI_size() - 1).back() + 1 << std::endl;
         _stress[i] = parallel_utils::all_to_all(_stress[i], _base::mesh().MPI_ranges());
     }
 }

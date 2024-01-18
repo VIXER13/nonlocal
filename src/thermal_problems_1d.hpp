@@ -98,7 +98,8 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
                 .energy = auxiliary.energy
             }
         );
-        save_solution(std::move(solution), save);
+        solution.calc_flux();
+        save_solution(solution, save);
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
