@@ -45,13 +45,25 @@
     "model_1d": {
         "local_weight": 2.0,
         "nonlocal_radius": 3.0,
-        "search_radius": 4.0
+        "search_radius": 4.0,
+        "influence": {
+            "family": "polynomial",
+            "p": 0,
+            "q": 1,
+            "n": 2
+        }
     },
 
     "model_2d": {
         "local_weight": 2.0,
         "nonlocal_radius": [3.0, 4.0],
-        "search_radius": [5.0, 6.0]
+        "search_radius": [5.0, 6.0],
+        "influence": {
+            "family": "polynomial",
+            "p": 0,
+            "q": 1,
+            "n": 2
+        }
     },
 
     "material_1d": {
@@ -61,7 +73,10 @@
         "model": {
             "local_weight": 2.0,
             "nonlocal_radius": 3.0,
-            "search_radius": 4.0
+            "search_radius": 4.0,
+            "influence": {
+                "custom": "x + 2"
+            }
         }
     },
 
@@ -70,7 +85,13 @@
         "model": {
             "local_weight": 2.0,
             "nonlocal_radius": [3.0, 4.0],
-            "search_radius": [5.0, 6.0]
+            "search_radius": [5.0, 6.0],
+            "influence": {
+                "family": "exponential",
+                "p": 3,
+                "q": 4,
+                "n": 5
+            }
         }
     },
 
@@ -91,7 +112,8 @@
     "thermal_material_1d": {
         "conductivity": 2.0,
         "capacity": 3.0,
-        "density": 4.0
+        "density": 4.0,
+        "relaxation_time": 5.0
     },
 
     "thermal_isotropic_material_2d": {

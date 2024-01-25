@@ -30,7 +30,7 @@ struct influence_data final {
     explicit constexpr influence_data() noexcept = default;
     explicit influence_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string path_with_access = append_access_sign(path);
-        check_required_fields(config, { "family" }, path_with_access);
+        check_optional_fields(config, { "family" }, path_with_access);
         family = config["family"].get<influence_family_t>();
         if (family == influence_family_t::CUSTOM) {
             custom = config["custom"].get<std::string>();
