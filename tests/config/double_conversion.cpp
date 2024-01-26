@@ -5,6 +5,8 @@
 
 #include <boost/ut.hpp>
 
+#include <iostream>
+
 namespace {
 
 using namespace boost::ut;

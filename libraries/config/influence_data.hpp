@@ -3,6 +3,8 @@
 
 #include "config_utils.hpp"
 
+#include "logger.hpp"
+
 namespace nonlocal::config {
 
 enum class influence_family_t : uint8_t {
@@ -30,7 +32,7 @@ struct influence_data final {
     explicit constexpr influence_data() noexcept = default;
     explicit influence_data(const nlohmann::json& config, const std::string& path = {}) {
         const std::string path_with_access = append_access_sign(path);
-        check_optional_fields(config, { "family" }, path_with_access);
+        check_required_fields(config, { "family" }, path_with_access);
         family = config["family"].get<influence_family_t>();
         if (family == influence_family_t::CUSTOM) {
             custom = config["custom"].get<std::string>();
@@ -53,12 +55,17 @@ struct influence_data final {
 
     operator nlohmann::json() const {
         if (family == influence_family_t::CUSTOM)
-            return {{"custom", custom}};
+            return {
+                {"family", "custom"},
+                {"custom", custom}
+            };
         nlohmann::json result = {{"family", family}};
-        if (n == std::numeric_limits<size_t>::max())
-            result["n"] = "infinity";
-        else
-            result["n"] = n;
+        if constexpr (Dimension != 1) {
+            if (n == std::numeric_limits<size_t>::max())
+                result["n"] = "infinity";
+            else
+                result["n"] = n;
+        }
         if (family != influence_family_t::CONSTANT) {
             result["p"] = p;
             result["q"] = q;

@@ -48,9 +48,8 @@
         "search_radius": 4.0,
         "influence": {
             "family": "polynomial",
-            "p": 0,
-            "q": 1,
-            "n": 2
+            "p": 1,
+            "q": 2
         }
     },
 
@@ -60,9 +59,9 @@
         "search_radius": [5.0, 6.0],
         "influence": {
             "family": "polynomial",
-            "p": 0,
-            "q": 1,
-            "n": 2
+            "p": 4,
+            "q": 5,
+            "n": 6
         }
     },
 
@@ -75,6 +74,7 @@
             "nonlocal_radius": 3.0,
             "search_radius": 4.0,
             "influence": {
+                "family": "custom",
                 "custom": "x + 2"
             }
         }
