@@ -7,8 +7,6 @@ if (NOT DEFINED NO_CONAN)
     set(INCLUDES ${CONAN_INCLUDE_DIRS_EIGEN})
 endif()
 
-message("INCLUDES ${INCLUDES}")
-
 add_library(parallel_utils_lib STATIC 
     uniform_ranges.cpp
     MPI_utils.cpp 
