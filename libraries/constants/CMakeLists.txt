@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.16)
 project(nonlocal_constants)
 
 set(NONLOCAL_CONSTANTS_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})

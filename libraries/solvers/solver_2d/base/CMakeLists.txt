@@ -20,7 +20,6 @@ target_sources(finite_element_solver_2d_base_lib INTERFACE
 )
 target_include_directories(finite_element_solver_2d_base_lib INTERFACE
     ${FINITE_ELEMENT_SOLVER_2D_BASE_LIB_DIR}
-    ${CONAN_INCLUDE_DIRS_EIGEN}
 )
 target_link_libraries(finite_element_solver_2d_base_lib INTERFACE
     mesh_2d_lib

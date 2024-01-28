@@ -5,13 +5,18 @@ project(config_tests)
 FileEmbedAdd(required_fields.json)
 FileEmbedAdd(double_conversion.json)
 
+set(INCLUDES $ENV{CPATH})
+if (NOT DEFINED NO_CONAN)
+    set(INCLUDES ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT})
+endif()
+
 add_library(config_test_lib OBJECT 
     required_fields.cpp
     double_conversion.cpp
 )
 target_include_directories(config_test_lib PRIVATE
     "."
-    ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
+    ${INCLUDES}
     embedded_files
 )
 target_link_libraries(config_test_lib 

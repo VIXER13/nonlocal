@@ -19,8 +19,13 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 add_compile_options(-O2)
 
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
+message("NO_CONAN ${NO_CONAN}")
+message("CPATH $ENV{CPATH}")
+
+if (NOT DEFINED NO_CONAN)
+    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+    conan_basic_setup()
+endif()
 
 # libraries
 add_subdirectory(libraries/logger)

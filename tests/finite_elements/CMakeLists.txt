@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(finite_elements_tests)
 
+set(INCLUDES $ENV{CPATH})
+if (NOT DEFINED NO_CONAN)
+    set(INCLUDES ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT})
+endif()
+
 add_library(finite_elements_test_lib OBJECT
     init_lagrangian_elements_1d.cpp
     init_lagrangian_elements_2d.cpp
@@ -14,7 +19,7 @@ add_library(finite_elements_test_lib OBJECT
 
 target_include_directories(finite_elements_test_lib PUBLIC 
     "."
-    ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT}
+    ${INCLUDES}
 )
 target_link_libraries(finite_elements_test_lib
     PRIVATE
