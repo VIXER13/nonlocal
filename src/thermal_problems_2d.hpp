@@ -81,28 +81,6 @@ void save_solution(const heat_equation_solution_2d<T, I>& solution,
 }
 
 template<std::floating_point T, std::signed_integral I>
-void integrate_influence(std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence) {
-    for(const size_t e : mesh->container().elements_2d()) {
-        const auto& quad = mesh->quad_coord(mesh->quad_shift(e));
-        for(const size_t node : mesh->container().nodes(e))
-            if (const auto& coord = mesh->container().node_coord(node);
-                std::abs(coord[0]) < 1e-5 && std::abs(coord[1]) < 1e-5) {
-                    T integral = T{0};
-                    for(const size_t eNL : mesh->neighbours(e)) {
-                        const auto& el = mesh->container().element_2d(eNL);
-                        size_t qshift = mesh->quad_shift(eNL);
-                        for(const size_t i : el.nodes())
-                            for(const size_t q : el.qnodes()) {
-                                integral += el.weight(q) * el.qN(i, q) * influence(quad, mesh->quad_coord(qshift + q)) * mesh::jacobian(mesh->jacobi_matrix(qshift + q));
-                            }
-                    }
-                    logger::get().log(logger::log_level::ERROR) << "influence norm = " << integral << std::endl;
-                    return;
-                }
-    }
-}
-
-template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
     const config::save_data& save, const bool time_dependency) {
@@ -110,7 +88,6 @@ void solve_thermal_2d_problem(
     mesh->find_neighbours(get_search_radii(materials));
     mesh->balancing(mesh::balancing_t::MEMORY, true);
     const auto parameters = make_parameters(materials);
-    integrate_influence(mesh, parameters.at("DEFAULT").model.influence);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = make_boundaries_conditions(
         config::thermal_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});

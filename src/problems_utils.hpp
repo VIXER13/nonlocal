@@ -67,6 +67,10 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> get_influence
             return influence::exponential_2d<T, 2, 1>{r, 0.5};
         if (data.n == 2 && data.p == 2 && data.q == 0) 
             return influence::exponential_2d<T, 2, 2>{r, 0.5};
+        if (data.n == 2 && data.p == 3 && data.q == 0) 
+            return influence::exponential_2d<T, 3, 2>{r, 0.5};
+        if (data.n == 2 && data.p == 5 && data.q == 0) 
+            return influence::exponential_2d<T, 5, 2>{r, 0.5};
         if (data.n == 5 && data.p == 2 && data.q == 0)
             return influence::exponential_2d<T, 2, 5>{r, 0.5};
         if (data.n == std::numeric_limits<size_t>::max() && data.p == 2 && data.q == 0)
