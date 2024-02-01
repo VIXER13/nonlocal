@@ -9,8 +9,8 @@ target_sources(finite_element_solver_2d_base_lib INTERFACE
     boundary_condition_second_kind_2d.hpp
     boundary_conditions_2d.hpp
     matrix_assembler_2d.hpp
-    index_initializer.hpp
-    indexator_base.hpp
+    matrix_index_initializer.hpp
+    matrix_indexator_base.hpp
     matrix_separator_base.hpp
     mesh_runner_types.hpp
     right_part_2d.hpp

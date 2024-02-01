@@ -3,16 +3,16 @@
 
 #include "mesh_container_2d.hpp"
 
-#include "indexator_base.hpp"
+#include "matrix_indexator_base.hpp"
 #include "matrix_separator_base.hpp"
 
 namespace nonlocal {
 
 template<class T, class I, size_t DoF>
 class shift_initializer final : public matrix_separator_base<T, I>
-                              , public indexator_base<DoF> {
+                              , public matrix_indexator_base<DoF> {
     using _matrix = matrix_separator_base<T, I>;
-    using _indexator = indexator_base<DoF>;
+    using _indexator = matrix_indexator_base<DoF>;
 
     const mesh::mesh_container_2d<T, I>& _mesh;
 
@@ -40,10 +40,10 @@ void shift_initializer<T, I, DoF>::run(const size_t row_glob, const size_t col_g
         for(const size_t col_loc : std::ranges::iota_view{0u, DoF}) {
             const size_t row = row_glob + row_loc;
             const size_t col = col_glob + col_loc;
-            if (const matrix_part part = _matrix::part(row, col); part != matrix_part::NO)
-                _indexator::check_flag(_indexator::flags(part)[row_loc], col, [this, part, row]() {
-                    ++_matrix::matrix(part).outerIndexPtr()[row - DoF * _matrix::node_shift() + 1];
-                });
+            const matrix_part part = _matrix::part(row, col);
+            _indexator::check_flag(part, row_loc, col, [this, part, row]() {
+                ++_matrix::matrix(part).outerIndexPtr()[row - DoF * _matrix::node_shift() + 1];
+            });
         }
 }
 

@@ -11,8 +11,10 @@ target_sources(mesh_2d_lib INTERFACE
     mesh_container_2d_utils.hpp
     mesh_container_2d.hpp
     mesh_parser.hpp
+    mesh_run.hpp
     su2_parser.hpp
     vtk_elements_set.hpp
+    indexator_base.hpp
 )
 target_include_directories(mesh_2d_lib INTERFACE ${MESH_2D_LIB_DIR})
 target_link_libraries(mesh_2d_lib INTERFACE
