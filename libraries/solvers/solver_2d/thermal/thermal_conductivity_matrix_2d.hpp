@@ -337,13 +337,14 @@ void thermal_conductivity_matrix_2d<T, I, J>::create_matrix_portrait(
 template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric) {
     const auto process_nodes = _base::rows() == _base::cols() ?
-                               std::ranges::iota_view<size_t, size_t>{0u, size_t(_base::matrix()[matrix_part::INNER].cols())} :
+                               std::ranges::iota_view<size_t, size_t>{0u, size_t(_base::matrix()[matrix_part::INNER].cols()) - 1} :
                                std::get<std::ranges::iota_view<size_t, size_t>>(_base::nodes_for_processing());
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
         T& val = _base::matrix()[matrix_part::INNER].coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
-        for(const I e : _base::mesh().elements(node))
+        for(const I e : _base::mesh().elements(node)) {
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
+        }
         if (!is_symmetric && parallel::is_last_process())
             _base::matrix()[matrix_part::INNER].coeffRef(_base::matrix()[matrix_part::INNER].rows() - 1, node) = val;
     }

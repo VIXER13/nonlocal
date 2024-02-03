@@ -314,13 +314,17 @@ void mesh_container_2d<T, I>::read_from_file(const std::filesystem::path& path_t
 template<class T, class I>
 void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation) {
     if (permutation.size() != nodes_count())
-        throw std::runtime_error{"Permutation size does not match the mesh nodes number"};
+        throw std::runtime_error{"Permutation size does not match the mesh nodes number."};
+    std::vector<bool> check_nodes(nodes_count(), false);
+    for(const size_t node : permutation)
+        check_nodes[node] = true;
+    if (std::accumulate(check_nodes.begin(), check_nodes.end(), size_t{0}) != nodes_count())
+        throw std::runtime_error{"Incorrect permutation, some of the nodes are the same."};
 
     std::vector<std::array<T, 2>> nodes(_nodes.size());
     for(const size_t i : std::ranges::iota_view{0u, nodes_count()})
         nodes[permutation[i]] = _nodes[i];
     _nodes = std::move(nodes);
-
     for(std::vector<I>& nodes : _elements)
         for(I& node : nodes)
             node = permutation[node];

@@ -85,6 +85,8 @@ public:
 
     void find_neighbours(const std::unordered_map<std::string, T>& radii, const diam_adding add_diam = diam_adding::MAX);
 
+    void renumbering(const std::vector<size_t>& permutation);
+
     void clear();
 };
 
@@ -298,6 +300,13 @@ void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& ra
             _elements_neighbors[eL].shrink_to_fit();
         }
     }
+}
+
+template<class T, class I>
+void mesh_2d<T, I>::renumbering(const std::vector<size_t>& permutation) {
+    _mesh.renumbering(permutation);
+    _node_elements = utils::node_elements_2d(container());
+    _global_to_local = utils::global_to_local(container());
 }
 
 template<class T, class I>
