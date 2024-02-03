@@ -11,7 +11,7 @@
 
 #include <stddef.h>
 
-namespace parallel_utils {
+namespace parallel {
 
 int MPI_rank();
 int MPI_size();

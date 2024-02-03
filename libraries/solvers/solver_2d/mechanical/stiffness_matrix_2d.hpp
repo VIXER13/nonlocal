@@ -112,7 +112,7 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
                                                        const std::vector<bool>& is_inner, const bool is_neumann) {
     const size_t cols = _base::cols() + is_neumann;
     const size_t rows = _base::rows() == _base::cols() ?
-                        cols : _base::rows() + (is_neumann && parallel_utils::is_last_process());
+                        cols : _base::rows() + (is_neumann && parallel::is_last_process());
     _base::matrix()[matrix_part::INNER].resize(rows, cols);
     _base::matrix()[matrix_part::BOUND].resize(rows, cols);
     if (is_neumann)

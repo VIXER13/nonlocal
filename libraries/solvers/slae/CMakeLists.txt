@@ -11,5 +11,5 @@ target_include_directories(slae_solver_lib INTERFACE
     ${SLAE_SOLVER_LIB_DIR}
 )
 target_link_libraries(slae_solver_lib INTERFACE 
-    parallel_utils_lib
+    parallel_lib
 )

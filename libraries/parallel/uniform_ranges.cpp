@@ -5,7 +5,7 @@
 
 #include <iostream>
 
-namespace parallel_utils {
+namespace parallel {
 
 std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const size_t size, const size_t ranges_count) {
     if (!ranges_count)

@@ -14,7 +14,7 @@ class unrelated_symmetric_matrix_vector_product : public iterative_solver_base<T
 #ifdef MPI_BUILD
     mutable Eigen::Matrix<T, Eigen::Dynamic, 1> _sendbuf;
 #endif
-    parallel_utils::unrelated_rows<I> _unrelated;
+    parallel::unrelated_rows<I> _unrelated;
     bool _mpi_reduction = true;
 
 protected:
@@ -69,7 +69,7 @@ void unrelated_symmetric_matrix_vector_product<T, I>::matrix_vector_product(
 
 #ifdef MPI_BUILD
     if (_mpi_reduction)
-        parallel_utils::reduce_vector(result, product);
+        parallel::reduce_vector(result, product);
     else
         result = product;
 #endif

@@ -186,8 +186,8 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
         }
     _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), flux[X]);
     _flux[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), flux[Y]);
-    _flux[X] = parallel_utils::all_to_all(_flux[X], _base::mesh().MPI_ranges());
-    _flux[Y] = parallel_utils::all_to_all(_flux[Y], _base::mesh().MPI_ranges());
+    _flux[X] = parallel::all_to_all(_flux[X], _base::mesh().MPI_ranges());
+    _flux[Y] = parallel::all_to_all(_flux[Y], _base::mesh().MPI_ranges());
     return _flux;
 }
 

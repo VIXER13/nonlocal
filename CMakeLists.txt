@@ -26,7 +26,7 @@ endif()
 
 # libraries
 add_subdirectory(libraries/logger)
-add_subdirectory(libraries/parallel_utils)
+add_subdirectory(libraries/parallel)
 add_subdirectory(libraries/metamath)
 add_subdirectory(libraries/constants)
 add_subdirectory(libraries/mesh/mesh_1d)

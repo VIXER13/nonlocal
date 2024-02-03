@@ -36,7 +36,7 @@ class mesh_2d final {
     std::vector<I> _quad_node_shift;
     std::vector<std::array<T, 2>> _derivatives;
 
-    parallel_utils::MPI_ranges _MPI_ranges;
+    parallel::MPI_ranges _MPI_ranges;
 
     std::unordered_map<std::string, T> _radii;
     std::vector<std::vector<I>> _elements_neighbors;
@@ -69,11 +69,11 @@ public:
     const std::array<T, 2>& derivatives(const size_t qnode_shift, const size_t q) const;
     const std::array<T, 2>& derivatives(const size_t e, const size_t i, const size_t q) const;
 
-    const parallel_utils::MPI_ranges& MPI_ranges() const noexcept;
-    std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel_utils::MPI_rank()) const;
-    std::unordered_set<I> process_elements(const size_t process = parallel_utils::MPI_rank()) const;
+    const parallel::MPI_ranges& MPI_ranges() const noexcept;
+    std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel::MPI_rank()) const;
+    std::unordered_set<I> process_elements(const size_t process = parallel::MPI_rank()) const;
 
-    void MPI_ranges(const parallel_utils::MPI_ranges& ranges);
+    void MPI_ranges(const parallel::MPI_ranges& ranges);
 
     const std::unordered_map<std::string, T>& radii() const noexcept;
     T radius(const std::string& group) const;
@@ -167,7 +167,7 @@ const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t e, const size_t 
 }
 
 template<class T, class I>
-const parallel_utils::MPI_ranges& mesh_2d<T, I>::MPI_ranges() const noexcept {
+const parallel::MPI_ranges& mesh_2d<T, I>::MPI_ranges() const noexcept {
     return _MPI_ranges;
 }
 
@@ -186,7 +186,7 @@ std::unordered_set<I> mesh_2d<T, I>::process_elements(const size_t process) cons
 }
 
 template<class T, class I>
-void mesh_2d<T, I>::MPI_ranges(const parallel_utils::MPI_ranges& ranges) {
+void mesh_2d<T, I>::MPI_ranges(const parallel::MPI_ranges& ranges) {
     _MPI_ranges = ranges;
 }
 
@@ -317,7 +317,7 @@ void mesh_2d<T, I>::clear() {
     _quad_node_shift.shrink_to_fit();
     _derivatives.clear();
     _derivatives.shrink_to_fit();
-    _MPI_ranges = parallel_utils::MPI_ranges{0};
+    _MPI_ranges = parallel::MPI_ranges{0};
     _elements_neighbors.clear();
     _elements_neighbors.shrink_to_fit();
 }

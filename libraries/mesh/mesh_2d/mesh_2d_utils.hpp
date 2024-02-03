@@ -114,13 +114,13 @@ std::unordered_map<std::string, theory_t> theories(const mesh_2d<T, I>& mesh, co
 
 template<class T, class I>
 void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_local, const bool is_symmetric) {
-    if (balance == balancing_t::NO || parallel_utils::MPI_size() == 1)
+    if (balance == balancing_t::NO || parallel::MPI_size() == 1)
         return;
     std::vector<size_t> nonzero_elements_count(mesh.container().nodes_count());
     mesh_run(mesh, mesh.process_nodes(), theories(mesh, only_local),
         nonzero_counter{nonzero_elements_count, mesh.container(), is_symmetric});
-    nonzero_elements_count = parallel_utils::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
-    mesh.MPI_ranges(parallel_utils::uniform_ranges(nonzero_elements_count, parallel_utils::MPI_size()));
+    nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
+    mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
     mesh.find_neighbours(mesh.radii(), diam_adding::NO);
 }
 

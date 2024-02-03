@@ -6,7 +6,7 @@ namespace {
 
 const boost::ut::suite<"uniform_range"> _ = [] {
     using namespace boost::ut;
-    using namespace parallel_utils;
+    using namespace parallel;
 
     static constexpr size_t SIZE = 3;
     static constexpr size_t COUNTS = 6;

@@ -67,7 +67,7 @@ template<std::floating_point T, std::signed_integral I>
 void save_solution(const heat_equation_solution_2d<T, I>& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
-    if (parallel_utils::MPI_rank() != 0) // Only the master process saves data
+    if (parallel::MPI_rank() != 0) // Only the master process saves data
         return;
     if (step);
         logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;

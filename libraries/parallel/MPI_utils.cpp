@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-namespace parallel_utils {
+namespace parallel {
 
 int MPI_rank() {
     int rank = 0;

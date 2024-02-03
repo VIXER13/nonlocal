@@ -6,7 +6,7 @@
     #include <omp.h>
 #endif
 
-namespace parallel_utils {
+namespace parallel {
 
 // GCC implementation have bug: omp_get_num_threads() return 1 in nonparallel sections
 int threads_count() {
