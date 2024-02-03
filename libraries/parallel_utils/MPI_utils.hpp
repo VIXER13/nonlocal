@@ -24,6 +24,9 @@ class MPI_ranges final {
 public:
     explicit MPI_ranges(const size_t size = 0);
     MPI_ranges(const std::vector<std::ranges::iota_view<size_t, size_t>>& ranges);
+    
+    MPI_ranges& operator=(const MPI_ranges&) = default;
+    MPI_ranges& operator=(MPI_ranges&&) = default;
 
     std::ranges::iota_view<size_t, size_t> get(const size_t process = MPI_rank()) const;
     void set(const std::ranges::iota_view<size_t, size_t> range, const size_t process = MPI_rank());

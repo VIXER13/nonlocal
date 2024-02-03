@@ -87,21 +87,6 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
         std::cout << "ILLT time: " << elapsed_seconds.count() << 's' << std::endl;
 
-        switch(solver.preconditioner().info()) {
-        case Eigen::Success:
-            std::cout << "Success" << std::endl;
-        break;
-        case Eigen::NumericalIssue:
-            std::cout << "NumericalIssue" << std::endl;
-        break;
-        case Eigen::NoConvergence:
-            std::cout << "NoConvergence" << std::endl;
-        break;
-        case Eigen::InvalidInput:
-            std::cout << "InvalidInput" << std::endl;
-        break;
-        };
-
         start_time = std::chrono::high_resolution_clock::now();
         temperature = solver.solve(f, initial);
         std::cout << "Iterations: " << solver.iterations() << std::endl;

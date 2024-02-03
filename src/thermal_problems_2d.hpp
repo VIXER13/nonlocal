@@ -7,7 +7,6 @@
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_2d.hpp"
 
-
 namespace nonlocal::thermal {
 
 template<std::floating_point T>
@@ -86,7 +85,7 @@ void solve_thermal_2d_problem(
     const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
     mesh->find_neighbours(get_search_radii(materials));
-    mesh->balancing(mesh::balancing_t::MEMORY, true);
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, false, true);
     const auto parameters = make_parameters(materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = make_boundaries_conditions(

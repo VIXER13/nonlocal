@@ -7,7 +7,7 @@
 #include "matrix_index_initializer.hpp"
 #include "integrator.hpp"
 
-#include "mesh_run.hpp"
+#include "mesh_2d_utils.hpp"
 
 #include <variant>
 #include <iostream>
@@ -138,9 +138,9 @@ template<class T, class I, class J, size_t DoF>
 template<class Runner>
 void matrix_assembler_2d<T, I, J, DoF>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, Runner&& runner) {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
-        mesh::mesh_run(mesh(), std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
+        mesh::utils::mesh_run(mesh(), std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
     else
-        mesh::mesh_run(mesh(), std::get<std::vector<size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
+        mesh::utils::mesh_run(mesh(), std::get<std::vector<size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
 }
 
 template<class T, class I, class J, size_t DoF>

@@ -54,8 +54,10 @@ matrix_indexator_base<DoF>::matrix_indexator_base(const size_t size, const bool 
 template<size_t DoF>
 void matrix_indexator_base<DoF>::reset(const size_t node) {
     for(const size_t dof : std::ranges::iota_view{0u, DoF}) {
-        std::fill(flags(matrix_part::BOUND, dof).begin(), flags(matrix_part::BOUND, dof).end(), false);
-        std::fill(std::next(flags(matrix_part::INNER, dof).begin(), is_symmetric() ? DoF * node : 0), flags(matrix_part::INNER, dof).end(), false);
+        auto& bound = flags(matrix_part::BOUND, dof);
+        auto& inner = flags(matrix_part::INNER, dof);
+        std::fill(bound.begin(), bound.end(), false);
+        std::fill(std::next(inner.begin(), is_symmetric() ? DoF * node : 0), inner.end(), false);
     }
 }
 

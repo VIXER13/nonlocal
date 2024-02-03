@@ -10,7 +10,6 @@
 
 namespace nonlocal::mesh {
 
-enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
 enum class diam_adding : uint8_t { NO, MAX, MIN, MEAN };
 
 template<class T>
@@ -74,6 +73,10 @@ public:
     std::ranges::iota_view<size_t, size_t> process_nodes(const size_t process = parallel_utils::MPI_rank()) const;
     std::unordered_set<I> process_elements(const size_t process = parallel_utils::MPI_rank()) const;
 
+    void MPI_ranges(const parallel_utils::MPI_ranges& ranges);
+
+    const std::unordered_map<std::string, T>& radii() const noexcept;
+    T radius(const std::string& group) const;
     const std::vector<I>& neighbours(const size_t e) const;
 
     T area(const size_t e) const;
@@ -81,7 +84,6 @@ public:
     T area() const;
 
     void find_neighbours(const std::unordered_map<std::string, T>& radii, const diam_adding add_diam = diam_adding::MAX);
-    void balancing(const balancing_t balance, const bool is_symmetric);
 
     void clear();
 };
@@ -184,6 +186,23 @@ std::unordered_set<I> mesh_2d<T, I>::process_elements(const size_t process) cons
 }
 
 template<class T, class I>
+void mesh_2d<T, I>::MPI_ranges(const parallel_utils::MPI_ranges& ranges) {
+    _MPI_ranges = ranges;
+}
+
+template<class T, class I>
+const std::unordered_map<std::string, T>& mesh_2d<T, I>::radii() const noexcept {
+    return _radii;
+}
+
+template<class T, class I>
+T mesh_2d<T, I>::radius(const std::string& group) const {
+    if(_radii.contains(group))
+        return _radii.at(group);
+    return T{0};
+}
+
+template<class T, class I>
 const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
 }
@@ -279,33 +298,6 @@ void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& ra
             _elements_neighbors[eL].shrink_to_fit();
         }
     }
-}
-
-template<class T, class I>
-void mesh_2d<T, I>::balancing(const balancing_t balance, const bool is_symmetric) {
-    if (balance == balancing_t::NO || parallel_utils::MPI_size() == 1)
-        return;
-
-    const auto proc_nodes = process_nodes();
-    std::vector<bool> flags(container().nodes_count(), false);
-    std::vector<size_t> nonzero_elements_count(container().nodes_count());
-    for(size_t row = proc_nodes.front(); row < *proc_nodes.end(); ++row) {
-        for(const I eL : elements(row)) {
-            for(const size_t col : container().nodes(eL))
-                if (!is_symmetric || col >= row)
-                    flags[col] = true;
-            for(const size_t eNL : neighbours(eL))
-                for(const size_t col : container().nodes(eNL))
-                    if (!is_symmetric || col >= row)
-                        flags[col] = true;
-        }
-        nonzero_elements_count[row] = std::accumulate(flags.begin(), flags.end(), size_t{0});
-        std::fill(flags.begin(), flags.end(), false);
-    }
-
-    nonzero_elements_count = parallel_utils::all_to_all(nonzero_elements_count, _MPI_ranges);
-    _MPI_ranges = parallel_utils::uniform_ranges(nonzero_elements_count, parallel_utils::MPI_size());
-    find_neighbours(_radii, diam_adding::NO);
 }
 
 template<class T, class I>
