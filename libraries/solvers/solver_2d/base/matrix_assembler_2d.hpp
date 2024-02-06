@@ -153,7 +153,8 @@ void matrix_assembler_2d<T, I, J, DoF>::init_shifts(
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix[matrix_part::INNER].outerIndexPtr()[row + 1]; });
     utils::accumulate_shifts(matrix()[matrix_part::INNER]);
     utils::accumulate_shifts(matrix()[matrix_part::BOUND]);
-    std::cout << "Non-zero elements count: " << matrix()[matrix_part::INNER].nonZeros() + matrix()[matrix_part::BOUND].nonZeros() << std::endl;
+    logger::get().log(logger::log_level::INFO) << "Non-zero elements count: " << 
+        matrix()[matrix_part::INNER].nonZeros() + matrix()[matrix_part::BOUND].nonZeros() << std::endl;
 }
 
 template<class T, class I, class J, size_t DoF>

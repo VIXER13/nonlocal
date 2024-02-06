@@ -155,12 +155,6 @@ public:
         const T coeff = N == std::numeric_limits<size_t>::max() ? T{1} : N * std::pow(T{4}, T{1} / N) / std::beta(T{0.5}, T{1} / N);
         _base::set_parameters(radius, (coeff * P * std::pow(q, T{2} / P)) / (8 * radius[0] * radius[1] * std::tgamma(T{2} / P)));
         _q = -q;
-
-        std::cout << "radius[0] " << _base::radius()[0] << std::endl;
-        std::cout << "radius[1] " << _base::radius()[1] << std::endl;
-        std::cout << "q " << _q << std::endl;
-        std::cout << "norm " << _base::norm() << std::endl;
-        std::cout << "coeff " << coeff << std::endl;
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {

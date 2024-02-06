@@ -1,5 +1,7 @@
 #include "logger.hpp"
 
+#include "MPI_utils.hpp"
+
 #include <iostream>
 #include <array>
 
@@ -26,6 +28,8 @@ std::ostream& logger::log(const log_level level) {
     };
     static_assert(levels.size() == size_t(log_level::COUNT));
     if (uint8_t(level) <= uint8_t(_level)) {
+        if (parallel::MPI_size() > 1)
+            _out->out << "PROCESS " << parallel::MPI_rank() << ' ';
         _out->out << levels[size_t(level)];
         return _out->out;
     }

@@ -25,7 +25,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
     stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions));
     std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    std::cout << "Stiffness matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
+    logger::get().log(logger::log_level::INFO) << "Stiffness matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix()[matrix_part::INNER].cols());
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
@@ -47,8 +47,8 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     solver.preconditioner().compute(local_stiffness.matrix()[matrix_part::INNER]);
     const auto displacement = solver.solve(f, initial);
     elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    std::cout << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
-    std::cout << "Iterations: " << solver.iterations() << std::endl;
+    logger::get().log(logger::log_level::INFO) << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
+    logger::get().log(logger::log_level::INFO) << "Iterations: " << solver.iterations() << std::endl;
     return mechanical_solution_2d<T, I>{mesh, parameters, displacement};
 }
 
