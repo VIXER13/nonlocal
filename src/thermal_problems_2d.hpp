@@ -70,8 +70,8 @@ void save_solution(const heat_equation_solution_2d<T, I>& solution,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0) // Only the master process saves data
         return;
-    if (step);
-        logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;
+    if (step.has_value());
+        logger::get().log() << "step = " << *step << std::endl;
     const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
                                               save.path("csv", "csv", "solution");
     mesh::utils::save_as_csv(path, solution.mesh().container(), 

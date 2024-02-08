@@ -150,11 +150,14 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part) {
+    logger::get().log() << "Stiffness matrix assembly has begun" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
                                                                theories_types(parameters);
     static constexpr bool NEUMANN = false;
     create_matrix_portrait(theories, is_inner, NEUMANN);
+    if (NEUMANN)
+        integral_condition();
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, only_nonlocal = part == assemble_part::NONLOCAL, hooke = to_hooke(parameters, plane, theory_t::LOCAL)]
         (const std::string& group, const size_t e, const size_t i, const size_t j) {
@@ -165,8 +168,7 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
             return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
-    if (NEUMANN)
-        integral_condition();
+    logger::get().log() << "Stiffness matrix assembly completed" << std::endl;
 }
 
 }

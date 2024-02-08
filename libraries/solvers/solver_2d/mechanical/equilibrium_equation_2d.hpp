@@ -21,34 +21,24 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
                                                               const mechanical_parameters_2d<T>& parameters,
                                                               const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
                                                               const Right_Part& right_part) {
-    auto start_time = std::chrono::high_resolution_clock::now();
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
     stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions));
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    logger::get().log(logger::log_level::INFO) << "Stiffness matrix calculated time: " << elapsed_seconds.count() << 's' << std::endl;
-
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix()[matrix_part::INNER].cols());
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
     integrate_right_part<2>(f, *mesh, right_part);
     temperature_condition(f, *mesh, parameters);
-
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
     local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
     local_stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions), assemble_part::LOCAL);
     slae::conjugate_gradient<T, Matrix_Index> local_solver{local_stiffness.matrix()[matrix_part::INNER]};
     local_solver.disable_mpi_reduction();
     Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
-
-    start_time = std::chrono::high_resolution_clock::now();
     slae::conjugate_gradient<
         T, Matrix_Index, 
         Eigen::IncompleteCholesky<T, Eigen::Upper, Eigen::NaturalOrdering<Matrix_Index>>
     > solver{stiffness.matrix()[matrix_part::INNER]};
     solver.preconditioner().compute(local_stiffness.matrix()[matrix_part::INNER]);
     const auto displacement = solver.solve(f, initial);
-    elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    logger::get().log(logger::log_level::INFO) << "SLAE solution time: " << elapsed_seconds.count() << 's' << std::endl;
-    logger::get().log(logger::log_level::INFO) << "Iterations: " << solver.iterations() << std::endl;
     return mechanical_solution_2d<T, I>{mesh, parameters, displacement};
 }
 

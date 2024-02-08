@@ -28,6 +28,9 @@ std::ostream& logger::log(const log_level level) {
     };
     static_assert(levels.size() == size_t(log_level::COUNT));
     if (uint8_t(level) <= uint8_t(_level)) {
+        const auto current_time = std::chrono::system_clock::now();
+        const std::chrono::duration<double> duration = current_time - _initial_time;
+        _out->out << '[' << duration.count() << "s] ";
         if (parallel::MPI_size() > 1)
             _out->out << "PROCESS " << parallel::MPI_rank() << ' ';
         _out->out << levels[size_t(level)];

@@ -63,6 +63,7 @@ template<class T, class I, class Preconditioner, product_strategy Strategy>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Preconditioner, Strategy>::solve(
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
     const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0) const {
+    logger::get().log() << "Solving SLAE using the conjugate gradient method has begun" << std::endl;
     Eigen::Matrix<T, Eigen::Dynamic, 1> z = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix().cols()); // It used as the right part in preparation calculation before iteration process
     parallel::reduce_vector(z, b);
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(z.size()));
@@ -86,6 +87,8 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Preconditioner, Str
         ++_iterations;
         _residual = std::sqrt(r_squared_norm) / b_norm;
     }
+    logger::get().log() << "iterations = " << _iterations << '\n'
+                        << "residual = "   << _residual << std::endl;
     return x;
 }
 

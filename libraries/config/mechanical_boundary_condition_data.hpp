@@ -59,7 +59,7 @@ struct mechanical_boundary_conditions_data final {
                 if (!config[i].is_null())
                     conditions[i] = mechanical_boundary_condition_data<T>{config[i], path_with_access};
                 else
-                    logger::get().log(logger::log_level::WARNING) << "The boundary condition \"" + path_with_access + "\" contain null." << std::endl;
+                    logger::get().log(logger::log_level::DEBUG) << "The boundary condition \"" + path_with_access + "\" contain null." << std::endl;
             }
         }
     }
