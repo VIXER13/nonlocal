@@ -77,6 +77,8 @@ public:
 
     const std::unordered_map<std::string, T>& radii() const noexcept;
     T radius(const std::string& group) const;
+
+    const std::vector<std::vector<I>>& neighbours() const;
     const std::vector<I>& neighbours(const size_t e) const;
 
     T area(const size_t e) const;

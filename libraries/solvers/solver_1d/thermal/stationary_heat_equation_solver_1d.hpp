@@ -62,7 +62,6 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     T difference = T{1};
     size_t iteration = 0;
     thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
-    auto start_time = std::chrono::high_resolution_clock::now();
     while (iteration < additional_parameters.max_iterations && 
            difference > additional_parameters.tolerance) {
         std::swap(temperature_prev, temperature_curr);
@@ -117,8 +116,6 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         logger::get().log() << "norm(prev - curr) = " << difference << std::endl;
     }
     logger::get().log() << "Iterations: " << iteration << std::endl;
-    std::chrono::duration<double> elapsed_seconds = std::chrono::high_resolution_clock::now() - start_time;
-    logger::get().log() << "Time: " << elapsed_seconds.count() << 's' << std::endl;
     return heat_equation_solution_1d<T>{mesh, parameters, temperature_curr};
 }
 

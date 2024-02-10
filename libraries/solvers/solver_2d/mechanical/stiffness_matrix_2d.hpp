@@ -126,6 +126,7 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
             _base::matrix()[matrix_part::INNER].innerIndexPtr()[_base::matrix()[matrix_part::INNER].outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
     utils::sort_indices(_base::matrix()[matrix_part::INNER]);
     utils::sort_indices(_base::matrix()[matrix_part::BOUND]);
+    logger::get().log() << "Matrix portrait is formed" << std::endl;
 }
 
 template<class T, class I, class J>
@@ -150,7 +151,7 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part) {
-    logger::get().log() << "Stiffness matrix assembly has begun" << std::endl;
+    logger::get().log() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
                                                                theories_types(parameters);
@@ -168,7 +169,7 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
             return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
-    logger::get().log() << "Stiffness matrix assembly completed" << std::endl;
+    logger::get().log() << "Stiffness matrix assembly finished" << std::endl;
 }
 
 }

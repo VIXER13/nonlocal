@@ -165,6 +165,7 @@ void matrix_assembler_2d<T, I, J, DoF>::init_indices(
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     utils::allocate_matrix(matrix()[matrix_part::INNER]);
     utils::allocate_matrix(matrix()[matrix_part::BOUND]);
+    logger::get().log() << "Matrix allocated successfully" << std::endl;
     mesh_run(theories, matrix_index_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
         matrix()[matrix_part::INNER].innerIndexPtr()[matrix()[matrix_part::INNER].outerIndexPtr()[row]] = row + shift; 

@@ -7,6 +7,7 @@
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_2d.hpp"
 #include "cuthill_mckee.hpp"
+#include "find_neighbours.hpp"
 
 namespace nonlocal::thermal {
 
@@ -85,7 +86,21 @@ void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
     const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
+    logger::get().log() << "new search algorithm started" << std::endl;
+    const auto neighbours = find_neighbours(*mesh, get_search_radii(materials));
+    logger::get().log() << "new search algorithm finished" << std::endl;
+    size_t count = 0;
+    for(const auto& n : neighbours)
+        count += n.size();
+    logger::get().log() << "neighbours numbers " << count << std::endl;
+    logger::get().log() << "old search algorithm started" << std::endl;
     mesh->find_neighbours(get_search_radii(materials));
+    logger::get().log() << "old search algorithm finished" << std::endl;
+    count = 0;
+    for(const size_t e : mesh->container().elements_2d())
+        count += mesh->neighbours(e).size();
+    logger::get().log() << "neighbours numbers " << count << std::endl;
+    //std::cin.get();
     const bool ONLY_LOCAL = true;
     const bool SYMMTERIC = true;
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !ONLY_LOCAL, SYMMTERIC);
