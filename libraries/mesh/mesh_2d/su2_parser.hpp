@@ -182,19 +182,13 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
     }
 
     if (elements_2d_shift < elements_2d.size()) {
-        const auto default_range = std::ranges::iota_view{elements_2d_shift, elements_2d.size()};
         _mesh._groups_2d.insert("DEFAULT");
-        _mesh._elements_groups["DEFAULT"] = default_range;
-        for(const size_t current_element : default_range)
-            for(const size_t e : std::ranges::iota_view{0u, _mesh.elements_2d_count()}) {
-                if (elements_2d[e].empty())
-                    continue;
-                const auto can_inserted = [&element = elements_2d[e]](const std::vector<I>& el) { return el == element; };
-                if (elements_2d_shift == 0 || std::any_of(_mesh._elements.begin(), std::next(_mesh._elements.begin(), elements_2d_shift), can_inserted)) {
-                    _mesh._elements[current_element] = std::move(elements_2d[e]);
-                    _mesh._elements_types[current_element] = uint8_t(_mesh.get_elements_set().model_to_local_2d(elements_types_2d[e]));
-                    break;
-                }
+        _mesh._elements_groups["DEFAULT"] = std::ranges::iota_view{elements_2d_shift, elements_2d.size()};
+        for(const size_t e : std::ranges::iota_view{0u, _mesh.elements_2d_count()})
+            if (!elements_2d[e].empty()) {
+                _mesh._elements[elements_2d_shift] = std::move(elements_2d[e]);
+                _mesh._elements_types[elements_2d_shift] = uint8_t(_mesh.get_elements_set().model_to_local_2d(elements_types_2d[e]));
+                ++elements_2d_shift;
             }
     }
 }
