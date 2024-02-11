@@ -10,6 +10,9 @@
 
 namespace nonlocal::mesh {
 
+template<class T, class I>
+using neighbours_t = std::pair<std::unordered_map<std::string, T>, std::vector<std::vector<I>>>;
+
 template<class T>
 constexpr T jacobian(const std::array<T, 2>& J) noexcept {
     return std::sqrt(J[X] * J[X] + J[Y] * J[Y]);
@@ -70,7 +73,7 @@ public:
     const std::unordered_map<std::string, T>& radii() const noexcept;
     T radius(const std::string& group) const;
 
-    void neighbours(std::vector<std::vector<I>>&& neighbours);
+    void neighbours(neighbours_t<T, I>&& data);
     const std::vector<I>& neighbours(const size_t e) const;
 
     T area(const size_t e) const;
@@ -197,10 +200,11 @@ T mesh_2d<T, I>::radius(const std::string& group) const {
 }
 
 template<class T, class I>
-void mesh_2d<T, I>::neighbours(std::vector<std::vector<I>>&& neighbours) {
-    if (neighbours.size() != container().elements_2d_count())
+void mesh_2d<T, I>::neighbours(neighbours_t<T, I>&& data) {
+    if (data.second.size() != container().elements_2d_count())
         throw std::domain_error{"The neighbor list length does not match the number of 2D mesh elements."};
-    _elements_neighbors = std::move(neighbours);
+    _radii = std::move(data.first);
+    _elements_neighbors = std::move(data.second);
 }
 
 template<class T, class I>

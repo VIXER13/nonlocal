@@ -82,9 +82,8 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
         conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
         conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
-        Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> local_solver{conductivity_local.matrix()[matrix_part::INNER]};
-        //slae::conjugate_gradient<T, Matrix_Index> local_solver{conductivity_local.matrix()[matrix_part::INNER]};
-        //local_solver.disable_mpi_reduction();
+        slae::conjugate_gradient<T, Matrix_Index> local_solver{conductivity_local.matrix()[matrix_part::INNER]};
+        local_solver.disable_mpi_reduction();
         Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
         slae::conjugate_gradient<
             T, 

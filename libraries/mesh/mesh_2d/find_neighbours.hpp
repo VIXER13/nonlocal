@@ -118,10 +118,10 @@ std::vector<std::pair<size_t, size_t>> subareas_ids(const metamath::types::matri
 }
 
 template<class T, class I>
-std::vector<std::vector<I>> find_neighbours(const mesh_2d<T, I>& mesh, const std::unordered_map<std::string, T>& nonlocal_radii, const diam_adding add_diam = diam_adding::MAX) {
+neighbours_t<T, I> find_neighbours(const mesh_2d<T, I>& mesh, const std::unordered_map<std::string, T>& nonlocal_radii, const diam_adding add_diam = diam_adding::MAX) {
     std::vector<std::vector<I>> neighbours(mesh.container().elements_2d_count());
     if (nonlocal_radii.empty())
-        return neighbours;
+        return {nonlocal_radii, neighbours};
     const std::unordered_set<I> process_elements = mesh.process_elements();
     const std::vector<std::array<T, 2>> centers = utils::approx_centers_of_elements(mesh.container());
     const std::unordered_map<std::string, T> radii = search_radii(mesh, nonlocal_radii, centers, add_diam);
@@ -154,7 +154,7 @@ std::vector<std::vector<I>> find_neighbours(const mesh_2d<T, I>& mesh, const std
             neighbours[eL].shrink_to_fit();
         }
     }
-    return neighbours;
+    return {std::move(radii), neighbours};
 }
 
 }

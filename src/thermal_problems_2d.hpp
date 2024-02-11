@@ -85,10 +85,10 @@ template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
     const config::save_data& save, const bool time_dependency) {
+    static constexpr bool ONLY_LOCAL = true;
+    static constexpr bool SYMMTERIC = true;
     const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
     mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
-    const bool ONLY_LOCAL = true;
-    const bool SYMMTERIC = true;
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !ONLY_LOCAL, SYMMTERIC);
     const auto parameters = make_parameters(materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
