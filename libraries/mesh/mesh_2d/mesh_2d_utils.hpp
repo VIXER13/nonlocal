@@ -1,9 +1,9 @@
 #ifndef NONLOCAL_MESH_UTILS_HPP
 #define NONLOCAL_MESH_UTILS_HPP
 
-#include "mesh_2d.hpp"
 #include "nonzero_counter.hpp"
 #include "integral_counter.hpp"
+#include "find_neighbours.hpp"
 
 #include <iterator>
 
@@ -126,7 +126,7 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
     else throw std::domain_error{"Unsupported balancing type"};
     nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
     mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
-    mesh.find_neighbours(mesh.radii(), diam_adding::NO);
+    mesh.neighbours(find_neighbours(mesh, mesh.radii(), diam_adding::NO));
 }
 
 // template<class T, class I, std::ranges::random_access_range Vector>

@@ -89,7 +89,7 @@ void solve_mechanical_2d_problem(
         throw std::domain_error{"Mechanical problem does not support time dependence."};
 
     const config::mechanical_materials_2d<T> materials{config["materials"], "materials"};
-    mesh->find_neighbours(get_search_radii(materials));
+    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, false, true);
     const auto parameters = make_parameters(materials);
     const auto boundaries_conditions = make_boundaries_conditions(

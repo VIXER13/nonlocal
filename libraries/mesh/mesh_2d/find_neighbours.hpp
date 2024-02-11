@@ -4,6 +4,8 @@
 
 namespace nonlocal::mesh {
 
+enum class diam_adding : uint8_t { NO, MAX, MIN, MEAN };
+
 template<class T>
 struct rectangle final {
     T left  = std::numeric_limits<T>::max();
@@ -84,6 +86,14 @@ std::unordered_map<std::string, T> search_radii(const mesh_2d<T, I>& mesh,
     return radii;
 }
 
+template<class T>
+std::pair<size_t, size_t> subarea_id(const rectangle<T>& corners, const std::array<T, 2>& center, const std::array<T, 2>& radius) {
+    return {
+        (center[0] - corners.left) / radius[0],
+        (center[1] - corners.down) / radius[1]
+    };
+}
+
 template<class I, class T>
 metamath::types::matrix<std::vector<I>> split_elements_by_subareas(const std::vector<std::array<T, 2>>& centers,
                                                                    const std::ranges::iota_view<size_t, size_t>& elements, 
@@ -91,9 +101,7 @@ metamath::types::matrix<std::vector<I>> split_elements_by_subareas(const std::ve
                                                                    const T radius) {
     metamath::types::matrix<std::vector<I>> subareas(size_t(corners.length() / radius) + 1u, size_t(corners.width() / radius) + 1u);
     for(const size_t e : elements) {
-        const auto& center = centers[e];
-        const size_t row = (center[0] - corners.left) / radius;
-        const size_t col = (center[1] - corners.down) / radius;
+        const auto [row, col] = subarea_id(corners, centers[e], {radius, radius});
         subareas(row, col).push_back(e);
     }
     return subareas;
@@ -126,13 +134,20 @@ std::vector<std::vector<I>> find_neighbours(const mesh_2d<T, I>& mesh, const std
         const auto elements_range = mesh.container().elements(group);
         const auto corners = group_corners(mesh.container(), group);
         const auto subareas = split_elements_by_subareas<I>(centers, elements_range, corners, radius);
-        for(const size_t eL : elements_range) {
+#pragma omp parallel for
+        for(size_t k = 0; k < elements_range.size(); ++k) {
+            const size_t eL = elements_range[k];
             if (!process_elements.contains(eL))
                 continue;
-            const auto& center = centers[eL];
-            const size_t row = (center[0] - corners.left) / radius;
-            const size_t col = (center[1] - corners.down) / radius;
-            for(const auto [i, j] : subareas_ids(subareas, row, col))
+
+            const auto [row, col] = subarea_id(corners, centers[eL], {radius, radius});
+            const auto ids = subareas_ids(subareas, row, col);
+            const auto reserver = [&subareas](const size_t sum, const std::pair<size_t, size_t>& id) {
+                return sum + subareas(id.first, id.second).size();
+            };
+            neighbours[eL].reserve(std::accumulate(ids.begin(), ids.end(), size_t{0}, reserver));
+
+            for(const auto [i, j] : ids)
                 for(const size_t eNL : subareas(i, j))
                     if (metamath::functions::distance(centers[eL], centers[eNL]) <= radius)
                         neighbours[eL].push_back(eNL);

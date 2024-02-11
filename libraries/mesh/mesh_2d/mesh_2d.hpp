@@ -10,8 +10,6 @@
 
 namespace nonlocal::mesh {
 
-enum class diam_adding : uint8_t { NO, MAX, MIN, MEAN };
-
 template<class T>
 constexpr T jacobian(const std::array<T, 2>& J) noexcept {
     return std::sqrt(J[X] * J[X] + J[Y] * J[Y]);
@@ -42,12 +40,6 @@ class mesh_2d final {
     std::vector<std::vector<I>> _elements_neighbors;
 
     T area(const std::ranges::iota_view<size_t, size_t> elements) const;
-    T diam_between_elements(const std::string& element_group, 
-                            const std::vector<std::array<T, 2>>& centers, 
-                            const diam_adding diam) const;
-    void set_search_radii(const std::unordered_map<std::string, T>& radii, 
-                          const std::vector<std::array<T, 2>>& centers,
-                          const diam_adding diam);
 
 public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
@@ -78,14 +70,12 @@ public:
     const std::unordered_map<std::string, T>& radii() const noexcept;
     T radius(const std::string& group) const;
 
-    const std::vector<std::vector<I>>& neighbours() const;
+    void neighbours(std::vector<std::vector<I>>&& neighbours);
     const std::vector<I>& neighbours(const size_t e) const;
 
     T area(const size_t e) const;
     T area(const std::string& element_group) const;
     T area() const;
-
-    void find_neighbours(const std::unordered_map<std::string, T>& radii, const diam_adding add_diam = diam_adding::MAX);
 
     void renumbering(const std::vector<size_t>& permutation);
 
@@ -207,6 +197,13 @@ T mesh_2d<T, I>::radius(const std::string& group) const {
 }
 
 template<class T, class I>
+void mesh_2d<T, I>::neighbours(std::vector<std::vector<I>>&& neighbours) {
+    if (neighbours.size() != container().elements_2d_count())
+        throw std::domain_error{"The neighbor list length does not match the number of 2D mesh elements."};
+    _elements_neighbors = std::move(neighbours);
+}
+
+template<class T, class I>
 const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
 }
@@ -242,66 +239,6 @@ T mesh_2d<T, I>::area(const std::string& element_group) const {
 template<class T, class I>
 T mesh_2d<T, I>::area() const {
     return area(container().elements_2d());
-}
-
-template<class T, class I>
-T mesh_2d<T, I>::diam_between_elements(const std::string& element_group, const std::vector<std::array<T, 2>>& centers, const diam_adding diam) const {
-    if (diam == diam_adding::NO)
-        return T{0};
-    std::unordered_map<diam_adding, T> diams = {
-        {diam_adding::MAX, std::numeric_limits<T>::min()},
-        {diam_adding::MIN, std::numeric_limits<T>::max()},
-        {diam_adding::MEAN, T{0}}
-    };
-    std::set<std::pair<I, I>> pairs;
-    for (const size_t element : container().elements(element_group))
-        for (const size_t node : container().nodes(element))
-            for (const size_t adjacent_element : elements(node)) {
-                const T distance = metamath::functions::distance(centers[element], centers[adjacent_element]);
-                if (distance > diams.at(diam_adding::MAX))
-                    diams[diam_adding::MAX] = distance;
-                if (distance < diams.at(diam_adding::MIN))
-                    diams[diam_adding::MIN] = distance;
-                if (!pairs.contains({element, adjacent_element}) && !pairs.contains({adjacent_element, element})) {
-                    pairs.insert({element, adjacent_element});
-                    diams[diam_adding::MEAN] += distance;
-                }
-            }
-    diams[diam_adding::MEAN] /= pairs.size();
-    return diams.at(diam);
-}
-
-template<class T, class I>
-void mesh_2d<T, I>::set_search_radii(const std::unordered_map<std::string, T>& radii, 
-                                     const std::vector<std::array<T, 2>>& centers, const diam_adding diam) {
-    _radii = radii;
-    for (auto& [element_group, radius] : _radii)
-        radius += diam_between_elements(element_group, centers, diam);
-}
-
-template<class T, class I>
-void mesh_2d<T, I>::find_neighbours(const std::unordered_map<std::string, T>& radii, const diam_adding add_diam) {
-    if (radii.empty())
-        return;
-    _elements_neighbors.clear();
-    _elements_neighbors.resize(container().elements_2d_count());
-    const std::unordered_set<I> proc_elements = process_elements();
-    const std::vector<std::array<T, 2>> centers = utils::approx_centers_of_elements(container());
-    set_search_radii(radii, centers, add_diam);
-    for(const auto& [group, radius] : _radii) {
-        if (radius <= T{0})
-            continue;
-        const auto elements_range = container().elements(group);
-        for(const size_t eL : elements_range) {
-            if (!proc_elements.contains(eL))
-                continue;
-            _elements_neighbors[eL].reserve(elements_range.size());
-            for(const size_t eNL : elements_range)
-                if (metamath::functions::distance(centers[eL], centers[eNL]) <= radius)
-                    _elements_neighbors[eL].push_back(eNL);
-            _elements_neighbors[eL].shrink_to_fit();
-        }
-    }
 }
 
 template<class T, class I>
