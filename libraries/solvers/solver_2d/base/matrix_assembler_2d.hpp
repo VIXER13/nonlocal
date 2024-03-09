@@ -88,14 +88,14 @@ template<class T, class I, class J, size_t DoF>
 size_t matrix_assembler_2d<T, I, J, DoF>::cols() const noexcept {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         return DoF * mesh().container().nodes_count();
-    return matrix()[matrix_part::INNER].cols();
+    return matrix().inner().cols();
 }
 
 template<class T, class I, class J, size_t DoF>
 size_t matrix_assembler_2d<T, I, J, DoF>::rows() const noexcept {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         return DoF * std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing).size();
-    return matrix()[matrix_part::INNER].rows();
+    return matrix().inner().rows();
 }
 
 template<class T, class I, class J, size_t DoF>
@@ -130,8 +130,8 @@ void matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing(const nodes_sequenc
 
 template<class T, class I, class J, size_t DoF>
 void matrix_assembler_2d<T, I, J, DoF>::clear() {
-    _matrix[matrix_part::INNER] = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
-    _matrix[matrix_part::BOUND] = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
+    _matrix.inner() = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
+    _matrix.bound() = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
 }
 
 template<class T, class I, class J, size_t DoF>
@@ -150,11 +150,11 @@ void matrix_assembler_2d<T, I, J, DoF>::init_shifts(
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     mesh_run(theories, shift_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
-    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix[matrix_part::INNER].outerIndexPtr()[row + 1]; });
-    utils::accumulate_shifts(matrix()[matrix_part::INNER]);
-    utils::accumulate_shifts(matrix()[matrix_part::BOUND]);
+    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix.inner().outerIndexPtr()[row + 1]; });
+    utils::accumulate_shifts(matrix().inner());
+    utils::accumulate_shifts(matrix().bound());
     logger::get().log() << "Non-zero elements count: " << 
-        matrix()[matrix_part::INNER].nonZeros() + matrix()[matrix_part::BOUND].nonZeros() << std::endl;
+        matrix().inner().nonZeros() + matrix().bound().nonZeros() << std::endl;
 }
 
 template<class T, class I, class J, size_t DoF>
@@ -163,16 +163,16 @@ void matrix_assembler_2d<T, I, J, DoF>::init_indices(
     const bool is_symmetric, const bool sort_indices) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    utils::allocate_matrix(matrix()[matrix_part::INNER]);
-    utils::allocate_matrix(matrix()[matrix_part::BOUND]);
+    utils::allocate_matrix(matrix().inner());
+    utils::allocate_matrix(matrix().bound());
     logger::get().log() << "Matrix allocated successfully" << std::endl;
     mesh_run(theories, matrix_index_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
-        matrix()[matrix_part::INNER].innerIndexPtr()[matrix()[matrix_part::INNER].outerIndexPtr()[row]] = row + shift; 
+        matrix().inner().innerIndexPtr()[matrix().inner().outerIndexPtr()[row]] = row + shift; 
     });
     if (sort_indices) {
-        utils::sort_indices(matrix()[matrix_part::INNER]);
-        utils::sort_indices(matrix()[matrix_part::BOUND]);
+        utils::sort_indices(matrix().inner());
+        utils::sort_indices(matrix().bound());
     }
 }
 
@@ -186,7 +186,7 @@ void matrix_assembler_2d<T, I, J, DoF>::calc_coeffs(
     mesh_run(theories, integrator<T, J, DoF, Local_Integrator, Nonlocal_Integrator>{
         _matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric, local_integrator, nonlocal_integrator});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
-        matrix()[matrix_part::INNER].valuePtr()[matrix()[matrix_part::INNER].outerIndexPtr()[row]] = T{1};
+        matrix().inner().valuePtr()[matrix().inner().outerIndexPtr()[row]] = T{1};
     });
 }
 

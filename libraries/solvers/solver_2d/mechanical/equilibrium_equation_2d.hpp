@@ -23,19 +23,19 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
                                                               const Right_Part& right_part) {
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
     stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions));
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix()[matrix_part::INNER].cols());
+    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix().inner().cols());
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
     integrate_right_part<2>(f, *mesh, right_part);
     temperature_condition(f, *mesh, parameters);
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
     local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
     local_stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions), assemble_part::LOCAL);
-    slae::conjugate_gradient<T, Matrix_Index> local_solver{local_stiffness.matrix()[matrix_part::INNER]};
+    slae::conjugate_gradient<T, Matrix_Index> local_solver{local_stiffness.matrix().inner()};
     local_solver.disable_mpi_reduction();
     Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
-    slae::conjugate_gradient<T, Matrix_Index> solver{stiffness.matrix()[matrix_part::INNER]};
+    slae::conjugate_gradient<T, Matrix_Index> solver{stiffness.matrix().inner()};
     solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
-        local_stiffness.matrix()[matrix_part::INNER]
+        local_stiffness.matrix().inner()
     );
     if (solver.preconditioner().computation_info() != Eigen::Success) {
         solver.template init_preconditioner<slae::eigen_identity_preconditioner>();

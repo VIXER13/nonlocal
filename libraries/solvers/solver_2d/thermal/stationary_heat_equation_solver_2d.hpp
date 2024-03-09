@@ -72,9 +72,9 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     logger::get().log() << "Original matrix" << std::endl;
     thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
     conductivity.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
-    convection_condition_2d(conductivity.matrix()[matrix_part::INNER], *mesh, boundaries_conditions);
+    convection_condition_2d(conductivity.matrix().inner(), *mesh, boundaries_conditions);
     if (!is_neumann)
-       boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix()[matrix_part::BOUND]);
+       boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix().bound());
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
     if (is_symmetric) {
@@ -82,13 +82,13 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
         conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
         conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
-        slae::conjugate_gradient<T, Matrix_Index> local_solver{conductivity_local.matrix()[matrix_part::INNER]};
+        slae::conjugate_gradient<T, Matrix_Index> local_solver{conductivity_local.matrix().inner()};
         local_solver.disable_mpi_reduction();
         Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
-        slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix()[matrix_part::INNER]};
+        slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};
         logger::get().log() << "ILLT preconditioner" << std::endl;
         solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
-            conductivity_local.matrix()[matrix_part::INNER]
+            conductivity_local.matrix().inner()
         );
         if (solver.preconditioner().computation_info() != Eigen::Success) {
             solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
@@ -97,7 +97,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         }
         temperature = solver.solve(f, initial);
     } else {
-        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix()[matrix_part::INNER]};
+        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix().inner()};
         temperature = solver.solve(f);
     }
     return heat_equation_solution_2d<T, I>{mesh, parameters, temperature};
@@ -163,19 +163,19 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_nonlinear_2d(con
             is_sol_depend ? std::optional{nodes_to_qnodes(*mesh, temperature_prev)} : std::nullopt
         );
 
-        convection_condition_2d(conductivity.matrix()[matrix_part::INNER], *mesh, boundaries_conditions);
-        boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix()[matrix_part::BOUND]);
+        convection_condition_2d(conductivity.matrix().inner(), *mesh, boundaries_conditions);
+        boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix().bound());
 
         if (is_symmetric) {
             logger::get().log() << "symmetric problem" << std::endl;
             const Eigen::ConjugateGradient<
                 Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                 Eigen::Upper
-            > solver{conductivity.matrix()[matrix_part::INNER]};
+            > solver{conductivity.matrix().inner()};
             temperature_curr = solver.solveWithGuess(f, temperature_prev);
         } else {
             logger::get().log() << "asymmetric problem" << std::endl;
-            const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix()[matrix_part::INNER]};
+            const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix().inner()};
             temperature_curr = solver.solveWithGuess(f, temperature_prev);
         }
 

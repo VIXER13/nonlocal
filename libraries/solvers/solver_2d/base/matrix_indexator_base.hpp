@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_MATRIX_INDEXATOR_BASE_HPP
 #define NONLOCAL_MATRIX_INDEXATOR_BASE_HPP
 
-#include "mesh_runner_types.hpp"
+#include "finite_element_matrix.hpp"
 
 #include "indexator_base.hpp"
 

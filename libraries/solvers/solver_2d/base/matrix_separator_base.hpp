@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_MATRIX_SEPARATOR_HPP
 #define NONLOCAL_MATRIX_SEPARATOR_HPP
 
-#include "mesh_runner_types.hpp"
+#include "finite_element_matrix.hpp"
 
 #include <vector>
 

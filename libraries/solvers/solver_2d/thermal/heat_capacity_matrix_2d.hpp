@@ -42,8 +42,8 @@ void heat_capacity_matrix_2d<T, I, J>::create_matrix_portrait(const std::unorder
                                                                          const std::vector<bool>& is_inner) {
     const size_t rows = _base::mesh().process_nodes().size();
     const size_t cols = _base::mesh().container().nodes_count();
-    _base::matrix()[matrix_part::INNER].resize(rows, cols);
-    _base::matrix()[matrix_part::BOUND].resize(rows, cols);
+    _base::matrix().inner().resize(rows, cols);
+    _base::matrix().bound().resize(rows, cols);
     _base::init_shifts(theories, is_inner, SYMMETRIC);
     _base::init_indices(theories, is_inner, SYMMETRIC);
 }
