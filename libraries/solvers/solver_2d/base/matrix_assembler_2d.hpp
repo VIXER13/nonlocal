@@ -4,10 +4,10 @@
 #include "../solvers_utils.hpp"
 
 #include "shift_initializer.hpp"
-#include "index_initializer.hpp"
+#include "matrix_index_initializer.hpp"
 #include "integrator.hpp"
 
-#include "mesh_2d.hpp"
+#include "mesh_2d_utils.hpp"
 
 #include <variant>
 #include <iostream>
@@ -52,11 +52,8 @@ class matrix_assembler_2d {
 protected:
     explicit matrix_assembler_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
-    template<class Nodes, class Initializer>
-    void mesh_run(const Nodes& nodes, const std::unordered_map<std::string, theory_t>& theories, Initializer&& initializer);
-
-    template<class Initializer>
-    void mesh_run(const std::unordered_map<std::string, theory_t>& theories, Initializer&& initializer);
+    template<class Runner>
+    void mesh_run(const std::unordered_map<std::string, theory_t>& theories, Runner&& runner);
 
     void init_shifts(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool is_symmetric);
     void init_indices(const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner,
@@ -91,14 +88,14 @@ template<class T, class I, class J, size_t DoF>
 size_t matrix_assembler_2d<T, I, J, DoF>::cols() const noexcept {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         return DoF * mesh().container().nodes_count();
-    return matrix()[matrix_part::INNER].cols();
+    return matrix().inner().cols();
 }
 
 template<class T, class I, class J, size_t DoF>
 size_t matrix_assembler_2d<T, I, J, DoF>::rows() const noexcept {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         return DoF * std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing).size();
-    return matrix()[matrix_part::INNER].rows();
+    return matrix().inner().rows();
 }
 
 template<class T, class I, class J, size_t DoF>
@@ -133,42 +130,17 @@ void matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing(const nodes_sequenc
 
 template<class T, class I, class J, size_t DoF>
 void matrix_assembler_2d<T, I, J, DoF>::clear() {
-    _matrix[matrix_part::INNER] = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
-    _matrix[matrix_part::BOUND] = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
+    _matrix.inner() = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
+    _matrix.bound() = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
 }
 
 template<class T, class I, class J, size_t DoF>
-template<class Nodes, class Initializer>
-void matrix_assembler_2d<T, I, J, DoF>::mesh_run(const Nodes& nodes, const std::unordered_map<std::string, theory_t>& theories, Initializer&& initializer) {
-#pragma omp parallel for default(none) shared(theories, nodes) firstprivate(initializer) schedule(dynamic)
-    for(size_t i = 0; i < nodes.size(); ++i) {
-        const size_t node = nodes[i];
-        if constexpr (std::is_base_of_v<indexator_base<DoF>, Initializer>)
-            initializer.reset(node);
-        for(const I eL : mesh().elements(node)) {
-            const size_t iL = mesh().global_to_local(eL, node);
-            const std::string& group = mesh().container().group(eL);
-            if (const theory_t theory = theories.at(group); theory == theory_t::LOCAL)
-                for(const size_t jL : std::ranges::iota_view{0u, mesh().container().nodes_count(eL)})
-                    initializer(group, eL, iL, jL);
-            else if (theory == theory_t::NONLOCAL)
-                for(const I eNL : mesh().neighbours(eL))
-                    for(const size_t jNL : std::ranges::iota_view{0u, mesh().container().nodes_count(eNL)})
-                        initializer(group, eL, eNL, iL, jNL);
-            else
-                throw std::domain_error{"Unknown theory."};
-        }
-    }
-}
-
-template<class T, class I, class J, size_t DoF>
-template<class Initializer>
-void matrix_assembler_2d<T, I, J, DoF>::mesh_run(const std::unordered_map<std::string, theory_t>& theories,
-                                                 Initializer&& initializer) {
+template<class Runner>
+void matrix_assembler_2d<T, I, J, DoF>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, Runner&& runner) {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
-        mesh_run(std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing), theories, std::forward<Initializer>(initializer));
+        mesh::utils::mesh_run(mesh(), std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
     else
-        mesh_run(std::get<std::vector<size_t>>(_nodes_for_processing), theories, std::forward<Initializer>(initializer));
+        mesh::utils::mesh_run(mesh(), std::get<std::vector<size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
 }
 
 template<class T, class I, class J, size_t DoF>
@@ -178,10 +150,11 @@ void matrix_assembler_2d<T, I, J, DoF>::init_shifts(
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     mesh_run(theories, shift_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
-    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix[matrix_part::INNER].outerIndexPtr()[row + 1]; });
-    utils::accumulate_shifts(matrix()[matrix_part::INNER]);
-    utils::accumulate_shifts(matrix()[matrix_part::BOUND]);
-    std::cout << "Non-zero elements count: " << matrix()[matrix_part::INNER].nonZeros() + matrix()[matrix_part::BOUND].nonZeros() << std::endl;
+    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix.inner().outerIndexPtr()[row + 1]; });
+    utils::accumulate_shifts(matrix().inner());
+    utils::accumulate_shifts(matrix().bound());
+    logger::get().log() << "Non-zero elements count: " << 
+        matrix().inner().nonZeros() + matrix().bound().nonZeros() << std::endl;
 }
 
 template<class T, class I, class J, size_t DoF>
@@ -190,15 +163,16 @@ void matrix_assembler_2d<T, I, J, DoF>::init_indices(
     const bool is_symmetric, const bool sort_indices) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    utils::allocate_matrix(matrix()[matrix_part::INNER]);
-    utils::allocate_matrix(matrix()[matrix_part::BOUND]);
-    mesh_run(theories, index_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
+    utils::allocate_matrix(matrix().inner());
+    utils::allocate_matrix(matrix().bound());
+    logger::get().log() << "Matrix allocated successfully" << std::endl;
+    mesh_run(theories, matrix_index_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
-        matrix()[matrix_part::INNER].innerIndexPtr()[matrix()[matrix_part::INNER].outerIndexPtr()[row]] = row + shift; 
+        matrix().inner().innerIndexPtr()[matrix().inner().outerIndexPtr()[row]] = row + shift; 
     });
     if (sort_indices) {
-        utils::sort_indices(matrix()[matrix_part::INNER]);
-        utils::sort_indices(matrix()[matrix_part::BOUND]);
+        utils::sort_indices(matrix().inner());
+        utils::sort_indices(matrix().bound());
     }
 }
 
@@ -212,7 +186,7 @@ void matrix_assembler_2d<T, I, J, DoF>::calc_coeffs(
     mesh_run(theories, integrator<T, J, DoF, Local_Integrator, Nonlocal_Integrator>{
         _matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric, local_integrator, nonlocal_integrator});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
-        matrix()[matrix_part::INNER].valuePtr()[matrix()[matrix_part::INNER].outerIndexPtr()[row]] = T{1};
+        matrix().inner().valuePtr()[matrix().inner().outerIndexPtr()[row]] = T{1};
     });
 }
 

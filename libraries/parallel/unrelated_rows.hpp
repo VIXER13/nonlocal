@@ -7,7 +7,7 @@
 #include <ranges>
 #include <vector>
 
-namespace parallel_utils {
+namespace parallel {
 
 template<class I>
 class unrelated_rows final {

@@ -307,50 +307,52 @@ void thermal_conductivity_matrix_2d<T, I, J>::create_matrix_portrait(
     const std::unordered_map<std::string, theory_t> theories, const std::vector<bool>& is_inner, const bool is_symmetric, const bool is_neumann) {
     const size_t cols = _base::cols() + is_neumann;
     const size_t rows = _base::rows() == _base::cols() ?
-                        cols : _base::rows() + (is_neumann && parallel_utils::is_last_process());
-    _base::matrix()[matrix_part::INNER].resize(rows, cols);
-    _base::matrix()[matrix_part::BOUND].resize(rows, cols);
+                        cols : _base::rows() + (is_neumann && parallel::is_last_process());
+    _base::matrix().inner().resize(rows, cols);
+    _base::matrix().bound().resize(rows, cols);
     if (is_neumann) {
         for(const size_t row : std::views::iota(0u, rows))
-            _base::matrix()[matrix_part::INNER].outerIndexPtr()[row + 1] = 1;
-        if (!is_symmetric && parallel_utils::is_last_process())
-            _base::matrix()[matrix_part::INNER].outerIndexPtr()[rows] = cols - 1;
+            _base::matrix().inner().outerIndexPtr()[row + 1] = 1;
+        if (!is_symmetric && parallel::is_last_process())
+            _base::matrix().inner().outerIndexPtr()[rows] = cols - 1;
     }
     _base::init_shifts(theories, is_inner, is_symmetric);
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, is_symmetric, SORT_INDICES);
     if (is_neumann) {
         for(const size_t row : std::ranges::iota_view{0u, rows}) {
-            const size_t index = _base::matrix()[matrix_part::INNER].outerIndexPtr()[row + 1] - 1;
-            _base::matrix()[matrix_part::INNER].innerIndexPtr()[index] = _base::mesh().container().nodes_count();
+            const size_t index = _base::matrix().inner().outerIndexPtr()[row + 1] - 1;
+            _base::matrix().inner().innerIndexPtr()[index] = _base::mesh().container().nodes_count();
         }
-        if (!is_symmetric && parallel_utils::is_last_process()) 
+        if (!is_symmetric && parallel::is_last_process()) 
             for(const size_t col : std::ranges::iota_view{0u, cols}) {
-                const size_t index = _base::matrix()[matrix_part::INNER].outerIndexPtr()[rows - 1] + col;
-                _base::matrix()[matrix_part::INNER].innerIndexPtr()[index] = col;
+                const size_t index = _base::matrix().inner().outerIndexPtr()[rows - 1] + col;
+                _base::matrix().inner().innerIndexPtr()[index] = col;
             }
     }
-    utils::sort_indices(_base::matrix()[matrix_part::INNER]);
-    utils::sort_indices(_base::matrix()[matrix_part::BOUND]);
+    utils::sort_indices(_base::matrix().inner());
+    utils::sort_indices(_base::matrix().bound());
+    logger::get().log() << "Matrix portrait is formed" << std::endl;
 }
 
 template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric) {
     const auto process_nodes = _base::rows() == _base::cols() ?
-                               std::ranges::iota_view<size_t, size_t>{0u, size_t(_base::matrix()[matrix_part::INNER].cols())} :
+                               std::ranges::iota_view<size_t, size_t>{0u, size_t(_base::matrix().inner().cols()) - 1} :
                                std::get<std::ranges::iota_view<size_t, size_t>>(_base::nodes_for_processing());
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        T& val = _base::matrix()[matrix_part::INNER].coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
-        for(const I e : _base::mesh().elements(node))
+        T& val = _base::matrix().inner().coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
+        for(const I e : _base::mesh().elements(node)) {
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
-        if (!is_symmetric && parallel_utils::is_last_process())
-            _base::matrix()[matrix_part::INNER].coeffRef(_base::matrix()[matrix_part::INNER].rows() - 1, node) = val;
+        }
+        if (!is_symmetric && parallel::is_last_process())
+            _base::matrix().inner().coeffRef(_base::matrix().inner().rows() - 1, node) = val;
     }
-    if (!is_symmetric && parallel_utils::MPI_size() > 1 && parallel_utils::is_last_process()) {
+    if (!is_symmetric && parallel::MPI_size() > 1 && parallel::is_last_process()) {
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
         for(size_t node = 0; node < process_nodes.front(); ++node) {
-            T& val = _base::matrix()[matrix_part::INNER].coeffRef(_base::matrix()[matrix_part::INNER].rows() - 1, node);
+            T& val = _base::matrix().inner().coeffRef(_base::matrix().inner().rows() - 1, node);
             for(const I e : _base::mesh().elements(node))
                 val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         }
@@ -361,6 +363,7 @@ template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
                                                       const bool is_symmetric, const bool is_neumann, const assemble_part part,
                                                       const std::optional<std::vector<T>>& solution) {
+    logger::get().log() << "Thermal conductivity matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) : 
                                                                theories_types(parameters);
@@ -395,6 +398,7 @@ void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& pa
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, *solution, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         });
+    logger::get().log() << "Thermal conductivity matrix assembly finished" << std::endl;
 }
 
 }

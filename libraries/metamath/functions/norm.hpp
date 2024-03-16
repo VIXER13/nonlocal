@@ -10,7 +10,7 @@
 
 namespace metamath::functions {
 
-template<size_t Exp, class T, size_t D>
+template<size_t Exp = 2, class T, size_t D>
 T powered_norm(const std::array<T, D>& x) {
     return std::accumulate(x.begin(), x.end(), T{0}, [](const T sum, const T x) {
         if constexpr (Exp & 1)
@@ -26,7 +26,7 @@ T powered_norm(const std::array<T, D>& x, const T exp) {
     });
 }
 
-template<size_t Exp, class T, size_t D>
+template<size_t Exp = 2, class T, size_t D>
 T norm(const std::array<T, D>& x) {
     if constexpr (Exp == 1)
         return powered_norm<Exp>(x);
@@ -45,7 +45,7 @@ T norm(const std::array<T, D>& x, const T exp) {
     return std::pow(powered_norm(x, exp), T{1} / exp);
 }
 
-template<size_t N, class T, size_t D>
+template<size_t N = 2, class T, size_t D>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y) {
     return powered_norm<N>(x - y);
 }
@@ -55,7 +55,7 @@ T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const T
     return powered_norm(x - y, exp);
 }
 
-template<size_t N, class T, size_t D>
+template<size_t N = 2, class T, size_t D>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r) {
     std::array<T, D> z;
     for(const size_t i : std::ranges::iota_view{0u, D})

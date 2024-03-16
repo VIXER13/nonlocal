@@ -6,7 +6,8 @@
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_2d.hpp"
-
+#include "cuthill_mckee.hpp"
+#include "find_neighbours.hpp"
 
 namespace nonlocal::thermal {
 
@@ -68,10 +69,10 @@ template<std::floating_point T, std::signed_integral I>
 void save_solution(const heat_equation_solution_2d<T, I>& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
-    if (parallel_utils::MPI_rank() != 0) // Only the master process saves data
+    if (parallel::MPI_rank() != 0) // Only the master process saves data
         return;
-    if (step);
-        logger::get().log(logger::log_level::INFO) << "step = " << *step << std::endl;
+    if (step.has_value());
+        logger::get().log() << "step = " << *step << std::endl;
     const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
                                               save.path("csv", "csv", "solution");
     mesh::utils::save_as_csv(path, solution.mesh().container(), 
@@ -84,9 +85,11 @@ template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
     const config::save_data& save, const bool time_dependency) {
+    static constexpr bool ONLY_LOCAL = true;
+    static constexpr bool SYMMTERIC = true;
     const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
-    mesh->find_neighbours(get_search_radii(materials));
-    mesh->balancing(mesh::balancing_t::MEMORY, true);
+    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !ONLY_LOCAL, SYMMTERIC);
     const auto parameters = make_parameters(materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = make_boundaries_conditions(

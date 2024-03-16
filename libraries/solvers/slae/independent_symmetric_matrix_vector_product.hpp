@@ -12,7 +12,7 @@ template<class T, class I>
 class independent_symmetric_matrix_vector_product : public iterative_solver_base<T, I> {
     using _base = iterative_solver_base<T, I>;
 
-    parallel_utils::OMP_ranges _thread_rows;
+    parallel::OMP_ranges _thread_rows;
     mutable Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> _threaded_product;
     bool _mpi_reduction = true;
 
@@ -48,7 +48,7 @@ void independent_symmetric_matrix_vector_product<T, I>::reduction(Eigen::Matrix<
         _threaded_product.block(row, i, result.size() - row, 1);
     }
     if (_mpi_reduction)
-        parallel_utils::reduce_vector(result, _threaded_product.col(0));
+        parallel::reduce_vector(result, _threaded_product.col(0));
     else
         result = _threaded_product.col(0);
 }
@@ -87,7 +87,7 @@ void independent_symmetric_matrix_vector_product<T, I>::disable_mpi_reduction(co
 template<class T, class I>
 void independent_symmetric_matrix_vector_product<T, I>::set_threads_count(const size_t threads_count) {
     _base::set_threads_count(threads_count > matrix().rows() ? matrix().rows() : threads_count);
-    _thread_rows = parallel_utils::OMP_ranges{ parallel_utils::uniform_ranges(matrix(), _base::threads_count()) };
+    _thread_rows = parallel::OMP_ranges{ parallel::uniform_ranges(matrix(), _base::threads_count()) };
     _threaded_product.resize(matrix().cols(), _base::threads_count());
 }
 

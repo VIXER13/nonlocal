@@ -5,7 +5,7 @@
 #include <ranges>
 #include <vector>
 
-namespace parallel_utils {
+namespace parallel {
 
 int threads_count();
 
