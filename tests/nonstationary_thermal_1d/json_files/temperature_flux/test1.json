@@ -1,0 +1,54 @@
+{
+    "task": {
+        "dimension": 1,
+        "problem": "thermal",
+        "time_dependency": true
+    },
+    "save": {
+        "folder": "./result",
+        "config": "config",
+        "csv": "solution_thermal_nonstationary_1d",
+        "precision": 7
+    },
+    "mesh": {
+        "element_order": "linear",
+        "quadrature_order": "linear"
+    },
+    "auxiliary": {
+        "energy": 0,
+        "right_part": 0,
+        "initial_distribution": 0
+    },
+    "time": {
+        "time_step": 0.1,
+        "initial_time": 0.0,
+        "steps_count": 100,
+        "save_frequency": 1
+    },
+    "boundaries": {
+        "left": {
+            "kind": "temperature",
+            "temperature": 10
+        },
+        "right": {
+            "kind": "temperature",
+            "temperature": -3
+        }
+    },
+    "materials": [
+        {
+            "elements_count": 100,
+            "length": 2.0,
+            "physical": {
+                "conductivity": 1.0,
+                "capacity": 1.0,
+                "density": 1.0
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
+            }
+        }
+    ]
+}

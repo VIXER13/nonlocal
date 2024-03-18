@@ -1,15 +1,22 @@
-#ifndef NONLOCFEM_THERMAL_PROBLEMS_1D_HPP
-#define NONLOCFEM_THERMAL_PROBLEMS_1D_HPP
+#ifndef UNIT_TESTS_BOUNDARY_CONDITIONS_HPP
+#define UNIT_TESTS_BOUNDARY_CONDITIONS_HPP
+
+#include <boost/ut.hpp>
+#include <tuple>
+#include <filesystem>
 
 #include "problems_utils.hpp"
 
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
-//#include "thermal/nonstationary_relax_time_heat_equation_solver_1d.hpp"
 #include "influence_functions_1d.hpp"
 
-namespace nonlocal::thermal {
+namespace nonstat_1d_tests {
+
+using namespace boost::ut;
+using namespace nonlocal;
+using namespace nonlocal::thermal;
 
 template<std::floating_point T>
 parameters_1d<T> make_thermal_parameters(
@@ -79,7 +86,7 @@ void save_solution(const thermal::heat_equation_solution_1d<T>& solution,
 }
 
 template<std::floating_point T, std::signed_integral I>
-void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const bool time_dependency) {
+void solve_nonstationary_thermal_1d_problem(const nlohmann::json& config, std::function<T(T)> ref_sol)  {
     const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
     const auto mesh = make_mesh_1d(get_segments_data(materials), 
                                    config::mesh_data<1u>{config.value("mesh", nlohmann::json::object()), "mesh"});
@@ -89,49 +96,37 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
     );
 
-    if (!time_dependency) {
-        auto solution = stationary_heat_equation_solver_1d<T, I>(
-            mesh, parameters, boundaries_conditions,
-            stationary_equation_parameters_1d<T>{
-                .right_part = [value = auxiliary.right_part](const T x) constexpr noexcept { return value; },
-                .initial_distribution = [value = auxiliary.initial_distribution](const T x) constexpr noexcept { return value; },
-                .energy = auxiliary.energy
-            }
-        );
+    config::check_required_fields(config, {"time"});
+    const config::time_data<T> time{config["time"], "time"};
+
+    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+    solver.compute(parameters, boundaries_conditions,
+                       [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });  
+    {   // Step 0
+        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
         solution.calc_flux();
-        save_solution(solution, save);
-    } else {
-        config::check_required_fields(config, {"time"});
-        const config::time_data<T> time{config["time"], "time"};
-        //nonstationary_relax_time_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-        nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-        solver.compute(parameters, boundaries_conditions,
-            [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
-        {   // Step 0
-            heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-            solution.calc_flux();
-            save_solution(solution, save, 0u);
-        }
-        //std::vector<T> relaxation_integral(solver.temperature().size());
-        for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-            solver.calc_step(boundaries_conditions,
-                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
-            heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-            // if (solver._relaxation_time) {
-            //     const T time = step * solver.time_step();
-            //     using namespace metamath::functions;
-            //     relaxation_integral *= std::exp(-solver.time_step() / solver._relaxation_time);
-            //     relaxation_integral += (solver.time_step() / solver._relaxation_time) * solution.calc_flux();
-            //     solution.calc_relaxation_flux(relaxation_integral, time, solver._relaxation_time);
-            // }
-            if (step % time.save_frequency == 0) {
-                solution.calc_flux();
-                save_solution(solution, save, step);
-            }
+        auto& sol = solution.temperature();
+        for (std::size_t k = 0; k < sol.size(); ++k) {
+            expect(lt(sol[k], epsilon));
         }
     }
-}
 
+    for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+        solver.calc_step(boundaries_conditions,
+            [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
+        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
+        if (step % time.save_frequency == 0) {
+            solution.calc_flux();
+            //save_solution(solution, nonlocal::config::save_data{}, step);
+        }
+    }
+
+    auto& sol = solver.temperature();
+    for (std::size_t k = 0; k < sol.size(); ++k) {
+        expect(lt(std::fabs(sol[k] - ref_sol(mesh->node_coord(k))), epsilon));
+    }
+}
+    
 }
 
 #endif
