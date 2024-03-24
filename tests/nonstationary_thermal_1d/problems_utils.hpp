@@ -34,6 +34,16 @@ std::shared_ptr<mesh::mesh_1d<T>> make_mesh_1d(
     );
 }
 
+template<std::floating_point T>
+std::shared_ptr<mesh::mesh_1d<T>> make_mesh_1d(
+    const std::vector<mesh::segment_data<T>>& segments,
+    const config::order_t element_order, const config::order_t& quadrature_order) {
+    return std::make_shared<mesh::mesh_1d<T>>(
+        make_element<T>(element_order, quadrature_order),
+        segments
+    );
+}
+
 template<std::floating_point T, template<class, size_t> class Physics>
 std::unordered_map<std::string, T> get_search_radii(const config::materials_data<Physics, T, 2>& materials) {
     std::unordered_map<std::string, T> result;

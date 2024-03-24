@@ -23,6 +23,9 @@ struct time_data final {
         save_frequency = config.value("save_frequency", 1ull);
     }
 
+    explicit time_data(T _time_step, T _initial_time, uint64_t _steps_count, uint64_t _save_frequency) 
+        : time_step(_time_step), initial_time(_initial_time), steps_count(_steps_count), save_frequency(_save_frequency) {}
+
     operator nlohmann::json() const {
         return {
             {"time_step", time_step},

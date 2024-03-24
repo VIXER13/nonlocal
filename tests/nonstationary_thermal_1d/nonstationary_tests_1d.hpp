@@ -86,7 +86,25 @@ void save_solution(const thermal::heat_equation_solution_1d<T>& solution,
 }
 
 template<std::floating_point T, std::signed_integral I>
-void solve_nonstationary_thermal_1d_problem(const nlohmann::json& config, std::function<T(T)> ref_sol)  {
+void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_equation_solution_1d<T>& solution, T time_layer, I step, 
+                    std::function<T(T, T)> ref, T eps = epsilon) {
+    auto& sol = solution.temperature();
+    for (std::size_t k = 0; k < sol.size(); ++k) {
+        expect(lt(std::fabs(sol[k] - ref(time_layer, mesh->node_coord(k))), eps * step));
+        std::cout << "step: " <<  step << std::endl;
+    }
+}
+
+template<std::floating_point T, std::signed_integral I>
+void save_and_calc_flux(const config::time_data<T>& time, I step, heat_equation_solution_1d<T>& solution) {
+    if (step % time.save_frequency == 0) {
+        solution.calc_flux();
+        //save_solution(solution, nonlocal::config::save_data{}, step);
+    }
+}
+
+template<std::floating_point T, std::signed_integral I>
+void solve_nonstationary_thermal_1d_problem_json(const nlohmann::json& config, std::function<T(T, T)> ref_sol)  {
     const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
     const auto mesh = make_mesh_1d(get_segments_data(materials), 
                                    config::mesh_data<1u>{config.value("mesh", nlohmann::json::object()), "mesh"});
@@ -99,31 +117,30 @@ void solve_nonstationary_thermal_1d_problem(const nlohmann::json& config, std::f
     config::check_required_fields(config, {"time"});
     const config::time_data<T> time{config["time"], "time"};
 
+    std::function<T(T)> init_dist = [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; };
+    std::function<T(T, T)> right_part = [right_part = auxiliary.right_part](const T t, const T x) constexpr noexcept { return right_part; };
+
     nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-    solver.compute(parameters, boundaries_conditions,
-                       [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });  
-    {   // Step 0
+    solver.compute(parameters, boundaries_conditions, init_dist);  
+
+    {   // Step initial
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        solution.calc_flux();
-        auto& sol = solution.temperature();
-        for (std::size_t k = 0; k < sol.size(); ++k) {
-            expect(lt(sol[k], epsilon));
-        }
+        save_and_calc_flux<T, I>(time, I(0), solution);
     }
 
-    for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-        solver.calc_step(boundaries_conditions,
-            [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
+    for(const I step : std::ranges::iota_view{1u, time.steps_count}) {
+        std::function<T(T)> rp = [&right_part, &step, &time](const T x) { return right_part((step - 1) * time.time_step, x); };
+        solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        if (step % time.save_frequency == 0) {
-            solution.calc_flux();
-            //save_solution(solution, nonlocal::config::save_data{}, step);
-        }
+        save_and_calc_flux<T, I>(time, step, solution);
     }
 
-    auto& sol = solver.temperature();
-    for (std::size_t k = 0; k < sol.size(); ++k) {
-        expect(lt(std::fabs(sol[k] - ref_sol(mesh->node_coord(k))), epsilon));
+    { // Step final
+        std::function<T(T)> rp = [&right_part, &time](const T x) { return right_part(time.steps_count * time.time_step, x); };
+        solver.calc_step(boundaries_conditions, rp);
+        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
+        save_and_calc_flux<T, I>(time, time.steps_count + 1, solution);
+        check_solution<T, I>(mesh, solution, time.steps_count * time.time_step, time.steps_count + 1, ref_sol);
     }
 }
     
