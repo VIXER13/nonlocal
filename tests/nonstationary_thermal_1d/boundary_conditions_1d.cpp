@@ -7,6 +7,15 @@ using namespace boost::ut;
 using namespace nonlocal;
 using namespace nonlocal::thermal;
 
+template<std::floating_point T, std::signed_integral I>
+void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_equation_solution_1d<T>& solution, T time_layer, I step, 
+                    std::function<T(T, T)> ref, T eps = epsilon) {
+    auto& sol = solution.temperature();
+    for (std::size_t k = 0; k < sol.size(); ++k) {
+        expect(lt(std::abs(sol[k] - ref(time_layer, mesh->node_coord(k))), eps * step));
+    }
+}
+
 template<template<class> class Left_bc_type, template<class> class Right_bc_type, std::floating_point T, std::signed_integral I>
 void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const nonstat_1d_tests::time_data<T>& time,
                                             const parameters_1d<T>& parameters, const std::function<T(T)>& init_dist, 
@@ -64,24 +73,20 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
             return left_temp * (2.0 - x) * 0.5 + right_temp * x * 0.5;
         };
 
-        // Set computational domains
         std::vector<mesh::segment_data<T>> segments(I(1));
         segments[0] = mesh::segment_data<T>{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) };
-        // Domain parameters
+
         parameters_1d<T> parameters(segments.size());
         parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
                                      // conductivity, capacity, density, relaxation_time
                                      .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) };
         
-        // segments, element_order, quadrature_order 
-        const auto mesh = make_mesh_1d(segments, I(1), I(1));
+        const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T, 1>>(quadrature<T, 1>()), segments);
         
-        //right_part, initial_distribution
         std::function<T(T)>     init_dist = [](const T x)            constexpr noexcept { return T(0.0); };
         std::function<T(T, T)> right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
         
-        // time_step, initial_time, steps_count, save_frequency
-        const nonstat_1d_tests::time_data<T> time { T(0.5), T(0.0), I(10), I(1) };
+        const nonstat_1d_tests::time_data<T> time = {.time_step = T(0.5), .initial_time = T(0.0), .steps_count = I(10) };
 
         solve_nonstationary_thermal_1d_problem<temperature_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
                                                                                      left_bc, right_bc, ref_sol, 1e-3);
@@ -98,24 +103,20 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
             return temp;
         };
 
-        // Set computational domains
         std::vector<mesh::segment_data<T>> segments(I(1));
         segments[0] = mesh::segment_data<T>{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) };
-        // Domain parameters
+
         parameters_1d<T> parameters(segments.size());
         parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
                                      // conductivity, capacity, density, relaxation_time
                                      .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) };
         
-        // segments, element_order, quadrature_order 
-        const auto mesh = make_mesh_1d(segments, I(1), I(1));
-        
-        //right_part, initial_distribution
+        const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T, 1>>(quadrature<T, 1>()), segments);
+
         std::function<T(T)>     init_dist = [](const T x)            constexpr noexcept { return T(0.0); };
         std::function<T(T, T)> right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
         
-        // time_step, initial_time, steps_count, save_frequency
-        const nonstat_1d_tests::time_data<T> time { T(10), T(0.0), I(10), I(1) };
+        const nonstat_1d_tests::time_data<T> time = {.time_step =    T(10.0), .initial_time = T(0.0), .steps_count =  I(10) };
 
         // T|x=0 = alpha, q*n|x=L = 0
         solve_nonstationary_thermal_1d_problem<temperature_1d, flux_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
@@ -143,26 +144,22 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
             return std::exp(-k * t) * std::cos(w1 * x) * std::sin(w2 * x);
         };
 
-        // Set computational domains
         std::vector<mesh::segment_data<T>> segments(I(1));
         segments[0] = mesh::segment_data<T>{ .length = L, .search_radius = T(0.0), .elements = I(200) };
-        // Domain parameters
+
         parameters_1d<T> parameters(segments.size());
         parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
                                      // conductivity, capacity, density, relaxation_time
                                      .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(lambda, cap, rho, T(0.0)) };
         
-        // segments, element_order, quadrature_order 
-        const auto mesh = make_mesh_1d(segments, I(1), I(1));
+        const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T, 1>>(quadrature<T, 1>()), segments);
         
-        //right_part, initial_distribution
         std::function<T(T)>     init_dist = [&](const T x)            constexpr noexcept { return ref_sol(T(0), x); };
         std::function<T(T, T)> right_part = [&](const T t, const T x) constexpr noexcept { 
             return (-k * cap * rho + w1 * w1* lambda + w2 * w2* lambda) * ref_sol(t, x) + 2 * lambda * w1 * w2 * std::exp(-k * t) * std::sin(w1 * x) * std::cos(w2 * x);
         };
         
-        // time_step, initial_time, steps_count, save_frequency
-        const nonstat_1d_tests::time_data<T> time { T(0.005), T(0.0), I(10), I(1) };
+        const nonstat_1d_tests::time_data<T> time = {.time_step =    T(0.005), .initial_time = T(0.0), .steps_count =  I(10) };
 
         solve_nonstationary_thermal_1d_problem<temperature_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
                                                                                      left_temp, right_temp, ref_sol, 1e-2, true);

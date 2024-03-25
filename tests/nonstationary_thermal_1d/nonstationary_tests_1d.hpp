@@ -5,12 +5,15 @@
 #include <tuple>
 #include <filesystem>
 
-#include "problems_utils.hpp"
-
 #include "logger.hpp"
+#include "metamath.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
 #include "influence_functions_1d.hpp"
+
+using T = double;
+using I = int64_t;
+static constexpr T epsilon = T{1e-8};
 
 namespace nonstat_1d_tests {
 
@@ -23,32 +26,13 @@ struct time_data final {
     T time_step = T{0};       
     T initial_time = T{0};
     uint64_t steps_count = 0; 
-    uint64_t save_frequency = 1ull;
-
-    explicit constexpr time_data() noexcept = default;
-    explicit time_data(T _time_step, T _initial_time, uint64_t _steps_count, uint64_t _save_frequency)
-        : time_step(_time_step), initial_time(_initial_time), steps_count(_steps_count), save_frequency(_save_frequency) {};
 };
 
-template<std::floating_point T, std::signed_integral I>
-void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_equation_solution_1d<T>& solution, T time_layer, I step, 
-                    std::function<T(T, T)> ref, T eps = epsilon) {
-    auto& sol = solution.temperature();
-    for (std::size_t k = 0; k < sol.size(); ++k) {
-        expect(lt(std::fabs(sol[k] - ref(time_layer, mesh->node_coord(k))), eps * step));
-        std::cout << "step: " <<  step << std::endl;
-    }
-}
+template<class T, size_t Order>
+using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, Order>;
+template<class T, size_t Order>
+using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, Order>;
 
-template<std::floating_point T, std::signed_integral I>
-void save_and_calc_flux(const nonstat_1d_tests::time_data<T>& time, I step, heat_equation_solution_1d<T>& solution) {
-    if (step % time.save_frequency == 0) {
-        solution.calc_flux();
-        const std::filesystem::path path = "/results";
-        mesh::utils::save_as_csv(path, solution.mesh(), {{"temperature", solution.temperature()}, {"flux", solution.flux()}});
-    }
-}
-    
 }
 
 #endif
