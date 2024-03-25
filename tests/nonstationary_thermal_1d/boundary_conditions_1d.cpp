@@ -74,7 +74,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
                                      .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) };
         
         // segments, element_order, quadrature_order 
-        const auto mesh = make_mesh_1d(segments, config::order_t::LINEAR, config::order_t::LINEAR);
+        const auto mesh = make_mesh_1d(segments, I(1), I(1));
         
         //right_part, initial_distribution
         std::function<T(T)>     init_dist = [](const T x)            constexpr noexcept { return T(0.0); };
@@ -108,7 +108,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
                                      .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) };
         
         // segments, element_order, quadrature_order 
-        const auto mesh = make_mesh_1d(segments, config::order_t::LINEAR, config::order_t::LINEAR);
+        const auto mesh = make_mesh_1d(segments, I(1), I(1));
         
         //right_part, initial_distribution
         std::function<T(T)>     init_dist = [](const T x)            constexpr noexcept { return T(0.0); };
@@ -153,7 +153,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
                                      .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(lambda, cap, rho, T(0.0)) };
         
         // segments, element_order, quadrature_order 
-        const auto mesh = make_mesh_1d(segments, config::order_t::LINEAR, config::order_t::LINEAR);
+        const auto mesh = make_mesh_1d(segments, I(1), I(1));
         
         //right_part, initial_distribution
         std::function<T(T)>     init_dist = [&](const T x)            constexpr noexcept { return ref_sol(T(0), x); };

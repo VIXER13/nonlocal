@@ -16,7 +16,6 @@ target_include_directories(nonstationary_thermal_1d_lib PUBLIC
 )
 
 target_link_libraries(nonstationary_thermal_1d_lib
-    config_lib
     finite_element_solver_1d_lib
     heat_equation_solver_1d_lib
 )
