@@ -92,7 +92,6 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::therma
     for(std::unordered_map<size_t, T>& matrix_part : _conductivity.matrix_bound())
         for(auto& val : matrix_part | std::views::values)
             val *= time_step();
-            
 
     _conductivity_initial_values = get_init_values(_conductivity.matrix_inner());
     _capacity_initial_values = get_init_values(_capacity.matrix_inner());

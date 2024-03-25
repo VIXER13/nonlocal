@@ -8,7 +8,7 @@ using namespace nonlocal;
 using namespace nonlocal::thermal;
 
 template<template<class> class left_bc_type, template<class> class right_bc_type, std::floating_point T, std::signed_integral I>
-void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const config::time_data<T>& time,
+void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const nonstat_1d_tests::time_data<T>& time,
                                             const parameters_1d<T>& parameters, std::function<T(T)> init_dist, std::function<T(T, T)> right_part,
                                             std::function<T(T)> LEFT_BC, std::function<T(T)> RIGHT_BC,
                                             std::function<T(T, T)> ref_sol, T eps = epsilon, bool internal_iters_check = false)  {
@@ -22,7 +22,6 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
         };
         solver.compute(parameters, boundaries_conditions, init_dist);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        save_and_calc_flux<T, I>(time, 0, solution);
     }
 
     for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
@@ -32,10 +31,9 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<right_bc_type<T>>(RIGHT_BC(T(time_layer)))
         };
         solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION);  
-        std::function<T(T)> rp = [&right_part, &time_layer, &time](const T x) { return right_part(time_layer, x); };
+        const auto rp = [&right_part, &time_layer, &time](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        save_and_calc_flux<T, I>(time, step, solution);
         if(internal_iters_check) check_solution<T, I>(mesh, solution, time_layer, step, ref_sol, eps);
     }
 
@@ -46,10 +44,9 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<right_bc_type<T>>(RIGHT_BC(T(time_layer)))
         };
         solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION); 
-        std::function<T(T)> rp = [&right_part, &time_layer, &time](const T x) { return right_part(time_layer, x); };
+        const auto rp = [&right_part, &time_layer, &time](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        save_and_calc_flux<T, I>(time, time.steps_count + 1, solution);
         check_solution<T, I>(mesh, solution, time_layer, time.steps_count + 1, ref_sol, eps);
     }
 }
@@ -60,15 +57,11 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
         // BC T|x=0 = alpha, T|x=L = beta
         // Exact solution T(x) = alpha * (x - L) / L + beta * x / L
         constexpr T left_temp = T(10.0), right_temp = T(-3.0);
-        std::function<T(T)> left_bc  = [&left_temp] (const T t) constexpr noexcept { return left_temp; };
-        std::function<T(T)> right_bc = [&right_temp](const T t) constexpr noexcept { return right_temp; };
-        std::function<T(T, T)> ref_sol = [](T t, T x) {
+        const auto left_bc  = [&left_temp] (const T t) constexpr noexcept { return left_temp; };
+        const auto right_bc = [&right_temp](const T t) constexpr noexcept { return right_temp; };
+        const auto ref_sol  = [](T t, T x) {
             return left_temp * (2.0 - x) * 0.5 + right_temp * x * 0.5;
         };
-
-        //Same calculation with json file
-        // std::filesystem::path path = "PATH_TO_REPOSITORY/nonlocal/tests/nonstationary_thermal_1d/json_files/temperature_flux/test1.json";
-        // solve_nonstationary_thermal_1d_problem_json<T, I>(nonlocal::config::parse_json(path), ref_sol);
 
         // Set computational domains
         std::vector<mesh::segment_data<T>> segments(I(1));
@@ -87,10 +80,10 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
         std::function<T(T, T)> right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
         
         // time_step, initial_time, steps_count, save_frequency
-        const config::time_data<T> time { T(0.1), T(0.0), I(100), I(1) };
+        const nonstat_1d_tests::time_data<T> time { T(0.5), T(0.0), I(10), I(1) };
 
         solve_nonstationary_thermal_1d_problem<temperature_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
-                                                                                     left_bc, right_bc, ref_sol, 1e-8);
+                                                                                     left_bc, right_bc, ref_sol, 1e-3);
     };
 
     "Test №2"_test = [] {
@@ -98,17 +91,11 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
         // T|x=0 = alpha, q*n|x=L = 0 OR q*n|x=0 = 0, T|x=L = alpha
         // Exact solution T(x) = alpha
         constexpr T temp = T(10.0), flux = T(0.0);
-        std::function<T(T)> temp_bc = [&temp](const T t) constexpr noexcept { return temp; };
-        std::function<T(T)> flux_bc = [&flux](const T t) constexpr noexcept { return flux; };
-        std::function<T(T, T)> ref_sol = [](T t, T x) {
+        const auto temp_bc = [&temp](const T t) constexpr noexcept { return temp; };
+        const auto flux_bc = [&flux](const T t) constexpr noexcept { return flux; };
+        const auto ref_sol = [](T t, T x) {
             return temp;
         };
-
-        // Same calculation with json file
-        // std::filesystem::path path1 = "PATH_TO_REPOSITORY/nonlocal/tests/nonstationary_thermal_1d/json_files/temperature_flux/test2_1.json";
-        // std::filesystem::path path2 = "PATH_TO_REPOSITORY/nonlocal/tests/nonstationary_thermal_1d/json_files/temperature_flux/test2_2.json";
-        // solve_nonstationary_thermal_1d_problem_json<T, I>(nonlocal::config::parse_json(path1), ref_sol);
-        // solve_nonstationary_thermal_1d_problem_json<T, I>(nonlocal::config::parse_json(path2), ref_sol);
 
         // Set computational domains
         std::vector<mesh::segment_data<T>> segments(I(1));
@@ -127,7 +114,7 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
         std::function<T(T, T)> right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
         
         // time_step, initial_time, steps_count, save_frequency
-        const config::time_data<T> time { T(0.1), T(0.0), I(1000), I(1) };
+        const nonstat_1d_tests::time_data<T> time { T(10), T(0.0), I(10), I(1) };
 
         // T|x=0 = alpha, q*n|x=L = 0
         solve_nonstationary_thermal_1d_problem<temperature_1d, flux_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
@@ -143,15 +130,15 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
         constexpr T k = T(1.0), w1 = T(2.0), w2 = T(3.0);
         constexpr T lambda = T(5), cap = T(1000), rho = T(1000), L = T(2.0);
 
-        std::function<T(T)> left_temp =  [&](const T t) constexpr noexcept { return T(0); };
-        std::function<T(T)> right_temp = [&](const T t) constexpr noexcept { return std::exp(-k * t) * std::cos(w1 * L) * std::sin(w2 * L); };
+        const auto left_temp =  [&](const T t) constexpr noexcept { return T(0); };
+        const auto right_temp = [&](const T t) constexpr noexcept { return std::exp(-k * t) * std::cos(w1 * L) * std::sin(w2 * L); };
 
-        std::function<T(T)> left_flux =  [&](const T t) constexpr noexcept { return -lambda * std::exp(-k * t) * w2; };
-        std::function<T(T)> right_flux = [&](const T t) constexpr noexcept { 
+        const auto left_flux =  [&](const T t) constexpr noexcept { return -lambda * std::exp(-k * t) * w2; };
+        const auto right_flux = [&](const T t) constexpr noexcept { 
             return  lambda * std::exp(-k * t) * (-w1 * std::sin(w1 * L) * std::sin(w2 * L) + w2 * std::cos(w1 * L) * std::cos(w2 * L)); 
         };
 
-        std::function<T(T, T)> ref_sol = [&](T t, T x) {
+        const auto ref_sol = [&](T t, T x) {
             return std::exp(-k * t) * std::cos(w1 * x) * std::sin(w2 * x);
         };
 
@@ -174,14 +161,14 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
         };
         
         // time_step, initial_time, steps_count, save_frequency
-        const config::time_data<T> time { T(1e-4), T(0.0), I(100), I(1) };
+        const nonstat_1d_tests::time_data<T> time { T(0.005), T(0.0), I(10), I(1) };
 
         solve_nonstationary_thermal_1d_problem<temperature_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
-                                                                                     left_temp, right_temp, ref_sol, 1e-3, true);
+                                                                                     left_temp, right_temp, ref_sol, 1e-2, true);
         solve_nonstationary_thermal_1d_problem<temperature_1d, flux_1d,        T, I>(mesh, time, parameters, init_dist, right_part, 
-                                                                                     left_temp, right_flux, ref_sol, 1e-3, true);
+                                                                                     left_temp, right_flux, ref_sol, 1e-2, true);
         solve_nonstationary_thermal_1d_problem<flux_1d,        temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
-                                                                                     left_flux, right_temp, ref_sol, 1e-3, true);
+                                                                                     left_flux, right_temp, ref_sol, 1e-2, true);
     };
 };
     

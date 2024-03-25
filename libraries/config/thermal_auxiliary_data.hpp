@@ -18,10 +18,7 @@ struct thermal_auxiliary_data final {
         right_part = config.value("right_part", T{0});
         initial_distribution = config.value("initial_distribution", T{0});
     }
-
-    explicit thermal_auxiliary_data(T _energy, T _right_part, T _initial_distribution)
-        : energy(_energy), right_part(_right_part), initial_distribution(_initial_distribution) {}
-
+    
     operator nlohmann::json() const {
         return {
             {"energy", energy},

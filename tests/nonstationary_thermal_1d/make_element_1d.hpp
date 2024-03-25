@@ -6,7 +6,7 @@
 
 using T = double;
 using I = int64_t;
-static constexpr T epsilon = T{1e-4};
+static constexpr T epsilon = T{1e-8};
 
 namespace nonstat_1d_tests {
 
