@@ -7,7 +7,6 @@
 
 #include "problems_utils.hpp"
 
-#include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
 #include "influence_functions_1d.hpp"
@@ -30,17 +29,6 @@ struct time_data final {
         : time_step(_time_step), initial_time(_initial_time), steps_count(_steps_count), save_frequency(_save_frequency) {};
 };
 
-template<std::floating_point T>
-void save_solution(const thermal::heat_equation_solution_1d<T>& solution, 
-                   const config::save_data& save,
-                   const std::optional<uint64_t> step = std::nullopt) {
-    if (step.has_value());
-        logger::get().log() << "save step " << *step << std::endl;
-    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
-                                              save.path("csv", "csv", "solution");
-    mesh::utils::save_as_csv(path, solution.mesh(), {{"temperature", solution.temperature()}, {"flux", solution.flux()}}, save.precision());
-}
-
 template<std::floating_point T, std::signed_integral I>
 void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_equation_solution_1d<T>& solution, T time_layer, I step, 
                     std::function<T(T, T)> ref, T eps = epsilon) {
@@ -55,7 +43,8 @@ template<std::floating_point T, std::signed_integral I>
 void save_and_calc_flux(const nonstat_1d_tests::time_data<T>& time, I step, heat_equation_solution_1d<T>& solution) {
     if (step % time.save_frequency == 0) {
         solution.calc_flux();
-        save_solution(solution, nonlocal::config::save_data{}, step);
+        const std::filesystem::path path = "/results";
+        mesh::utils::save_as_csv(path, solution.mesh(), {{"temperature", solution.temperature()}, {"flux", solution.flux()}});
     }
 }
     

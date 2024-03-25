@@ -7,18 +7,19 @@ using namespace boost::ut;
 using namespace nonlocal;
 using namespace nonlocal::thermal;
 
-template<template<class> class left_bc_type, template<class> class right_bc_type, std::floating_point T, std::signed_integral I>
+template<template<class> class Left_bc_type, template<class> class Right_bc_type, std::floating_point T, std::signed_integral I>
 void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const nonstat_1d_tests::time_data<T>& time,
-                                            const parameters_1d<T>& parameters, std::function<T(T)> init_dist, std::function<T(T, T)> right_part,
-                                            std::function<T(T)> LEFT_BC, std::function<T(T)> RIGHT_BC,
+                                            const parameters_1d<T>& parameters, const std::function<T(T)>& init_dist, 
+                                            const std::function<T(T, T)>& right_part,
+                                            const std::function<T(T)>& left_bc, const std::function<T(T)>& right_bc,
                                             std::function<T(T, T)> ref_sol, T eps = epsilon, bool internal_iters_check = false)  {
 
    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
 
     {   // Step initial
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique <left_bc_type<T>>(LEFT_BC(T(0))),
-            std::make_unique<right_bc_type<T>>(RIGHT_BC(T(0)))
+            std::make_unique<Left_bc_type<T>>(left_bc(T(0))),
+            std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
         };
         solver.compute(parameters, boundaries_conditions, init_dist);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
@@ -27,8 +28,8 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
     for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
         const T time_layer = (step - 1) * time.time_step; 
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique <left_bc_type<T>>(LEFT_BC(T(time_layer))),
-            std::make_unique<right_bc_type<T>>(RIGHT_BC(T(time_layer)))
+            std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
+            std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
         };
         solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION);  
         const auto rp = [&right_part, &time_layer, &time](const T x) { return right_part(time_layer, x); };
@@ -40,8 +41,8 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
     {   // Step final
         const T time_layer = time.steps_count * time.time_step; 
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique <left_bc_type<T>>(LEFT_BC(T(time_layer))),
-            std::make_unique<right_bc_type<T>>(RIGHT_BC(T(time_layer)))
+            std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
+            std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
         };
         solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION); 
         const auto rp = [&right_part, &time_layer, &time](const T x) { return right_part(time_layer, x); };
@@ -51,8 +52,8 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
     }
 }
 
-const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
-    "Test №1"_test = [] {
+const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
+    "const_temperature_temperature"_test = [] {
         // Two first kind BCs
         // BC T|x=0 = alpha, T|x=L = beta
         // Exact solution T(x) = alpha * (x - L) / L + beta * x / L
@@ -86,7 +87,7 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
                                                                                      left_bc, right_bc, ref_sol, 1e-3);
     };
 
-    "Test №2"_test = [] {
+    "const_temperature_flux"_test = [] {
         // Zero flux with temperature
         // T|x=0 = alpha, q*n|x=L = 0 OR q*n|x=0 = 0, T|x=L = alpha
         // Exact solution T(x) = alpha
@@ -124,7 +125,7 @@ const suite<"1d_boundary_conditions_temperature_flux"> _ = [] {
                                                                               flux_bc, temp_bc, ref_sol, 1e-8);
     };
 
-    "Test №3"_test = [] {
+    "all_nonconst_temperature_and_flux_configurations"_test = [] {
         // General thermal conductivity equation solution
         // T(x,t) = exp(-k * t) Cos(w1 * x) Sin(w2 * x)
         constexpr T k = T(1.0), w1 = T(2.0), w2 = T(3.0);
