@@ -1,11 +1,34 @@
-#include "nonstationary_tests_1d.hpp"
+#include <boost/ut.hpp>
+#include <tuple>
+#include <filesystem>
+
+#include "logger.hpp"
+#include "metamath.hpp"
+#include "thermal/stationary_heat_equation_solver_1d.hpp"
+#include "thermal/nonstationary_heat_equation_solver_1d.hpp"
+#include "influence_functions_1d.hpp"
 
 namespace bc_1d_tests {
 
-using namespace nonstat_1d_tests;
+using T = double;
+using I = int64_t;
+static constexpr T epsilon = T{1e-8};
+
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace nonlocal::thermal;
+
+template <std::floating_point T>
+struct time_data final {
+    T time_step = T{0};       
+    T initial_time = T{0};
+    uint64_t steps_count = 0; 
+};
+
+template<class T, size_t Order>
+using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, Order>;
+template<class T, size_t Order>
+using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, Order>;
 
 template<std::floating_point T, std::signed_integral I>
 void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_equation_solution_1d<T>& solution, T time_layer, I step, 
@@ -17,7 +40,7 @@ void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_eq
 }
 
 template<template<class> class Left_bc_type, template<class> class Right_bc_type, std::floating_point T, std::signed_integral I>
-void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const nonstat_1d_tests::time_data<T>& time,
+void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const time_data<T>& time,
                                             const parameters_1d<T>& parameters, const std::function<T(T)>& init_dist, 
                                             const std::function<T(T, T)>& right_part,
                                             const std::function<T(T)>& left_bc, const std::function<T(T)>& right_bc,
@@ -31,7 +54,6 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
         };
         solver.compute(parameters, boundaries_conditions, init_dist);
-        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
     }
 
     for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
@@ -73,20 +95,18 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
             return left_temp * (2.0 - x) * 0.5 + right_temp * x * 0.5;
         };
 
-        std::vector<mesh::segment_data<T>> segments(I(1));
-        segments[0] = mesh::segment_data<T>{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) };
+        const std::vector<mesh::segment_data<T>> segments({{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) }});
 
-        parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) };
+        parameters_1d<T> parameters {{ .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
+                                       // conductivity, capacity, density, relaxation_time
+                                       .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) }};
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T, 1>>(quadrature<T, 1>()), segments);
         
-        std::function<T(T)>     init_dist = [](const T x)            constexpr noexcept { return T(0.0); };
-        std::function<T(T, T)> right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
+        constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
+        constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
         
-        const nonstat_1d_tests::time_data<T> time = {.time_step = T(0.5), .initial_time = T(0.0), .steps_count = I(10) };
+        const time_data<T> time = {.time_step = T(0.5), .initial_time = T(0.0), .steps_count = I(10) };
 
         solve_nonstationary_thermal_1d_problem<temperature_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
                                                                                      left_bc, right_bc, ref_sol, 1e-3);
@@ -99,7 +119,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         constexpr T temp = T(10.0), flux = T(0.0);
         const auto temp_bc = [&temp](const T t) constexpr noexcept { return temp; };
         const auto flux_bc = [&flux](const T t) constexpr noexcept { return flux; };
-        const auto ref_sol = [](T t, T x) {
+        constexpr auto ref_sol = [](T t, T x) {
             return temp;
         };
 
@@ -113,10 +133,10 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T, 1>>(quadrature<T, 1>()), segments);
 
-        std::function<T(T)>     init_dist = [](const T x)            constexpr noexcept { return T(0.0); };
-        std::function<T(T, T)> right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
+        constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
+        constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
         
-        const nonstat_1d_tests::time_data<T> time = {.time_step =    T(10.0), .initial_time = T(0.0), .steps_count =  I(10) };
+        const time_data<T> time = {.time_step =    T(10.0), .initial_time = T(0.0), .steps_count =  I(10) };
 
         // T|x=0 = alpha, q*n|x=L = 0
         solve_nonstationary_thermal_1d_problem<temperature_1d, flux_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
@@ -132,7 +152,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         constexpr T k = T(1.0), w1 = T(2.0), w2 = T(3.0);
         constexpr T lambda = T(5), cap = T(1000), rho = T(1000), L = T(2.0);
 
-        const auto left_temp =  [&](const T t) constexpr noexcept { return T(0); };
+        constexpr auto left_temp =  [&](const T t) constexpr noexcept { return T(0); };
         const auto right_temp = [&](const T t) constexpr noexcept { return std::exp(-k * t) * std::cos(w1 * L) * std::sin(w2 * L); };
 
         const auto left_flux =  [&](const T t) constexpr noexcept { return -lambda * std::exp(-k * t) * w2; };
@@ -154,12 +174,12 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T, 1>>(quadrature<T, 1>()), segments);
         
-        std::function<T(T)>     init_dist = [&](const T x)            constexpr noexcept { return ref_sol(T(0), x); };
-        std::function<T(T, T)> right_part = [&](const T t, const T x) constexpr noexcept { 
+        const auto init_dist =  [&](const T x)            constexpr noexcept { return ref_sol(T(0), x); };
+        const auto right_part = [&](const T t, const T x) constexpr noexcept { 
             return (-k * cap * rho + w1 * w1* lambda + w2 * w2* lambda) * ref_sol(t, x) + 2 * lambda * w1 * w2 * std::exp(-k * t) * std::sin(w1 * x) * std::cos(w2 * x);
         };
         
-        const nonstat_1d_tests::time_data<T> time = {.time_step =    T(0.005), .initial_time = T(0.0), .steps_count =  I(10) };
+        const time_data<T> time = {.time_step = T(0.005), .initial_time = T(0.0), .steps_count =  I(10) };
 
         solve_nonstationary_thermal_1d_problem<temperature_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
                                                                                      left_temp, right_temp, ref_sol, 1e-2, true);
