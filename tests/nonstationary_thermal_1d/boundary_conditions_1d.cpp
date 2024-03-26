@@ -79,7 +79,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         constexpr T left_temp = T(10.0), right_temp = T(-3.0);
         const auto left_bc  = [&left_temp] (const T t) constexpr noexcept { return left_temp; };
         const auto right_bc = [&right_temp](const T t) constexpr noexcept { return right_temp; };
-        const auto ref_sol  = [](T t, T x) {
+        const auto ref_sol  = [](T t, T x) constexpr noexcept {
             return left_temp * (2.0 - x) * 0.5 + right_temp * x * 0.5;
         };
 
@@ -107,7 +107,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         constexpr T temp = T(10.0), flux = T(0.0);
         const auto temp_bc = [&temp](const T t) constexpr noexcept { return temp; };
         const auto flux_bc = [&flux](const T t) constexpr noexcept { return flux; };
-        constexpr auto ref_sol = [](T t, T x) {
+        constexpr auto ref_sol = [](T t, T x) constexpr noexcept {
             return temp;
         };
 
@@ -147,7 +147,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
             return  lambda * std::exp(-k * t) * (-w1 * std::sin(w1 * L) * std::sin(w2 * L) + w2 * std::cos(w1 * L) * std::cos(w2 * L)); 
         };
 
-        const auto ref_sol = [&](T t, T x) {
+        const auto ref_sol = [&](T t, T x) constexpr noexcept {
             return std::exp(-k * t) * std::cos(w1 * x) * std::sin(w2 * x);
         };
 
