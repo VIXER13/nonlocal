@@ -17,7 +17,6 @@ if(OPENMP_FOUND)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_BUILD_TYPE Release)
 add_compile_options(-O2)
 enable_testing()
 
