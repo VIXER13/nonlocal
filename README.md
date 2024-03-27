@@ -31,11 +31,9 @@
 > 
 > cd build
 > 
-> conan install ./..
-> 
 > cmake ..
 > 
-> make
+> make -j${nproc}
 
 Команда make соберёт проекты NonLocFEM и unit_tests.
 

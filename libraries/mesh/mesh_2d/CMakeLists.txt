@@ -17,6 +17,7 @@ target_sources(mesh_2d_lib INTERFACE
 )
 target_include_directories(mesh_2d_lib INTERFACE ${MESH_2D_LIB_DIR})
 target_link_libraries(mesh_2d_lib INTERFACE
+    logger_lib
     metamath_lib
     parallel_lib
     nonlocal_constants_lib

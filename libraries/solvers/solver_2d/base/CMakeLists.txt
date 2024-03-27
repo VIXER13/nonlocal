@@ -12,7 +12,6 @@ target_sources(finite_element_solver_2d_base_lib INTERFACE
     matrix_index_initializer.hpp
     matrix_indexator_base.hpp
     matrix_separator_base.hpp
-    mesh_runner_types.hpp
     right_part_2d.hpp
     shift_initializer.hpp
     solution_2d.hpp
