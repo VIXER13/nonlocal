@@ -1,7 +1,8 @@
 #ifndef STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 #define STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 
-#include "thermal_conductivity_matrix_1d.hpp"
+#include "matrix_portrait_assembler_1d.hpp"
+#include "thermal_conductivity_matrix_assembler_1d.hpp"
 #include "right_part_1d.hpp"
 #include "boundary_condition_first_kind_1d.hpp"
 #include "boundary_condition_second_kind_1d.hpp"
@@ -59,19 +60,23 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     const bool is_nonlocal = std::any_of(theories.begin(), theories.end(), check_nonlocal);
     const bool is_symmetric = !(is_nonlinear && is_nonlocal);
 
+    const std::array<bool, 2> is_first_kind = {
+        bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
+        bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get()))
+    };
+
     T difference = T{1};
     size_t iteration = 0;
-    thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
-    while (iteration < additional_parameters.max_iterations && 
-           difference > additional_parameters.tolerance) {
+    finite_element_matrix_1d<T, I> matrix;
+    matrix_portrait_assembler_1d<T, I> portrait_assembler{matrix, mesh};
+    portrait_assembler.compute(theories_types(parameters), is_first_kind, is_symmetric, is_neumann);
+    thermal_conductivity_matrix_assembler_1d<T, I> matrix_assembler{matrix, mesh};
+    while (iteration < additional_parameters.max_iterations && difference > additional_parameters.tolerance) {
         std::swap(temperature_prev, temperature_curr);
         std::copy(initial_f.begin(), initial_f.end(), f.begin());
         using namespace nonlocal::mesh::utils;
-        conductivity.template calc_matrix(
-            parameters,
-            { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
-              bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) },
-            is_neumann, is_symmetric,
+        matrix_assembler.template compute(
+            parameters, is_first_kind, is_neumann, is_symmetric,
             is_sol_depend ? std::optional{from_nodes_to_qnodes(*mesh, temperature_prev)} : std::nullopt
         );
 
@@ -82,28 +87,28 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                 const Eigen::ConjugateGradient<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                     Eigen::Upper
-                > solver{conductivity.matrix_inner()};
+                > solver{matrix_assembler.matrix().inner()};
                 temperature_curr = solver.solveWithGuess(f, temperature_prev);
             } else {
                 logger::get().log() << "asymmetric problem" << std::endl;
-                const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix_inner()};
+                const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{matrix_assembler.matrix().inner()};
                 temperature_curr = solver.solveWithGuess(f, temperature_prev);
             }
         } else {
-            convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
-            boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);
+            convection_condition_1d(matrix_assembler.matrix().inner(), boundaries_conditions);
+            boundary_condition_first_kind_1d(f, matrix_assembler.matrix().bound(), boundaries_conditions);
             if (is_symmetric) {
                 const Eigen::SimplicialCholesky<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
                     Eigen::Upper, 
                     Eigen::NaturalOrdering<I>
-                > solver{conductivity.matrix_inner()};
+                > solver{matrix_assembler.matrix().inner()};
                 temperature_curr = solver.solve(f);
             } else {
                 const Eigen::SparseLU<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                     Eigen::NaturalOrdering<I>
-                > solver{conductivity.matrix_inner()};
+                > solver{matrix_assembler.matrix().inner()};
                 temperature_curr = solver.solve(f);
             }
         }

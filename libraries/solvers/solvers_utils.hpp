@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SOLVERS_UTILS_HPP
-#define NONLOCAL_SOLVERS_UTILS_HPP
+#pragma once
 
 #include <Eigen/Sparse>
 
@@ -14,6 +13,12 @@ template<class T, class I>
 void accumulate_shifts(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
     for(const size_t i : std::ranges::iota_view{0u, size_t(K.rows())})
         K.outerIndexPtr()[i + 1] += K.outerIndexPtr()[i];
+}
+
+template<class T, class I>
+void clear_matrix_coefficients(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
+    for(const size_t i : std::ranges::iota_view{size_t{0}, size_t(K.nonZeros())})
+        K.valuePtr()[i] = T{0};
 }
 
 template<class T, class I>
@@ -33,5 +38,3 @@ void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
 }
 
 }
-
-#endif

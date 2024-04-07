@@ -7,8 +7,8 @@ add_library(heat_equation_solver_1d_lib INTERFACE)
 target_sources(
     heat_equation_solver_1d_lib INTERFACE
     thermal_parameters_1d.hpp
-    thermal_conductivity_matrix_1d.hpp
-    heat_capacity_matrix_1d.hpp
+    thermal_conductivity_matrix_assembler_1d.hpp
+    heat_capacity_matrix_assembler_1d.hpp
     convection_condition_1d.hpp
     stationary_heat_equation_solver_1d.hpp
     nonstationary_heat_equation_solver_1d.hpp

@@ -1,8 +1,9 @@
 #ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 #define NONSTATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
 
-#include "thermal_conductivity_matrix_1d.hpp"
-#include "heat_capacity_matrix_1d.hpp"
+#include "matrix_portrait_assembler_1d.hpp"
+#include "thermal_conductivity_matrix_assembler_1d.hpp"
+#include "heat_capacity_matrix_assembler_1d.hpp"
 #include "right_part_1d.hpp"
 #include "boundary_condition_first_kind_1d.hpp"
 #include "boundary_condition_second_kind_1d.hpp"
@@ -14,8 +15,8 @@ namespace nonlocal::thermal {
 
 template<class T, class I>
 class nonstationary_heat_equation_solver_1d final {
-    heat_capacity_matrix_1d<T, I> _capacity;
-    thermal_conductivity_matrix_1d<T, I> _conductivity;
+    finite_element_matrix_1d<T, I> _capacity;
+    finite_element_matrix_1d<T, I> _conductivity;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
@@ -77,6 +78,9 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::therma
         bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.front().get())),
         bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.back ().get()))
     };
+    //matrix_portrait_assembler_1d<T, I> capacity_portrait_assembler{_capacity, };
+
+
     _capacity.calc_matrix(parameters, is_first_kind);
     _conductivity.template calc_matrix(parameters, is_first_kind);
     convection_condition_1d(_conductivity.matrix_inner(), boundaries_conditions);
