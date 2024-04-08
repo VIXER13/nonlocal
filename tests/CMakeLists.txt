@@ -16,6 +16,7 @@ target_link_libraries(unit_tests
     parallel_test_lib
     config_test_lib
     nonstationary_thermal_1d_lib
+    nonlocal_constants_lib
 )
 
 add_test(NAME unit_tests COMMAND unit_tests)

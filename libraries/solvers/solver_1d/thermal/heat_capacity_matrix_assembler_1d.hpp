@@ -1,15 +1,16 @@
 #pragma once
 
-#include "../../equation_parameters.hpp"
-
 #include "finite_element_matrix_1d.hpp"
+#include "matrix_assembler_base_1d.hpp"
 #include "thermal_parameters_1d.hpp"
+
+#include "../../equation_parameters.hpp"
 
 namespace nonlocal::thermal {
 
 template<class T, class I>
-class heat_capacity_matrix_assembler_1d : public matrix_assembler_base<T, I> {
-    using _base = finite_element_matrix_1d<T, I>;
+class heat_capacity_matrix_assembler_1d : public matrix_assembler_base_1d<T, I> {
+    using _base = matrix_assembler_base_1d<T, I>;
 
     static std::vector<T> calc_factors(const nonlocal::thermal::parameters_1d<T>& parameters);
 
@@ -55,7 +56,7 @@ void heat_capacity_matrix_assembler_1d<T, I>::compute(const nonlocal::thermal::p
     const std::vector<theory_t> local_theories(_base::mesh().segments_count(), theory_t::LOCAL);
     static constexpr bool SYMMETRIC = true;
     static constexpr bool NEUMANN = false;
-    _base::template calc_matrix(local_theories, is_first_kind, SYMMETRIC, NEUMANN,
+    _base::template compute(local_theories, is_first_kind, SYMMETRIC, NEUMANN,
         [this, factors = calc_factors(parameters)](const size_t segment, const size_t e, const size_t i, const size_t j) {
             return factors[segment] * integrate(e, i, j);
         },

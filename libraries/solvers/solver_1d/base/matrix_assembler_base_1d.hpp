@@ -25,9 +25,9 @@ protected:
     virtual ~matrix_assembler_base_1d() = default;
 
     template<class Integrate_Loc, class Integrate_Nonloc>
-    void calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind,
-                     const bool is_symmetric, const bool is_neumann,
-                     const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc);
+    void compute(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind,
+                 const bool is_symmetric, const bool is_neumann,
+                 const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
@@ -115,9 +115,9 @@ void matrix_assembler_base_1d<T, I>::integral_condition(const bool is_symmetric)
 
 template<class T, class I>
 template<class Integrate_Loc, class Integrate_Nonloc>
-void matrix_assembler_base_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind,
-                                                 const bool is_symmetric, const bool is_neumann,
-                                                 const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc) {
+void matrix_assembler_base_1d<T, I>::compute(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind,
+                                             const bool is_symmetric, const bool is_neumann,
+                                             const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
         if (col == row)
             matrix().inner().coeffRef(row, col) = T{1};

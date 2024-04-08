@@ -1,5 +1,6 @@
 #include "metamath.hpp"
 #include "logger.hpp"
+#include "nonlocal_constants.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
 #include "influence_functions_1d.hpp"
@@ -19,9 +20,9 @@ using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::f
 
 template <std::floating_point T>
 struct time_data final {
-    T time_step = T{0};       
+    T time_step = T{0};
     T initial_time = T{0};
-    uint64_t steps_count = 0; 
+    uint64_t steps_count = 0;
 };
 
 template<std::floating_point T, std::signed_integral I>

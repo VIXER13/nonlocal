@@ -144,7 +144,7 @@ void thermal_conductivity_matrix_assembler_1d<T, I>::compute(const parameters_1d
     if (parameters.size() != _base::mesh().segments_count())
         throw std::domain_error{"The number of segments and the number of material parameters do not match."};
     const std::vector<theory_t> theories = theories_types(parameters);
-    _base::template calc_matrix(theories, is_first_kind, is_symmetric, is_neumann,
+    _base::template compute(theories, is_first_kind, is_symmetric, is_neumann,
         [this, &parameters, &solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
             const auto& [model, physic] = parameters[segment];
