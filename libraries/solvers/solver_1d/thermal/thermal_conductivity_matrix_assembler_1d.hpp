@@ -32,7 +32,8 @@ protected:
 
 public:
     explicit thermal_conductivity_matrix_assembler_1d(finite_element_matrix_1d<T, I>& matrix,
-                                                      const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
+                                                      const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                                      const std::optional<utils::nodes_sequence>& nodes_for_processing = std::nullopt);
     ~thermal_conductivity_matrix_assembler_1d() override = default;
 
     void compute(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind,
@@ -41,9 +42,11 @@ public:
 };
 
 template<class T, class I>
-thermal_conductivity_matrix_assembler_1d<T, I>::thermal_conductivity_matrix_assembler_1d(finite_element_matrix_1d<T, I>& matrix,
-                                                                                         const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
-    : _base{matrix, mesh} {}
+thermal_conductivity_matrix_assembler_1d<T, I>::thermal_conductivity_matrix_assembler_1d(
+    finite_element_matrix_1d<T, I>& matrix,
+    const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+    const std::optional<utils::nodes_sequence>& nodes_for_processing)
+    : _base{matrix, mesh, nodes_for_processing} {}
 
 template<class T, class I>
 template<class Integrator>

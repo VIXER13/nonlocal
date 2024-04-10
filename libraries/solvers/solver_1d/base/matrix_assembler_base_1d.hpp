@@ -11,17 +11,24 @@ template<class T, class I>
 class matrix_assembler_base_1d {
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
     finite_element_matrix_1d<T, I>& _matrix;
+    utils::nodes_sequence _nodes_for_processing;
 
     auto correct_node_data(const size_t node, const std::ranges::iota_view<size_t, size_t> segment_nodes) const;
-    template<theory_t Theory, class Callback>
-    void mesh_run(const size_t segment, const Callback& callback) const;
+    template<class Nodes, class Local_Runner, class Nonlocal_Runner>
+    void mesh_run(const Nodes& nodes, const std::vector<theory_t>& theories, 
+                  Local_Runner&& local_runner, Nonlocal_Runner&& nonlocal_runner) const;
+    template<class Local_Runner, class Nonlocal_Runner>
+    void mesh_run(const std::vector<theory_t>& theories, Local_Runner&& local_runner, Nonlocal_Runner&& nonlocal_runner) const;
 
     T integrate_basic(const size_t e, const size_t i) const;
+    template<class Nodes>
+    void integral_condition(const Nodes& nodes, const bool is_symmetric);
     void integral_condition(const bool is_symmetric); // for Neumann problem
 
 protected:
     explicit matrix_assembler_base_1d(finite_element_matrix_1d<T, I>& matrix,
-                                      const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
+                                      const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                      const std::optional<utils::nodes_sequence>& nodes_for_processing = std::nullopt);
     virtual ~matrix_assembler_base_1d() = default;
 
     template<class Integrate_Loc, class Integrate_Nonloc>
@@ -34,13 +41,19 @@ public:
     const mesh::mesh_1d<T>& mesh() const;
     finite_element_matrix_1d<T, I>& matrix() noexcept;
     const finite_element_matrix_1d<T, I>& matrix() const noexcept;
+    const utils::nodes_sequence& nodes_for_processing() const noexcept;
+    void nodes_for_processing(const utils::nodes_sequence& nodes);
 };
 
 template<class T, class I>
 matrix_assembler_base_1d<T, I>::matrix_assembler_base_1d(finite_element_matrix_1d<T, I>& matrix,
-                                                         const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
+                                                         const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                                         const std::optional<utils::nodes_sequence>& nodes_for_processing)
     : _mesh{mesh}
-    , _matrix{matrix} {}
+    , _matrix{matrix}
+    , _nodes_for_processing{nodes_for_processing ? *nodes_for_processing : 
+                            std::ranges::iota_view<size_t, size_t>{0u, _mesh->nodes_count()}}
+    {}
 
 template<class T, class I>
 const std::shared_ptr<mesh::mesh_1d<T>>& matrix_assembler_base_1d<T, I>::mesh_ptr() const noexcept {
@@ -63,6 +76,16 @@ const finite_element_matrix_1d<T, I>& matrix_assembler_base_1d<T, I>::matrix() c
 }
 
 template<class T, class I>
+const utils::nodes_sequence& matrix_assembler_base_1d<T, I>::nodes_for_processing() const noexcept {
+    return _nodes_for_processing;
+}
+
+template<class T, class I>
+void matrix_assembler_base_1d<T, I>::nodes_for_processing(const utils::nodes_sequence& nodes) {
+    _nodes_for_processing = nodes;
+}
+
+template<class T, class I>
 auto matrix_assembler_base_1d<T, I>::correct_node_data(const size_t node, const std::ranges::iota_view<size_t, size_t> segment_nodes) const {
     auto node_elements = mesh().node_elements(node).to_array();
     if (node == segment_nodes.front() && node != 0)
@@ -73,23 +96,43 @@ auto matrix_assembler_base_1d<T, I>::correct_node_data(const size_t node, const 
 }
 
 template<class T, class I>
-template<theory_t Theory, class Callback>
-void matrix_assembler_base_1d<T, I>::mesh_run(const size_t segment, const Callback& callback) const {
-    const auto segment_nodes = mesh().nodes(segment);
-#pragma omp parallel for default(none) shared(segment_nodes) firstprivate(callback)
-    for(size_t node = segment_nodes.front(); node < *segment_nodes.end(); ++node) {
-        for(const auto node_data : correct_node_data(node, segment_nodes))
+template<class Nodes, class Local_Runner, class Nonlocal_Runner>
+void matrix_assembler_base_1d<T, I>::mesh_run(const Nodes& nodes, const std::vector<theory_t>& theories,
+                                              Local_Runner&& local_runner, Nonlocal_Runner&& nonlocal_runner) const {
+#pragma omp parallel for default(none) shared(nodes, theories) firstprivate(local_runner, nonlocal_runner)
+    for(size_t i = 0; i < nodes.size(); ++i) {
+        const size_t node = nodes[i];
+        for(const auto node_data : mesh().node_elements(node).to_array())
             if (node_data) {
                 const auto& [eL, iL] = node_data;
-                if constexpr (Theory == theory_t::LOCAL)
-                    for(const size_t jL : mesh().element().nodes())
-                        callback(eL, iL, jL);
-                if constexpr (Theory == theory_t::NONLOCAL)
+                const size_t segment = mesh().segment_number(eL);
+                switch (const theory_t theory = theories[segment]) {
+                case theory_t::NONLOCAL:
                     for(const size_t eNL : mesh().neighbours(eL))
                         for(const size_t jNL : mesh().element().nodes())
-                            callback(eL, eNL, iL, jNL);
-            }            
+                            nonlocal_runner(segment, eL, eNL, iL, jNL);
+                case theory_t::LOCAL:
+                    for(const size_t jL : mesh().element().nodes())
+                        local_runner(segment, eL, iL, jL);
+                break;
+                default:
+                    throw std::domain_error{"Unknown theory."};
+                }
+            }
     }
+}
+
+template<class T, class I>
+template<class Local_Runner, class Nonlocal_Runner>
+void matrix_assembler_base_1d<T, I>::mesh_run(const std::vector<theory_t>& theories, 
+                                              Local_Runner&& local_runner,
+                                              Nonlocal_Runner&& nonlocal_runner) const {
+    if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(nodes_for_processing()))
+        mesh_run(std::get<std::ranges::iota_view<size_t, size_t>>(nodes_for_processing()), theories, 
+                 std::forward<Local_Runner>(local_runner), std::forward<Nonlocal_Runner>(nonlocal_runner));
+    else
+        mesh_run(std::get<std::vector<size_t>>(nodes_for_processing()), theories, 
+                 std::forward<Local_Runner>(local_runner), std::forward<Nonlocal_Runner>(nonlocal_runner));
 }
 
 template<class T, class I>
@@ -102,15 +145,25 @@ T matrix_assembler_base_1d<T, I>::integrate_basic(const size_t e, const size_t i
 }
 
 template<class T, class I>
-void matrix_assembler_base_1d<T, I>::integral_condition(const bool is_symmetric) {
-#pragma omp parallel for default(none) shared(is_symmetric)
-    for(size_t node = 0; node < mesh().nodes_count(); ++node) {
+template<class Nodes>
+void matrix_assembler_base_1d<T, I>::integral_condition(const Nodes& nodes, const bool is_symmetric) {
+#pragma omp parallel for default(none) shared(nodes, is_symmetric)
+    for(size_t k = 0; k < nodes.size(); ++k) {
+        const size_t node = nodes[k];
         T& val = matrix().inner().coeffRef(node, mesh().nodes_count());
         for(const auto& [e, i] : mesh().node_elements(node).to_array())
             if (e) val += integrate_basic(e, i);
         if (!is_symmetric)
             matrix().inner().coeffRef(mesh().nodes_count(), node) = val;
     }
+}
+
+template<class T, class I>
+void matrix_assembler_base_1d<T, I>::integral_condition(const bool is_symmetric) {
+    if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(nodes_for_processing()))
+        integral_condition(std::get<std::ranges::iota_view<size_t, size_t>>(nodes_for_processing()), is_symmetric);
+    else
+        integral_condition(std::get<std::vector<size_t>>(nodes_for_processing()), is_symmetric);
 }
 
 template<class T, class I>
@@ -139,29 +192,18 @@ void matrix_assembler_base_1d<T, I>::compute(const std::vector<theory_t>& theori
     };
 
     matrix().bound() = {};
-    utils::clear_matrix_coefficients(matrix().inner());
+    utils::clear_matrix_rows(matrix().inner(), nodes_for_processing());
     if (is_neumann)
         integral_condition(is_symmetric);
 
-    for(const size_t segment : mesh().segments())
-        switch (theories[segment]) {
-            case theory_t::NONLOCAL:
-                mesh_run<theory_t::NONLOCAL>(segment,
-                    [this, &assemble, &integrate_rule_nonloc, segment](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-                        assemble(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL), integrate_rule_nonloc, segment, eL, eNL, iL, jNL);
-                    }
-                );
-            case theory_t::LOCAL:
-                mesh_run<theory_t::LOCAL>(segment,
-                    [this, &assemble, integrate_rule_loc, segment](const size_t e, const size_t i, const size_t j) {
-                        assemble(mesh().node_number(e, i), mesh().node_number(e, j), integrate_rule_loc, segment, e, i, j);
-                    }
-                );
-            break;
-            
-            default:
-                throw std::runtime_error{"Unknown theory type."};
+    mesh_run(theories,
+        [this, &assemble, &integrate_rule_loc](const size_t segment, const size_t e, const size_t i, const size_t j) {
+            assemble(mesh().node_number(e, i), mesh().node_number(e, j), integrate_rule_loc, segment, e, i, j);
+        },
+        [this, &assemble, &integrate_rule_nonloc](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            assemble(mesh().node_number(eL, iL), mesh().node_number(eNL, jNL), integrate_rule_nonloc, segment, eL, eNL, iL, jNL);
         }
+    );
 }
 
 }

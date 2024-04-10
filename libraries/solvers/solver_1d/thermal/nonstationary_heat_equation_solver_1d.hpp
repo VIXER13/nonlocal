@@ -1,5 +1,4 @@
-#ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
-#define NONSTATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
+#pragma once
 
 #include "matrix_portrait_assembler_1d.hpp"
 #include "thermal_conductivity_matrix_assembler_1d.hpp"
@@ -170,5 +169,3 @@ void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_bounda
 }
 
 }
-
-#endif

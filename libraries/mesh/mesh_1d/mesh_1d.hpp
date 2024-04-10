@@ -81,6 +81,7 @@ public:
     std::ranges::iota_view<size_t, size_t> nodes(const size_t segment) const;
     std::ranges::iota_view<size_t, size_t> neighbours(const size_t e) const;
     left_right_element node_elements(const size_t node) const;
+    std::vector<size_t> contact_nodes() const;
 
     T length() const noexcept;
     T length(const size_t segment) const;
@@ -225,6 +226,14 @@ left_right_element mesh_1d<T>::node_elements(const size_t node) const {
                 .right = std::nullopt};
     return {.left  = data(e - 1, elements_nodes_count),
             .right = data(e,     0)};
+}
+
+template<class T>
+std::vector<size_t> mesh_1d<T>::contact_nodes() const {
+    std::vector<size_t> nodes(segments_count() - 1);
+    for(const size_t segment : std::ranges::iota_view{0u, nodes.size()})
+        nodes[segment] = this->nodes(segment).back();
+    return nodes;
 }
 
 template<class T>

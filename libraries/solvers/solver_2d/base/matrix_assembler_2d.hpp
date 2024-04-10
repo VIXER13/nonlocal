@@ -40,14 +40,9 @@ template<class T, class I, class J, size_t DoF>
 class matrix_assembler_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
 
-    using nodes_sequence = std::variant<
-        std::ranges::iota_view<size_t, size_t>,
-        std::vector<size_t>
-    >;
-
     finite_element_matrix<T, J> _matrix;
     std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
-    nodes_sequence _nodes_for_processing;
+    utils::nodes_sequence _nodes_for_processing;
 
 protected:
     explicit matrix_assembler_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
@@ -72,9 +67,9 @@ public:
     const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
     finite_element_matrix<T, J>& matrix() noexcept;
     const finite_element_matrix<T, J>& matrix() const noexcept;
-    const nodes_sequence& nodes_for_processing() const noexcept;
+    const utils::nodes_sequence& nodes_for_processing() const noexcept;
 
-    void nodes_for_processing(const nodes_sequence& nodes);
+    void nodes_for_processing(const utils::nodes_sequence& nodes);
 
     void clear();
 };
@@ -119,12 +114,12 @@ const finite_element_matrix<T, J>& matrix_assembler_2d<T, I, J, DoF>::matrix() c
 }
 
 template<class T, class I, class J, size_t DoF>
-const matrix_assembler_2d<T, I, J, DoF>::nodes_sequence& matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing() const noexcept {
+const utils::nodes_sequence& matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing() const noexcept {
     return _nodes_for_processing;
 }
 
 template<class T, class I, class J, size_t DoF>
-void matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing(const nodes_sequence& nodes) {
+void matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing(const utils::nodes_sequence& nodes) {
     _nodes_for_processing = nodes;
 }
 
