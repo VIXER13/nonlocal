@@ -26,7 +26,7 @@ struct stationary_equation_parameters_1d final {
 template<class T, class I>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                                                 const parameters_1d<T>& parameters,
-                                                                const thermal_boundaries_conditions_1d<T>& boundaries_conditions,  
+                                                                const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                                 const stationary_equation_parameters_1d<T>& additional_parameters) {
     static constexpr auto is_flux = [](const auto& condition) noexcept {
         return bool(dynamic_cast<const flux_1d<T>*>(condition.get()));
@@ -60,23 +60,18 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     const bool is_nonlocal = std::any_of(theories.begin(), theories.end(), check_nonlocal);
     const bool is_symmetric = !(is_nonlinear && is_nonlocal);
 
-    const std::array<bool, 2> is_first_kind = {
-        bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
-        bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get()))
-    };
-
     T difference = T{1};
     size_t iteration = 0;
     finite_element_matrix_1d<T, I> matrix;
     matrix_portrait_assembler_1d<T, I> portrait_assembler{matrix, mesh};
-    portrait_assembler.compute(theories_types(parameters), is_first_kind, is_symmetric, is_neumann);
+    portrait_assembler.compute(theories_types(parameters), is_first_kind(boundaries_conditions), is_symmetric, is_neumann);
     thermal_conductivity_matrix_assembler_1d<T, I> matrix_assembler{matrix, mesh};
     while (iteration < additional_parameters.max_iterations && difference > additional_parameters.tolerance) {
         std::swap(temperature_prev, temperature_curr);
         std::copy(initial_f.begin(), initial_f.end(), f.begin());
         using namespace nonlocal::mesh::utils;
         matrix_assembler.template compute(
-            parameters, is_first_kind, is_neumann, is_symmetric,
+            parameters, is_first_kind(boundaries_conditions), is_neumann, is_symmetric,
             is_sol_depend ? std::optional{from_nodes_to_qnodes(*mesh, temperature_prev)} : std::nullopt
         );
 

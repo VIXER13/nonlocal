@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
-#define NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
+#pragma once
 
 #include "boundary_conditions_1d.hpp"
 #include "metamath.hpp"
@@ -99,6 +98,12 @@ using thermal_boundary_condition_1d = boundary_condition_1d<T, physics_t::THERMA
 template<class T>
 using thermal_boundaries_conditions_1d = boundaries_conditions_1d<T, physics_t::THERMAL>;
 
+template<class T>
+std::array<bool, 2> is_first_kind(const thermal_boundaries_conditions_1d<T>& boundaries_conditions) {
+    return {
+        bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.front().get())),
+        bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.back().get()))
+    };
 }
 
-#endif
+}

@@ -11,13 +11,15 @@ template<class T, class I>
 class matrix_portrait_assembler_1d final {
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
     finite_element_matrix_1d<T, I>& _matrix;
+    utils::nodes_sequence _nodes_for_processing;
 
     void calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_neumann);
     void init_indices(const bool is_neumann);
 
 public:
     explicit matrix_portrait_assembler_1d(finite_element_matrix_1d<T, I>& matrix,
-                                          const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
+                                          const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                          const std::optional<utils::nodes_sequence>& nodes_for_processing = std::nullopt);
 
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
     const mesh::mesh_1d<T>& mesh() const;
@@ -30,9 +32,13 @@ public:
 
 template<class T, class I>
 matrix_portrait_assembler_1d<T, I>::matrix_portrait_assembler_1d(finite_element_matrix_1d<T, I>& matrix,
-                                                                 const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
+                                                                 const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                                                 const std::optional<utils::nodes_sequence>& nodes_for_processing)
     : _mesh{mesh}
-    , _matrix{matrix} {}
+    , _matrix{matrix}
+    , _nodes_for_processing{nodes_for_processing ? *nodes_for_processing : 
+                            std::ranges::iota_view<size_t, size_t>{0u, _mesh->nodes_count()}}
+    {}
 
 template<class T, class I>
 const std::shared_ptr<mesh::mesh_1d<T>>& matrix_portrait_assembler_1d<T, I>::mesh_ptr() const noexcept {

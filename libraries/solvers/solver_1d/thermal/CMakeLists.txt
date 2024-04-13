@@ -11,7 +11,7 @@ target_sources(
     heat_capacity_matrix_assembler_1d.hpp
     convection_condition_1d.hpp
     stationary_heat_equation_solver_1d.hpp
-    nonstationary_heat_equation_solver_1d.hpp
+    heat_equation_solver_with_relaxation_1d.hpp
     heat_equation_solution_1d.hpp
 )
 target_include_directories(heat_equation_solver_1d_lib INTERFACE 

@@ -111,26 +111,23 @@ template<class Init_Dist>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::thermal::parameters_1d<T>& parameters,
                                                           const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                           const Init_Dist& init_dist) {
-    const std::array<bool, 2> is_first_kind = {
-        bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.front().get())),
-        bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.back ().get()))
-    };
+    const std::array<bool, 2> is_first = is_first_kind(boundaries_conditions);
     matrix_portrait_assembler_1d<T, I> capacity_portrait_assembler{_capacity, mesh_ptr()};
     matrix_portrait_assembler_1d<T, I> conductivity_portrait_assembler{_conductivity, mesh_ptr()};
-    capacity_portrait_assembler.compute(std::vector<theory_t>(parameters.size(), theory_t::LOCAL), is_first_kind);
-    conductivity_portrait_assembler.compute(theories_types(parameters), is_first_kind);
+    capacity_portrait_assembler.compute(std::vector<theory_t>(parameters.size(), theory_t::LOCAL), is_first);
+    conductivity_portrait_assembler.compute(theories_types(parameters), is_first);
 
     heat_capacity_matrix_assembler_1d<T, I> capacity_assembler{_capacity, mesh_ptr()};
     thermal_conductivity_matrix_assembler_1d<T, I> conductivity_assembler{_conductivity, mesh_ptr()};
-    capacity_assembler.compute(parameters, is_first_kind);
-    conductivity_assembler.compute(parameters, is_first_kind);
+    capacity_assembler.compute(parameters, is_first);
+    conductivity_assembler.compute(parameters, is_first);
     convection_condition_1d(_conductivity.inner(), boundaries_conditions);
 
     _conductivity.inner() *= time_step();
     _conductivity.inner() += _capacity.inner();
     reset_initial_values(_conductivity.inner(), {
-        is_first_kind.front() ? T{1} : _conductivity.inner().coeffRef(0, 0),
-        is_first_kind.back()  ? T{1} : _conductivity.inner().coeffRef(_conductivity.inner().rows() - 1, _conductivity.inner().cols() - 1)
+        is_first.front() ? T{1} : _conductivity.inner().coeffRef(0, 0),
+        is_first.back()  ? T{1} : _conductivity.inner().coeffRef(_conductivity.inner().rows() - 1, _conductivity.inner().cols() - 1)
     });
     
     for(std::unordered_map<size_t, T>& matrix_part : _conductivity.bound())

@@ -5,8 +5,7 @@
 
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
-#include "thermal/nonstationary_heat_equation_solver_1d.hpp"
-//#include "thermal/nonstationary_relax_time_heat_equation_solver_1d.hpp"
+#include "thermal/heat_equation_solver_with_relaxation_1d.hpp"
 #include "influence_functions_1d.hpp"
 
 namespace nonlocal::thermal {
@@ -103,10 +102,8 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
-        //nonstationary_relax_time_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-        nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-        solver.compute(parameters, boundaries_conditions,
-            [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
+        nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
+        solver.compute(boundaries_conditions);
         {   // Step 0
             heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
             solution.calc_flux();

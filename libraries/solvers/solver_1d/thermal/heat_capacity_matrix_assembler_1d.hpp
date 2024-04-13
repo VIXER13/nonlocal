@@ -23,7 +23,7 @@ public:
     ~heat_capacity_matrix_assembler_1d() override = default;
 
     void compute(const nonlocal::thermal::parameters_1d<T>& parameters,
-                     const std::array<bool, 2> is_first_kind);
+                 const std::array<bool, 2> is_first_kind);
 };
 
 template<class T, class I>
