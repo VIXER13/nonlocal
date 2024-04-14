@@ -131,7 +131,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::assemble_portraits(const std::
                 initialize_nodes[parity].push_back(node);
     for(const size_t parity : std::ranges::iota_view{0u, 2u}) {
         matrix_portrait_assembler_1d<T, I> relaxation_portrait_assembler{_relaxation_matrix[parity], mesh_ptr(), initialize_nodes[parity]};
-        relaxation_portrait_assembler.compute(theories, is_temperature);
+        relaxation_portrait_assembler.compute(theories, {false, false});
     }
 }
 
@@ -142,6 +142,11 @@ void nonstationary_heat_equation_solver_1d<T, I>::assemble_initial_matrices(cons
     capacity_assembler.compute(_parameters, is_temperature);
     conductivity_assembler.compute(_parameters, is_temperature);
 
+    std::array<std::vector<size_t>, 2> initialize_nodes;
+    for(const size_t segment : mesh().segments())
+        if (const size_t parity = segment % 2; _parameters[segment].physical->relaxation_time > T{0})
+            for(const size_t node : mesh().nodes(segment))
+                initialize_nodes[parity].push_back(node);
     for(const size_t parity : std::ranges::iota_view{0u, 2u}) {
         auto parameters = _parameters;
         for(const size_t segment : mesh().segments()) {
@@ -153,23 +158,17 @@ void nonstationary_heat_equation_solver_1d<T, I>::assemble_initial_matrices(cons
             auto& physical = parameter_cast<coefficients_t::CONSTANTS>(*parameters[segment].physical);
             physical.conductivity *= physical.relaxation_time > T{0} && (parity % 2 == segment % 2) ? std::exp(time() / physical.relaxation_time) : T{0};
         }
-        thermal_conductivity_matrix_assembler_1d<T, I> relaxation_assembler{_relaxation_matrix[parity], mesh_ptr(), mesh().contact_nodes()};
-        relaxation_assembler.compute(parameters, is_temperature);
+        thermal_conductivity_matrix_assembler_1d<T, I> relaxation_assembler{_relaxation_matrix[parity], mesh_ptr(), initialize_nodes[parity]};
+        relaxation_assembler.compute(parameters, {false, false});
     }
 }
 
 template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::fix_boundaries_values(const std::array<bool, 2> is_temperature) {
-    if (is_temperature.front()) {
+    if (is_temperature.front())
         _conductivity.inner().valuePtr()[0] = T{1};
-        _relaxation_matrix.front().inner().valuePtr()[0] = T{0};
-    }
-    if (is_temperature.back()) {
+    if (is_temperature.back())
         _conductivity.inner().valuePtr()[_conductivity.inner().nonZeros() - 1] = T{1};
-        const size_t parity = (mesh().segments_count() - 1) % 2;
-        auto& relaxation_matrix = _relaxation_matrix[parity].inner();
-        relaxation_matrix.valuePtr()[relaxation_matrix.nonZeros() - 1] = T{0};
-    }
 }
 
 template<class T, class I>
