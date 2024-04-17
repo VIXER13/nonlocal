@@ -81,12 +81,10 @@ nonstationary_heat_equation_solver_1d<T, I>::nonstationary_heat_equation_solver_
             _parameters[segment].physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(physical);
         }
         if (auto& physical = parameter_cast<coefficients_t::CONSTANTS>(*_parameters[segment].physical);
-            physical.relaxation_time <= T{0})
-            physical.conductivity *= time_step;
-        else {
+            physical.relaxation_time > T{0}) {
             if (const size_t parity = segment % 2; _relaxation[parity].size() == 0)
                 _relaxation[parity] = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count());
-            physical.conductivity *= time_step / physical.relaxation_time;
+            physical.conductivity *= T{1} - std::exp(-time_step / physical.relaxation_time);
         }
     }
 }
@@ -177,6 +175,12 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundari
     assemble_portraits(is_temperature);
     assemble_initial_matrices(is_temperature);
     convection_condition_1d(_conductivity.inner(), boundaries_conditions);
+
+    _conductivity.inner() *= time_step();
+    for(std::unordered_map<size_t, T>& matrix_part : _conductivity.bound())
+        for(auto& val : matrix_part | std::views::values)
+            val *= time_step();
+
     _conductivity.inner() += _capacity.inner();
     fix_boundaries_values(is_temperature);
 }
@@ -232,7 +236,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::add_relaxation_vector() {
         if (const size_t parity = segment % 2; _parameters[segment].physical->relaxation_time > T{0}) {
             const T value = std::exp(-time() / _parameters[segment].physical->relaxation_time);
             for(const size_t node : mesh().nodes(segment))
-                _right_part[node] += value * _relaxation[parity][node];
+                _right_part[node] -= value * _relaxation[parity][node];
         }
 }
 
