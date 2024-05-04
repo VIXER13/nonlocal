@@ -37,8 +37,7 @@ matrix_portrait_assembler_1d<T, I>::matrix_portrait_assembler_1d(finite_element_
     : _mesh{mesh}
     , _matrix{matrix}
     , _nodes_for_processing{nodes_for_processing ? *nodes_for_processing : 
-                            std::ranges::iota_view<size_t, size_t>{0u, _mesh->nodes_count()}}
-    {}
+                            std::ranges::iota_view<size_t, size_t>{0u, _mesh->nodes_count()}} {}
 
 template<class T, class I>
 const std::shared_ptr<mesh::mesh_1d<T>>& matrix_portrait_assembler_1d<T, I>::mesh_ptr() const noexcept {

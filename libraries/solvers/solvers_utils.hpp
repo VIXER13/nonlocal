@@ -10,10 +10,42 @@
 
 namespace nonlocal::utils {
 
-using nodes_sequence = std::variant<
-    std::ranges::iota_view<size_t, size_t>,
-    std::vector<size_t>
->;
+class nodes_sequence : public std::variant<std::ranges::iota_view<size_t, size_t>,
+                                           std::vector<size_t>> {
+    using _base = std::variant<
+        std::ranges::iota_view<size_t, size_t>,
+        std::vector<size_t>
+    >;
+
+public:
+    using _base::_base;
+    using _base::operator=;
+
+    constexpr bool is_range() const noexcept {
+        return std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(*this);
+    }
+
+    constexpr bool is_vector() const noexcept {
+        return std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(*this);
+    }
+
+    constexpr std::ranges::iota_view<size_t, size_t> as_range() const {
+        return std::get<std::ranges::iota_view<size_t, size_t>>(*this);
+    }
+
+    constexpr std::vector<size_t>& as_vector() {
+        return std::get<std::vector<size_t>>(*this);
+    }
+
+    constexpr const std::vector<size_t>& as_vector() const {
+        return std::get<std::vector<size_t>>(*this);
+    }
+};
+
+// using nodes_sequence = std::variant<
+//     std::ranges::iota_view<size_t, size_t>,
+//     std::vector<size_t>
+// >;
 
 template<class T, class I>
 void accumulate_shifts(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
