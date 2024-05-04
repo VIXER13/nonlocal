@@ -1,5 +1,4 @@
-#ifndef NONLOCFEM_DETERMINE_PROBLEM_HPP
-#define NONLOCFEM_DETERMINE_PROBLEM_HPP
+#pragma once
 
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
@@ -10,17 +9,35 @@
 namespace nonlocal {
 
 class _determine_problem final {
+    static constexpr bool ONLY_LOCAL = true;
+    static constexpr bool SYMMTERIC = true;
+
     constexpr explicit _determine_problem() noexcept = default;
 
     static void init_save_data(const config::save_data& save, const nlohmann::json& config);
+    static std::vector<std::string> get_required_fields(const config::task_data& task);
+    static bool is_thermal(const config::problem_t problem);
+    static bool is_mechanical(const config::problem_t problem);
 
-public:
     template<std::floating_point T, std::signed_integral I>
     friend void problems_1d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task);
 
     template<std::floating_point T, std::signed_integral I>
     friend void problems_2d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task);
 
+    template<std::floating_point T, std::signed_integral I>
+    friend void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config,
+                                         const config::save_data& save, const config::problem_t problem);
+
+    template<std::floating_point T, std::signed_integral I>
+    friend std::optional<thermal::heat_equation_solution_2d<T, I>> thermal_stationary_2d(
+        std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem);
+
+    template<std::floating_point T, std::signed_integral I>
+    friend std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_2d(
+        std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem);
+
+public:
     template<std::floating_point T, std::signed_integral I>
     friend void determine_problem(const nlohmann::json& config);
 };
@@ -31,27 +48,86 @@ void problems_1d(const nlohmann::json& config, const config::save_data& save, co
         return;
     config::check_required_fields(config, {"boundaries", "materials"});
     config::check_optional_fields(config, {"mesh", "auxiliary"});
-    if (task.problem == nonlocal::config::problem_t::THERMAL)
+    if (task.problem == config::problem_t::THERMAL)
         thermal::solve_thermal_1d_problem<T, I>(config, save, task.time_dependency);
     else throw std::domain_error{"Unknown task. In the one-dimensional case, the following problems are available: \"thermal\""};
 }
 
 template<std::floating_point T, std::signed_integral I>
+std::optional<thermal::heat_equation_solution_2d<T, I>> thermal_stationary_2d(
+    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem) {
+    using DP = _determine_problem;
+    if (!DP::is_thermal(problem))
+        return std::nullopt;
+    const auto materials_field = problem == config::problem_t::THERMAL ? "materials" : "thermal_materials";
+    const auto materials = config::thermal_materials_2d<T>{config[materials_field], materials_field};
+    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
+    const auto boundaries_field = problem == config::problem_t::THERMAL ? "boundaries" : "thermal_boundaries";
+    return thermal::solve_thermal_2d_problem(mesh, materials,
+        config::thermal_boundaries_conditions_2d<T>{config[boundaries_field], boundaries_field},
+        config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
+    );
+}
+
+template<std::floating_point T, std::signed_integral I>
+void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config,
+                              const config::save_data& save, const config::problem_t problem) {
+    using DP = _determine_problem;
+    if (problem != config::problem_t::THERMAL)
+        throw std::domain_error{"Mechanical problem does not support time dependence."};
+    const auto materials = config::thermal_materials_2d<T>{config["materials"], "materials"};
+    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
+    thermal::solve_thermal_2d_problem(mesh, materials,
+        config::thermal_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"},
+        config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
+        config::time_data<T>{config["time"], "time"},
+        save);
+}
+
+template<std::floating_point T, std::signed_integral I>
+std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_2d(
+    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem) {
+    using DP = _determine_problem;
+    if (!DP::is_mechanical(problem))
+        return std::nullopt;
+    const auto materials_field = problem == config::problem_t::THERMAL ? "materials" : "mechanical_materials";
+    const auto materials = config::mechanical_materials_2d<T>{config[materials_field], materials_field};
+    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
+    const auto boundaries_field = problem == config::problem_t::THERMAL ? "boundaries" : "mechanical_boundaries";
+    return mechanical::solve_mechanical_2d_problem(mesh, materials,
+        config::mechanical_boundaries_conditions_2d<T>{config[boundaries_field], boundaries_field}
+    );
+}
+
+template<std::floating_point T, std::signed_integral I>
 void problems_2d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task) {
-    config::check_required_fields(config, {"boundaries", "materials", "mesh"});
+    if (task.problem == config::problem_t::UNKNOWN)
+        throw std::domain_error{"Unknown task. In the two-dimensional case, the following problems are available: "
+                                "\"thermal\", \"mechanical\" and \"thermomechanical\""};
+    
+    using DP = _determine_problem;
+    config::check_required_fields(config, DP::get_required_fields(task));
     config::check_optional_fields(config, {"auxiliary"});
     auto mesh = std::make_shared<mesh::mesh_2d<T, I>>(config::mesh_data<2>{config["mesh"], "mesh"}.path);
-    if (task.problem == nonlocal::config::problem_t::THERMAL)
-        thermal::solve_thermal_2d_problem(mesh, config, save, task.time_dependency);
-    else if (task.problem == nonlocal::config::problem_t::MECHANICAL)
-        mechanical::solve_mechanical_2d_problem(mesh, config, save, task.time_dependency);
-    else throw std::domain_error{"Unknown task. In the two-dimensional case, the following problems are available: \"thermal\", \"mechanical\""};
+    if (task.time_dependency)
+        thermal_nonstationary_2d(mesh, config, save, task.problem);
+    else {
+        const std::optional<thermal::heat_equation_solution_2d<T, I>> thermal_solution = thermal_stationary_2d(mesh, config, task.problem);
+        const std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_solution = mechanical_2d(mesh, config, task.problem);
+        if (save.contains("csv"))
+            save_csv(thermal_solution, mechanical_solution, save);
+        if (save.contains("vtk"))
+            {}
+    }
 }
 
 template<std::floating_point T, std::signed_integral I>
 void determine_problem(const nlohmann::json& config) {
     const bool contains_save = config.contains("save");
-    const auto save = contains_save ? config::save_data{config["save"], "save"} : nonlocal::config::save_data{};
+    const auto save = contains_save ? config::save_data{config["save"], "save"} : config::save_data{};
     if (contains_save)
         _determine_problem::init_save_data(save, config);
     else
@@ -66,5 +142,3 @@ void determine_problem(const nlohmann::json& config) {
 }
 
 }
-
-#endif

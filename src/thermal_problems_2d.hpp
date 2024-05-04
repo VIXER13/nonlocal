@@ -1,5 +1,4 @@
-#ifndef NONLOCFEM_THERMAL_PROBLEMS_2D_HPP
-#define NONLOCFEM_THERMAL_PROBLEMS_2D_HPP
+#pragma once
 
 #include "problems_utils.hpp"
 
@@ -82,49 +81,49 @@ void save_solution(const heat_equation_solution_2d<T, I>& solution,
 }
 
 template<std::floating_point T, std::signed_integral I>
-void solve_thermal_2d_problem(
-    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
-    const config::save_data& save, const bool time_dependency) {
-    static constexpr bool ONLY_LOCAL = true;
-    static constexpr bool SYMMTERIC = true;
-    const config::thermal_materials_2d<T> materials{config["materials"], "materials"};
-    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
-    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !ONLY_LOCAL, SYMMTERIC);
+heat_equation_solution_2d<T, I> solve_thermal_2d_problem(
+    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
+    const config::thermal_materials_2d<T>& materials,
+    const config::thermal_boundaries_conditions_2d<T>& conditions,
+    const config::thermal_auxiliary_data<T>& auxiliary) {
     const auto parameters = make_parameters(materials);
-    const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
-    const auto boundaries_conditions = make_boundaries_conditions(
-        config::thermal_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});
-    if (!time_dependency) {
-        auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
-            mesh, parameters, boundaries_conditions, 
-            [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
-            auxiliary.energy
-        );
+    const auto boundaries_conditions = make_boundaries_conditions(conditions);
+    auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
+        mesh, parameters, boundaries_conditions, 
+        [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
+        auxiliary.energy
+    );
+    solution.calc_flux();
+    return solution;
+}
+
+template<std::floating_point T, std::signed_integral I>
+void solve_thermal_2d_problem(
+    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
+    const config::thermal_materials_2d<T>& materials,
+    const config::thermal_boundaries_conditions_2d<T>& conditions,
+    const config::thermal_auxiliary_data<T>& auxiliary,
+    const config::time_data<T>& time,
+    const config::save_data& save) {
+    const auto parameters = make_parameters(materials);
+    const auto boundaries_conditions = make_boundaries_conditions(conditions);
+    nonstationary_heat_equation_solver_2d<T, I, int64_t> solver{mesh, time.time_step};
+    solver.compute(parameters, boundaries_conditions,
+        [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
+    {
+        nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, parameters, solver.temperature()};
         solution.calc_flux();
-        save_solution(solution, save);
-    } else {
-        config::check_required_fields(config, {"time"});
-        const config::time_data<T> time{config["time"], "time"};
-        nonstationary_heat_equation_solver_2d<T, I, int64_t> solver{mesh, time.time_step};
-        solver.compute(parameters, boundaries_conditions,
-            [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
-        {
+        save_solution(solution, save, 0u);
+    }
+    for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+        solver.calc_step(boundaries_conditions,
+            [right_part = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return right_part; });
+        if (step % time.save_frequency == 0) {
             nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, parameters, solver.temperature()};
             solution.calc_flux();
-            save_solution(solution, save, 0u);
-        }
-        for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-            solver.calc_step(boundaries_conditions,
-                [right_part = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return right_part; });
-            if (step % time.save_frequency == 0) {
-                nonlocal::thermal::heat_equation_solution_2d<T, I> solution{mesh, parameters, solver.temperature()};
-                solution.calc_flux();
-                save_solution(solution, save, step);
-            }
+            save_solution(solution, save, step);
         }
     }
 }
 
 }
-
-#endif

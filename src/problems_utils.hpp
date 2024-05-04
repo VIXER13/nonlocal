@@ -1,11 +1,12 @@
-#ifndef NONLOCFEM_PROBLEMS_UTILS_2D_HPP
-#define NONLOCFEM_PROBLEMS_UTILS_2D_HPP
+#pragma once
 
 #include "make_element_1d.hpp"
 
 #include "influence_functions_2d.hpp"
 #include "nonlocal_config.hpp"
 #include "mesh_1d.hpp"
+#include "thermal/heat_equation_solution_2d.hpp"
+#include "mechanical/mechanical_solution_2d.hpp"
 
 namespace nonlocal {
 
@@ -93,6 +94,32 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> get_influence
     throw std::domain_error{"Unsupported influence family."};
 }
 
+template<std::floating_point T, std::signed_integral I>
+void save_csv(const std::optional<thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
+              const std::optional<mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
+              const config::save_data& save) {
+    if (parallel::MPI_rank() != 0) // Only the master process saves data
+        return;
+    std::vector<std::pair<std::string, const std::vector<T>&>> data;
+    if (thermal_solution) {
+        data.push_back({"temperature", thermal_solution->temperature()});
+        data.push_back({"flux_x",      thermal_solution->flux()[X]});
+        data.push_back({"flux_y",      thermal_solution->flux()[Y]});
+    }
+    if (mechanical_solution) {
+        data.push_back({"displacement_x", mechanical_solution->displacement()[X]});
+        data.push_back({"displacement_y", mechanical_solution->displacement()[Y]});
+        data.push_back({"strain_11",      mechanical_solution->strain()[0]});
+        data.push_back({"strain_22",      mechanical_solution->strain()[1]});
+        data.push_back({"strain_12",      mechanical_solution->strain()[2]});
+        data.push_back({"stress_11",      mechanical_solution->stress()[0]});
+        data.push_back({"stress_22",      mechanical_solution->stress()[1]});
+        data.push_back({"stress_12",      mechanical_solution->stress()[2]});
+    }
+    if (data.empty())
+        throw std::logic_error{"Nothig to save."};
+    const auto& container = thermal_solution ? thermal_solution->mesh().container() : mechanical_solution->mesh().container();
+    mesh::utils::save_as_csv(save.path("csv", "csv"), container, data, save.precision());
 }
 
-#endif
+}
