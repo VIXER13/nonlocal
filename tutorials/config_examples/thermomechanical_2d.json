@@ -77,7 +77,8 @@
         "Left_Material": {
             "physical": {
                 "youngs_modulus": 1.0,
-                "poissons_ratio": 0.3
+                "poissons_ratio": 0.3,
+                "thermal_expansion": 2e-6
             },
             "model": {
                 "local_weight": 1.0,
@@ -88,7 +89,8 @@
         "Right_Material": {
             "physical": {
                 "youngs_modulus": 2.0,
-                "poissons_ratio": 0.2
+                "poissons_ratio": 0.2,
+                "thermal_expansion": 1e-6
             },
             "model": {
                 "local_weight": 0.1,

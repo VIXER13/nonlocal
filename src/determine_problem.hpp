@@ -35,7 +35,7 @@ class _determine_problem final {
 
     template<std::floating_point T, std::signed_integral I>
     friend std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_2d(
-        std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem);
+        std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem, const std::vector<T>& delta_temperature);
 
 public:
     template<std::floating_point T, std::signed_integral I>
@@ -88,7 +88,7 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const 
 
 template<std::floating_point T, std::signed_integral I>
 std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_2d(
-    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem) {
+    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, const config::problem_t problem, const std::vector<T>& delta_temperature) {
     using DP = _determine_problem;
     if (!DP::is_mechanical(problem))
         return std::nullopt;
@@ -98,7 +98,8 @@ std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_2d(
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
     const auto boundaries_field = problem == config::problem_t::THERMAL ? "boundaries" : "mechanical_boundaries";
     return mechanical::solve_mechanical_2d_problem(mesh, materials,
-        config::mechanical_boundaries_conditions_2d<T>{config[boundaries_field], boundaries_field}
+        config::mechanical_boundaries_conditions_2d<T>{config[boundaries_field], boundaries_field},
+        delta_temperature
     );
 }
 
@@ -116,7 +117,8 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
         thermal_nonstationary_2d(mesh, config, save, task.problem);
     else {
         const std::optional<thermal::heat_equation_solution_2d<T, I>> thermal_solution = thermal_stationary_2d(mesh, config, task.problem);
-        const std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_solution = mechanical_2d(mesh, config, task.problem);
+        const std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_solution =
+            mechanical_2d(mesh, config, task.problem, thermal_solution ? thermal_solution->temperature() : std::vector<T>{});
         if (save.contains("csv"))
             save_csv(thermal_solution, mechanical_solution, save);
         if (save.contains("vtk"))

@@ -18,7 +18,8 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
             },
             .physical = {
                 material.physical.youngs_modulus,
-                material.physical.poissons_ratio
+                material.physical.poissons_ratio,
+                material.physical.thermal_expansion
             }
         };
     return parameters;
@@ -62,8 +63,10 @@ template<std::floating_point T, std::signed_integral I>
 mechanical::mechanical_solution_2d<T, I> solve_mechanical_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
     const config::mechanical_materials_2d<T>& materials,
-    const config::mechanical_boundaries_conditions_2d<T>& conditions) {
-    const auto parameters = make_parameters(materials);
+    const config::mechanical_boundaries_conditions_2d<T>& conditions,
+    const std::vector<T>& delta_temperature = {}) {
+    auto parameters = make_parameters(materials);
+    parameters.delta_temperature = delta_temperature;
     const auto boundaries_conditions = make_boundaries_conditions(conditions);
     auto solution = nonlocal::mechanical::equilibrium_equation<I>(
         mesh, parameters, boundaries_conditions,

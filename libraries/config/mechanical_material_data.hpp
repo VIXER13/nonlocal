@@ -36,6 +36,7 @@ template<std::floating_point T>
 struct mechanical_material_data<T, 2> final {
     T youngs_modulus = T{1}; // required
     T poissons_ratio = T{0.3}; // required
+    T thermal_expansion = T{0}; // optional
 
     explicit constexpr mechanical_material_data() noexcept = default;
     explicit mechanical_material_data(const nlohmann::json& config, const std::string& path = {}) {
@@ -43,12 +44,14 @@ struct mechanical_material_data<T, 2> final {
         check_required_fields(config, { "youngs_modulus", "poissons_ratio" }, right_part);
         youngs_modulus = config["youngs_modulus"].get<T>();
         poissons_ratio = config["poissons_ratio"].get<T>();
+        thermal_expansion = config.value("thermal_expansion", T{0});
     }
 
     operator nlohmann::json() const {
         return {
             {"youngs_modulus", youngs_modulus},
-            {"poissons_ratio", poissons_ratio}
+            {"poissons_ratio", poissons_ratio},
+            {"thermal_expansion", thermal_expansion}
         };
     }
 };
