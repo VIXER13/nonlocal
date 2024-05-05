@@ -119,10 +119,8 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
         const std::optional<thermal::heat_equation_solution_2d<T, I>> thermal_solution = thermal_stationary_2d(mesh, config, task.problem);
         const std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_solution =
             mechanical_2d(mesh, config, task.problem, thermal_solution ? thermal_solution->temperature() : std::vector<T>{});
-        if (save.contains("csv"))
-            save_csv(thermal_solution, mechanical_solution, save);
-        if (save.contains("vtk"))
-            {}
+        save_csv(thermal_solution, mechanical_solution, save);
+        save_vtk(thermal_solution, mechanical_solution, save);
     }
 }
 

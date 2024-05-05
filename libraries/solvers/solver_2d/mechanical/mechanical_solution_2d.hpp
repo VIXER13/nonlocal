@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_STRUCTURAL_SOLUTION_HPP
-#define NONLOCAL_STRUCTURAL_SOLUTION_HPP
+#pragma once
 
 #include "solution_2d.hpp"
 #include "mechanical_parameters_2d.hpp"
@@ -44,9 +43,6 @@ public:
     T calc_energy() const;
     bool is_strain_and_stress_calculated() const noexcept;
     void calc_strain_and_stress();
-
-    void save_as_vtk(std::ofstream& output) const override;
-    void save_as_vtk(const std::filesystem::path& path) const;
 };
 
 template<class T, class I>
@@ -213,34 +209,4 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
     }
 }
 
-template<class T, class I>
-void mechanical_solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
-    _base::save_as_vtk(output);
-    _base::save_vectors(output, displacement(), "Displacement");
-    if (is_strain_and_stress_calculated()) {
-        _base::save_scalars(output, strain()[_11], "strain11");
-        _base::save_scalars(output, strain()[_22], "strain22");
-        _base::save_scalars(output, strain()[_12], "strain12");
-        _base::save_scalars(output, stress()[_11], "stress11");
-        _base::save_scalars(output, stress()[_22], "stress22");
-        _base::save_scalars(output, stress()[_12], "stress12");
-
-        std::vector<T> mises(_base::mesh().container().nodes_count(), T{0});
-        for(const size_t i : std::ranges::iota_view{0u, mises.size()})
-            mises[i] = std::sqrt(stress()[_11][i] * stress()[_11][i] -
-                                 stress()[_11][i] * stress()[_22][i] +
-                                 stress()[_22][i] * stress()[_22][i] +
-                             3 * stress()[_12][i] * stress()[_12][i]);
-        _base::save_scalars(output, mises, "mises");
-    }
 }
-
-template<class T, class I>
-void mechanical_solution_2d<T, I>::save_as_vtk(const std::filesystem::path& path) const {
-    std::ofstream output{path};
-    save_as_vtk(output);
-}
-
-}
-
-#endif
