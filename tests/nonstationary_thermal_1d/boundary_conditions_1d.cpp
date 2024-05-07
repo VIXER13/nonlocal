@@ -60,20 +60,9 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        if(step == time.steps_count) 
-            check_solution<T, I>(mesh, solution, time_layer, step, ref_sol, eps);
-        else if(internal_iters_check) 
+        if(step == time.steps_count || internal_iters_check) 
             check_solution<T, I>(mesh, solution, time_layer, step, ref_sol, eps);
     }
-}
-
-template<std::floating_point T>
-T calc_energy(const heat_equation_solution_1d<T>& solution) {
-    auto& sol = solution.temperature();
-    T energy = 0.0;
-    for (std::size_t k = 0; k < sol.size(); ++k)
-        energy += sol[k];
-    return energy;
 }
 
 template<template<class> class Left_bc_type, template<class> class Right_bc_type, std::floating_point T, std::signed_integral I>
@@ -93,7 +82,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
         };
         solver.compute(parameters, boundaries_conditions, init_dist);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        energy.push_back(calc_energy(solution));
+        energy.push_back(nonlocal::mesh::utils::integrate(*mesh, solution.temperature()));
     }
 
     for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
@@ -106,12 +95,10 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        energy.push_back(calc_energy(solution));
+        energy.push_back(nonlocal::mesh::utils::integrate(*mesh, solution.temperature()));
         // The last one is smaller than the previous
-        if(step == time.steps_count) 
-            expect(energy.back() < *(energy.end() - 2));
-        else if(internal_iters_check) 
-            expect(energy.back() < *(energy.end() - 2));
+        if(step == time.steps_count || internal_iters_check) 
+            expect(energy.back() < *std::prev(energy.end(), 2));
     }
 }
 
