@@ -60,10 +60,45 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
-        if(step == time.steps_count) 
+        if(step == time.steps_count || internal_iters_check) 
             check_solution<T, I>(mesh, solution, time_layer, step, ref_sol, eps);
-        else if(internal_iters_check) 
-            check_solution<T, I>(mesh, solution, time_layer, step, ref_sol, eps);
+    }
+}
+
+template<template<class> class Left_bc_type, template<class> class Right_bc_type, std::floating_point T, std::signed_integral I>
+void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const time_data<T>& time,
+                                            const parameters_1d<T>& parameters, const std::function<T(T)>& init_dist, 
+                                            const std::function<T(T, T)>& right_part,
+                                            const std::function<T(T)>& left_bc, const std::function<T(T)>& right_bc,
+                                            bool internal_iters_check = false)  {
+
+    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+    std::vector<T> energy;
+
+    {   // Step initial
+        const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
+            std::make_unique<Left_bc_type<T>>(left_bc(T(0))),
+            std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
+        };
+        solver.compute(parameters, boundaries_conditions, init_dist);
+        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
+        energy.push_back(nonlocal::mesh::utils::integrate(*mesh, solution.temperature()));
+    }
+
+    for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+        const T time_layer = step * time.time_step; 
+        const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
+            std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
+            std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
+        };
+        solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION);  
+        const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
+        solver.calc_step(boundaries_conditions, rp);
+        heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
+        energy.push_back(nonlocal::mesh::utils::integrate(*mesh, solution.temperature()));
+        // The last one is smaller than the previous
+        if(step == time.steps_count || internal_iters_check) 
+            expect(energy.back() < *std::prev(energy.end(), 2));
     }
 }
 
@@ -131,6 +166,42 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         // q*n|x=0 = 0, T|x=L = alpha
         solve_nonstationary_thermal_1d_problem<flux_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
                                                                               flux_bc, temp_bc, ref_sol, 1e-8);
+    };
+
+    
+    "const_radiation"_test = [] {
+        // Radiation boundary condition
+        // q*n|x=0 = -er * sigma * T^4, q*n|x=L = -er * sigma * T^4, er - emissivity
+        // No exact solution
+        // Energy of system must decrease in time
+        // Emissivity equals to 0.0 corresponds to zero flux condition
+        constexpr T emissivity_left = T(0.0), emissivity_right = T(1.0);
+        const auto left_radiation_bc =  [&emissivity_left] (const T t) constexpr noexcept { return emissivity_left; };
+        const auto right_radiation_bc = [&emissivity_right](const T t) constexpr noexcept { return emissivity_right; };
+
+        const std::vector<mesh::segment_data<T>> segments({{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) }});
+
+        parameters_1d<T> parameters(segments.size());
+        // Parameters of carbon steel
+        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
+                                     // conductivity, capacity, density, relaxation_time
+                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>
+                                     (T(50.0), T(460.0), T(7800.0), T(0.0)) };
+        
+        const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
+
+        constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(500.0); };
+        constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
+        
+        const time_data<T> time ({.time_step = T(10.0), .initial_time = T(0.0), .steps_count =  I(10) });
+
+        // q*n|x=0 = 0, q*n|x=L = -sigma * T^4
+        solve_nonstationary_thermal_1d_problem<radiation_1d, radiation_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
+                                                                                 left_radiation_bc, right_radiation_bc, true);
+
+        // q*n|x=0 = -sigma * T^4, q*n|x=L = 0
+        solve_nonstationary_thermal_1d_problem<radiation_1d, radiation_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
+                                                                                 right_radiation_bc, left_radiation_bc, true);
     };
 
     "all_nonconst_temperature_and_flux_configurations"_test = [] {

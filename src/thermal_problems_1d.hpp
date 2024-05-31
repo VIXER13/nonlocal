@@ -45,13 +45,13 @@ std::unique_ptr<thermal_boundary_condition_1d<T>> make_thermal_boundary_conditio
         return std::make_unique<convection_1d<T>>(condition.heat_transfer, condition.temperature);
 
     case config::thermal_boundary_condition_t::RADIATION:
-        return std::make_unique<radiation_1d<T>>(condition.emissivity, T{0});
+        return std::make_unique<radiation_1d<T>>(condition.emissivity);
 
     case config::thermal_boundary_condition_t::COMBINED:
         return std::make_unique<combined_flux_1d<T>>(
             condition.flux,
             condition.heat_transfer, condition.temperature,
-            condition.emissivity, T{0});
+            condition.emissivity);
 
     default:
         throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(condition.kind))};

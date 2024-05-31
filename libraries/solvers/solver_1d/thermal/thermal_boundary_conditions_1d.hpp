@@ -57,21 +57,18 @@ public:
 template<class T>
 class radiation_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
     T _emissivity = T{1};
-    T _boundary_temperature = T{0};
 
 public:
-    explicit radiation_1d(const T emissivity, const T boundary_temperature) noexcept
-        : _emissivity{emissivity}
-        , _boundary_temperature{boundary_temperature} {}
+    explicit radiation_1d(const T emissivity) noexcept
+        : _emissivity{emissivity} {}
     ~radiation_1d() noexcept override = default;
 
     T operator()() const override {
-        return -STEFAN_BOLTZMANN_CONSTANT<T> * _emissivity * metamath::functions::power<4>(_boundary_temperature);
+        return T{0};
     }
 
-    T radiation() const noexcept {
-        static constexpr T STEFAN_BOLTZMANN_CONSTANT_X4 = T{4} * STEFAN_BOLTZMANN_CONSTANT<T>;
-        return STEFAN_BOLTZMANN_CONSTANT_X4 * _emissivity * metamath::functions::power<3>(_boundary_temperature);
+    T emissivity() const noexcept {
+        return _emissivity;
     }
 };
 
@@ -82,10 +79,10 @@ class combined_flux_1d : public flux_1d<T>
 public:
     explicit combined_flux_1d(const T flux,
                               const T heat_transfer, const T ambient_temperature,
-                              const T emissivity, const T boundary_temperature) noexcept
+                              const T emissivity) noexcept
         : flux_1d<T>{flux}
         , convection_1d<T>{heat_transfer, ambient_temperature}
-        , radiation_1d<T>{emissivity, boundary_temperature} {}
+        , radiation_1d<T>{emissivity} {}
     ~combined_flux_1d() noexcept override = default;
 
     T operator()() const override {
