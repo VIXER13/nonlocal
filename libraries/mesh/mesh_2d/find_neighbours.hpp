@@ -134,7 +134,7 @@ neighbours_t<T, I> find_neighbours(const mesh_2d<T, I>& mesh, const std::unorder
         const auto elements_range = mesh.container().elements(group);
         const auto corners = group_corners(mesh.container(), group);
         const auto subareas = split_elements_by_subareas<I>(centers, elements_range, corners, radius);
-#pragma omp parallel for
+//#pragma omp parallel for
         for(size_t k = 0; k < elements_range.size(); ++k) {
             const size_t eL = elements_range[k];
             if (!process_elements.contains(eL))

@@ -92,11 +92,11 @@ std::optional<mechanical::mechanical_solution_2d<T, I>> mechanical_2d(
     using DP = _determine_problem;
     if (!DP::is_mechanical(problem))
         return std::nullopt;
-    const auto materials_field = problem == config::problem_t::THERMAL ? "materials" : "mechanical_materials";
+    const auto materials_field = problem == config::problem_t::MECHANICAL ? "materials" : "mechanical_materials";
     const auto materials = config::mechanical_materials_2d<T>{config[materials_field], materials_field};
     mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
-    const auto boundaries_field = problem == config::problem_t::THERMAL ? "boundaries" : "mechanical_boundaries";
+    const auto boundaries_field = problem == config::problem_t::MECHANICAL ? "boundaries" : "mechanical_boundaries";
     return mechanical::solve_mechanical_2d_problem(mesh, materials,
         config::mechanical_boundaries_conditions_2d<T>{config[boundaries_field], boundaries_field},
         delta_temperature

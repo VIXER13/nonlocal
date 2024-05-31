@@ -115,15 +115,19 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
                         cols : _base::rows() + (is_neumann && parallel::is_last_process());
     _base::matrix().inner().resize(rows, cols);
     _base::matrix().bound().resize(rows, cols);
-    if (is_neumann)
+    if (is_neumann) {
         for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
             _base::matrix().inner().outerIndexPtr()[2 * row + 1] = 1;
+        _base::matrix().inner().outerIndexPtr()[2 * _base::mesh().container().nodes_count() + 1] = 1;
+    }
     _base::init_shifts(theories, is_inner, SYMMETRIC);
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, SYMMETRIC, SORT_INDICES);
-    if (is_neumann)
+    if (is_neumann) {
         for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
             _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
+        _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().nonZeros() - 1] = 2 * _base::mesh().container().nodes_count();
+    }
     utils::sort_indices(_base::matrix().inner());
     utils::sort_indices(_base::matrix().bound());
     logger::get().log() << "Matrix portrait is formed" << std::endl;
