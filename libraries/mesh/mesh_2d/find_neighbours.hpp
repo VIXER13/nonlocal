@@ -134,6 +134,7 @@ neighbours_t<T, I> find_neighbours(const mesh_2d<T, I>& mesh, const std::unorder
         const auto elements_range = mesh.container().elements(group);
         const auto corners = group_corners(mesh.container(), group);
         const auto subareas = split_elements_by_subareas<I>(centers, elements_range, corners, radius);
+// Parallelism is disabled because it results in a high degree of data fragmentation in memory. Enable at your own risk
 //#pragma omp parallel for
         for(size_t k = 0; k < elements_range.size(); ++k) {
             const size_t eL = elements_range[k];
@@ -154,7 +155,7 @@ neighbours_t<T, I> find_neighbours(const mesh_2d<T, I>& mesh, const std::unorder
             neighbours[eL].shrink_to_fit();
         }
     }
-    return {std::move(radii), neighbours};
+    return {std::move(radii), std::move(neighbours)};
 }
 
 }

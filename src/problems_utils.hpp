@@ -94,7 +94,7 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> get_influence
     throw std::domain_error{"Unsupported influence family."};
 }
 
-template<std::floating_point T, std::signed_integral I>
+template<std::floating_point T, std::integral I>
 void save_csv(const std::optional<thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
               const std::optional<mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
               const config::save_data& save) {
@@ -126,7 +126,7 @@ void save_csv(const std::optional<thermal::heat_equation_solution_2d<T, I>>& the
     mesh::utils::save_as_csv(save.path("csv", "csv"), container, data, save.precision());
 }
 
-template<std::floating_point T, std::signed_integral I>
+template<std::floating_point T, std::integral I>
 void save_vtk(const std::optional<thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
               const std::optional<mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
               const config::save_data& save) {

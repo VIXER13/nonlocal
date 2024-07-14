@@ -60,8 +60,8 @@ mechanical_boundaries_conditions_2d<T> make_boundaries_conditions(const config::
 }
 
 template<std::floating_point T, std::signed_integral I>
-mechanical::mechanical_solution_2d<T, I> solve_mechanical_2d_problem(
-    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
+mechanical::mechanical_solution_2d<T> solve_mechanical_2d_problem(
+    std::shared_ptr<mesh::mesh_2d<T>>& mesh,
     const config::mechanical_materials_2d<T>& materials,
     const config::mechanical_boundaries_conditions_2d<T>& conditions,
     const std::vector<T>& delta_temperature = {}) {

@@ -97,7 +97,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         }
         temperature = solver.solve(f, initial);
     } else {
-        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix().inner()};
+        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{conductivity.matrix().inner()};
         temperature = solver.solve(f);
     }
     return heat_equation_solution_2d<T, I>{mesh, parameters, temperature};

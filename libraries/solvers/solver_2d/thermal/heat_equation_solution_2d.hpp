@@ -7,7 +7,7 @@
 
 namespace nonlocal::thermal {
 
-template<class T, class I>
+template<class T, class I = uint32_t>
 class heat_equation_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 

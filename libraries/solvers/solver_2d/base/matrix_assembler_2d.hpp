@@ -149,7 +149,7 @@ void matrix_assembler_2d<T, I, J, DoF>::init_shifts(
     const std::vector<bool>& is_inner, const bool is_symmetric) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    mesh_run(theories, shift_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
+    mesh_run(theories, shift_initializer<T, I, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix.inner().outerIndexPtr()[row + 1]; });
     utils::accumulate_shifts(matrix().inner());
     utils::accumulate_shifts(matrix().bound());
@@ -166,7 +166,7 @@ void matrix_assembler_2d<T, I, J, DoF>::init_indices(
     utils::allocate_matrix(matrix().inner());
     utils::allocate_matrix(matrix().bound());
     logger::get().log() << "Matrix allocated successfully" << std::endl;
-    mesh_run(theories, matrix_index_initializer<T, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
+    mesh_run(theories, matrix_index_initializer<T, I, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
         matrix().inner().innerIndexPtr()[matrix().inner().outerIndexPtr()[row]] = row + shift; 
     });
@@ -183,7 +183,7 @@ void matrix_assembler_2d<T, I, J, DoF>::calc_coeffs(
     Local_Integrator&& local_integrator, Nonlocal_Integrator&& nonlocal_integrator) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    mesh_run(theories, integrator<T, J, DoF, Local_Integrator, Nonlocal_Integrator>{
+    mesh_run(theories, integrator<T, I, J, DoF, Local_Integrator, Nonlocal_Integrator>{
         _matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric, local_integrator, nonlocal_integrator});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
         matrix().inner().valuePtr()[matrix().inner().outerIndexPtr()[row]] = T{1};
