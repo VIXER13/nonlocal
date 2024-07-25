@@ -301,6 +301,8 @@ void mesh_container_2d<T, I>::clear() {
 template<class T, class I>
 void mesh_container_2d<T, I>::read_from_file(const std::filesystem::path& path_to_mesh) {
     logger::get().log() << "Read mesh: " << path_to_mesh << std::endl;
+    if (!std::filesystem::is_regular_file(path_to_mesh))
+        throw std::domain_error{"The mesh cannot be read because the path is invalid."};
     const std::string extension = path_to_mesh.extension().string();
     if (extension == ".su2") {
         clear();
