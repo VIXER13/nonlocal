@@ -9,8 +9,10 @@ namespace nonlocal::config {
 
 template<template<class, size_t> class Physics, std::floating_point T, size_t Dimension>
 std::string full_model_name() {
+    if constexpr (Physics<T, Dimension>::Prefix.empty())
+        return "model";
     using namespace std::string_literals;
-    return Physics<T, Dimension>::Prefix.data() + "model"s;
+    return Physics<T, Dimension>::Prefix.data() + "_model"s;
 }
 
 template<template<class, size_t> class Physics, std::floating_point T, size_t Dimension>
@@ -24,8 +26,7 @@ struct material_data final {
         check_required_fields(config, { "physical" }, path_with_access);
         physical = Physics<T, Dimension>{config["physical"], path_with_access + "physical"};
         const std::string full_name = full_model_name<Physics, T, Dimension>();
-        if (const std::string model_name = config.contains(full_name) ? full_name : "model";
-            (model_name == full_name) || config.contains(model_name))
+        if (const std::string model_name = config.contains(full_name) ? full_name : "model"; config.contains(model_name))
             model = model_data<T, Dimension>{config[model_name], path_with_access + model_name};
     }
 
@@ -52,8 +53,7 @@ struct material_data<Physics, T, 1> final {
         length = config["length"].get<T>();
         physical = Physics<T, 1>{config["physical"], path_with_access + "physical"};
         const std::string full_name = full_model_name<Physics,T, 1>();
-        if (const std::string model_name = config.contains(full_name) ? full_name : "model";
-            (model_name == full_name) || config.contains(model_name))
+        if (const std::string model_name = config.contains(full_name) ? full_name : "model"; config.contains(model_name))
             model = model_data<T, 1>{config[model_name], path_with_access + model_name};
     }
 

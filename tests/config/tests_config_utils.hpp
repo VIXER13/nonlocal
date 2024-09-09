@@ -10,6 +10,8 @@ class mock_data final {
     nlohmann::json _value;
 
 public:
+    static constexpr std::string_view Prefix = "";
+
     explicit constexpr mock_data() noexcept = default;
     explicit constexpr mock_data(const nlohmann::json& value, const std::string&) 
         : _value(value) {}
