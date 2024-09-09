@@ -47,35 +47,12 @@
             null
         ]
     },
-    "thermal_materials": {
+    "materials": {
         "Left_Material": {
             "physical": {
                 "conductivity": 1.0,
                 "capacity": 1.0,
-                "density": 1.0
-            },
-            "model": {
-                "local_weight": 1.0,
-                "nonlocal_radius": 0,
-                "search_radius": 0
-            }
-        },
-        "Right_Material": {
-            "physical": {
-                "conductivity": 10.0,
-                "capacity": 1.0,
-                "density": 1.0
-            },
-            "model": {
-                "local_weight": 0.1,
-                "nonlocal_radius": 0.1,
-                "search_radius": 0.11
-            }
-        }
-    },
-    "mechanical_materials": {
-        "Left_Material": {
-            "physical": {
+                "density": 1.0,
                 "youngs_modulus": 1.0,
                 "poissons_ratio": 0.3,
                 "thermal_expansion": 2e-6
@@ -88,11 +65,19 @@
         },
         "Right_Material": {
             "physical": {
+                "conductivity": 10.0,
+                "capacity": 1.0,
+                "density": 1.0,
                 "youngs_modulus": 2.0,
                 "poissons_ratio": 0.2,
                 "thermal_expansion": 1e-6
             },
-            "model": {
+            "thermal_model": {
+                "local_weight": 0.1,
+                "nonlocal_radius": 0.1,
+                "search_radius": 0.11
+            },
+            "mechanical_model": {
                 "local_weight": 0.1,
                 "nonlocal_radius": 0.1,
                 "search_radius": 0.11

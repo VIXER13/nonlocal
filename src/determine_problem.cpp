@@ -11,7 +11,7 @@ void _determine_problem::init_save_data(const config::save_data& save, const nlo
 
 std::vector<std::string> _determine_problem::get_required_fields(const config::task_data& task) {
     auto required_fields = task.problem == nonlocal::config::problem_t::THERMOMECHANICAL ? 
-        std::vector<std::string>{"thermal_boundaries", "mechanical_boundaries", "thermal_materials", "mechanical_materials", "mesh"} :
+        std::vector<std::string>{"thermal_boundaries", "mechanical_boundaries", "materials", "mesh"} :
         std::vector<std::string>{"boundaries", "materials", "mesh"};
     if (task.time_dependency)
         required_fields.push_back("time");

@@ -16,6 +16,8 @@ struct mechanical_material_data;
 
 template<std::floating_point T>
 struct mechanical_material_data<T, 1> final {
+    static constexpr std::string_view Prefix = "mechanical";
+
     T youngs_modulus = T{1}; // required
 
     explicit constexpr mechanical_material_data() noexcept = default;
@@ -34,6 +36,8 @@ struct mechanical_material_data<T, 1> final {
 
 template<std::floating_point T>
 struct mechanical_material_data<T, 2> final {
+    static constexpr std::string_view Prefix = "mechanical";
+
     T youngs_modulus = T{1}; // required
     T poissons_ratio = T{0.3}; // required
     T thermal_expansion = T{0}; // optional

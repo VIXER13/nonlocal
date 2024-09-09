@@ -16,6 +16,8 @@ struct thermal_material_data;
 
 template<std::floating_point T>
 struct thermal_material_data<T, 1> final {
+    static constexpr std::string_view Prefix = "thermal";
+
     T conductivity = T{1}; // required
     T capacity = T{1};
     T density = T{1};
@@ -61,6 +63,8 @@ class thermal_material_data<T, 2> final {
     }
 
 public:
+    static constexpr std::string_view Prefix = "thermal";
+
     material_t material = material_t::ISOTROPIC; // not json field
     std::array<T, 4> conductivity = {T{1}};      // required
     T capacity = T{1};
