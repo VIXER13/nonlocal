@@ -40,17 +40,15 @@ class mechanical_material_data<T, 2> final {
         const auto& conf = config[name];
         if (config.is_number()) {
             parameter[0] = conf.get<T>();
-            parameter[1] = conf.get<T>();
+            parameter[1] = parameter[0];
         }
         else if (conf.is_array() && conf.size() == 2) {
-            material = material_t::ORTHOTROPIC;
+            material = material_t::ANISOTROPIC;
             parameter[0] = conf[0].get<T>();
             parameter[1] = conf[1].get<T>();
-        } else if (conf.is_array() && conf.size() == 4) {
-            throw std::domain_error{"Anisotropic case is not implemented"};
         } else
             throw std::domain_error{"The " + name + " should be either a number in the isotropic case, "
-                                    "or an array of size 2 in the orthotropic"};
+                                    "or an array of size 2 in the anisotropic"};
     }
 
 public:

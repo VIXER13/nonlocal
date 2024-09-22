@@ -126,8 +126,6 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, SYMMETRIC, SORT_INDICES);
     if (is_neumann) {
-        for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
-    if (is_neumann)
         for(const std::size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
             _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
         _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().nonZeros() - 1] = 2 * _base::mesh().container().nodes_count();
