@@ -116,8 +116,6 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
     _base::matrix().inner().resize(rows, cols);
     _base::matrix().bound().resize(rows, cols);
     if (is_neumann) {
-        for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
-    if (is_neumann)
         for(const std::size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
             _base::matrix().inner().outerIndexPtr()[2 * row + 1] = 1;
         _base::matrix().inner().outerIndexPtr()[2 * _base::mesh().container().nodes_count() + 1] = 1;
