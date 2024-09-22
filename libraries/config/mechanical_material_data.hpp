@@ -79,16 +79,6 @@ public:
             {"shear_modulus", shear_modulus},
             {"thermal_expansion", thermal_expansion}
         };
-
-        // if (material == material_t::ISOTROPIC) {
-        //     result["youngs_modulus"] = youngs_modulus.front();
-        //     result["poissons_ratio"] = poissons_ratio.front();
-        // }
-        // else if (material == material_t::ORTHOTROPIC) {
-        //     result["youngs_modulus"] = youngs_modulus;
-        //     result["poissons_ratio"] = poissons_ratio;
-        // }
-        // return result;
     }
 };
 
