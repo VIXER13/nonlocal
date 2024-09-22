@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(nonlocal)
 
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 if (MPI_BUILD)
     find_package(MPI)
     if(MPI_FOUND)
@@ -26,8 +30,9 @@ if (NOT DEFINED NO_CONAN)
         file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/master/conan.cmake" "${CMAKE_BINARY_DIR}/conanbuildinfo.cmake")
         include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
         conan_cmake_run(CONANFILE conanfile.txt BASIC_SETUP CMAKE_TARGETS KEEP_RPATHS)
+    else()
+        include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     endif()
-    include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
     conan_basic_setup()
 endif()
 

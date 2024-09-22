@@ -16,6 +16,8 @@ struct mechanical_material_data;
 
 template<std::floating_point T>
 struct mechanical_material_data<T, 1> final {
+    static constexpr std::string_view Prefix = "mechanical";
+
     T youngs_modulus = T{1}; // required
 
     explicit constexpr mechanical_material_data() noexcept = default;
@@ -52,10 +54,12 @@ class mechanical_material_data<T, 2> final {
     }
 
 public:
+    static constexpr std::string_view Prefix = "mechanical";
     material_t material = material_t::ISOTROPIC;        // not json field
     std::array<T, 2> youngs_modulus = {T{1},   T{1}};   // required
     std::array<T, 2> poissons_ratio = {T{0.3}, T{0.3}}; // required
     T shear_modulus = T{1};
+    T thermal_expansion = T{0}; // optional
 
     explicit constexpr mechanical_material_data() noexcept = default;
     explicit mechanical_material_data(const nlohmann::json& config, const std::string& path = {}) {
@@ -65,13 +69,15 @@ public:
         read_elasticity_parameters(youngs_modulus, config, "youngs_modulus");
         read_elasticity_parameters(poissons_ratio, config, "poissons_ratio");
         shear_modulus = config.value("shear_modulus", T{1});
+        thermal_expansion = config.value("thermal_expansion", T{0});
     }
 
     operator nlohmann::json() const {
         return {
             {"youngs_modulus", youngs_modulus},
             {"poissons_ratio", poissons_ratio},
-            {"shear_modulus", shear_modulus}
+            {"shear_modulus", shear_modulus},
+            {"thermal_expansion", thermal_expansion}
         };
 
         // if (material == material_t::ISOTROPIC) {

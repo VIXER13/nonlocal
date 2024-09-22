@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_2D_HPP
-#define NONLOCAL_HEAT_EQUATION_SOLUTION_2D_HPP
+#pragma once
 
 #include "solution_2d.hpp"
 #include "thermal_parameters_2d.hpp"
@@ -8,7 +7,7 @@
 
 namespace nonlocal::thermal {
 
-template<class T, class I>
+template<class T, class I = uint32_t>
 class heat_equation_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
@@ -32,9 +31,6 @@ public:
     T calc_energy() const;
     bool is_flux_calculated() const noexcept;
     const std::array<std::vector<T>, 2>& calc_flux();
-
-    void save_as_vtk(std::ofstream& output) const override;
-    void save_as_vtk(const std::filesystem::path& path) const;
 };
 
 template<class T, class I>
@@ -191,20 +187,4 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
     return _flux;
 }
 
-template<class T, class I>
-void heat_equation_solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
-    _base::save_as_vtk(output);
-    _base::save_scalars(output, temperature(), "Temperature");
-    if (is_flux_calculated())
-        _base::save_vectors(output, flux(), "Flux");
 }
-
-template<class T, class I>
-void heat_equation_solution_2d<T, I>::save_as_vtk(const std::filesystem::path& path) const {
-    std::ofstream output{path};
-    save_as_vtk(output);
-}
-
-}
-
-#endif

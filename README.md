@@ -43,4 +43,4 @@
 > ./bin/unit_tests
 
 Для запуска программы NonLocFEM необходимо указать путь к исполняемому файлу и в качестве аргумента передать путь к .json файлу с конфигурацией запуска, например
->./bin/NonLocFEM ../examples/thermal_stationary_1d.json
+>./bin/NonLocFEM ../tutorials/config_examples/thermal_stationary_1d.json

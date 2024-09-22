@@ -23,7 +23,7 @@ constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
     return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
 }
 
-template<class T, class I>
+template<class T, class I = uint32_t>
 class mesh_2d final {
     mesh_container_2d<T, I> _mesh;
 

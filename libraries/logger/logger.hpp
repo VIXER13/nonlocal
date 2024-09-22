@@ -10,6 +10,7 @@
 namespace logger {
 
 enum class log_level : uint8_t {
+    OFF,
     ERROR,
     WARNING,
     INFO,
