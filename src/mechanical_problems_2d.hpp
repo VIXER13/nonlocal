@@ -19,7 +19,8 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
             },
             .physical = {
                 material.physical.youngs_modulus,
-                material.physical.poissons_ratio
+                material.physical.poissons_ratio,
+                material.physical.shear_modulus
             }
         };
     return parameters;
