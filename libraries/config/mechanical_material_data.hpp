@@ -37,10 +37,8 @@ struct mechanical_material_data<T, 1> final {
 template<std::floating_point T>
 class mechanical_material_data<T, 2> final {
     void read_elasticity_parameters(std::array<T, 2>& parameter, const nlohmann::json& config, std::string name) {
-        const auto& conf = config[name];
-        if (config.is_number()) {
-            parameter[0] = conf.get<T>();
-            parameter[1] = parameter[0];
+        if (const auto& conf = config[name]; conf.is_number()) {
+            parameter.fill(conf.get<T>());
         }
         else if (conf.is_array() && conf.size() == 2) {
             material = material_t::ANISOTROPIC;

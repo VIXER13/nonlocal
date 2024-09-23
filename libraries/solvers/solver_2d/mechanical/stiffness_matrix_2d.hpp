@@ -13,7 +13,7 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
 
-    static constexpr std::size_t DoF = 2;
+    static constexpr size_t DoF = 2;
     static constexpr bool SYMMETRIC = true;
 
 protected:
@@ -21,13 +21,13 @@ protected:
 
     static block_t calc_block(const hooke_matrix<T>& hooke, const block_t& integral) noexcept;
     static void add_to_integral(block_t& integral, const std::array<T, 2>& wdN, const std::array<T, 2>& dN) noexcept;
-    block_t integrate_loc(const hooke_matrix<T>& hooke, const std::size_t e, const std::size_t i, const std::size_t j) const;
-    block_t integrate_nonloc(const hooke_parameter& parameter, const std::size_t eL, const std::size_t eNL, const std::size_t iL, const std::size_t jNL) const;
+    block_t integrate_loc(const hooke_matrix<T>& hooke, const size_t e, const size_t i, const size_t j) const;
+    block_t integrate_nonloc(const hooke_parameter& parameter, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                 const std::vector<bool>& is_inner, const bool is_neumann);
 
-    T integrate_basic(const std::size_t e, const std::size_t i) const;
+    T integrate_basic(const size_t e, const size_t i) const;
     void integral_condition();
 
 public:
@@ -70,17 +70,17 @@ metamath::types::square_matrix<T, 2> stiffness_matrix<T, I, J>::calc_block(
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::add_to_integral(block_t& integral, const std::array<T, 2>& wdN, const std::array<T, 2>& dN) noexcept {
-    for(const std::size_t i : std::ranges::iota_view{0u, wdN.size()})
-        for(const std::size_t j : std::ranges::iota_view{0u, dN.size()})
+    for(const size_t i : std::ranges::iota_view{0u, wdN.size()})
+        for(const size_t j : std::ranges::iota_view{0u, dN.size()})
             integral[i][j] += wdN[i] * dN[j];
 }
 
 template<class T, class I, class J>
 stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_loc(
-    const hooke_matrix<T>& hooke, const std::size_t e, const std::size_t i, const std::size_t j) const {
+    const hooke_matrix<T>& hooke, const size_t e, const size_t i, const size_t j) const {
     block_t integral = {};
     const auto& el = _base::mesh().container().element_2d(e);
-    for(const std::size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
+    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
         using namespace metamath::functions;
         const T weight = el.weight(q) / mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
         add_to_integral(integral, weight * _base::mesh().derivatives(e, i, q), _base::mesh().derivatives(e, j, q));
@@ -90,17 +90,17 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_loc(
 
 template<class T, class I, class J>
 stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonloc(
-    const hooke_parameter& parameter, const std::size_t eL, const std::size_t eNL, const std::size_t iL, const std::size_t jNL) const {
+    const hooke_parameter& parameter, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     block_t integral = {};
     const auto& elL  = _base::mesh().container().element_2d(eL );
     const auto& elNL = _base::mesh().container().element_2d(eNL);
-    for(const std::size_t qL : elL.qnodes()) {
+    for(const size_t qL : elL.qnodes()) {
         using namespace metamath::functions;
         std::array<T, 2> inner_integral = {};
         const auto influence = [&model = parameter.model, &qnodeL = _base::mesh().quad_coord(eL,  qL )](const std::array<T, 2>& qnodeNL) {
             return model.influence(qnodeL, qnodeNL);
         };
-        for(const std::size_t qNL : elNL.qnodes())
+        for(const size_t qNL : elNL.qnodes())
             inner_integral += elNL.weight(qNL) * influence(_base::mesh().quad_coord(eNL, qNL)) * _base::mesh().derivatives(eNL, jNL, qNL);
         add_to_integral(integral, elL.weight(qL) * _base::mesh().derivatives(eL, iL, qL), inner_integral);
     }
@@ -110,13 +110,13 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonloc(
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                                        const std::vector<bool>& is_inner, const bool is_neumann) {
-    const std::size_t cols = _base::cols() + is_neumann;
-    const std::size_t rows = _base::rows() == _base::cols() ?
+    const size_t cols = _base::cols() + is_neumann;
+    const size_t rows = _base::rows() == _base::cols() ?
                         cols : _base::rows() + (is_neumann && parallel::is_last_process());
     _base::matrix().inner().resize(rows, cols);
     _base::matrix().bound().resize(rows, cols);
     if (is_neumann) {
-        for(const std::size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
+        for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
             _base::matrix().inner().outerIndexPtr()[2 * row + 1] = 1;
         _base::matrix().inner().outerIndexPtr()[2 * _base::mesh().container().nodes_count() + 1] = 1;
     }
@@ -124,7 +124,7 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, SYMMETRIC, SORT_INDICES);
     if (is_neumann) {
-        for(const std::size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
+        for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
             _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
         _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().nonZeros() - 1] = 2 * _base::mesh().container().nodes_count();
     }
@@ -134,10 +134,10 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
 }
 
 template<class T, class I, class J>
-T stiffness_matrix<T, I, J>::integrate_basic(const std::size_t e, const std::size_t i) const {
+T stiffness_matrix<T, I, J>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
-    for(const std::size_t q : el.qnodes())
+    for(const size_t q : el.qnodes())
         integral += el.weight(q) * el.qN(i, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
     return integral;
 }
@@ -146,7 +146,7 @@ template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::integral_condition() {
     const auto process_nodes = _base::mesh().process_nodes();
 #pragma omp parallel for default(none) shared(process_nodes)
-    for(std::size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+    for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
         T& val = _base::matrix().inner().coeffRef(2 * (node - process_nodes.front()), 2 * _base::mesh().container().nodes_count());
         for(const I e : _base::mesh().elements(node))
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
@@ -158,18 +158,18 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
     logger::get().log() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
-                                                               theories_types(parameters);                                               
+                                                               theories_types(parameters);                                             
     static constexpr bool NEUMANN = false;
     create_matrix_portrait(theories, is_inner, NEUMANN);
     if (NEUMANN)
         integral_condition();
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, only_nonlocal = part == assemble_part::NONLOCAL, hooke = to_hooke(parameters, plane, theory_t::LOCAL)]
-        (const std::string& group, const std::size_t e, const std::size_t i, const std::size_t j) {
+        (const std::string& group, const size_t e, const size_t i, const size_t j) {
             return only_nonlocal ? block_t{} : integrate_loc(hooke.at(group).physical, e, i, j);
         },
         [this, hooke = to_hooke(parameters, plane, theory_t::NONLOCAL)]
-        (const std::string& group, const std::size_t eL, const std::size_t eNL, const std::size_t iL, const std::size_t jNL) {
+        (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
