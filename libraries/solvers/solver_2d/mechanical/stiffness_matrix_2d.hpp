@@ -158,7 +158,7 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
     logger::get().log() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
-                                                               theories_types(parameters);                                             
+                                                               theories_types(parameters);
     static constexpr bool NEUMANN = false;
     create_matrix_portrait(theories, is_inner, NEUMANN);
     if (NEUMANN)
