@@ -62,9 +62,8 @@ std::vector<I> mesh_parser<T, I, mesh_format::SU2>::read_element(Stream& mesh_fi
         case vtk_element_number::QUADRATIC_SERENDIPITY:
             return read_element<0, 2, 4, 6, 1, 3, 5, 7>(mesh_file);
 
-        // TODO: fix parse quadratic lagrange elements
-        //case vtk_element_number::QUADRATIC_LAGRANGE:
-        //   return read_element<0, 2, 4, 6, 1, 3, 5, 7, 8>(mesh_file);
+        case vtk_element_number::QUADRATIC_LAGRANGE:
+           return read_element<2, 0, 6, 8, 1, 3, 7, 5, 4>(mesh_file);
 
         default:
             throw std::domain_error{"Unknown element type."};
