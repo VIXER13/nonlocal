@@ -13,10 +13,12 @@ target_sources(mesh_2d_lib INTERFACE
     mesh_parser.hpp
     su2_parser.hpp
     vtk_elements_set.hpp
+    indexator_base.hpp
 )
 target_include_directories(mesh_2d_lib INTERFACE ${MESH_2D_LIB_DIR})
 target_link_libraries(mesh_2d_lib INTERFACE
+    logger_lib
     metamath_lib
-    parallel_utils_lib
+    parallel_lib
     nonlocal_constants_lib
 )

@@ -21,7 +21,7 @@ std::array<std::unique_ptr<quadrature_1d_base<T>>, 5> init_quadratures() {
     };
 }
 
-const suite _ = [] {
+const suite<"quadrature_1d"> _ = [] {
     test("gauss_quadratures_1d") = []<class T> {
         size_t order = 1;
         for(const auto& quadrature : init_quadratures<T>()) {

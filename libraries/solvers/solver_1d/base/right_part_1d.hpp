@@ -18,7 +18,7 @@ void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_P
     for(size_t node = 0; node < mesh.nodes_count(); ++node)
         for(const auto node_data : mesh.node_elements(node).to_array())
             if (node_data)
-                f[node] -= integrate_function_on_element(node_data.element, node_data.node);
+                f[node] += integrate_function_on_element(node_data.element, node_data.node);
 }
 
 }

@@ -69,21 +69,21 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
                                                                         const Init_Dist& init_dist) {
     const std::vector<bool> is_inner = utils::inner_nodes(_conductivity.mesh().container(), boundaries_conditions);
     _conductivity.compute(parameters, is_inner);
-    convection_condition_2d(_conductivity.matrix_inner(), _conductivity.mesh(), boundaries_conditions);
+    convection_condition_2d(_conductivity.matrix().inner(), _conductivity.mesh(), boundaries_conditions);
     _capacity.calc_matrix(parameters, is_inner);
 
-    _conductivity.matrix_inner() *= time_step();
-    _conductivity.matrix_bound() *= time_step();
-    _conductivity.matrix_inner() += _capacity.matrix_inner();
-    first_kind_filler(_conductivity.mesh().process_nodes(), is_inner, [&matrix = _conductivity.matrix_inner()](const size_t row) {
+    _conductivity.matrix().inner() *= time_step();
+    _conductivity.matrix().bound() *= time_step();
+    _conductivity.matrix().inner() += _capacity.matrix().inner();
+    first_kind_filler(_conductivity.mesh().process_nodes(), is_inner, [&matrix = _conductivity.matrix().inner()](const size_t row) {
         matrix.valuePtr()[matrix.outerIndexPtr()[row]] = T{1};
     });
-    _conductivity_initial_matrix_inner = _conductivity.matrix_inner();
+    _conductivity_initial_matrix_inner = _conductivity.matrix().inner();
 
     for(const size_t node : _conductivity.mesh().container().nodes())
         _temperature_curr[node] = init_dist(_conductivity.mesh().container().node_coord(node));
 
-    slae_solver = std::make_unique<slae::conjugate_gradient<T, Matrix_Index>>(_conductivity.matrix_inner());
+    slae_solver = std::make_unique<slae::conjugate_gradient<T, Matrix_Index>>(_conductivity.matrix().inner());
 }
 
 template<class T, class I, class Matrix_Index>
@@ -92,16 +92,16 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
                                                                           const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
-    _conductivity.matrix_inner() = _conductivity_initial_matrix_inner;
-    radiation_condition_2d(_conductivity.matrix_inner(), _right_part, _conductivity.mesh(), boundaries_conditions, 
+    //_conductivity.matrix().inner() = _conductivity_initial_matrix_inner;
+    radiation_condition_2d(_conductivity.matrix().inner(), _right_part, _conductivity.mesh(), boundaries_conditions, 
                            _temperature_prev, time_step());
 
     boundary_condition_second_kind_2d(_right_part, _conductivity.mesh(), boundaries_conditions);
     integrate_right_part<DoF>(_right_part, _conductivity.mesh(), right_part);
 
     _right_part *= time_step();
-    _right_part += _capacity.matrix_inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
-    boundary_condition_first_kind_2d(_right_part, _conductivity.mesh(), boundaries_conditions, _conductivity.matrix_bound());
+    _right_part += _capacity.matrix().inner().template selfadjointView<Eigen::Upper>() * _temperature_prev;
+    boundary_condition_first_kind_2d(_right_part, _conductivity.mesh(), boundaries_conditions, _conductivity.matrix().bound());
     _temperature_curr = slae_solver->solve(_right_part, _temperature_prev);
 }
 

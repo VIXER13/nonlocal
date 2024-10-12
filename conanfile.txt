@@ -1,7 +1,8 @@
 [requires]
 eigen/3.4.0
+spectra/1.0.1
 nlohmann_json/3.11.2
-boost-ext-ut/1.1.9
+boost-ext-ut/2.0.0
 
 [generators]
 cmake

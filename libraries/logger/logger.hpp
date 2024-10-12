@@ -1,14 +1,16 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
-#include <ostream>
-#include <fstream>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <memory>
+#include <ostream>
 
 namespace logger {
 
 enum class log_level : uint8_t {
+    OFF,
     ERROR,
     WARNING,
     INFO,
@@ -24,6 +26,7 @@ struct stream_base {
 };
 
 class logger {
+    const std::chrono::time_point<std::chrono::system_clock> _initial_time = std::chrono::system_clock::now();
     const log_level _level;
     std::unique_ptr<stream_base> _out;
 
@@ -31,12 +34,12 @@ class logger {
 
 public:
     log_level level() const noexcept;
-    std::ostream& log(const log_level level);
+    std::ostream& log(const log_level level = log_level::INFO);
 
     friend logger& get(const log_level level, std::unique_ptr<stream_base>&& init);
 };
 
-logger& get(const log_level level = log_level::ERROR, std::unique_ptr<stream_base>&& init = nullptr);
+logger& get(const log_level level = log_level::INFO, std::unique_ptr<stream_base>&& init = nullptr);
 
 struct cout_stream : public stream_base {
     explicit cout_stream() noexcept;

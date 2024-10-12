@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(config)
 
+set(INCLUDES $ENV{CPATH})
+if (NOT DEFINED NO_CONAN)
+    set(INCLUDES ${CONAN_INCLUDE_DIRS_NLOHMANN_JSON})
+endif()
+
 link_libraries(${JSONCPP_LIBRARIES})
 add_library(config_lib STATIC 
     config_utils.cpp
@@ -12,9 +17,9 @@ add_library(config_lib STATIC
 )
 target_include_directories(config_lib PUBLIC 
     "." 
-    ${CONAN_INCLUDE_DIRS_NLOHMANN_JSON}
+    ${INCLUDES}
 )
 target_link_libraries(config_lib 
-    nonlocal_constants_lib
     logger_lib
+    nonlocal_constants_lib
 )

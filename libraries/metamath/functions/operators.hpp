@@ -138,7 +138,7 @@ Container& _operators::product_assignment(Container& container, const T& value) 
 
 template<class Operation, std::ranges::random_access_range Container>
 Container _operators::sum(Container lhs, const Container& rhs) {
-    return sum_assignment(lhs, rhs);
+    return sum_assignment<Operation>(lhs, rhs);
 }
 
 template<class Operation, std::ranges::random_access_range Container, class T>

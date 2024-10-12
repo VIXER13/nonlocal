@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SOLUTION_2D_HPP
-#define NONLOCAL_SOLUTION_2D_HPP
+#pragma once
 
 #include "mesh_2d.hpp"
 #include "nonlocal_constants.hpp"
@@ -20,17 +19,12 @@ protected:
     // template<class Callback>
     // void calc_nonlocal(const Callback& callback) const;
 
-    void save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const;
-    void save_vectors(std::ofstream& output, const std::array<std::vector<T>, 2>& vec, const std::string_view name) const;
-
 public:
     virtual ~solution_2d() noexcept = default;
 
     const mesh::mesh_2d<T, I>& mesh() const;
     const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
     const model_parameters<2, T>& model(const std::string& group) const;
-
-    virtual void save_as_vtk(std::ofstream& output) const;
 };
 
 template<class T, class I>
@@ -75,28 +69,4 @@ const model_parameters<2, T>& solution_2d<T, I>::model(const std::string& group)
 //     }
 // }
 
-template<class T, class I>
-void solution_2d<T, I>::save_scalars(std::ofstream& output, const std::vector<T>& x, const std::string_view name) const {
-    output << "SCALARS " << name << ' ' << mesh::vtk_data_type<T> << " 1\n"
-           << "LOOKUP_TABLE default\n";
-    for(const T val : x)
-        output << val << '\n';
 }
-
-template<class T, class I>
-void solution_2d<T, I>::save_vectors(std::ofstream& output, const std::array<std::vector<T>, 2>& vec, const std::string_view name) const {
-    output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, mesh().container().nodes_count()})
-        output << vec[X][i] << ' ' << vec[Y][i] << " 0\n";
-}
-
-template<class T, class I>
-void solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
-    output.precision(std::numeric_limits<T>::max_digits10);
-    mesh::utils::save_as_vtk(output, mesh().container());
-    output << "POINT_DATA " << mesh().container().nodes_count() << '\n';
-}
-
-}
-
-#endif

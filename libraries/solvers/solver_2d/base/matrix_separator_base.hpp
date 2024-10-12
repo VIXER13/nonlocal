@@ -1,7 +1,7 @@
 #ifndef NONLOCAL_MATRIX_SEPARATOR_HPP
 #define NONLOCAL_MATRIX_SEPARATOR_HPP
 
-#include "mesh_runner_types.hpp"
+#include "finite_element_matrix.hpp"
 
 #include <vector>
 
@@ -9,13 +9,13 @@ namespace nonlocal {
 
 template<class T, class I>
 class matrix_separator_base {
-    matrix_parts_t<T, I>& _matrix;
+    finite_element_matrix<T, I>& _matrix;
     const std::vector<bool>& _is_inner;
     const size_t _node_shift;
     const bool _is_symmetric;
 
 protected:
-    explicit matrix_separator_base(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner,
+    explicit matrix_separator_base(finite_element_matrix<T, I>& matrix, const std::vector<bool>& is_inner,
                                    const size_t node_shift, const bool is_symmetric);
 
     Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix(const matrix_part part) noexcept;
@@ -29,13 +29,13 @@ public:
 };
 
 template<class T, class I>
-matrix_separator_base<T, I>::matrix_separator_base(matrix_parts_t<T, I>& matrix, const std::vector<bool>& is_inner,
+matrix_separator_base<T, I>::matrix_separator_base(finite_element_matrix<T, I>& matrix, const std::vector<bool>& is_inner,
                                                    const size_t node_shift, const bool is_symmetric)
     : _matrix{matrix}, _is_inner{is_inner}, _node_shift{node_shift}, _is_symmetric{is_symmetric} {}
 
 template<class T, class I>
 Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix_separator_base<T, I>::matrix(const matrix_part part) noexcept {
-    return _matrix[size_t(part)];
+    return _matrix[part];
 }
 
 template<class T, class I>

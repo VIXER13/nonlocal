@@ -1,19 +1,35 @@
 {
     "task": {
         "dimension": 2,
-        "problem": "mechanical",
+        "problem": "thermomechanical",
         "time_dependency": false
     },
     "save": {
         "folder": "./test",
         "config": "config",
-        "csv": "solution_mechanical_2d",
-        "precision": 18
+        "csv": "solution_2d",
+        "vtk": "solution_2d",
+        "precision": 7
     },
     "mesh": {
         "path": "../tests/mesh/mesh_2d/sym_rect.su2"
     },
-    "boundaries": {
+    "auxiliary": {
+        "energy": 0,
+        "right_part": 0,
+        "initial_distribution": 0
+    },
+    "thermal_boundaries": {
+        "Left": {
+            "kind": "temperature",
+            "temperature": 0
+        },
+        "Right": {
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "mechanical_boundaries": {
         "Left": [
             { "pressure": -1 },
             null
@@ -34,8 +50,12 @@
     "materials": {
         "Left_Material": {
             "physical": {
+                "conductivity": 1.0,
+                "capacity": 1.0,
+                "density": 1.0,
                 "youngs_modulus": 1.0,
-                "poissons_ratio": 0.3
+                "poissons_ratio": 0.3,
+                "thermal_expansion": 2e-6
             },
             "model": {
                 "local_weight": 1.0,
@@ -45,10 +65,19 @@
         },
         "Right_Material": {
             "physical": {
+                "conductivity": 10.0,
+                "capacity": 1.0,
+                "density": 1.0,
                 "youngs_modulus": 2.0,
-                "poissons_ratio": 0.2
+                "poissons_ratio": 0.2,
+                "thermal_expansion": 1e-6
             },
-            "model": {
+            "thermal_model": {
+                "local_weight": 0.1,
+                "nonlocal_radius": 0.1,
+                "search_radius": 0.11
+            },
+            "mechanical_model": {
                 "local_weight": 0.1,
                 "nonlocal_radius": 0.1,
                 "search_radius": 0.11

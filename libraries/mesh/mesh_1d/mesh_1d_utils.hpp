@@ -88,7 +88,7 @@ void save_as_csv(const std::filesystem::path& path, const mesh::mesh_1d<T>& mesh
             throw std::logic_error{"The result cannot be saved because the mesh nodes number "
                                    "and elements in the vector \"" + name + "\" do not match."};
     std::ofstream csv{path};
-    csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
+    csv.precision(precision ? *precision : csv.precision());
     csv << 'x' << (data.empty() ? '\n' : ',');
     for(const size_t j : std::ranges::iota_view{0u, data.size()})
         csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');

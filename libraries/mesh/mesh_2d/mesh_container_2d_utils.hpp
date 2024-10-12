@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_CONTAINER_2D_UTILS_HPP
-#define NONLOCAL_MESH_CONTAINER_2D_UTILS_HPP
+#pragma once
 
 #include "su2_parser.hpp"
 
@@ -182,7 +181,7 @@ void save_as_vtk(Stream& stream, const mesh_container_2d<T, I>& mesh) {
             break;
 
             case element_2d_t::QUADRATIC_LAGRANGE:
-                write_element(stream, mesh.nodes(e), std::index_sequence<0, 2, 4, 6, 1, 3, 5, 7, 8>{});
+                write_element(stream, mesh.nodes(e), std::index_sequence<2, 0, 6, 8, 1, 3, 7, 5, 4>{});
             break;
             
             default:
@@ -200,6 +199,30 @@ template<class T, class I>
 void save_as_vtk(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh) {
     std::ofstream vtk{path_to_save};
     save_as_vtk(vtk, mesh);
+}
+
+template<class T>
+void save_scalars_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<T>& x) {
+    output << "SCALARS " << name << ' ' << mesh::vtk_data_type<T> << " 1\n"
+           << "LOOKUP_TABLE default\n";
+    for(const T val : x)
+        output << val << '\n';
+}
+
+template<class T>
+void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 2>& vector) {
+    output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
+    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()})
+        output << vector[X][i] << ' ' << vector[Y][i] << " 0\n";
+}
+
+template<class T>
+void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 3>& tensor) {
+    output << "TENSORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
+    for(const size_t i : std::ranges::iota_view{0u, tensor[0].size()})
+        output << tensor[0][i] << ' ' << tensor[2][i] << " 0\n"
+               << tensor[2][i] << ' ' << tensor[1][i] << " 0\n"
+               << "0 0 0\n\n";
 }
 
 template<class T, class I>
@@ -223,17 +246,4 @@ void save_as_csv(const std::filesystem::path& path, const mesh_container_2d<T, I
     }
 }
 
-// template<class T, class I, class Vector>
-// void save_as_csv(const std::filesystem::path& path_to_save, const mesh_container_2d<T, I>& mesh,
-//                  const Vector& x, const std::optional<std::streamsize> precision = std::nullopt) {
-//     if (x.size() != mesh.nodes_count())
-//         throw std::runtime_error{"Cannot save csv file because the mesh points counts does not match the vector length"};
-//     std::ofstream csv{path_to_save};
-//     csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-//     for(const size_t node : mesh.nodes())
-//         csv << mesh.node_coord(node)[X] << ',' << mesh.node_coord(node)[Y] << ',' << x[node] << '\n';
-// }
-
 }
-
-#endif

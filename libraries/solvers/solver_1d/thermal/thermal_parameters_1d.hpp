@@ -11,12 +11,15 @@ struct parameter_1d_base {
     const coefficients_t type;
     T capacity = T{1};
     T density = T{1};
+    T relaxation_time = T{0}; 
 
 protected:
-    explicit parameter_1d_base(const coefficients_t coefficients, const T capacity = T{1}, const T density = T{1}) noexcept
+    explicit parameter_1d_base(const coefficients_t coefficients, const T capacity = T{1},
+                               const T density = T{1}, const T relaxation_time = T{0}) noexcept
         : type{coefficients}
         , capacity{capacity}
-        , density{density} {}
+        , density{density} 
+        , relaxation_time{relaxation_time} {} 
 
 public:
     virtual ~parameter_1d_base() noexcept = default;
@@ -52,9 +55,10 @@ public:
     conductivity_t conductivity = init();
 
     constexpr parameter_1d() noexcept
-        : parameter_1d_base<T>{Coefficients} {}
-    explicit parameter_1d(const conductivity_t& conductivity, const T capacity = T{1}, const T density = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
-        : parameter_1d_base<T>{Coefficients, capacity, density}
+        : parameter_1d_base<T>{Coefficients} {}     
+    explicit parameter_1d(const conductivity_t& conductivity, const T capacity = T{1},
+                          const T density = T{1}, const T relaxation_time = T{0}) noexcept(Coefficients == coefficients_t::CONSTANTS)
+        : parameter_1d_base<T>{Coefficients, capacity, density, relaxation_time}
         , conductivity{conductivity} {}
     ~parameter_1d() noexcept override = default;
 };
@@ -65,16 +69,24 @@ using parameter_1d_sptr = std::shared_ptr<parameter_1d_base<T>>;
 template<class T>
 using parameters_1d = std::vector<equation_parameters<1, T, parameter_1d_sptr>>;
 
-template<coefficients_t Coefficients, class T>
-constexpr parameter_1d<T, Coefficients>* parameter_cast(parameter_1d_base<T> *const parameter) noexcept {
-    return parameter && parameter->type == Coefficients ? 
-        static_cast<parameter_1d<T, Coefficients>*>(parameter) : nullptr;
+template<coefficients_t Coefficients, bool Check_Nullptr = true, class T>
+constexpr parameter_1d<T, Coefficients>* parameter_cast(parameter_1d_base<T> *const parameter) noexcept(Check_Nullptr) {
+    if constexpr (Check_Nullptr)
+        return parameter && parameter->type == Coefficients ? 
+            static_cast<parameter_1d<T, Coefficients>*>(parameter) : nullptr;
+    else
+        return parameter->type == Coefficients ? 
+            static_cast<parameter_1d<T, Coefficients>*>(parameter) : nullptr;
 }
 
-template<coefficients_t Coefficients, class T>
-constexpr const parameter_1d<T, Coefficients>* parameter_cast(const parameter_1d_base<T> *const parameter) noexcept {
-    return parameter && parameter->type == Coefficients ? 
-        static_cast<const parameter_1d<T, Coefficients>*>(parameter) : nullptr;
+template<coefficients_t Coefficients, bool Check_Nullptr = true, class T>
+constexpr const parameter_1d<T, Coefficients>* parameter_cast(const parameter_1d_base<T> *const parameter) noexcept(Check_Nullptr) {
+    if constexpr (Check_Nullptr)
+        return parameter && parameter->type == Coefficients ? 
+            static_cast<const parameter_1d<T, Coefficients>*>(parameter) : nullptr;
+    else
+        return parameter->type == Coefficients ? 
+            static_cast<const parameter_1d<T, Coefficients>*>(parameter) : nullptr;
 }
 
 template<coefficients_t Coefficients, class T>

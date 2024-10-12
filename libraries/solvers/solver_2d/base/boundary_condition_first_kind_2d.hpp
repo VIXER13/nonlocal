@@ -55,7 +55,8 @@ void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                                       const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions,
                                       const Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K_bound) {
     const auto x = _boundary_condition_first_kind_2d::calc_vector(mesh.container(), boundaries_conditions);
-    f -= K_bound * x;
+    const auto process_nodes = mesh.process_nodes();
+    f.block(DoF * process_nodes.front(), 0, DoF * process_nodes.size(), 1) -= K_bound * x;
     _boundary_condition_first_kind_2d::set_values(f, x, mesh, boundaries_conditions);
 }
     

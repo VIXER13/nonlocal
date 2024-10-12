@@ -22,7 +22,7 @@ struct basis_summator final {
     }
 };
 
-const suite _ = [] {
+const suite<"element_1d"> _ = [] {
     static constexpr std::array<size_t, 6> qnodes_count = {1, 1, 2, 2, 3, 3};
     test("lagrangian_element_1d") = []<class T> {
         size_t order = 0;

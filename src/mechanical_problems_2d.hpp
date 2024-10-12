@@ -1,5 +1,4 @@
-#ifndef NONLOCFEM_MECHANICAL_PROBLEMS_2D_HPP
-#define NONLOCFEM_MECHANICAL_PROBLEMS_2D_HPP
+#pragma once
 
 #include "logger.hpp"
 #include "nonlocal_config.hpp"
@@ -14,12 +13,13 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
     for(const auto& [name, material] : materials.materials)
         parameters.materials[name] = {
             .model = {
-                .influence = influence::polynomial_2d<T, 2, 1>{material.model.nonlocal_radius},
+                .influence = get_influence(material.model.influence, material.model.nonlocal_radius),
                 .local_weight = material.model.local_weight
             },
             .physical = {
                 material.physical.youngs_modulus,
-                material.physical.poissons_ratio
+                material.physical.poissons_ratio,
+                material.physical.thermal_expansion
             }
         };
     return parameters;
@@ -60,44 +60,20 @@ mechanical_boundaries_conditions_2d<T> make_boundaries_conditions(const config::
 }
 
 template<std::floating_point T, std::signed_integral I>
-void save_solution(const mechanical::mechanical_solution_2d<T, I>& solution,
-                   const config::save_data& save) {
-    const std::filesystem::path path = save.path("csv", "csv", "solution");
-    mesh::utils::save_as_csv(path, solution.mesh().container(),
-        {
-            {"displacement_x", solution.displacement()[X]}, 
-            {"displacement_y", solution.displacement()[Y]},
-            {"strain_11",      solution.strain()[0]},
-            {"strain_22",      solution.strain()[1]},
-            {"strain_12",      solution.strain()[2]},
-            {"stress_11",      solution.stress()[0]},
-            {"stress_22",      solution.stress()[1]},
-            {"stress_12",      solution.stress()[2]}
-        },
-        save.precision()
-    );
-}
-
-template<std::floating_point T, std::signed_integral I>
-void solve_mechanical_2d_problem(
-    std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const nlohmann::json& config, 
-    const config::save_data& save, const bool time_dependency) {
-    if (time_dependency)
-        throw std::domain_error{"Mechanical problem does not support time dependence."};
-
-    const config::mechanical_materials_2d<T> materials{config["materials"], "materials"};
-    mesh->find_neighbours(get_search_radii(materials));
-    const auto parameters = make_parameters(materials);
-    const auto boundaries_conditions = make_boundaries_conditions(
-        config::mechanical_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"});
+mechanical::mechanical_solution_2d<T> solve_mechanical_2d_problem(
+    std::shared_ptr<mesh::mesh_2d<T>>& mesh,
+    const config::mechanical_materials_2d<T>& materials,
+    const config::mechanical_boundaries_conditions_2d<T>& conditions,
+    const std::vector<T>& delta_temperature = {}) {
+    auto parameters = make_parameters(materials);
+    parameters.delta_temperature = delta_temperature;
+    const auto boundaries_conditions = make_boundaries_conditions(conditions);
     auto solution = nonlocal::mechanical::equilibrium_equation<I>(
         mesh, parameters, boundaries_conditions,
         [](const std::array<T, 2>&) constexpr noexcept { return std::array<T, 2>{}; }
     );
     solution.calc_strain_and_stress();
-    save_solution(solution, save);
+    return solution;
 }
     
 }
-
-#endif

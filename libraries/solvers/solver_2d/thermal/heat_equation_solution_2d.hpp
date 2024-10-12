@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_2D_HPP
-#define NONLOCAL_HEAT_EQUATION_SOLUTION_2D_HPP
+#pragma once
 
 #include "solution_2d.hpp"
 #include "thermal_parameters_2d.hpp"
@@ -8,7 +7,7 @@
 
 namespace nonlocal::thermal {
 
-template<class T, class I>
+template<class T, class I = uint32_t>
 class heat_equation_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
@@ -32,9 +31,6 @@ public:
     T calc_energy() const;
     bool is_flux_calculated() const noexcept;
     const std::array<std::vector<T>, 2>& calc_flux();
-
-    void save_as_vtk(std::ofstream& output) const override;
-    void save_as_vtk(const std::filesystem::path& path) const;
 };
 
 template<class T, class I>
@@ -83,7 +79,7 @@ std::array<std::vector<T>, 2> heat_equation_solution_2d<T, I>::local_flux_in_qno
     auto flux = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
     for(const auto& [group, parameter] : _parameters)
         for(const size_t e : _base::mesh().container().elements(group))
-            for(const size_t qshift : std::ranges::iota_view{_base::mesh().quad_shift(e), _base::mesh().quad_shift(e + 1)}) {
+            for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
                 const std::array<T, 2>& qnode = _base::mesh().quad_coord(qshift);
                 using enum coefficients_t;
                 switch (parameter->material) {
@@ -157,12 +153,12 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
         return _flux;
 
     _flux = local_flux_in_qnodes();
+    std::array<std::vector<T>, 2> flux = _flux;
     for(const auto& [group, parameter] : _parameters)
         if (const model_parameters<2, T>& model = _base::model(group); theory_type(model.local_weight) == theory_t::NONLOCAL) {
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
-            const auto elements = _base::mesh().container().elements(group);
-            for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
-                for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
+            for(const size_t eL : _base::mesh().container().elements(group))
+                for(const size_t qshiftL : _base::mesh().quad_shifts_count(eL)) {
                     std::array<T, 2> nonlocal_gradient = {};
                     const auto& qcoordL = _base::mesh().quad_coord(qshiftL);
                     for(const size_t eNL : _base::mesh().neighbours(eL)) {
@@ -178,32 +174,17 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
                     }
                     using namespace metamath::functions;
                     nonlocal_gradient *= nonlocal_weight;
-                    _flux[X][qshiftL] *= model.local_weight;
-                    _flux[Y][qshiftL] *= model.local_weight;
-                    _flux[X][qshiftL] += nonlocal_gradient[X];
-                    _flux[Y][qshiftL] += nonlocal_gradient[Y];
+                    flux[X][qshiftL] *= model.local_weight;
+                    flux[Y][qshiftL] *= model.local_weight;
+                    flux[X][qshiftL] += nonlocal_gradient[X];
+                    flux[Y][qshiftL] += nonlocal_gradient[Y];
                 }
         }
-
-    _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[X]);
-    _flux[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), _flux[Y]);
+    _flux[X] = mesh::utils::qnodes_to_nodes(_base::mesh(), flux[X]);
+    _flux[Y] = mesh::utils::qnodes_to_nodes(_base::mesh(), flux[Y]);
+    _flux[X] = parallel::all_to_all(_flux[X], _base::mesh().MPI_ranges());
+    _flux[Y] = parallel::all_to_all(_flux[Y], _base::mesh().MPI_ranges());
     return _flux;
 }
 
-template<class T, class I>
-void heat_equation_solution_2d<T, I>::save_as_vtk(std::ofstream& output) const {
-    _base::save_as_vtk(output);
-    _base::save_scalars(output, temperature(), "Temperature");
-    if (is_flux_calculated())
-        _base::save_vectors(output, flux(), "Flux");
 }
-
-template<class T, class I>
-void heat_equation_solution_2d<T, I>::save_as_vtk(const std::filesystem::path& path) const {
-    std::ofstream output{path};
-    save_as_vtk(output);
-}
-
-}
-
-#endif
