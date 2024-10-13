@@ -12,7 +12,7 @@ namespace nonlocal::mechanical {
 enum class plane_t : bool {
     STRESS,
     STRAIN
-};
+}; 
 
 // arr[0] arr[1]   0
 // arr[1] arr[0]   0
@@ -28,11 +28,13 @@ struct parameter_2d final {
     T thermal_expansion = 13e-6;
 
     material_t material = material_t::ISOTROPIC;
+    matrix_init_t matrix_init = matrix_init_t::X_dominant;
 
     constexpr T E(const plane_t plane, const std::size_t i) const noexcept;
     constexpr T nu(const plane_t plane, const std::size_t i) const noexcept;
     constexpr T G() const noexcept;
     constexpr hooke_matrix<T> hooke(const plane_t plane) const noexcept;
+    constexpr T side_diagonal(const T Ex, const T Ey, const T nuyx, const T nuxy, const T div) const noexcept;
 };
 
 template<class T>
@@ -61,6 +63,11 @@ constexpr T parameter_2d<T>::G() const noexcept {
 }
 
 template<class T>
+constexpr T parameter_2d<T>::side_diagonal(const T Ex, const T Ey, const T nuyx, const T nuxy, const T div) const noexcept {
+    return matrix_init == matrix_init_t::X_dominant ? Ex * nuyx * div  : Ey * nuxy * div;
+}
+
+template<class T>
 constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noexcept {
     const T Ex = this->E(plane, 0);
     const T Ey = this->E(plane, 1);
@@ -69,7 +76,7 @@ constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noex
     const T Gxy = this->G();
     const T div = T{1} / (T{1} - nuxy*nuyx);
     // Ey * nuxy = Ex * nuyx
-    return { Ex * div, Ey * nuxy * div,
+    return { Ex * div, side_diagonal(Ex, Ey, nuyx, nuxy, div),
              Ey * div, Gxy};
 }
 

@@ -14,6 +14,11 @@ enum axis : uint8_t {
     Z
 };
 
+enum class matrix_init_t {
+    X_dominant,
+    Y_dominant
+};
+
 enum class material_t : uint8_t {
     ISOTROPIC,
     ORTHOTROPIC,
