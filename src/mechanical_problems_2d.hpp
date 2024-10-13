@@ -11,7 +11,7 @@ template<std::floating_point T>
 mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2d<T>& materials) {
     mechanical_parameters_2d<T> parameters;
     for(const auto& [name, material] : materials.materials) {
-        auto& parameter = parameters.materials[name] = {
+        parameters.materials[name] = {
             .model = {
                 .influence = get_influence(material.model.influence, material.model.nonlocal_radius),
                 .local_weight = material.model.local_weight
@@ -23,7 +23,6 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
                 material.physical.thermal_expansion
             }
         };
-        parameter.physical.matrix_init = material.physical.matrix_init;
     }
     return parameters;
 }
