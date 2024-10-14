@@ -38,41 +38,41 @@ struct mechanical_material_data<T, 1> final {
 template<std::floating_point T>
 class mechanical_material_data<T, 2> final {
 
+    std::array<T, 2> read_parameters(const nlohmann::json& elastic_parameter, const std::bitset<2>& null) {
+        std::array<T, 2> parameter {0, 0};
+        if (elastic_parameter.is_number()) {
+            parameter.fill(elastic_parameter.get<T>());
+        }
+        else if (elastic_parameter.is_array() && elastic_parameter.size() == 2) {
+            material = material_t::ANISOTROPIC;
+            parameter[0] = null[0] ? elastic_parameter[1].get<T>() : elastic_parameter[0].get<T>();
+            parameter[1] = null[1] ? elastic_parameter[0].get<T>() : elastic_parameter[1].get<T>();
+        } else
+            throw std::domain_error{"The orthotropic material parameter must be specified as an array of dimension 2"};
+        return parameter;
+    };
+
+    static std::bitset<2> check_is_null(const nlohmann::json& elastic_parameter) {
+        std::bitset<2> is_null {"00"};
+        if (elastic_parameter.is_number()) {
+            is_null.flip(1);
+        } else if (elastic_parameter.is_array() && elastic_parameter.size() == 2) {
+            is_null[0] = elastic_parameter[0].is_null();
+            is_null[1] = elastic_parameter[1].is_null();
+        } else
+            throw std::domain_error{"The orthotropic material parameter must be specified as an array of dimension 2"};
+        return is_null;
+    }
+
     void read_elasticity_parameters(const nlohmann::json& config) {
-        auto fill_null = [&](std::string name) {
-            std::bitset<2> null{"00"};
-            if (const auto& conf = config[name]; conf.is_number()) {
-                null.flip(1);
-            }
-            else if (conf.is_array() && conf.size() == 2) {
-                if (conf[0].is_null()) null.flip(0);
-                if (conf[1].is_null()) null.flip(1);
-            } else 
-                throw std::domain_error{"The " + name + " should be either a number in the isotropic case, " +
-                                        "or an array of size 2 in the anisotropic"};
-            return null;
-        };
-        const std::bitset<2> null_E = fill_null("youngs_modulus"), null_nu = fill_null("poissons_ratio");
-        if (!(null_E.count() + null_nu.count() == 1))
+        const std::bitset<2> null_E  = check_is_null(config["youngs_modulus"]);
+        const std::bitset<2> null_nu = check_is_null(config["poissons_ratio"]);
+        if (null_E.count() + null_nu.count() != 1)
             throw std::domain_error{"Input format error. Choose three of the input parameters : Ex, Ey, nuxy, nuyx. The fourth will be calculated automatically"};
-        auto read_params = [&](std::string name, const std::bitset<2>& null) {
-            std::array<T, 2> parameter {0, 0};
-            if (const auto& conf = config[name]; conf.is_number()) {
-                parameter.fill(conf.get<T>());
-            }
-            else if (conf.is_array() && conf.size() == 2) {
-                material = material_t::ANISOTROPIC;
-                parameter[0] = null[0] ? conf[1].get<T>() : conf[0].get<T>();
-                parameter[1] = null[1] ? conf[0].get<T>() : conf[1].get<T>();
-            } else
-                throw std::domain_error{"The " + name + " should be either a number in the isotropic case, "
-                                        "or an array of size 2 in the anisotropic"};
-            return parameter;
-        };
-        youngs_modulus = read_params("youngs_modulus", null_E);
-        poissons_ratio = read_params("poissons_ratio", null_nu);
+        youngs_modulus = read_parameters(config["youngs_modulus"], null_E);
+        poissons_ratio = read_parameters(config["poissons_ratio"], null_nu);
         if (!check_elasticity_parameters())
-            throw std::domain_error{"Input format error. All elasticity parameters must be nonzero. Moreover : poissons_ratio in [-1, 0) U (0, 0.5]"};
+            throw std::domain_error{"Input format error. All elasticity parameters must be nonzero. Moreover : poissons_ratio in [-1, 0) U (0, 0.5)"};
         calculate_elasticity_parameters(null_E, null_nu);
     }
 
