@@ -61,10 +61,10 @@ template<class T, class I, class J>
 metamath::types::square_matrix<T, 2> stiffness_matrix<T, I, J>::calc_block(
     const hooke_matrix<T>& hooke, const metamath::types::square_matrix<T, 2>& integral) noexcept {
     return {
-        hooke[0] * integral[X][X] + hooke[2] * integral[Y][Y],
-        hooke[1] * integral[X][Y] + hooke[2] * integral[Y][X],
-        hooke[1] * integral[Y][X] + hooke[2] * integral[X][Y],
-        hooke[0] * integral[Y][Y] + hooke[2] * integral[X][X],
+        hooke[0] * integral[X][X] + hooke[3] * integral[Y][Y],
+        hooke[1] * integral[X][Y] + hooke[3] * integral[Y][X],
+        hooke[1] * integral[Y][X] + hooke[3] * integral[X][Y],
+        hooke[2] * integral[Y][Y] + hooke[3] * integral[X][X],
     };
 }
 

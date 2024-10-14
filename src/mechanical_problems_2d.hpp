@@ -10,7 +10,7 @@ namespace nonlocal::mechanical {
 template<std::floating_point T>
 mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2d<T>& materials) {
     mechanical_parameters_2d<T> parameters;
-    for(const auto& [name, material] : materials.materials)
+    for(const auto& [name, material] : materials.materials) {
         parameters.materials[name] = {
             .model = {
                 .influence = get_influence(material.model.influence, material.model.nonlocal_radius),
@@ -19,9 +19,11 @@ mechanical_parameters_2d<T> make_parameters(const config::mechanical_materials_2
             .physical = {
                 material.physical.youngs_modulus,
                 material.physical.poissons_ratio,
+                material.physical.shear_modulus,
                 material.physical.thermal_expansion
             }
         };
+    }
     return parameters;
 }
 

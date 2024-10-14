@@ -12,6 +12,7 @@ class mechanical_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
     enum : size_t { _11, _22, _12 };
+    enum : size_t { c_11, c_12, c_22, c_33 };
 
     std::array<std::vector<T>, 2> _displacement;
     std::array<std::vector<T>, 3> _strain, _stress;
@@ -173,9 +174,9 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_strain(const size_t
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::add_stress(const hooke_matrix<T>& hooke, const std::array<T, 3>& strain, const size_t qshift) {
-    _stress[_11][qshift] += hooke[_11] * strain[_11] + hooke[_22] * strain[_22];
-    _stress[_22][qshift] += hooke[_22] * strain[_11] + hooke[_11] * strain[_22];
-    _stress[_12][qshift] += hooke[_12] * strain[_12];
+    _stress[_11][qshift] += hooke[c_11] * strain[_11] + hooke[c_12] * strain[_22];
+    _stress[_22][qshift] += hooke[c_12] * strain[_11] + hooke[c_22] * strain[_22];
+    _stress[_12][qshift] += hooke[c_33] * strain[_12];
 }
 
 template<class T, class I>
