@@ -95,6 +95,22 @@ auto material_data_test(const nlohmann::json& config) {
 }
 
 template<std::floating_point T>
+auto mechanical_boundary_condition_data_test(const nlohmann::json& config) {
+    return [&config] {
+        const std::string suffix = '_' + std::string{reflection::type_name<T>()};
+        test("mechanical_2d_boundary_condition_missed_all" + suffix)      = expect_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_boundary_condition_missed_all"]);
+        test("mechanical_2d_only_displacement" + suffix)                  = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_only_displacement"]);
+        test("mechanical_2d_only_pressure" + suffix)                      = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_only_pressure"]);
+        test("mechanical_2d_displacement_pressure_combination" + suffix)  = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_displacement_pressure_combination"]);
+        test("mechanical_2d_pressure_displacement_combination" + suffix)  = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_pressure_displacement_combination"]);
+        test("mechanical_2d_displacement_null_combination" + suffix)      = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_displacement_null_combination"]);
+        test("mechanical_2d_null_displacement_combination" + suffix)      = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_null_displacement_combination"]);
+        test("mechanical_2d_pressure_null_combination" + suffix)          = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_pressure_null_combination"]);
+        test("mechanical_2d_null_pressure_combination" + suffix)          = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_null_pressure_combination"]);
+    };
+}
+
+template<std::floating_point T>
 auto thermal_boundary_condition_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -110,6 +126,32 @@ auto thermal_boundary_condition_data_test(const nlohmann::json& config) {
         test("convection_condition_all_required_exists" + suffix)  = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["convection_condition_all_required_exists"]);
         test("radiation_condition_all_required_exists" + suffix)   = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["radiation_condition_all_required_exists"]);
         test("combined_condition_flux_missed_all" + suffix)        = expect_no_throw<thermal_boundary_condition_data<T, 1>>(config["combined_condition_flux_missed_all"]);
+    };
+}
+
+template<std::floating_point T>
+auto mechanical_material_data_test(const nlohmann::json& config) {
+    return [&config] {
+        const std::string suffix = '_' + std::string{reflection::type_name<T>()};
+        test("mechanical_material_1d_missed_all" + suffix)                                 = expect_throw<mechanical_material_data<T, 1>>(config["mechanical_material_dim_missed_all"]);
+        test("mechanical_material_1d_all_required_exists" + suffix)                        = expect_no_throw<mechanical_material_data<T, 1>>(config["mechanical_material_1d_all_required_exists"]);
+        test("mechanical_material_2d_isotropic_all_params" + suffix)                       = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_isotropic_all_params"]);
+        test("mechanical_material_2d_isotropic_all_required_exists" + suffix)              = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_isotropic_all_required_exists"]);
+        test("mechanical_material_2d_orthotropic_all_params_exists" + suffix)              = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_all_params_exists"]);
+        test("mechanical_material_2d_orthotropic_two_nulls_first" + suffix)                = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_two_nulls_first"]);
+        test("mechanical_material_2d_orthotropic_two_nulls_second" + suffix)               = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_two_nulls_second"]);
+        test("mechanical_material_2d_orthotropic_two_nulls_third" + suffix)                = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_two_nulls_third"]);
+        test("mechanical_material_2d_orthotropic_two_nulls_fourth" + suffix)               = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_two_nulls_fourth"]);
+        test("mechanical_material_2d_orthotropic_two_nulls_fifth" + suffix)                = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_two_nulls_fifth"]);
+        test("mechanical_material_2d_orthotropic_two_nulls_sixth" + suffix)                = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_two_nulls_sixth"]);
+        test("mechanical_material_2d_orthotropic_without_shear_modulus_first" + suffix)    = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_without_shear_modulus_first"]);
+        test("mechanical_material_2d_orthotropic_without_shear_modulus_second" + suffix)   = expect_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_without_shear_modulus_second"]);
+        test("mechanical_material_2d_orthotropic_youngs_modulus" + suffix)                 = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_youngs_modulus"]);
+        test("mechanical_material_2d_orthotropic_poissons_ratio" + suffix)                 = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_poissons_ratio"]);
+        test("mechanical_material_2d_orthotropic_one_null_youngs_modulus_first" + suffix)  = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_one_null_youngs_modulus_first"]);
+        test("mechanical_material_2d_orthotropic_one_null_youngs_modulus_second" + suffix) = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_one_null_youngs_modulus_second"]);
+        test("mechanical_material_2d_orthotropic_one_null_poissons_ratio_first" + suffix)  = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_one_null_poissons_ratio_first"]);
+        test("mechanical_material_2d_orthotropic_one_null_poissons_ratio_second" + suffix) = expect_no_throw<mechanical_material_data<T, 2>>(config["mechanical_material_2d_orthotropic_one_null_poissons_ratio_second"]);
     };
 }
 
@@ -133,7 +175,9 @@ const suite<"config_required_fields"> _ = [] {
     test("boundaries_conditions_data") = boundaries_conditions_data_test<double>(config);
     test("model_data") = model_data_test<double>(config);
     test("material_data") = material_data_test<double>(config);
+    test("mechanical_boundary_condition") = mechanical_boundary_condition_data_test<double>(config);
     test("thermal_boundary_condition") = thermal_boundary_condition_data_test<double>(config);
+    test("mechanical_material") = mechanical_material_data_test<double>(config);
     test("thermal_material") = thermal_material_data_test<double>(config);
 };
 
