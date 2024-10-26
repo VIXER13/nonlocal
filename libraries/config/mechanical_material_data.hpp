@@ -6,7 +6,7 @@
 #include "nonlocal_constants.hpp"
 #include "logger.hpp"
 
-#include <float.h>
+#include <limits>
 #include <type_traits>
 #include <exception>
 #include <ranges>
@@ -54,7 +54,7 @@ class mechanical_material_data<T, 2> final {
     };
 
     std::bitset<2> check_is_null(const nlohmann::json& elastic_parameter) {
-        std::bitset<2> is_null {"00"};
+        std::bitset<2> is_null{"00"};
         if (elastic_parameter.is_number()) {
             is_null.flip(1);
         } else if (elastic_parameter.is_array() && elastic_parameter.size() == 2) {
@@ -75,14 +75,13 @@ class mechanical_material_data<T, 2> final {
         poissons_ratio = read_parameters(config["poissons_ratio"], null_nu);
         calculate_elasticity_parameters(null_E, null_nu);
         if (!check_elasticity_parameters())
-            throw std::domain_error{"Input format error. All elasticity parameters must be nonzero. Moreover : poissons_ratio lies in [-1, 0) U (0, 0.5)"};
+            throw std::domain_error{"Input format error. All elasticity parameters must be nonzero. Moreover : poissons_ratio lies in (-1, 0) U (0, 0.5)"};
     }
 
     void calculate_elasticity_parameters(const std::bitset<2>& null_E, const std::bitset<2>& null_nu) {
         // youngs_modulus[1] * poissons_ratio[0] = Ey * nuxy = Ex * nuyx = youngs_modulus[0] * poissons_ratio[1]
-        if (material == material_t::ISOTROPIC) {
+        if (material == material_t::ISOTROPIC) 
             return;
-        }
         if (!null_E[0] && null_E[1]) {
             youngs_modulus[1] = youngs_modulus[0] * poissons_ratio[1] / poissons_ratio[0];
             return;
@@ -102,14 +101,14 @@ class mechanical_material_data<T, 2> final {
     }  
 
     bool check_elasticity_parameters() const noexcept {
-        if (std::isinf(poissons_ratio[0]) || std::isinf(poissons_ratio[1]) || std::isinf(youngs_modulus[0]) || std::isinf(youngs_modulus[1]))
-            return false;
-        if (poissons_ratio[0] <= -1 || poissons_ratio[0] >= 0.5 || std::abs(poissons_ratio[0]) < std::numeric_limits<T>::epsilon())
-            return false;
-        if (poissons_ratio[1] <= -1 || poissons_ratio[1] >= 0.5 || std::abs(poissons_ratio[1]) < std::numeric_limits<T>::epsilon())
-            return false;
-        if (youngs_modulus[0] <= 0 || youngs_modulus[1] <= 0)
-            return false;
+        for(const size_t i : std::ranges::iota_view{0u, 2u}) {
+            if (std::isinf(poissons_ratio[i]) || std::isinf(youngs_modulus[i]))
+                return false;
+            if (poissons_ratio[i] < -1 || poissons_ratio[i] > 0.5 || std::abs(poissons_ratio[i]) < std::numeric_limits<T>::epsilon())
+                return false;
+            if (youngs_modulus[i] <= 0)
+                return false;
+        }
         if (shear_modulus <= 0)
             return false;
         return true;
