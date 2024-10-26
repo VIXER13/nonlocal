@@ -57,7 +57,7 @@ constexpr T parameter_2d<T>::nu(const plane_t plane, const std::size_t i) const 
 
 template<class T>
 constexpr T parameter_2d<T>::G() const noexcept {
-    return material == material_t::ISOTROPIC ? T{0.5} * youngs_modulus[0] / (1 + poissons_ratio[0]) : shear_modulus;
+    return shear_modulus;
 }
 
 template<class T>
@@ -66,7 +66,7 @@ constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noex
     const T Ey = this->E(plane, 1);
     const T nuxy = this->nu(plane, 0);
     const T nuyx = this->nu(plane, 1);
-    const T Gxy = this->G();
+    const T Gxy = material == material_t::ISOTROPIC ? T{0.5} * Ex / (1 + nuxy) : this->G();
     const T div = T{1} / (T{1} - nuxy*nuyx);
     // Ey * nuxy = Ex * nuyx
     return { Ex * div, Ex * nuyx * div,
