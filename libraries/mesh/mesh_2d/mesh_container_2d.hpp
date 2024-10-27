@@ -12,6 +12,8 @@
 
 namespace nonlocal::mesh {
 
+inline const std::string Default_Group_Name = "DEFAULT";
+
 template<class T, class I>
 class mesh_container_2d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
