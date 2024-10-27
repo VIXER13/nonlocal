@@ -30,9 +30,6 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
     local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
     local_stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions), assemble_part::LOCAL);
-    slae::conjugate_gradient<T, Matrix_Index> local_solver{local_stiffness.matrix().inner()};
-    local_solver.disable_mpi_reduction();
-    Eigen::Matrix<T, Eigen::Dynamic, 1> initial = local_solver.solve(f);
     slae::conjugate_gradient<T, Matrix_Index> solver{stiffness.matrix().inner()};
     solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
         local_stiffness.matrix().inner()
@@ -42,7 +39,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
         logger::get().log(logger::log_level::WARNING) << "The ILLT preconditioner could not be calculated, "
                                                       << "the preconditioner was switched to Identity." << std::endl;
     }
-    const auto displacement = solver.solve(f, initial);
+    const auto displacement = solver.solve(f);
     return mechanical_solution_2d<T, I>{mesh, parameters, displacement};
 }
 

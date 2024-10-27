@@ -181,7 +181,7 @@ void save_as_vtk(Stream& stream, const mesh_container_2d<T, I>& mesh) {
             break;
 
             case element_2d_t::QUADRATIC_LAGRANGE:
-                write_element(stream, mesh.nodes(e), std::index_sequence<0, 2, 4, 6, 1, 3, 5, 7, 8>{});
+                write_element(stream, mesh.nodes(e), std::index_sequence<2, 0, 6, 8, 1, 3, 7, 5, 4>{});
             break;
             
             default:
