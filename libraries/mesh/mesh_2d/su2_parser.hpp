@@ -14,7 +14,7 @@ class mesh_parser<T, I, mesh_format::SU2> final {
     static std::tuple<size_t, std::vector<I>> read_element(const std::string& element);
 
     template<class Stream>
-    static std::unordered_set<std::string> read_elements(Stream& mesh_file, const size_t count);
+    static std::unordered_set<std::string> read_elements(Stream& mesh_file, const size_t count, const bool is_group);
     template<class Stream>
     static std::unordered_set<std::string> read_elements_2d(Stream& mesh_file);
     template<class Stream>
@@ -74,12 +74,15 @@ std::tuple<size_t, std::vector<I>> mesh_parser<T, I, mesh_format::SU2>::read_ele
 
 template<class T, class I>
 template<class Stream>
-std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elements(Stream& mesh_file, const size_t count) {
+std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elements(Stream& mesh_file, const size_t count, const bool is_group) {
     std::string element;
     std::unordered_set<std::string> elements(count);
     for(const size_t e : std::ranges::iota_view{0u, count}) {
         std::getline(mesh_file, element);
-        element.resize(element.rfind(' '));
+        if (!is_group)
+            element.resize(element.rfind(' ')); // Remove element number from string
+        else if (element.back() == ' ')
+            element.pop_back(); // remove final space if there is one
         elements.emplace(std::move(element));
     }
     return elements;
@@ -93,7 +96,8 @@ std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elemen
     size_t elements_count = 0;
     mesh_file >> _ >> _ >> _ >> elements_count;
     std::getline(mesh_file, _); // read the line to the end
-    return read_elements(mesh_file, elements_count);
+    static constexpr bool Is_Group = false;
+    return read_elements(mesh_file, elements_count, Is_Group);
 }
 
 template<class T, class I>
@@ -121,7 +125,8 @@ mesh_parser<T, I, mesh_format::SU2>::read_elements_groups(Stream& mesh_file) {
         size_t elements_count = 0;
         mesh_file >> _ >> group_name >> _ >> elements_count;
         std::getline(mesh_file, _); // read the line to the end
-        groups[group_name] = read_elements(mesh_file, elements_count);
+        static constexpr bool Is_Group = true;
+        groups[group_name] = read_elements(mesh_file, elements_count, Is_Group);
     }
     return groups;
 }
