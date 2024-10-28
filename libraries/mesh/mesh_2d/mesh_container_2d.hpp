@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_CONTAINER_2D_HPP
-#define NONLOCAL_MESH_CONTAINER_2D_HPP
+#pragma once
 
 #include "elements_set.hpp"
 #include "mesh_parser.hpp"
@@ -12,7 +11,7 @@
 
 namespace nonlocal::mesh {
 
-inline const std::string Default_Group_Name = "DEFAULT";
+constexpr std::string_view Default_Group_Name = "DEFAULT";
 
 template<class T, class I>
 class mesh_container_2d final {
@@ -336,5 +335,3 @@ void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation
 }
 
 }
-
-#endif
