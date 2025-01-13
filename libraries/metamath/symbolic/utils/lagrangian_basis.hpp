@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_LAGRANGIAN_BASIS_HPP
-#define SYMBOLIC_LAGRANGIAN_BASIS_HPP
+#pragma once
 
 #include "variable.hpp"
 
@@ -53,5 +52,3 @@ constexpr auto generate_lagrangian_basis(const std::array<T, N>& nodes) noexcept
 }
 
 }
-
-#endif

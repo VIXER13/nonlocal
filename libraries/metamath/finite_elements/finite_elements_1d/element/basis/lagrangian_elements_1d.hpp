@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENTS_LAGRANGIAN_ELEMENTS_1D_HPP
-#define FINITE_ELEMENTS_LAGRANGIAN_ELEMENTS_1D_HPP
+#pragma once
 
 #include "symbolic_base.hpp"
 #include "geometry_1d.hpp"
@@ -20,5 +19,3 @@ protected:
 };
 
 }
-
-#endif

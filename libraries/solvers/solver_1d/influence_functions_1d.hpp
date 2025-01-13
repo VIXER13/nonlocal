@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
-#define NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
+#pragma once
 
 #include "metamath.hpp"
 
@@ -75,5 +74,3 @@ public:
 };
 
 }
-
-#endif

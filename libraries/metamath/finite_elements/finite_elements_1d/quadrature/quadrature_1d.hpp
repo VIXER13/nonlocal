@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_QUADRATURE_1D_HPP
-#define FINITE_ELEMENT_QUADRATURE_1D_HPP
+#pragma once
 
 #include "quadrature_1d_base.hpp"
 
@@ -26,5 +25,3 @@ public:
 };
 
 }
-
-#endif

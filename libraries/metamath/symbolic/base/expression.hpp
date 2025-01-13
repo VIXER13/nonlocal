@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_EXPRESSION_HPP
-#define SYMBOLIC_EXPRESSION_HPP
+#pragma once
 
 namespace metamath::symbolic {
 
@@ -15,5 +14,3 @@ struct expression {
 };
 
 }
-
-#endif

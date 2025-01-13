@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_BOUNDARY_CONDITION_FIRST_KIND_1D_HPP
-#define NONLOCAL_BOUNDARY_CONDITION_FIRST_KIND_1D_HPP
+#pragma once
 
 #include "boundary_conditions_1d.hpp"
 
@@ -31,5 +30,3 @@ void boundary_condition_first_kind_1d(Vector& f,
 }
 
 }
-
-#endif

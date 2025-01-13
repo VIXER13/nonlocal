@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_SQRT_EXPRESSION_HPP
-#define SYMBOLIC_SQRT_EXPRESSION_HPP
+#pragma once
 
 #include "divides.hpp"
 #include "integral_constant.hpp"
@@ -34,5 +33,3 @@ constexpr sqrt_expression<E> sqrt(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

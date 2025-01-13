@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_BOUNDARY_CONDITIONS_2D_HPP
-#define NONLOCAL_BOUNDARY_CONDITIONS_2D_HPP
+#pragma once
 
 #include "nonlocal_constants.hpp"
 
@@ -67,5 +66,3 @@ public:
 };
 
 }
-
-#endif

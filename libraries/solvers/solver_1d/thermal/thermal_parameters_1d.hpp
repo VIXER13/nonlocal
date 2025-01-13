@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_THERMAL_PARAMETERS_1D
-#define NONLOCAL_THERMAL_PARAMETERS_1D
+#pragma once
 
 #include "../../equation_parameters.hpp"
 #include <memory>
@@ -104,5 +103,3 @@ const parameter_1d<T, Coefficients>& parameter_cast(const parameter_1d_base<T>& 
 }
 
 }
-
-#endif

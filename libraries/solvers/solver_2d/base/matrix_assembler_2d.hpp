@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MATRIX_ASSEMBLER_2D_HPP
-#define NONLOCAL_MATRIX_ASSEMBLER_2D_HPP
+#pragma once
 
 #include "../solvers_utils.hpp"
 
@@ -191,5 +190,3 @@ void matrix_assembler_2d<T, I, J, DoF>::calc_coeffs(
 }
 
 }
-
-#endif

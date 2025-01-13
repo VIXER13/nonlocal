@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_1D_HPP
-#define NONLOCAL_HEAT_EQUATION_SOLUTION_1D_HPP
+#pragma once
 
 #include "solution_1d.hpp"
 #include "mesh_1d_utils.hpp"
@@ -141,5 +140,3 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_relaxation_flux(
 }
 
 }
-
-#endif

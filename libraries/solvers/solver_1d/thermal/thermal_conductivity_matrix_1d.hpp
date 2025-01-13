@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_1D_HPP
-#define NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_1D_HPP
+#pragma once
 
 #include "../../equation_parameters.hpp"
 
@@ -222,5 +221,3 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_1D_HPP
-#define NONLOCAL_MESH_1D_HPP
+#pragma once
 
 #include "metamath.hpp"
 
@@ -289,5 +288,3 @@ void mesh_1d<T>::find_neighbours(const std::vector<T>& radii) {
 }
 
 }
-
-#endif

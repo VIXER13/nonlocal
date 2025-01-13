@@ -1,5 +1,4 @@
-#ifndef NONLOCFEM_MAKE_ELEMENT_1D_HPP
-#define NONLOCFEM_MAKE_ELEMENT_1D_HPP
+#pragma once
 
 #include "nonlocal_config.hpp"
 #include "metamath.hpp"
@@ -68,5 +67,3 @@ finite_element_1d_ptr<T> make_element(const config::order_t element_order, const
 }
 
 }
-
-#endif

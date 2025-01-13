@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_SERENDIPITY_HPP
-#define FINITE_ELEMENT_2D_SERENDIPITY_HPP
+#pragma once
 
 #include "element_2d.hpp"
 #include "derivative_element_basis_2d.hpp"
@@ -42,5 +41,3 @@ public:
 };
 
 }
-
-#endif

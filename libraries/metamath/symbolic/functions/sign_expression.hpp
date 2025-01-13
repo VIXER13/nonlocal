@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_SIGN_EXPRESSION_HPP
-#define SYMBOLIC_SIGN_EXPRESSION_HPP
+#pragma once
 
 #include "integral_constant.hpp"
 #include "unary_expression.hpp"
@@ -33,5 +32,3 @@ constexpr sign_expression<E> sign(const expression<E>& e) {
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SLAE_SOLVER_BASE_HPP
-#define NONLOCAL_SLAE_SOLVER_BASE_HPP
+#pragma once
 
 #include "MPI_utils.hpp"
 #include "OMP_utils.hpp"
@@ -47,5 +46,3 @@ public:
 };
 
 }
-
-#endif

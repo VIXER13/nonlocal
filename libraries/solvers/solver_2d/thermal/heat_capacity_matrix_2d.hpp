@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_HEAT_CAPACITY_MATRIX_2D_HPP
-#define NONLOCAL_HEAT_CAPACITY_MATRIX_2D_HPP
+#pragma once
 
 #include "matrix_assembler_2d.hpp"
 
@@ -62,5 +61,3 @@ void heat_capacity_matrix_2d<T, I, J>::calc_matrix(const parameters_2d<T>& param
 }
 
 }
-
-#endif

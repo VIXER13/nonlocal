@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SLAE_UNRELATED_SYMMETRIC_MATRIX_VECTOR_PRODUCT_HPP
-#define NONLOCAL_SLAE_UNRELATED_SYMMETRIC_MATRIX_VECTOR_PRODUCT_HPP
+#pragma once
 
 #include "iterative_solver_base.hpp"
 
@@ -81,5 +80,3 @@ void unrelated_symmetric_matrix_vector_product<T, I>::disable_mpi_reduction(cons
 }
 
 }
-
-#endif

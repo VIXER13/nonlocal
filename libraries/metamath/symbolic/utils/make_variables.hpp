@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_MAKE_VARIABLES_HPP
-#define SYMBOLIC_MAKE_VARIABLES_HPP
+#pragma once
 
 #include <tuple>
 
@@ -26,5 +25,3 @@ constexpr auto make_variables() noexcept {
 }
 
 }
-
-#endif

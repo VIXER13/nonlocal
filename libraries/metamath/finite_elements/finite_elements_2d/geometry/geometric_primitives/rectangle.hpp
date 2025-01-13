@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_RECTANGLE_HPP
-#define FINITE_ELEMENT_RECTANGLE_HPP
+#pragma once
 
 #include <array>
 #include <functional>
@@ -22,6 +21,3 @@ public:
 };
 
 }
-
-
-#endif

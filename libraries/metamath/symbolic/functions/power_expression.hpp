@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_POWER_EXPRESSION_HPP
-#define SYMBOLIC_POWER_EXPRESSION_HPP
+#pragma once
 
 #include "functions/power.hpp"
 
@@ -51,5 +50,3 @@ constexpr auto simplify(const power_expression<power_expression<E, M>, N>& e) {
 }
 
 }
-
-#endif

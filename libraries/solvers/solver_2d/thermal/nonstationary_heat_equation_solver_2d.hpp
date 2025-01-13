@@ -1,5 +1,4 @@
-#ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
-#define NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
+#pragma once
 
 #include "thermal_conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
@@ -106,5 +105,3 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_QUADRATURE_BASE_1D_HPP
-#define FINITE_ELEMENT_QUADRATURE_BASE_1D_HPP
+#pragma once
 
 #include "quadrature_base.hpp"
 #include "side_1d.hpp"
@@ -19,5 +18,3 @@ public:
 };
 
 }
-
-#endif

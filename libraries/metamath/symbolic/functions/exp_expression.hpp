@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_EXP_EXPRESSION_HPP
-#define SYMBOLIC_EXP_EXPRESSION_HPP
+#pragma once
 
 #include "multiplies.hpp"
 #include "unary_expression.hpp"
@@ -33,5 +32,3 @@ constexpr exp_expression<E> exp(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

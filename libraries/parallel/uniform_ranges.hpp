@@ -1,5 +1,4 @@
-#ifndef PARALLEL_UTILS_UNIFORM_RANGES_HPP
-#define PARALLEL_UTILS_UNIFORM_RANGES_HPP
+#pragma once
 
 #include <Eigen/Sparse>
 
@@ -41,5 +40,3 @@ std::vector<std::ranges::iota_view<size_t, size_t>> uniform_ranges(const Eigen::
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_DIVIDES_HPP
-#define SYMBOLIC_DIVIDES_HPP
+#pragma once
 
 #include "minus.hpp"
 #include "multiplies.hpp"
@@ -81,5 +80,3 @@ constexpr auto simplify(const multiplies<divides<E1U, E1D>, divides<E2U, E2D>>& 
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SHIFT_INITIALIZER_HPP
-#define NONLOCAL_SHIFT_INITIALIZER_HPP
+#pragma once
 
 #include "mesh_container_2d.hpp"
 
@@ -58,5 +57,3 @@ void shift_initializer<T, I, J, DoF>::operator()(const std::string&, const size_
 }
 
 }
-
-#endif

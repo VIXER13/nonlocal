@@ -1,5 +1,4 @@
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+#pragma once
 
 #include <chrono>
 #include <filesystem>
@@ -55,5 +54,3 @@ struct file_stream : public stream_base {
 };
 
 }
-
-#endif

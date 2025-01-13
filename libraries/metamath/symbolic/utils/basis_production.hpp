@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_BASIS_PRODUCTION_HPP
-#define SYMBOLIC_BASIS_PRODUCTION_HPP
+#pragma once
 
 #include "expression.hpp"
 #include <tuple>
@@ -45,5 +44,3 @@ constexpr auto basis_production(const Basis& first, const Bases&... bases) {
 }
 
 }
-
-#endif

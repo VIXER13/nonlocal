@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_2D_HPP
-#define NONLOCAL_MESH_2D_HPP
+#pragma once
 
 #include "mesh_container_2d_utils.hpp"
 
@@ -275,5 +274,3 @@ void mesh_2d<T, I>::clear() {
 }
 
 }
-
-#endif

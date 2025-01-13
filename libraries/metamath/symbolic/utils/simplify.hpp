@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_SIMPLIFY_HPP
-#define SYMBOLIC_SIMPLIFY_HPP
+#pragma once
 
 #include "expression.hpp"
 
@@ -26,5 +25,3 @@ constexpr auto simplify(const std::tuple<E...>& e) {
 }
 
 }
-
-#endif

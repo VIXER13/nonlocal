@@ -1,5 +1,4 @@
-#ifndef UNIT_TESTS_INIT_ELEMENTS_HPP
-#define UNIT_TESTS_INIT_ELEMENTS_HPP
+#pragma once
 
 #include "metamath.hpp"
 
@@ -20,5 +19,3 @@ template<class T>
 std::vector<std::unique_ptr<metamath::finite_element::element_2d_integrate_base<T>>> init_lagrangian_elements_2d();
 
 }
-
-#endif

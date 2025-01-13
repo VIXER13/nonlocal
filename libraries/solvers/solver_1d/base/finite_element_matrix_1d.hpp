@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
-#define NONLOCAL_FINITE_ELEMENT_MATRIX_1D_HPP
+#pragma once
 
 #include "../solvers_utils.hpp"
 
@@ -195,5 +194,3 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& th
 }
 
 }
-
-#endif

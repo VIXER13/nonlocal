@@ -1,5 +1,4 @@
-#ifndef STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
-#define STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
+#pragma once
 
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "right_part_1d.hpp"
@@ -120,5 +119,3 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
 }
 
 }
-
-#endif

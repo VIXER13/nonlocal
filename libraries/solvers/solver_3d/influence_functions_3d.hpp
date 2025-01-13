@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_INFLUENCE_FUNCTIONS_3D_HPP
-#define NONLOCAL_INFLUENCE_FUNCTIONS_3D_HPP
+#pragma once
 
 #include "power.hpp"
 #include <array>
@@ -123,5 +122,3 @@ public:
 };
 
 }
-
-#endif

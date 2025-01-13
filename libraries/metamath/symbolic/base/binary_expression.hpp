@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_BINARY_EXPRESSION_HPP
-#define SYMBOLIC_BINARY_EXPRESSION_HPP
+#pragma once
 
 #include "expression.hpp"
 
@@ -34,5 +33,3 @@ constexpr auto simplify(const binary_expression<E1, E2, Op>& e) noexcept {
 }
 
 }
-
-#endif

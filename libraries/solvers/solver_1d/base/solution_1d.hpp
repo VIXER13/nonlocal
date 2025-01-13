@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SOLUTION_1D_HPP
-#define NONLOCAL_SOLUTION_1D_HPP
+#pragma once
 
 #include "../equation_parameters.hpp"
 
@@ -46,5 +45,3 @@ const model_parameters<1, T>& solution_1d<T>::model(const size_t segment) const 
 }
 
 }
-
-#endif

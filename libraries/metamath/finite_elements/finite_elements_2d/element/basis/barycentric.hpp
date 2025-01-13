@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_BASIS_BARYCENTRIC_HPP
-#define FINITE_ELEMENT_2D_BASIS_BARYCENTRIC_HPP
+#pragma once
 
 #include "geometry_2d.hpp"
 #include "geometric_primitives/triangle.hpp"
@@ -21,5 +20,3 @@ protected:
 };
 
 }
-
-#endif

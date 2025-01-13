@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_GEOMETRY_2D_HPP
-#define FINITE_ELEMENT_GEOMETRY_2D_HPP
+#pragma once
 
 #include "geometry_2d_base.hpp"
 
@@ -18,5 +17,3 @@ public:
 };
 
 }
-
-#endif

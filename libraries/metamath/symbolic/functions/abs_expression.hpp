@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_ABS_EXPRESSION_HPP
-#define SYMBOLIC_ABS_EXPRESSION_HPP
+#pragma once
 
 #include "multiplies.hpp"
 #include "sign_expression.hpp"
@@ -33,5 +32,3 @@ constexpr abs_expression<E> abs(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

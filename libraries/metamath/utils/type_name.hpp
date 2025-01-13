@@ -1,5 +1,4 @@
-#ifndef METAMATH_TYPE_NAME_HPP
-#define METAMATH_TYPE_NAME_HPP
+#pragma once
 
 #include <string_view>
 
@@ -34,5 +33,3 @@ constexpr std::string_view type_name(const T&) {
 }
 
 }
-
-#endif

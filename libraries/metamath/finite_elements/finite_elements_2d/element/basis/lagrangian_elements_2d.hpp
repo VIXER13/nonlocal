@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENTS_BASIS_LAGRANGIAN_ELEMENTS_2D_HPP
-#define FINITE_ELEMENTS_BASIS_LAGRANGIAN_ELEMENTS_2D_HPP
+#pragma once
 
 #include "geometry_2d.hpp"
 #include "array_cartesian_product.hpp"
@@ -29,5 +28,3 @@ protected:
 };
 
 }
-
-#endif

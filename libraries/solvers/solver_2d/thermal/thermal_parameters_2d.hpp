@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_THERMAL_PARAMETERS_2D
-#define NONLOCAL_THERMAL_PARAMETERS_2D
+#pragma once
 
 #include "metamath.hpp"
 #include "../../equation_parameters.hpp"
@@ -128,5 +127,3 @@ const parameter_2d<T, Coefficients>& parameter_cast(const parameter_2d_base<T>& 
 }
 
 };
-
-#endif

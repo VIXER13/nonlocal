@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_STIFFNESS_MATRIX_2D_HPP
-#define NONLOCAL_STIFFNESS_MATRIX_2D_HPP
+#pragma once
 
 #include "matrix_assembler_2d.hpp"
 #include "mechanical_parameters_2d.hpp"
@@ -177,5 +176,3 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
 }
 
 }
-
-#endif

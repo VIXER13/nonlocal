@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_DERIVATIVE_HPP
-#define SYMBOLIC_DERIVATIVE_HPP
+#pragma once
 
 #include "expression.hpp"
 
@@ -41,5 +40,3 @@ constexpr auto derivative(const std::tuple<E...>& e) {
 }
 
 }
-
-#endif

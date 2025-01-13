@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_1D_UTILS_HPP
-#define NONLOCAL_MESH_1D_UTILS_HPP
+#pragma once
 
 #include "mesh_1d.hpp"
 
@@ -100,5 +99,3 @@ void save_as_csv(const std::filesystem::path& path, const mesh::mesh_1d<T>& mesh
 }
 
 }
-
-#endif

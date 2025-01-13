@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_GEOMETRY_PRIMITIVES_HPP
-#define FINITE_ELEMENT_GEOMETRY_PRIMITIVES_HPP
+#pragma once
 
 #include "variable.hpp"
 
@@ -19,5 +18,3 @@ public:
 };
 
 }
-
-#endif

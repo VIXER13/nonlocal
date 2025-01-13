@@ -1,7 +1,4 @@
-#ifndef GEOMETRIC_PRIMITIVES_2D_HPP
-#define GEOMETRIC_PRIMITIVES_2D_HPP
+#pragma once
 
 #include "triangle.hpp"
 #include "rectangle.hpp"
-
-#endif

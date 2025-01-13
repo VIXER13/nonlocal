@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
-#define NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_2D_HPP
+#pragma once
 
 #include "matrix_assembler_2d.hpp"
 #include "thermal_parameters_2d.hpp"
@@ -402,5 +401,3 @@ void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& pa
 }
 
 }
-
-#endif

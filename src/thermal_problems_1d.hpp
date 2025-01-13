@@ -1,5 +1,4 @@
-#ifndef NONLOCFEM_THERMAL_PROBLEMS_1D_HPP
-#define NONLOCFEM_THERMAL_PROBLEMS_1D_HPP
+#pragma once
 
 #include "problems_utils.hpp"
 
@@ -133,5 +132,3 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
 }
 
 }
-
-#endif

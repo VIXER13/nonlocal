@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_COS_EXPRESSION_HPP
-#define SYMBOLIC_COS_EXPRESSION_HPP
+#pragma once
 
 #include "multiplies.hpp"
 #include "negate.hpp"
@@ -36,5 +35,3 @@ constexpr cos_expression<E> cos(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

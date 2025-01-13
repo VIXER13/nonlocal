@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_1D_INTEGRATE_BASE_HPP
-#define FINITE_ELEMENT_1D_INTEGRATE_BASE_HPP
+#pragma once
 
 #include "finite_element_integrate_base.hpp"
 #include "element_1d_base.hpp"
@@ -33,5 +32,3 @@ public:
 };
 
 }
-
-#endif

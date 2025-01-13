@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_CONSTANT_HPP
-#define SYMBOLIC_CONSTANT_HPP
+#pragma once
 
 #include "integral_constant.hpp"
 
@@ -32,5 +31,3 @@ constexpr constant<T> simplify(const constant<T>& c) noexcept {
 }
 
 }
-
-#endif

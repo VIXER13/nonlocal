@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_EQUILIBRIUM_EQUATION_2D_HPP
-#define NONLOCAL_EQUILIBRIUM_EQUATION_2D_HPP
+#pragma once
 
 #include "solvers_utils.hpp"
 #include "stiffness_matrix_2d.hpp"
@@ -44,5 +43,3 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
 }
 
 }
-
-#endif

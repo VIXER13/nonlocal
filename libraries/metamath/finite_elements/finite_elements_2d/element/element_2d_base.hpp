@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_BASE_HPP
-#define FINITE_ELEMENT_2D_BASE_HPP
+#pragma once
 
 #include "finite_element_base.hpp"
 #include "side_2d.hpp"
@@ -25,5 +24,3 @@ public:
 };
 
 }
-
-#endif

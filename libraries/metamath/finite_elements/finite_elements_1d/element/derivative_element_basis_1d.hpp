@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_DERIVATIVE_BASIS_1D_HPP
-#define FINITE_ELEMENT_DERIVATIVE_BASIS_1D_HPP
+#pragma once
 
 #include "derivative.hpp"
 #include "to_function.hpp"
@@ -27,5 +26,3 @@ protected:
 };
 
 }
-
-#endif

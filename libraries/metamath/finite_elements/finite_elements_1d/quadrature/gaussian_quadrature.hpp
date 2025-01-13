@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_GAUSSIAN_QUADRATURE_HPP
-#define FINITE_ELEMENT_GAUSSIAN_QUADRATURE_HPP
+#pragma once
 
 #include "geometry_1d.hpp"
 #include "geometry_primitives.hpp"
@@ -80,5 +79,3 @@ protected:
 };
 
 }
-
-#endif

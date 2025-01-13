@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SLAE_CONJUGATE_GRADIENT_HPP
-#define NONLOCAL_SLAE_CONJUGATE_GRADIENT_HPP
+#pragma once
 
 #include "independent_symmetric_matrix_vector_product.hpp"
 #include "unrelated_symmetric_matrix_vector_product.hpp"
@@ -80,5 +79,3 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Strategy>::solve(
 }
 
 }
-
-#endif

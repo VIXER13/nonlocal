@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MECHANICAL_PARAMETERS_2D_HPP
-#define NONLOCAL_MECHANICAL_PARAMETERS_2D_HPP
+#pragma once
 
 #include "../../equation_parameters.hpp"
 
@@ -74,5 +73,3 @@ constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noex
 }
 
 }
-
-#endif

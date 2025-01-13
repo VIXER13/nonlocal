@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_BASIS_SERENDIPITY_HPP
-#define FINITE_ELEMENT_2D_BASIS_SERENDIPITY_HPP
+#pragma once
 
 #include "symbolic_base.hpp"
 
@@ -344,5 +343,3 @@ protected:
 };
 
 }
-
-#endif

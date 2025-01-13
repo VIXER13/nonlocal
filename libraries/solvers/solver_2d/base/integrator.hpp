@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_INTEGRATOR_HPP
-#define NONLOCAL_INTEGRATOR_HPP
+#pragma once
 
 #include "matrix_separator_base.hpp"
 
@@ -92,5 +91,3 @@ void integrator<T, I, J, DoF, Local_Integrator, Nonlocal_Integrator>::operator()
 }
 
 }
-
-#endif

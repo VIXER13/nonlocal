@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_1D_BASE_HPP
-#define FINITE_ELEMENT_1D_BASE_HPP
+#pragma once
 
 #include "finite_element_base.hpp"
 #include "side_1d.hpp"
@@ -24,5 +23,3 @@ public:
 };
 
 }
-
-#endif

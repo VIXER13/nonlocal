@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_STATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
-#define NONLOCAL_STATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
+#pragma once
 
 #include "solvers_utils.hpp"
 #include "thermal_conductivity_matrix_2d.hpp"
@@ -189,5 +188,3 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_nonlinear_2d(con
 }
 
 }
-
-#endif

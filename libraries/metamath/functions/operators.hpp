@@ -1,5 +1,4 @@
-#ifndef METAMATH_OPERATORS_HPP
-#define METAMATH_OPERATORS_HPP
+#pragma once
 
 #include <algorithm>
 #include <functional>
@@ -147,5 +146,3 @@ Container _operators::product(Container container, const T& value) {
 }
 
 }
-
-#endif
