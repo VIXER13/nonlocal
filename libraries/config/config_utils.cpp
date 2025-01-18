@@ -8,15 +8,19 @@
 
 namespace {
 
-void check_fields(const nlohmann::json& value, const std::vector<std::string>& fields, const std::string& path, const bool is_required) {
+template<bool Is_Optional>
+void check_fields(const nlohmann::json& value, const std::vector<std::string>& fields, const std::string& path) {
     std::string message;
 	for(const std::string& field : fields)
 		if (!value.contains(field))
-			message += "Field \"" + path + field + "\" missed.\n";
+			message += "Field \"" + path + field + "\" is missed.\n";
 	if (!message.empty()) {
-        message.pop_back(); // remove redudant '\n'
-        if (is_required) throw std::domain_error{"Some required fields are missing:\n" + message};
-        else logger::get().log(logger::log_level::DEBUG) << "Some optional fields are missing:\n" + message << std::endl;
+        if constexpr (Is_Optional)
+            logger::get().log(logger::log_level::DEBUG) << "Some optional fields are missing:\n" + message << std::flush;
+        else {
+            message.pop_back(); // remove redudant '\n'
+            throw std::domain_error{"Some required fields are missing:\n" + message};
+        }
     }
 }
 
@@ -41,11 +45,13 @@ std::string append_access_sign(std::string path, const std::optional<size_t> ind
 }
 
 void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path) {
-    check_fields(value, required, path, true);
+    static constexpr bool Is_Optional = false;
+    check_fields<Is_Optional>(value, required, path);
 }
 
 void check_optional_fields(const nlohmann::json& value, const std::vector<std::string>& optional, const std::string& path) {
-    check_fields(value, optional, path, false);
+    static constexpr bool Is_Optional = true;
+    check_fields<Is_Optional>(value, optional, path);
 }
 
 }

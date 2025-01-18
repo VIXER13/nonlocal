@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_HPP
-#define NONLOCAL_CONFIG_HPP
+#pragma once
 
 #include "task_data.hpp"
 #include "save_data.hpp"
@@ -40,5 +39,3 @@ template<class T>
 using mechanical_materials_2d = materials_data<mechanical_material_data, T, 2>;
 
 }
-
-#endif

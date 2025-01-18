@@ -26,7 +26,6 @@ const suite<"config_double_conversion"> _ = [] {
     const nlohmann::json config = nlohmann::json::parse(double_conversion_json_data);
     test("save") = double_conversion<save_data>(config["save"]);
     test("save_with_precision") = double_conversion<save_data>(config["save_with_precision"]);
-    test("mesh_1d") = double_conversion<mesh_data<1>>(config["mesh_1d"]);
     test("mesh_2d") = double_conversion<mesh_data<2>>(config["mesh_2d"]);
     test("time") = double_conversion<time_data<double>>(config["time"]);
     test("boundaries_conditions_1d") = double_conversion<boundaries_conditions_data<mock_data, double, 1>>(config["boundaries_conditions_1d"]);

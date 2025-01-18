@@ -49,7 +49,7 @@ add_subdirectory(libraries/solvers/solver_2d)
 add_subdirectory(libraries/config)
 
 # NonLocFEM
-add_subdirectory(src)
+add_subdirectory(NonLocFEM)
 
 # unit tests
 include(CMakeTools/EmbeddedFiles.cmake)

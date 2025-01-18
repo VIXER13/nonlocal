@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_THERMAL_MATERIALS_DATA_HPP
-#define NONLOCAL_CONFIG_THERMAL_MATERIALS_DATA_HPP
+#pragma once
 
 #include "material_data.hpp"
 
@@ -41,5 +40,3 @@ struct materials_data final {
 };
 
 }
-
-#endif

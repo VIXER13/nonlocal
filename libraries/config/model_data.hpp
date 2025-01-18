@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MODEL_DATA_HPP
-#define NONLOCAL_MODEL_DATA_HPP
+#pragma once
 
 #include "config_utils.hpp"
 #include "influence_data.hpp"
@@ -60,5 +59,3 @@ public:
 };
 
 }
-
-#endif

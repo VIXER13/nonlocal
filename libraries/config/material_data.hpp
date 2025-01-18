@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_MATERIAL_DATA_HPP
-#define NONLOCAL_CONFIG_MATERIAL_DATA_HPP
+#pragma once
 
 #include "model_data.hpp"
 
@@ -69,5 +68,3 @@ struct material_data<Physics, T, 1> final {
 };
 
 }
-
-#endif

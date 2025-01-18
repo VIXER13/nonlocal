@@ -12,7 +12,6 @@ add_library(config_lib STATIC
     config_utils.cpp
     task_data.cpp
     save_data.cpp
-    mesh_data.cpp
     materials_data.cpp
 )
 target_include_directories(config_lib PUBLIC 

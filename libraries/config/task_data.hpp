@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_PROBLEM_DATA_HPP
-#define NONLOCAL_CONFIG_PROBLEM_DATA_HPP
+#pragma once
 
 #include <nlohmann/json.hpp>
 
@@ -30,5 +29,3 @@ struct task_data final {
 };
 
 }
-
-#endif

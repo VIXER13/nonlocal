@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_BOUNDARIES_CONDITIONS_DATA_HPP
-#define NONLOCAL_CONFIG_BOUNDARIES_CONDITIONS_DATA_HPP
+#pragma once
 
 namespace nonlocal::config {
 
@@ -23,5 +22,3 @@ struct boundaries_conditions_data final {
 };
 
 }
-
-#endif

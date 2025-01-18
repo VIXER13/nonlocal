@@ -44,13 +44,16 @@ public:
 
 template<std::floating_point T, std::signed_integral I>
 void problems_1d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task) {
-    if (parallel::MPI_rank() != 0) // Only the shared memory option is supported.
+    if (parallel::MPI_rank() != 0) {
+        logger::get().log(logger::log_level::WARNING) << "Calculations are available only on the master process. "
+                                                         "The current process has completed its work." << std::endl;
         return;
+    }
     config::check_required_fields(config, {"boundaries", "materials"});
     config::check_optional_fields(config, {"mesh", "auxiliary"});
     if (task.problem == config::problem_t::THERMAL)
         thermal::solve_thermal_1d_problem<T, I>(config, save, task.time_dependency);
-    else throw std::domain_error{"Unknown task. In the one-dimensional case, the following problems are available: \"thermal\""};
+    else throw std::domain_error{"Unsupported task. In the one-dimensional case, the following problems are available: \"thermal\""};
 }
 
 template<std::floating_point T, std::signed_integral I>
@@ -124,6 +127,8 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
 
 template<std::floating_point T, std::signed_integral I>
 void determine_problem(const nlohmann::json& config) {
+    config::check_required_fields(config, {"task"});
+
     const bool contains_save = config.contains("save");
     const auto save = contains_save ? config::save_data{config["save"], "save"} : config::save_data{};
     if (contains_save)
@@ -131,12 +136,11 @@ void determine_problem(const nlohmann::json& config) {
     else
         logger::get().log(logger::log_level::WARNING) << "There is no \"save\" field in the config. Required data may not be saved." << std::endl;
 
-    config::check_required_fields(config, {"task"});
     if (const config::task_data task{config["task"], "task"}; task.dimension == 1)
         problems_1d<T, I>(config, save, task);
     else if (task.dimension == 2)
         problems_2d<T, I>(config, save, task);
-    else throw std::domain_error{"The dimension of the problem cannot be equal to " + std::to_string(task.dimension)};
+    else throw std::domain_error{"Problem dimension " + std::to_string(task.dimension) + " is not supported"};
 }
 
 }

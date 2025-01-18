@@ -1,5 +1,4 @@
-#ifndef MECHANICAL_BOUNDARY_CONDITION_DATA_HPP
-#define MECHANICAL_BOUNDARY_CONDITION_DATA_HPP
+#pragma once
 
 #include "config_utils.hpp"
 
@@ -66,5 +65,3 @@ struct mechanical_boundary_conditions_data final {
 };
 
 }
-
-#endif

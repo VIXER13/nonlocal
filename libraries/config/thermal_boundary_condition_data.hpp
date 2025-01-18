@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_THERMAL_BOUNDARY_CONDITION_DATA_HPP
-#define NONLOCAL_CONFIG_THERMAL_BOUNDARY_CONDITION_DATA_HPP
+#pragma once
 
 #include "config_utils.hpp"
 
@@ -89,5 +88,3 @@ struct thermal_boundary_condition_data final {
 };
 
 }
-
-#endif

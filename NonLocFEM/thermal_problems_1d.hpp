@@ -1,8 +1,9 @@
 #pragma once
 
+#include "config/read_mesh_1d.hpp"
+
 #include "problems_utils.hpp"
 
-#include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"
 //#include "thermal/nonstationary_relax_time_heat_equation_solver_1d.hpp"
@@ -80,8 +81,7 @@ void save_solution(const thermal::heat_equation_solution_1d<T>& solution,
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
-    const auto mesh = make_mesh_1d(get_segments_data(materials), 
-                                   config::mesh_data<1u>{config.value("mesh", nlohmann::json::object()), "mesh"});
+    const auto mesh = nonlocal::config::read_mesh<T>(config, {});
     const auto parameters = make_thermal_parameters<T>(materials.materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = make_thermal_boundaries_conditions_1d(

@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_INFLUENCE_DATA_HPP
-#define NONLOCAL_CONFIG_INFLUENCE_DATA_HPP
+#pragma once
 
 #include "config_utils.hpp"
 
@@ -75,5 +74,3 @@ struct influence_data final {
 };
 
 }
-
-#endif

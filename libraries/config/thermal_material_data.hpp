@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_THERMAL_MATERIAL_DATA_HPP
-#define NONLOCAL_CONFIG_THERMAL_MATERIAL_DATA_HPP
+#pragma once
 
 #include "config_utils.hpp"
 
@@ -96,5 +95,3 @@ public:
 };
 
 }
-
-#endif

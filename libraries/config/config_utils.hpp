@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_UTILS_HPP
-#define NONLOCAL_CONFIG_UTILS_HPP
+#pragma once
 
 #include <nlohmann/json.hpp>
 
@@ -23,5 +22,3 @@ void check_required_fields(const nlohmann::json& value, const std::vector<std::s
 void check_optional_fields(const nlohmann::json& value, const std::vector<std::string>& optional, const std::string& path = {});
     
 }
-
-#endif

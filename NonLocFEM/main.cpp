@@ -13,14 +13,14 @@ int main(int argc, char** argv) {
 #endif
         using T = double;
         using I = int64_t;
-        logger::get().log() << "Started" << std::endl;
+        logger::get().log() << "NonLocFEM started." << std::endl;
         nonlocal::determine_problem<T, I>(nonlocal::config::parse_json(std::filesystem::path{argv[1]}));
-        logger::get().log() << "Finished" << std::endl;
+        logger::get().log() << "NonLocFEM finished." << std::endl;
     } catch (const std::exception& e) {
         logger::get().log(logger::log_level::ERROR) << e.what() << std::endl;
         result = EXIT_FAILURE;
     } catch (...) {
-        logger::get().log(logger::log_level::ERROR) << "unknown" << std::endl;
+        logger::get().log(logger::log_level::ERROR) << "Unknown error." << std::endl;
         result = EXIT_FAILURE;
     }
 
