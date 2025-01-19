@@ -152,7 +152,7 @@ void matrix_assembler_2d<T, I, J, DoF>::init_shifts(
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix.inner().outerIndexPtr()[row + 1]; });
     utils::accumulate_shifts(matrix().inner());
     utils::accumulate_shifts(matrix().bound());
-    logger::get().log() << "Non-zero elements count: " << 
+    logger::info() << "Non-zero elements count: " << 
         matrix().inner().nonZeros() + matrix().bound().nonZeros() << std::endl;
 }
 
@@ -164,7 +164,7 @@ void matrix_assembler_2d<T, I, J, DoF>::init_indices(
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
     utils::allocate_matrix(matrix().inner());
     utils::allocate_matrix(matrix().bound());
-    logger::get().log() << "Matrix allocated successfully" << std::endl;
+    logger::info() << "Matrix allocated successfully" << std::endl;
     mesh_run(theories, matrix_index_initializer<T, I, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
         matrix().inner().innerIndexPtr()[matrix().inner().outerIndexPtr()[row]] = row + shift; 

@@ -113,7 +113,7 @@ void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::vector<th
                                                             const std::array<bool, 2> is_first_kind) {
     calc_shifts(theories, is_first_kind);
     utils::accumulate_shifts(matrix_inner());
-    logger::get().log() << "Non-zero elements count: " << matrix_inner().nonZeros() << std::endl;
+    logger::info() << "Non-zero elements count: " << matrix_inner().nonZeros() << std::endl;
     utils::allocate_matrix(matrix_inner());
     init_indices();
 }

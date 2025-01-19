@@ -16,7 +16,7 @@ void check_fields(const nlohmann::json& value, const std::vector<std::string>& f
 			message += "Field \"" + path + field + "\" is missed.\n";
 	if (!message.empty()) {
         if constexpr (Is_Optional)
-            logger::get().log(logger::log_level::DEBUG) << "Some optional fields are missing:\n" + message << std::flush;
+            logger::debug() << "Some optional fields are missing:\n" + message << std::flush;
         else {
             message.pop_back(); // remove redudant '\n'
             throw std::domain_error{"Some required fields are missing:\n" + message};

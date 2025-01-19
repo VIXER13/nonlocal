@@ -109,7 +109,7 @@ finite_element_1d_ptr<T> read_element(const nlohmann::json& config, const std::s
     const order_t element_order = _read_mesh_1d::get_order(config, "element_order");
     const order_t quadrature_order = _read_mesh_1d::get_order(config, "quadrature_order", element_order);
     if (size_t(quadrature_order) < size_t(element_order))
-        logger::get().log(logger::log_level::WARNING) << "The order of the quadrature is lower than the order of the element, this may lead to computational problems." << std::endl;
+        logger::warning() << "The order of the quadrature is lower than the order of the element, this may lead to computational problems." << std::endl;
     return make_element<T>(element_order, quadrature_order);
 }
 

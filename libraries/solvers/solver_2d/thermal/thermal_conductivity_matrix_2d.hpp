@@ -331,7 +331,7 @@ void thermal_conductivity_matrix_2d<T, I, J>::create_matrix_portrait(
     }
     utils::sort_indices(_base::matrix().inner());
     utils::sort_indices(_base::matrix().bound());
-    logger::get().log() << "Matrix portrait is formed" << std::endl;
+    logger::info() << "Matrix portrait is formed" << std::endl;
 }
 
 template<class T, class I, class J>
@@ -362,7 +362,7 @@ template<class T, class I, class J>
 void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner, 
                                                       const bool is_symmetric, const bool is_neumann, const assemble_part part,
                                                       const std::optional<std::vector<T>>& solution) {
-    logger::get().log() << "Thermal conductivity matrix assembly started" << std::endl;
+    logger::info() << "Thermal conductivity matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) : 
                                                                theories_types(parameters);
@@ -397,7 +397,7 @@ void thermal_conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& pa
                 return nonlocal_weight * integrate_nonloc(*parameter, model.influence, *solution, eL, eNL, iL, jNL);
             return std::numeric_limits<T>::quiet_NaN();
         });
-    logger::get().log() << "Thermal conductivity matrix assembly finished" << std::endl;
+    logger::info() << "Thermal conductivity matrix assembly finished" << std::endl;
 }
 
 }

@@ -45,8 +45,8 @@ public:
 template<std::floating_point T, std::signed_integral I>
 void problems_1d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task) {
     if (parallel::MPI_rank() != 0) {
-        logger::get().log(logger::log_level::WARNING) << "Calculations are available only on the master process. "
-                                                         "The current process has completed its work." << std::endl;
+        logger::warning() << "Calculations are available only on the master process. "
+                             "The current process has completed its work." << std::endl;
         return;
     }
     config::check_required_fields(config, {"boundaries", "materials"});
@@ -134,7 +134,7 @@ void determine_problem(const nlohmann::json& config) {
     if (contains_save)
         _determine_problem::init_save_data(save, config);
     else
-        logger::get().log(logger::log_level::WARNING) << "There is no \"save\" field in the config. Required data may not be saved." << std::endl;
+        logger::warning() << "There is no \"save\" field in the config. Required data may not be saved." << std::endl;
 
     if (const config::task_data task{config["task"], "task"}; task.dimension == 1)
         problems_1d<T, I>(config, save, task);

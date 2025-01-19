@@ -130,7 +130,7 @@ public:
             check_required_fields(config, {"shear_modulus"}, right_part);
             shear_modulus = config.value("shear_modulus", T{1});
         } else if (material == material_t::ISOTROPIC && config.contains("shear_modulus")) {
-            logger::get().log(logger::log_level::WARNING) << "Material is isotropic. Shear modulus parameter will be ignored." << std::endl;
+            logger::warning() << "Material is isotropic. Shear modulus parameter will be ignored." << std::endl;
         }
         check_optional_fields(config, {"thermal_expansion"}, right_part); 
         thermal_expansion = config.value("thermal_expansion", T{0});

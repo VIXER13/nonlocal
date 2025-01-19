@@ -35,8 +35,8 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     );
     if (solver.preconditioner().computation_info() != Eigen::Success) {
         solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
-        logger::get().log(logger::log_level::WARNING) << "The ILLT preconditioner could not be calculated, "
-                                                      << "the preconditioner was switched to Identity." << std::endl;
+        logger::warning() << "The ILLT preconditioner could not be calculated, "
+                          << "the preconditioner was switched to Identity." << std::endl;
     }
     const auto displacement = solver.solve(f);
     return mechanical_solution_2d<T, I>{mesh, parameters, displacement};
