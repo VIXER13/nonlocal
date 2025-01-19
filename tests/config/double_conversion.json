@@ -25,11 +25,6 @@
         "save_frequency": 17
     },
 
-    "boundaries_conditions_1d": {
-        "right": "mock",
-        "left": 42
-    },
-
     "boundaries_conditions_2d": {
         "right": "mock",
         "left": 42,
@@ -88,14 +83,6 @@
                 "n": 5
             }
         }
-    },
-
-    "thermal_boundary_condition": {
-        "kind": "combined",
-        "temperature": 1.0,
-        "flux": 2.0,
-        "heat_transfer": 3.0,
-        "emissivity": 4.0
     },
 
     "thermal_auxiliary": {

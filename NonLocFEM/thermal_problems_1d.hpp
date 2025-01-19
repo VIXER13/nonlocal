@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/read_mesh_1d.hpp"
+#include "config/read_thermal_boundary_conditions.hpp"
 
 #include "problems_utils.hpp"
 
@@ -32,42 +33,6 @@ parameters_1d<T> make_thermal_parameters(
 }
 
 template<std::floating_point T>
-std::unique_ptr<thermal_boundary_condition_1d<T>> make_thermal_boundary_condition(
-    const config::thermal_boundary_condition_data<T, 1>& condition) {
-    switch (condition.kind) {
-    case config::thermal_boundary_condition_t::TEMPERATURE:
-        return std::make_unique<temperature_1d<T>>(condition.temperature);
-
-    case config::thermal_boundary_condition_t::FLUX:
-        return std::make_unique<flux_1d<T>>(condition.flux);
-
-    case config::thermal_boundary_condition_t::CONVECTION:
-        return std::make_unique<convection_1d<T>>(condition.heat_transfer, condition.temperature);
-
-    case config::thermal_boundary_condition_t::RADIATION:
-        return std::make_unique<radiation_1d<T>>(condition.emissivity);
-
-    case config::thermal_boundary_condition_t::COMBINED:
-        return std::make_unique<combined_flux_1d<T>>(
-            condition.flux,
-            condition.heat_transfer, condition.temperature,
-            condition.emissivity);
-
-    default:
-        throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(condition.kind))};
-    }
-}
-
-template<std::floating_point T>
-thermal_boundaries_conditions_1d<T> make_thermal_boundaries_conditions_1d(
-    const config::thermal_boundaries_conditions_1d<T>& conditions) {
-    return {
-        make_thermal_boundary_condition(conditions.conditions.at("left")),
-        make_thermal_boundary_condition(conditions.conditions.at("right"))
-    };
-}
-
-template<std::floating_point T>
 void save_solution(const thermal::heat_equation_solution_1d<T>& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
@@ -81,12 +46,10 @@ void save_solution(const thermal::heat_equation_solution_1d<T>& solution,
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const bool time_dependency) {
     const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
-    const auto mesh = nonlocal::config::read_mesh<T>(config, {});
+    const auto mesh = nonlocal::config::read_mesh_1d<T>(config, {});
     const auto parameters = make_thermal_parameters<T>(materials.materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
-    const auto boundaries_conditions = make_thermal_boundaries_conditions_1d(
-        config::thermal_boundaries_conditions_1d<T>{config["boundaries"], "boundaries"}
-    );
+    const auto boundaries_conditions = config::read_thermal_boundary_conditions_1d<T>(config["boundaries"], "boundaries");
 
     if (!time_dependency) {
         auto solution = stationary_heat_equation_solver_1d<T, I>(

@@ -1,8 +1,9 @@
 #pragma once
 
 #include "config_utils.hpp"
-#include "mesh_1d.hpp"
+
 #include "logger.hpp"
+#include "mesh_1d.hpp"
 #include "metamath.hpp"
 
 namespace nonlocal::config {
@@ -60,7 +61,7 @@ class _read_mesh_1d final {
     
 public:
     template<std::floating_point T>
-    friend std::shared_ptr<mesh::mesh_1d<T>> read_mesh(const nlohmann::json& config, const std::string& path);
+    friend std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path);
 };
 
 template<std::floating_point T>
@@ -145,7 +146,7 @@ std::vector<mesh::segment_data<T>> read_segments(const nlohmann::json& config, c
 }
 
 template<std::floating_point T>
-std::shared_ptr<mesh::mesh_1d<T>> read_mesh(const nlohmann::json& config, const std::string& path) {
+std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path) {
     check_required_fields(config, {"materials"});
     check_optional_fields(config, {"mesh"});
     const std::string path_with_access = append_access_sign(path);

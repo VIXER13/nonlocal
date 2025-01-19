@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config/read_thermal_boundary_conditions.hpp"
+
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
 #include "mechanical_problems_2d.hpp"
@@ -67,7 +69,7 @@ std::optional<thermal::heat_equation_solution_2d<T>> thermal_stationary_2d(
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::NO, !DP::ONLY_LOCAL, DP::SYMMTERIC);
     const auto boundaries_field = problem == config::problem_t::THERMAL ? "boundaries" : "thermal_boundaries";
     return thermal::solve_thermal_2d_problem<T, I>(mesh, materials,
-        config::thermal_boundaries_conditions_2d<T>{config[boundaries_field], boundaries_field},
+        config::read_thermal_boundary_conditions_2d<T>(config[boundaries_field], boundaries_field),
         config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
     );
 }
@@ -82,7 +84,7 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
     mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
     thermal::solve_thermal_2d_problem<T, I>(mesh, materials,
-        config::thermal_boundaries_conditions_2d<T>{config["boundaries"], "boundaries"},
+        config::read_thermal_boundary_conditions_2d<T>(config["boundaries"], "boundaries"),
         config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
         config::time_data<T>{config["time"], "time"},
         save);

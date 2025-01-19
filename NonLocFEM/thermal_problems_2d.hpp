@@ -30,40 +30,6 @@ parameters_2d<T> make_parameters(const config::thermal_materials_2d<T>& material
     return parameters;
 }
 
-template<std::floating_point T>
-thermal_boundary_condition_2d<T> make_boundary_condition(const config::thermal_boundary_condition_data<T, 2>& condition) {
-    switch (condition.kind) {
-    case config::thermal_boundary_condition_t::TEMPERATURE:
-        return std::make_unique<temperature_2d<T>>(condition.temperature);
-
-    case config::thermal_boundary_condition_t::FLUX:
-        return std::make_unique<flux_2d<T>>(condition.flux);
-
-    case config::thermal_boundary_condition_t::CONVECTION:
-        return std::make_unique<convection_2d<T>>(condition.heat_transfer, condition.temperature);
-
-    case config::thermal_boundary_condition_t::RADIATION:
-        return std::make_unique<radiation_2d<T>>(condition.emissivity);
-
-    case config::thermal_boundary_condition_t::COMBINED:
-        return std::make_unique<combined_flux_2d<T>>(
-            condition.flux,
-            condition.heat_transfer, condition.temperature,
-            condition.emissivity);
-
-    default:
-        throw std::domain_error{"Unknown boundary condition type: " + std::to_string(uint(condition.kind))};
-    }
-}
-
-template<std::floating_point T>
-thermal_boundaries_conditions_2d<T> make_boundaries_conditions(const config::thermal_boundaries_conditions_2d<T>& conditions) {
-    thermal_boundaries_conditions_2d<T> result;
-    for(const auto& [name, condition] : conditions.conditions)
-        result[name] = make_boundary_condition(condition);
-    return result;
-}
-
 template<std::floating_point T, std::integral I>
 void save_solution(const heat_equation_solution_2d<T, I>& solution, 
                    const config::save_data& save,
@@ -84,10 +50,9 @@ template<std::floating_point T, std::signed_integral I>
 heat_equation_solution_2d<T> solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
     const config::thermal_materials_2d<T>& materials,
-    const config::thermal_boundaries_conditions_2d<T>& conditions,
+    const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data<T>& auxiliary) {
     const auto parameters = make_parameters(materials);
-    const auto boundaries_conditions = make_boundaries_conditions(conditions);
     auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
         mesh, parameters, boundaries_conditions, 
         [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
@@ -101,12 +66,11 @@ template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
     const config::thermal_materials_2d<T>& materials,
-    const config::thermal_boundaries_conditions_2d<T>& conditions,
+    const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data<T>& auxiliary,
     const config::time_data<T>& time,
     const config::save_data& save) {
     const auto parameters = make_parameters(materials);
-    const auto boundaries_conditions = make_boundaries_conditions(conditions);
     nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
