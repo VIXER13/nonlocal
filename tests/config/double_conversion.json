@@ -25,13 +25,6 @@
         "save_frequency": 17
     },
 
-    "boundaries_conditions_2d": {
-        "right": "mock",
-        "left": 42,
-        "up": 3.0,
-        "down": false
-    },
-
     "model_1d": {
         "local_weight": 2.0,
         "nonlocal_radius": 3.0,

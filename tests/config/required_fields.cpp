@@ -82,22 +82,6 @@ auto material_data_test(const nlohmann::json& config) {
 }
 
 template<std::floating_point T>
-auto mechanical_boundary_condition_data_test(const nlohmann::json& config) {
-    return [&config] {
-        const std::string suffix = '_' + std::string{reflection::type_name<T>()};
-        test("mechanical_2d_boundary_condition_missed_all" + suffix)      = expect_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_boundary_condition_missed_all"]);
-        test("mechanical_2d_only_displacement" + suffix)                  = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_only_displacement"]);
-        test("mechanical_2d_only_pressure" + suffix)                      = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_only_pressure"]);
-        test("mechanical_2d_displacement_pressure_combination" + suffix)  = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_displacement_pressure_combination"]);
-        test("mechanical_2d_pressure_displacement_combination" + suffix)  = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_pressure_displacement_combination"]);
-        test("mechanical_2d_displacement_null_combination" + suffix)      = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_displacement_null_combination"]);
-        test("mechanical_2d_null_displacement_combination" + suffix)      = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_null_displacement_combination"]);
-        test("mechanical_2d_pressure_null_combination" + suffix)          = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_pressure_null_combination"]);
-        test("mechanical_2d_null_pressure_combination" + suffix)          = expect_no_throw<mechanical_boundary_conditions_data<T, 2>>(config["mechanical_null_pressure_combination"]);
-    };
-}
-
-template<std::floating_point T>
 auto mechanical_material_data_test(const nlohmann::json& config) {
     return [&config] {
         const std::string suffix = '_' + std::string{reflection::type_name<T>()};
@@ -142,7 +126,6 @@ const suite<"config_required_fields"> _ = [] {
     test("time_data") = time_data_test<double>(config);
     test("model_data") = model_data_test<double>(config);
     test("material_data") = material_data_test<double>(config);
-    test("mechanical_boundary_condition") = mechanical_boundary_condition_data_test<double>(config);
     test("mechanical_material") = mechanical_material_data_test<double>(config);
     test("thermal_material") = thermal_material_data_test<double>(config);
 };

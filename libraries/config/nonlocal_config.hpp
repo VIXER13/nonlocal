@@ -5,19 +5,11 @@
 #include "mesh_data.hpp"
 #include "time_data.hpp"
 #include "thermal_auxiliary_data.hpp"
-#include "boundaries_conditions_data.hpp"
-#include "mechanical_boundary_condition_data.hpp"
 #include "materials_data.hpp"
 #include "thermal_material_data.hpp"
 #include "mechanical_material_data.hpp"
 
 namespace nonlocal::config {
-
-template<class T>
-using mechanical_boundaries_conditions_1d = boundaries_conditions_data<mechanical_boundary_conditions_data, T, 1>;
-
-template<class T>
-using mechanical_boundaries_conditions_2d = boundaries_conditions_data<mechanical_boundary_conditions_data, T, 2>;
 
 template<class T>
 using thermal_materials_1d = materials_data<thermal_material_data, T, 1>;

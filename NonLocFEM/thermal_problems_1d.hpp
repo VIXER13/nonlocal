@@ -49,7 +49,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
     const auto mesh = nonlocal::config::read_mesh_1d<T>(config, {});
     const auto parameters = make_thermal_parameters<T>(materials.materials);
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
-    const auto boundaries_conditions = config::read_thermal_boundary_conditions_1d<T>(config["boundaries"], "boundaries");
+    const auto boundaries_conditions = config::read_thermal_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
 
     if (!time_dependency) {
         auto solution = stationary_heat_equation_solver_1d<T, I>(

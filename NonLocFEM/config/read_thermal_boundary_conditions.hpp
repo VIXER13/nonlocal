@@ -98,7 +98,7 @@ thermal::thermal_boundary_condition_2d<T> read_thermal_boundary_condition_2d(con
 }
 
 template<std::floating_point T>
-thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundary_conditions_1d(const nlohmann::json& config, const std::string& path) {
+thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundaries_conditions_1d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, {"left", "right"}, path_with_access);
     return {
@@ -108,7 +108,7 @@ thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundary_conditions_1d
 }
 
 template<std::floating_point T>
-thermal::thermal_boundaries_conditions_2d<T> read_thermal_boundary_conditions_2d(const nlohmann::json& config, const std::string& path) {
+thermal::thermal_boundaries_conditions_2d<T> read_thermal_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
     for(const auto& [name, condition] : config.items())

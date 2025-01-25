@@ -58,49 +58,6 @@
         "physical": {}
     },
 
-    "mechanical_boundary_condition_missed_all": [
-    ],
-    "mechanical_only_displacement": [
-        { "displacement": 1 },
-        { "displacement": 2 }
-    ],
-    "mechanical_only_pressure": [
-        { "pressure": 1 },
-        { "pressure": 2 }
-    ],
-    "mechanical_displacement_pressure_combination": [
-        { "displacement": 1 },
-        { "pressure": 2 }
-    ],
-    "mechanical_pressure_displacement_combination": [
-        { "pressure": 1 },
-        { "displacement": 2 }
-    ],
-    "mechanical_displacement_null_combination": [
-        { 
-            "displacement": 1 
-        },
-        null
-    ],
-    "mechanical_null_displacement_combination": [
-        null,
-        { 
-            "displacement": 1 
-        }
-    ],
-    "mechanical_pressure_null_combination": [
-        { 
-            "pressure": 1 
-        },
-        null
-    ],
-    "mechanical_null_pressure_combination": [
-        null,
-        { 
-            "pressure": 1 
-        }
-    ],
-
     "mechanical_material_dim_missed_all": {},
     "mechanical_material_1d_all_required_exists": {
         "youngs_modulus": 1.0
