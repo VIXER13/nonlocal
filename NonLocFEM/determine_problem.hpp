@@ -2,6 +2,8 @@
 
 #include "config/read_thermal_boundary_conditions.hpp"
 #include "config/read_mechanical_boundary_conditions.hpp"
+#include "config/task_data.hpp"
+#include "config/save_data.hpp"
 
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
@@ -12,8 +14,8 @@
 namespace nonlocal {
 
 class _determine_problem final {
-    static constexpr bool ONLY_LOCAL = true;
-    static constexpr bool SYMMTERIC = true;
+    static constexpr bool Only_Local = true;
+    static constexpr bool Symmetric = true;
 
     constexpr explicit _determine_problem() noexcept = default;
 
@@ -54,7 +56,7 @@ void problems_1d(const nlohmann::json& config, const config::save_data& save, co
     }
     config::check_required_fields(config, {"boundaries", "materials"});
     config::check_optional_fields(config, {"mesh", "auxiliary"});
-    if (task.problem == config::problem_t::THERMAL)
+    if (task.problem == config::problem_t::Thermal)
         thermal::solve_thermal_1d_problem<T, I>(config, save, task.time_dependency);
     else throw std::domain_error{"Unsupported task. In the one-dimensional case, the following problems are available: \"thermal\""};
 }
@@ -67,8 +69,8 @@ std::optional<thermal::heat_equation_solution_2d<T>> thermal_stationary_2d(
         return std::nullopt;
     const auto materials = config::thermal_materials_2d<T>{config["materials"], "materials"};
     mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
-    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::NO, !DP::ONLY_LOCAL, DP::SYMMTERIC);
-    const auto boundaries_field = problem == config::problem_t::THERMAL ? "boundaries" : "thermal_boundaries";
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::NO, !DP::Only_Local, DP::Symmetric);
+    const auto boundaries_field = problem == config::problem_t::Thermal ? "boundaries" : "thermal_boundaries";
     return thermal::solve_thermal_2d_problem<T, I>(mesh, materials,
         config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
         config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
@@ -79,11 +81,11 @@ template<std::floating_point T, std::signed_integral I>
 void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config,
                               const config::save_data& save, const config::problem_t problem) {
     using DP = _determine_problem;
-    if (problem != config::problem_t::THERMAL)
+    if (problem != config::problem_t::Thermal)
         throw std::domain_error{"Mechanical problem does not support time dependence."};
     const auto materials = config::thermal_materials_2d<T>{config["materials"], "materials"};
     mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
-    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::Only_Local, DP::Symmetric);
     thermal::solve_thermal_2d_problem<T, I>(mesh, materials,
         config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries"),
         config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
@@ -99,8 +101,8 @@ std::optional<mechanical::mechanical_solution_2d<T>> mechanical_2d(
         return std::nullopt;
     const auto materials = config::mechanical_materials_2d<T>{config["materials"], "materials"};
     mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
-    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::ONLY_LOCAL, DP::SYMMTERIC);
-    const auto boundaries_field = problem == config::problem_t::MECHANICAL ? "boundaries" : "mechanical_boundaries";
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::Only_Local, DP::Symmetric);
+    const auto boundaries_field = problem == config::problem_t::Mechanical ? "boundaries" : "mechanical_boundaries";
     return mechanical::solve_mechanical_2d_problem<T, I>(mesh, materials,
         config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
         delta_temperature
@@ -109,7 +111,7 @@ std::optional<mechanical::mechanical_solution_2d<T>> mechanical_2d(
 
 template<std::floating_point T, std::signed_integral I>
 void problems_2d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task) {
-    if (task.problem == config::problem_t::UNKNOWN)
+    if (task.problem == config::problem_t::Unknown)
         throw std::domain_error{"Unknown task. In the two-dimensional case, the following problems are available: "
                                 "\"thermal\", \"mechanical\" and \"thermomechanical\""};
     

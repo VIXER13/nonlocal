@@ -6,7 +6,7 @@ namespace nonlocal::config {
 
 task_data::task_data(const nlohmann::json& config, const std::string& path) {
     nonlocal::config::check_required_fields(config, {"dimension", "problem", "time_dependency"}, append_access_sign(path));
-    dimension = config["dimension"].get<uint64_t>();
+    dimension = config["dimension"].get<size_t>();
     problem = config["problem"].get<problem_t>();
     time_dependency = config["time_dependency"].get<bool>();
 }
