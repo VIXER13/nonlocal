@@ -25,16 +25,6 @@ auto expect_no_throw(const nlohmann::json& name) {
     };
 }
 
-auto mesh_data_test(const nlohmann::json& config) {
-    return [&config] {
-        test("mesh_2d_data_missed_all")          = expect_throw<mesh_data<2>>(config["mesh_dim_missed_all"]);
-        test("mesh_3d_data_missed_all")          = expect_throw<mesh_data<3>>(config["mesh_dim_missed_all"]);
-        test("mesh_1d_data_missed_all")          = expect_no_throw<mesh_data<1>>(config["mesh_dim_all_required_exists"]);
-        test("mesh_2d_data_all_required_exists") = expect_no_throw<mesh_data<2>>(config["mesh_dim_all_required_exists"]);
-        test("mesh_3d_data_all_required_exists") = expect_no_throw<mesh_data<3>>(config["mesh_dim_all_required_exists"]);
-    };
-}
-
 template<std::floating_point T>
 auto time_data_test(const nlohmann::json& config) {
     return [&config] {
@@ -107,27 +97,12 @@ auto mechanical_material_data_test(const nlohmann::json& config) {
     };
 }
 
-template<std::floating_point T>
-auto thermal_material_data_test(const nlohmann::json& config) {
-    return [&config] {
-        const std::string suffix = '_' + std::string{reflection::type_name<T>()};
-        test("thermal_material_1d_missed_all" + suffix)                      = expect_throw<thermal_material_data<T, 1>>(config["thermal_material_dim_missed_all"]);
-        test("thermal_material_2d_missed_all" + suffix)                      = expect_throw<thermal_material_data<T, 2>>(config["thermal_material_dim_missed_all"]);
-        test("thermal_material_1d_all_required_exists" + suffix)             = expect_no_throw<thermal_material_data<T, 1>>(config["thermal_material_dim_all_required_exists"]);
-        test("thermal_material_2d_all_required_exists" + suffix)             = expect_no_throw<thermal_material_data<T, 2>>(config["thermal_material_dim_all_required_exists"]);
-        test("thermal_material_2d_orthotropic_all_required_exists" + suffix) = expect_no_throw<thermal_material_data<T, 2>>(config["thermal_material_2d_orthotropic_all_required_exists"]);
-        test("thermal_material_2d_anisotropic_all_required_exists" + suffix) = expect_no_throw<thermal_material_data<T, 2>>(config["thermal_material_2d_anisotropic_all_required_exists"]);
-    };
-}
-
 const suite<"config_required_fields"> _ = [] {
     const nlohmann::json config = nlohmann::json::parse(required_fields_json_data);
-    test("mesh_data") = mesh_data_test(config);
     test("time_data") = time_data_test<double>(config);
     test("model_data") = model_data_test<double>(config);
     test("material_data") = material_data_test<double>(config);
     test("mechanical_material") = mechanical_material_data_test<double>(config);
-    test("thermal_material") = thermal_material_data_test<double>(config);
 };
 
 }

@@ -14,36 +14,6 @@ template<std::floating_point T, size_t Dimension>
 struct thermal_material_data;
 
 template<std::floating_point T>
-struct thermal_material_data<T, 1> final {
-    static constexpr std::string_view Prefix = "thermal";
-
-    T conductivity = T{1}; // required
-    T capacity = T{1};
-    T density = T{1};
-    T relaxation_time = T{0};
-
-    explicit constexpr thermal_material_data() noexcept = default;
-    explicit thermal_material_data(const nlohmann::json& config, const std::string& path = {}) {
-        const std::string right_part = append_access_sign(path);
-        check_required_fields(config, { "conductivity" }, right_part);
-        check_optional_fields(config, { "capacity", "density", "relaxation_time" }, right_part); 
-        conductivity = config["conductivity"].get<T>();
-        capacity = config.value("capacity", T{1});
-        density = config.value("density", T{1});
-        relaxation_time = config.value("relaxation_time", T{0});
-    }
-
-    operator nlohmann::json() const {
-        return {
-            {"conductivity", conductivity},
-            {"capacity", capacity},
-            {"density", density},
-            {"relaxation_time", relaxation_time} 
-        };
-    }
-};
-
-template<std::floating_point T>
 class thermal_material_data<T, 2> final {
     void read_conductivity(const nlohmann::json& conduct) {
         if (conduct.is_number())

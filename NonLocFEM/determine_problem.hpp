@@ -1,7 +1,8 @@
 #pragma once
 
-#include "config/read_thermal_boundary_conditions.hpp"
 #include "config/read_mechanical_boundary_conditions.hpp"
+#include "config/read_mesh.hpp"
+#include "config/read_thermal_boundary_conditions.hpp"
 #include "config/task_data.hpp"
 #include "config/save_data.hpp"
 
@@ -118,7 +119,7 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
     using DP = _determine_problem;
     config::check_required_fields(config, DP::get_required_fields(task));
     config::check_optional_fields(config, {"auxiliary"});
-    auto mesh = std::make_shared<mesh::mesh_2d<T>>(config::mesh_data<2>{config["mesh"], "mesh"}.path);
+    auto mesh = config::read_mesh_2d<T, uint32_t>(config["mesh"], "mesh");
     if (task.time_dependency)
         thermal_nonstationary_2d<T, I>(mesh, config, save, task.problem);
     else {

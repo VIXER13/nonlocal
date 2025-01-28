@@ -1,7 +1,8 @@
 #pragma once
 
-#include "config/read_mesh_1d.hpp"
+#include "config/read_mesh.hpp"
 #include "config/read_thermal_boundary_conditions.hpp"
+#include "config/read_thermal_parameters.hpp"
 
 #include "problems_utils.hpp"
 
@@ -11,26 +12,6 @@
 #include "influence_functions_1d.hpp"
 
 namespace nonlocal::thermal {
-
-template<std::floating_point T>
-parameters_1d<T> make_thermal_parameters(
-    const typename config::thermal_materials_1d<T>::materials_t& materials) {
-    parameters_1d<T> parameters(materials.size());
-    for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
-        parameters[i] = {
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{materials[i].model.nonlocal_radius},
-                .local_weight = materials[i].model.local_weight
-            },
-            .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(
-                materials[i].physical.conductivity,
-                materials[i].physical.capacity,
-                materials[i].physical.density,
-                materials[i].physical.relaxation_time 
-            )
-        };
-    return parameters;
-}
 
 template<std::floating_point T>
 void save_solution(const thermal::heat_equation_solution_1d<T>& solution, 
@@ -45,9 +26,8 @@ void save_solution(const thermal::heat_equation_solution_1d<T>& solution,
 
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const bool time_dependency) {
-    const config::thermal_materials_1d<T> materials{config["materials"], "materials"};
     const auto mesh = nonlocal::config::read_mesh_1d<T>(config, {});
-    const auto parameters = make_thermal_parameters<T>(materials.materials);
+    const auto parameters = config::read_thermal_parameters_1d<T>(config["materials"], "materials");
     const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = config::read_thermal_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
 

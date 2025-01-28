@@ -1,4 +1,4 @@
-#include "read_mesh_1d.hpp"
+#include "read_mesh.hpp"
 
 namespace nonlocal::config {
 

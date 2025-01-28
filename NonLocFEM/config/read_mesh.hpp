@@ -4,6 +4,7 @@
 
 #include "logger.hpp"
 #include "mesh_1d.hpp"
+#include "mesh_2d.hpp"
 #include "metamath.hpp"
 
 namespace nonlocal::config {
@@ -154,6 +155,12 @@ std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, con
         read_element<T>(config.value("mesh", nlohmann::json::object()), path_with_access + "mesh"),
         read_segments<T>(config["materials"], path_with_access + "materials")
     );
+}
+
+template<std::floating_point T, std::integral I>
+std::shared_ptr<mesh::mesh_2d<T, I>> read_mesh_2d(const nlohmann::json& config, const std::string& path) {
+    check_required_fields(config, { "path" }, append_access_sign(path));
+    return std::make_shared<mesh::mesh_2d<T, I>>(config["path"].get<std::string>());
 }
 
 }
