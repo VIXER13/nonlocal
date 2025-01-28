@@ -10,26 +10,6 @@
 
 namespace nonlocal::thermal {
 
-template<std::floating_point T>
-parameters_2d<T> make_parameters(const config::thermal_materials_2d<T>& materials) {
-    parameters_2d<T> parameters;
-    for(const auto& [name, material] : materials.materials) {
-        auto& parameter = parameters[name] = {
-            .model = {
-                .influence = get_influence(material.model.influence, material.model.nonlocal_radius),
-                .local_weight = material.model.local_weight
-            },
-            .physical = std::make_shared<parameter_2d<T, coefficients_t::CONSTANTS>>(
-                metamath::types::make_square_matrix<T, 2u>(material.physical.conductivity),
-                material.physical.capacity,
-                material.physical.density
-            )
-        };
-        parameter.physical->material = material.physical.material;
-    }
-    return parameters;
-}
-
 template<std::floating_point T, std::integral I>
 void save_solution(const heat_equation_solution_2d<T, I>& solution, 
                    const config::save_data& save,
@@ -49,10 +29,9 @@ void save_solution(const heat_equation_solution_2d<T, I>& solution,
 template<std::floating_point T, std::signed_integral I>
 heat_equation_solution_2d<T> solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-    const config::thermal_materials_2d<T>& materials,
+    const parameters_2d<T>& parameters,
     const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data<T>& auxiliary) {
-    const auto parameters = make_parameters(materials);
     auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
         mesh, parameters, boundaries_conditions, 
         [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
@@ -65,12 +44,11 @@ heat_equation_solution_2d<T> solve_thermal_2d_problem(
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-    const config::thermal_materials_2d<T>& materials,
-    const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+    const parameters_2d<T>& parameters,
+    const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data<T>& auxiliary,
     const config::time_data<T>& time,
     const config::save_data& save) {
-    const auto parameters = make_parameters(materials);
     nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });

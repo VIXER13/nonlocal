@@ -68,11 +68,11 @@ std::optional<thermal::heat_equation_solution_2d<T>> thermal_stationary_2d(
     using DP = _determine_problem;
     if (!DP::is_thermal(problem))
         return std::nullopt;
-    const auto materials = config::thermal_materials_2d<T>{config["materials"], "materials"};
-    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh->neighbours(find_neighbours(*mesh, config::read_search_radii<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::NO, !DP::Only_Local, DP::Symmetric);
     const auto boundaries_field = problem == config::problem_t::Thermal ? "boundaries" : "thermal_boundaries";
-    return thermal::solve_thermal_2d_problem<T, I>(mesh, materials,
+    return thermal::solve_thermal_2d_problem<T, I>(mesh,
+        config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
         config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
         config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
     );
@@ -84,10 +84,10 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
     using DP = _determine_problem;
     if (problem != config::problem_t::Thermal)
         throw std::domain_error{"Mechanical problem does not support time dependence."};
-    const auto materials = config::thermal_materials_2d<T>{config["materials"], "materials"};
-    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh->neighbours(find_neighbours(*mesh, config::read_search_radii<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::Only_Local, DP::Symmetric);
-    thermal::solve_thermal_2d_problem<T, I>(mesh, materials,
+    thermal::solve_thermal_2d_problem<T, I>(mesh, 
+        config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
         config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries"),
         config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
         config::time_data<T>{config["time"], "time"},
@@ -101,7 +101,7 @@ std::optional<mechanical::mechanical_solution_2d<T>> mechanical_2d(
     if (!DP::is_mechanical(problem))
         return std::nullopt;
     const auto materials = config::mechanical_materials_2d<T>{config["materials"], "materials"};
-    mesh->neighbours(find_neighbours(*mesh, get_search_radii(materials)));
+    mesh->neighbours(find_neighbours(*mesh, config::read_search_radii<T>(config["materials"], "materials", "mechanical")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::Only_Local, DP::Symmetric);
     const auto boundaries_field = problem == config::problem_t::Mechanical ? "boundaries" : "mechanical_boundaries";
     return mechanical::solve_mechanical_2d_problem<T, I>(mesh, materials,

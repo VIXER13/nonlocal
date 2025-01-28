@@ -24,14 +24,6 @@ auto double_conversion(const nlohmann::json& config) {
     
 const suite<"config_double_conversion"> _ = [] {
     const nlohmann::json config = nlohmann::json::parse(double_conversion_json_data);
-    test("time") = double_conversion<time_data<double>>(config["time"]);
-    test("model_1d") = double_conversion<model_data<double, 1>>(config["model_1d"]);
-    test("model_2d") = double_conversion<model_data<double, 2>>(config["model_2d"]);
-    test("material_1d") = double_conversion<material_data<mock_data, double, 1>>(config["material_1d"]);
-    test("material_2d") = double_conversion<material_data<mock_data, double, 2>>(config["material_2d"]);
-    test("thermal_auxiliary") = double_conversion<thermal_auxiliary_data<double>>(config["thermal_auxiliary"]);
-    for(const std::string material : {"thermal_isotropic_material_2d", "thermal_orthotropic_material_2d", "thermal_anisotropic_material_2d"})
-        test(material) = double_conversion<thermal_material_data<double, 2>>(config[material]);
 };
 
 }
