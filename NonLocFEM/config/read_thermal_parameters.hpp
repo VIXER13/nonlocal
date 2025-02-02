@@ -40,21 +40,13 @@ thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& confi
 }
 
 template<std::floating_point T>
-metamath::types::square_matrix<T, 2> read_conductivity_2d(const nlohmann::json& config, const std::string& path) {
-    if (config.is_number()) {
-        const T value = config.get<T>();
-        return {
-            value, T{0},
-            T{0}, value
-        };
-    }
+typename thermal::parameter_2d<T>::conductivity_variants read_conductivity_2d(const nlohmann::json& config, const std::string& path) {
+    if (config.is_number())
+        return config.get<T>();
     if (config.is_array() && config.size() == 2)
-        return {
-            config[0].get<T>(), T{0},
-            T{0}, config[1].get<T>()
-        };
+        return std::array{ config[0].get<T>(), config[1].get<T>() };
     if (config.is_array() && config.size() == 4)
-        return {
+        return metamath::types::square_matrix<T, 2>{
             config[0].get<T>(), config[1].get<T>(),
             config[2].get<T>(), config[3].get<T>()
         };
@@ -87,7 +79,6 @@ thermal::parameters_2d<T> read_thermal_parameters_2d(const nlohmann::json& confi
             .model = model_field.empty() ? model_parameters<2u, T>{} : read_model_2d<T>(material[model_field], path_with_access + model_field),
             .physical = read_thermal_coefficient_2d<T>(material["physical"], path_with_access + "physical")
         };
-        parameter.physical->material = material_t::ISOTROPIC;
     }
     return parameters;
 }

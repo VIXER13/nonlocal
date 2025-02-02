@@ -5,6 +5,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <variant>
 
 namespace nonlocal::thermal {
 
@@ -35,6 +36,8 @@ class parameter_2d final : public parameter_2d_base<T> {
                   Coefficients == coefficients_t::SOLUTION_DEPENDENT,
                   "Unknown coefficient type.");
 
+    using _base = parameter_2d_base<T>;
+
 public:
     using conductivity_t = 
         std::conditional_t<
@@ -45,6 +48,12 @@ public:
                 std::function<T(const std::array<T, 2>&)>, T
             >
         >;
+
+    using conductivity_variants = std::variant<
+        conductivity_t, 
+        std::array<conductivity_t, 2>,
+        metamath::types::square_matrix<conductivity_t, 2>
+    >;
 
 private:
     static constexpr metamath::types::square_matrix<conductivity_t, 2> init() noexcept {
@@ -66,23 +75,31 @@ private:
             };
     }
 
+    material_t get_coefficient(const conductivity_variants& conductivity) {
+        if (std::holds_alternative<conductivity_t>(conductivity))
+            return material_t::ISOTROPIC;
+        if (std::holds_alternative<std::array<conductivity_t, 2>>(conductivity))
+            return material_t::ORTHOTROPIC;
+        return material_t::ANISOTROPIC;
+    }
+
 public:
     metamath::types::square_matrix<conductivity_t, 2> conductivity = init();
 
     constexpr parameter_2d() noexcept
         : parameter_2d_base<T>{Coefficients} {}
-    explicit parameter_2d(const conductivity_t& conductivity, const T capacity = T{1},
+    explicit parameter_2d(const conductivity_variants& cond, const T capacity = T{1},
                           const T density = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
-        : parameter_2d_base<T>{Coefficients, capacity, density, material_t::ISOTROPIC}
-        , conductivity{conductivity} {}
-    explicit parameter_2d(const std::array<conductivity_t, 2>& conductivity, const T capacity = T{1},
-                          const T density = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
-        : parameter_2d_base<T>{Coefficients, capacity, density, material_t::ORTHOTROPIC}
-        , conductivity{conductivity} {}
-    explicit parameter_2d(const metamath::types::square_matrix<conductivity_t, 2>& conductivity, const T capacity = T{1},
-                          const T density = T{1}) noexcept(Coefficients == coefficients_t::CONSTANTS)
-        : parameter_2d_base<T>{Coefficients, capacity, density, material_t::ANISOTROPIC}
-        , conductivity{conductivity} {}
+        : parameter_2d_base<T>{Coefficients, capacity, density, get_coefficient(cond)} {
+        if (_base::material == material_t::ISOTROPIC)
+            conductivity[X][X] = std::get<conductivity_t>(cond);
+        else if (_base::material == material_t::ORTHOTROPIC) {
+            const auto& tmp = std::get<std::array<conductivity_t, 2>>(cond);
+            conductivity[X][X] = tmp[X];
+            conductivity[Y][Y] = tmp[Y];
+        } else
+            conductivity = std::get<metamath::types::square_matrix<conductivity_t, 2>>(cond);
+    }
     ~parameter_2d() noexcept override = default;
 };
 
