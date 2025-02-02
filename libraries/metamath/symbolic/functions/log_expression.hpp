@@ -1,7 +1,7 @@
 #pragma once
 
-#include "divides.hpp"
-#include "unary_expression.hpp"
+#include <metamath/symbolic/base/divides.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 #include <cmath>
 

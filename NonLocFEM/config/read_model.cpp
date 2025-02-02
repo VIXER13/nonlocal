@@ -1,5 +1,7 @@
 #include "read_model.hpp"
 
+#include <logger/logger.hpp>
+
 namespace nonlocal::config {
 
 std::string get_model_field(const nlohmann::json& config, const std::string& path_with_access, const std::string& prefix) {

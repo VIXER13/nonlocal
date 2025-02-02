@@ -1,6 +1,6 @@
 #pragma once
 
-#include "variable.hpp"
+#include <metamath/symbolic/base/variable.hpp>
 
 #include <array>
 

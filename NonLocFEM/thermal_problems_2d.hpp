@@ -5,7 +5,7 @@
 #include "config/thermal_auxiliary_data.hpp"
 #include "config/time_data.hpp"
 
-#include "logger.hpp"
+#include <logger/logger.hpp>
 #include "thermal/stationary_heat_equation_solver_2d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_2d.hpp"
 #include "cuthill_mckee.hpp"

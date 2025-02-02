@@ -1,7 +1,8 @@
 #pragma once
 
-#include "variable.hpp"
 #include "side_2d.hpp"
+
+#include <metamath/symbolic/base/variable.hpp>
 
 #include <type_traits>
 

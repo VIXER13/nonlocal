@@ -3,6 +3,7 @@
 #include "../solvers_utils.hpp"
 
 #include "mesh_1d.hpp"
+#include <logger/logger.hpp>
 
 #include <Eigen/Sparse>
 

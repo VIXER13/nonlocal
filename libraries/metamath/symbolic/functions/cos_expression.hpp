@@ -1,7 +1,7 @@
 #pragma once
 
-#include "multiplies.hpp"
-#include "negate.hpp"
+#include <metamath/symbolic/base/multiplies.hpp>
+#include <metamath/symbolic/base/negate.hpp>
 
 #include <cmath>
 

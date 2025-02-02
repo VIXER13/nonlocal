@@ -1,6 +1,6 @@
 #pragma once
 
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
 
 #include <cstdlib>
 #include <memory>

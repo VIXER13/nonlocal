@@ -1,7 +1,7 @@
 #pragma once
 
-#include "multiplies.hpp"
-#include "unary_expression.hpp"
+#include <metamath/symbolic/base/multiplies.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 #include <cmath>
 

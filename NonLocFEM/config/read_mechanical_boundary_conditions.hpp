@@ -3,7 +3,7 @@
 #include "config_utils.hpp"
 
 #include "mechanical/mechanical_boundary_conditions_2d.hpp"
-#include "logger.hpp"
+#include <logger/logger.hpp>
 
 namespace nonlocal::config {
 

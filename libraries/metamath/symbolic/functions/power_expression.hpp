@@ -1,10 +1,9 @@
 #pragma once
 
-#include "functions/power.hpp"
-
-#include "integral_constant.hpp"
-#include "multiplies.hpp"
-#include "unary_expression.hpp"
+#include <metamath/functions/power.hpp>
+#include <metamath/symbolic/base/integral_constant.hpp>
+#include <metamath/symbolic/base/multiplies.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 #include <type_traits>
 

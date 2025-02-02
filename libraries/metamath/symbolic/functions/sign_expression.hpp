@@ -1,7 +1,7 @@
 #pragma once
 
-#include "integral_constant.hpp"
-#include "unary_expression.hpp"
+#include <metamath/symbolic/base/integral_constant.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 namespace metamath::symbolic {
 

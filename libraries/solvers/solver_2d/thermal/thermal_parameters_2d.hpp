@@ -1,6 +1,6 @@
 #pragma once
 
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
 #include "../../equation_parameters.hpp"
 
 #include <string>

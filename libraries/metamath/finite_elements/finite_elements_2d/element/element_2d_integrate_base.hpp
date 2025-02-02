@@ -1,8 +1,9 @@
 #pragma once
 
-#include "finite_element_integrate_base.hpp"
 #include "element_2d_base.hpp"
-#include "quadrature_1d_base.hpp"
+
+#include <metamath/finite_elements/base/finite_element_integrate_base.hpp>
+#include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
 
 namespace metamath::finite_element {
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "logger.hpp"
+#include <logger/logger.hpp>
 #include "equilibrium_equation_2d.hpp"
 #include "influence_functions_2d.hpp"
 

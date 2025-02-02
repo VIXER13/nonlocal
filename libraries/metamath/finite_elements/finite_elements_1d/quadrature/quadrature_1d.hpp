@@ -1,6 +1,6 @@
 #pragma once
 
-#include "quadrature_1d_base.hpp"
+#include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
 
 namespace metamath::finite_element {
 

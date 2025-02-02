@@ -1,6 +1,7 @@
 #pragma once
 
-#include "expression.hpp"
+#include <metamath/symbolic/base/expression.hpp>
+
 #include <tuple>
 
 namespace metamath::symbolic {

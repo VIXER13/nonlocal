@@ -2,7 +2,8 @@
 
 #include "minus.hpp"
 #include "multiplies.hpp"
-#include "power_expression.hpp"
+
+#include <metamath/symbolic/functions/power_expression.hpp>
 
 namespace metamath::symbolic {
 

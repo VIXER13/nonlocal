@@ -1,6 +1,6 @@
 #pragma once
 
-#include "nonlocal_constants.hpp"
+#include <constants/nonlocal_constants.hpp>
 
 #include <algorithm>
 #include <array>

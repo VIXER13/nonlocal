@@ -1,7 +1,7 @@
 #pragma once
 
-#include "finite_element_base.hpp"
-#include "side_2d.hpp"
+#include <metamath/finite_elements/base/finite_element_base.hpp>
+#include <metamath/finite_elements/finite_elements_2d/geometry/side_2d.hpp>
 
 #include <array>
 

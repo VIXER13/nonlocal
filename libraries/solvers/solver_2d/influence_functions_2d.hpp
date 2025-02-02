@@ -1,7 +1,6 @@
 #pragma once
 
-#include "metamath.hpp"
-#include "logger.hpp"
+#include <metamath/metamath.hpp>
 
 namespace nonlocal::influence {
 

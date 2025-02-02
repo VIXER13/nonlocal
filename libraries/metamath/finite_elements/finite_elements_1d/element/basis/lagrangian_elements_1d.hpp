@@ -1,8 +1,8 @@
 #pragma once
 
-#include "symbolic_base.hpp"
-#include "geometry_1d.hpp"
-#include "uniform_partition.hpp"
+#include <metamath/finite_elements/finite_elements_1d/geometry/geometry_1d.hpp>
+#include <metamath/symbolic/utils/lagrangian_basis.hpp>
+#include <metamath/utils/uniform_partition.hpp>
 
 namespace metamath::finite_element {
 

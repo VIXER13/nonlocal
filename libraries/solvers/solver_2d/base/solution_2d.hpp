@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mesh_2d.hpp"
-#include "nonlocal_constants.hpp"
+#include <constants/nonlocal_constants.hpp>
 #include "../equation_parameters.hpp"
 
 namespace nonlocal {

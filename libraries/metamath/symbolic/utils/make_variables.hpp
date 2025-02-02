@@ -1,8 +1,8 @@
 #pragma once
 
-#include <tuple>
+#include <metamath/symbolic/base/variable.hpp>
 
-#include "variable.hpp"
+#include <tuple>
 
 namespace metamath::symbolic {
 

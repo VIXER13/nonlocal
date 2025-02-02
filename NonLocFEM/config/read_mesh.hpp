@@ -2,10 +2,11 @@
 
 #include "config_utils.hpp"
 
-#include "logger.hpp"
+#include <metamath/metamath.hpp>
+#include <logger/logger.hpp>
+
 #include "mesh_1d.hpp"
 #include "mesh_2d.hpp"
-#include "metamath.hpp"
 
 namespace nonlocal::config {
 

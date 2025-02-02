@@ -1,7 +1,8 @@
 #pragma once
 
-#include "multiplies.hpp"
 #include "sign_expression.hpp"
+
+#include <metamath/symbolic/base/multiplies.hpp>
 
 #include <cmath>
 

@@ -1,6 +1,6 @@
 #include "config_utils.hpp"
 
-#include "logger.hpp"
+#include <logger/logger.hpp>
 
 #include <iostream>
 #include <fstream>
