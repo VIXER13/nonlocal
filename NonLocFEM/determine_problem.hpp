@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/read_mechanical_boundary_conditions.hpp"
+#include "config/read_mechanical_parameters.hpp"
 #include "config/read_mesh.hpp"
 #include "config/read_thermal_boundary_conditions.hpp"
 #include "config/task_data.hpp"
@@ -100,13 +101,13 @@ std::optional<mechanical::mechanical_solution_2d<T>> mechanical_2d(
     using DP = _determine_problem;
     if (!DP::is_mechanical(problem))
         return std::nullopt;
-    const auto materials = config::mechanical_materials_2d<T>{config["materials"], "materials"};
     mesh->neighbours(find_neighbours(*mesh, config::read_search_radii<T>(config["materials"], "materials", "mechanical")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::MEMORY, !DP::Only_Local, DP::Symmetric);
     const auto boundaries_field = problem == config::problem_t::Mechanical ? "boundaries" : "mechanical_boundaries";
-    return mechanical::solve_mechanical_2d_problem<T, I>(mesh, materials,
-        config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
-        delta_temperature
+    mechanical::mechanical_parameters_2d<T> parameters = config::read_mechanical_parameters_2d<T>(config["materials"], "materials");
+    parameters.delta_temperature = delta_temperature;
+    return mechanical::solve_mechanical_2d_problem<T, I>(mesh, parameters,
+        config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field)
     );
 }
 

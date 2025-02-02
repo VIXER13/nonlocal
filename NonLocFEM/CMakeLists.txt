@@ -5,6 +5,7 @@ project(NonLocFEM)
 add_executable(NonLocFEM 
     main.cpp
     determine_problem.cpp
+    config/read_mechanical_parameters.cpp
     config/read_mesh.cpp
     config/read_model.cpp
     config/save_data.cpp

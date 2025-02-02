@@ -50,8 +50,10 @@ typename thermal::parameter_2d<T>::conductivity_variants read_conductivity_2d(co
             config[0].get<T>(), config[1].get<T>(),
             config[2].get<T>(), config[3].get<T>()
         };
-    throw std::domain_error{"The thermal conductivity should be either a number in the isotropic case, "
-                            "or an array of size 2 in the orthotropic case and size 4 in the anisotropic case."};
+    throw std::domain_error{"The thermal parameter \"" + path + "\" "
+                            "must be either a number in the isotropic case, "
+                            "or an array of size 2 in the orthotropic case, "
+                            "or an array of size 4 in the anisotropic case."};
 }
 
 template<std::floating_point T>
@@ -75,7 +77,7 @@ thermal::parameters_2d<T> read_thermal_parameters_2d(const nlohmann::json& confi
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_access_to_material = append_access_sign(path_with_access + name);
         const std::string model_field = get_model_field(material, path_with_access, "thermal");
-        auto& parameter = parameters[name] = {
+        parameters[name] = {
             .model = model_field.empty() ? model_parameters<2u, T>{} : read_model_2d<T>(material[model_field], path_with_access + model_field),
             .physical = read_thermal_coefficient_2d<T>(material["physical"], path_with_access + "physical")
         };

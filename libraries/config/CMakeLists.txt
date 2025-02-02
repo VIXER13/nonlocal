@@ -10,7 +10,6 @@ endif()
 link_libraries(${JSONCPP_LIBRARIES})
 add_library(config_lib STATIC 
     config_utils.cpp
-    materials_data.cpp
 )
 target_include_directories(config_lib PUBLIC 
     "." 
