@@ -4,7 +4,7 @@
 #include "config/read_thermal_boundary_conditions.hpp"
 #include "config/read_thermal_parameters.hpp"
 
-#include "problems_utils.hpp"
+#include "save_results.hpp"
 
 #include "thermal/stationary_heat_equation_solver_1d.hpp"
 #include "thermal/nonstationary_heat_equation_solver_1d.hpp"

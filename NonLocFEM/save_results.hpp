@@ -1,67 +1,65 @@
 #pragma once
 
-#include "config_utils.hpp"
+#include "config/config_utils.hpp"
 
-#include "influence_functions_2d.hpp"
-#include "nonlocal_config.hpp"
 #include "mesh_1d.hpp"
 #include "thermal/heat_equation_solution_2d.hpp"
 #include "mechanical/mechanical_solution_2d.hpp"
 
 namespace nonlocal {
 
-template<std::floating_point T>
-std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> get_influence(
-    const config::influence_data<T, 2>& data, const std::array<T, 2>& r) {
-    if (data.family == config::influence_family_t::CUSTOM)
-        throw std::domain_error{"Сustom influence functions are not currently supported."};
-    if (data.family == config::influence_family_t::CONSTANT) {
-        if (data.n == 1)
-            return influence::constant_2d<T, 1>{r};
-        if (data.n == 2)
-            return influence::constant_2d<T, 2>{r};
-        if (data.n == std::numeric_limits<size_t>::max())
-            return influence::constant_2d<T, std::numeric_limits<size_t>::max()>{r};
-        return influence::constant_2d_dynamic<T>{r, T(data.n)};
-    }
-    if (data.family == config::influence_family_t::POLYNOMIAL) {
-        if (data.n == 2 && data.p == 2 && data.q == 1)
-            return influence::polynomial_2d<T, 2, 1>{r};
-        if (data.n == std::numeric_limits<size_t>::max() && data.p == 1 && data.q == 1)
-            return influence::polynomial_2d<T, 1, 1, std::numeric_limits<size_t>::max()>{r};
-        return influence::polynomial_2d_dynamic<T>{r, T(data.p), T(data.q), T(data.n)};
-    }
-    if (data.family == config::influence_family_t::EXPONENTIAL) {
-        // q == 0 temporary condition. In future refactoring will be changed 
-        if (data.n == 1 && data.p == 2 && data.q == 0)
-            return influence::exponential_2d<T, 2, 1>{r, 0.5};
-        if (data.n == 2 && data.p == 2 && data.q == 0) 
-            return influence::exponential_2d<T, 2, 2>{r, 0.5};
-        if (data.n == 2 && data.p == 3 && data.q == 0) 
-            return influence::exponential_2d<T, 3, 2>{r, 0.5};
-        if (data.n == 2 && data.p == 5 && data.q == 0) 
-            return influence::exponential_2d<T, 5, 2>{r, 0.5};
-        if (data.n == 5 && data.p == 2 && data.q == 0)
-            return influence::exponential_2d<T, 2, 5>{r, 0.5};
-        if (data.n == std::numeric_limits<size_t>::max() && data.p == 2 && data.q == 0)
-            return influence::exponential_2d<T, 2, std::numeric_limits<size_t>::max()>{r, 0.5};
+// template<std::floating_point T>
+// std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> get_influence(
+//     const config::influence_data<T, 2>& data, const std::array<T, 2>& r) {
+//     if (data.family == config::influence_family_t::CUSTOM)
+//         throw std::domain_error{"Сustom influence functions are not currently supported."};
+//     if (data.family == config::influence_family_t::CONSTANT) {
+//         if (data.n == 1)
+//             return influence::constant_2d<T, 1>{r};
+//         if (data.n == 2)
+//             return influence::constant_2d<T, 2>{r};
+//         if (data.n == std::numeric_limits<size_t>::max())
+//             return influence::constant_2d<T, std::numeric_limits<size_t>::max()>{r};
+//         return influence::constant_2d_dynamic<T>{r, T(data.n)};
+//     }
+//     if (data.family == config::influence_family_t::POLYNOMIAL) {
+//         if (data.n == 2 && data.p == 2 && data.q == 1)
+//             return influence::polynomial_2d<T, 2, 1>{r};
+//         if (data.n == std::numeric_limits<size_t>::max() && data.p == 1 && data.q == 1)
+//             return influence::polynomial_2d<T, 1, 1, std::numeric_limits<size_t>::max()>{r};
+//         return influence::polynomial_2d_dynamic<T>{r, T(data.p), T(data.q), T(data.n)};
+//     }
+//     if (data.family == config::influence_family_t::EXPONENTIAL) {
+//         // q == 0 temporary condition. In future refactoring will be changed 
+//         if (data.n == 1 && data.p == 2 && data.q == 0)
+//             return influence::exponential_2d<T, 2, 1>{r, 0.5};
+//         if (data.n == 2 && data.p == 2 && data.q == 0) 
+//             return influence::exponential_2d<T, 2, 2>{r, 0.5};
+//         if (data.n == 2 && data.p == 3 && data.q == 0) 
+//             return influence::exponential_2d<T, 3, 2>{r, 0.5};
+//         if (data.n == 2 && data.p == 5 && data.q == 0) 
+//             return influence::exponential_2d<T, 5, 2>{r, 0.5};
+//         if (data.n == 5 && data.p == 2 && data.q == 0)
+//             return influence::exponential_2d<T, 2, 5>{r, 0.5};
+//         if (data.n == std::numeric_limits<size_t>::max() && data.p == 2 && data.q == 0)
+//             return influence::exponential_2d<T, 2, std::numeric_limits<size_t>::max()>{r, 0.5};
 
-        if (data.n == 2 && data.p == 2 && data.q == 1)
-            return influence::exponential_2d<T, 2>{r, T(data.q)};
-        if (data.n == 2 && data.p == 2 && data.q == 2) // q == 2 temporary condition. In future refactoring will be changed 
-            return influence::exponential_2d<T, 2>{r, 1.5};
-        if (data.n == 2 && data.p == 2 && data.q == 3)
-            return influence::exponential_2d<T, 2>{r, T(data.q)};
+//         if (data.n == 2 && data.p == 2 && data.q == 1)
+//             return influence::exponential_2d<T, 2>{r, T(data.q)};
+//         if (data.n == 2 && data.p == 2 && data.q == 2) // q == 2 temporary condition. In future refactoring will be changed 
+//             return influence::exponential_2d<T, 2>{r, 1.5};
+//         if (data.n == 2 && data.p == 2 && data.q == 3)
+//             return influence::exponential_2d<T, 2>{r, T(data.q)};
 
-        if (data.n == 2 && data.p == 1 && data.q == 1)
-            return influence::exponential_2d<T, 1>{r, T(data.q)};
-        if (data.n == 2 && data.p == 3 && data.q == 1)
-            return influence::exponential_2d<T, 3>{r, T(data.q)};
+//         if (data.n == 2 && data.p == 1 && data.q == 1)
+//             return influence::exponential_2d<T, 1>{r, T(data.q)};
+//         if (data.n == 2 && data.p == 3 && data.q == 1)
+//             return influence::exponential_2d<T, 3>{r, T(data.q)};
 
-        return influence::exponential_2d_dynamic<T>{r, T(data.p), T(data.q), T(data.n)};
-    }
-    throw std::domain_error{"Unsupported influence family."};
-}
+//         return influence::exponential_2d_dynamic<T>{r, T(data.p), T(data.q), T(data.n)};
+//     }
+//     throw std::domain_error{"Unsupported influence family."};
+// }
 
 template<std::floating_point T, std::integral I>
 void save_csv(const std::optional<thermal::heat_equation_solution_2d<T, I>>& thermal_solution,

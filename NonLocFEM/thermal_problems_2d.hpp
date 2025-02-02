@@ -1,6 +1,9 @@
 #pragma once
 
-#include "problems_utils.hpp"
+#include "save_results.hpp"
+
+#include "config/thermal_auxiliary_data.hpp"
+#include "config/time_data.hpp"
 
 #include "logger.hpp"
 #include "thermal/stationary_heat_equation_solver_2d.hpp"

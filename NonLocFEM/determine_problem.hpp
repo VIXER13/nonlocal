@@ -6,6 +6,8 @@
 #include "config/read_thermal_boundary_conditions.hpp"
 #include "config/task_data.hpp"
 #include "config/save_data.hpp"
+#include "config/time_data.hpp"
+#include "config/thermal_auxiliary_data.hpp"
 
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
