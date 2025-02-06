@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matrix_assembler_2d.hpp"
+#include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
 
 namespace nonlocal::thermal {
 

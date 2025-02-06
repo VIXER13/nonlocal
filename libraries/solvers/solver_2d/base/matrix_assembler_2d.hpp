@@ -1,12 +1,11 @@
 #pragma once
 
-#include "../solvers_utils.hpp"
-
 #include "shift_initializer.hpp"
 #include "matrix_index_initializer.hpp"
 #include "integrator.hpp"
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+#include <solvers/solvers_utils.hpp>
 
 #include <variant>
 #include <iostream>

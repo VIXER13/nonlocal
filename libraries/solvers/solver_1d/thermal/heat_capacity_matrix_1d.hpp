@@ -2,8 +2,8 @@
 
 #include "../../equation_parameters.hpp"
 
-#include "finite_element_matrix_1d.hpp"
-#include "thermal_parameters_1d.hpp"
+#include <solvers/solver_1d/base/finite_element_matrix_1d.hpp>
+#include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 
 namespace nonlocal::thermal {
 

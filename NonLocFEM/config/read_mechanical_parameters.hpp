@@ -2,7 +2,7 @@
 
 #include "read_model.hpp"
 
-#include "mechanical/mechanical_parameters_2d.hpp"
+#include <solvers/solver_2d/mechanical/mechanical_parameters_2d.hpp>
 
 #include <bitset>
 #include <optional>

@@ -2,7 +2,7 @@
 
 #include "finite_element_matrix.hpp"
 
-#include "indexator_base.hpp"
+#include <mesh/mesh_2d/indexator_base.hpp>
 
 #include <array>
 #include <vector>

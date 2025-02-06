@@ -2,8 +2,8 @@
 
 #include "config_utils.hpp"
 
-#include "mechanical/mechanical_boundary_conditions_2d.hpp"
 #include <logger/logger.hpp>
+#include <solvers/solver_2d/mechanical/mechanical_boundary_conditions_2d.hpp>
 
 namespace nonlocal::config {
 

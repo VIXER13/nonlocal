@@ -5,8 +5,8 @@
 #include <metamath/metamath.hpp>
 #include <logger/logger.hpp>
 
-#include "mesh_1d.hpp"
-#include "mesh_2d.hpp"
+#include <mesh/mesh_1d/mesh_1d.hpp>
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 namespace nonlocal::config {
 

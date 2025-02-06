@@ -1,6 +1,6 @@
 #pragma once
 
-#include "boundary_conditions_2d.hpp"
+#include <solvers/solver_2d/base/boundary_conditions_2d.hpp>
 
 #include <functional>
 

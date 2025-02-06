@@ -1,8 +1,7 @@
 #pragma once
 
 #include <logger/logger.hpp>
-#include "equilibrium_equation_2d.hpp"
-#include "influence_functions_2d.hpp"
+#include <solvers/solver_2d/mechanical/equilibrium_equation_2d.hpp>
 
 namespace nonlocal::mechanical {
     

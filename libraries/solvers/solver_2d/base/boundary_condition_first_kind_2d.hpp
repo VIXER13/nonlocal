@@ -3,7 +3,7 @@
 #include "boundary_conditions_2d.hpp"
 #include "solvers_utils.hpp"
 
-#include "mesh_2d.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>

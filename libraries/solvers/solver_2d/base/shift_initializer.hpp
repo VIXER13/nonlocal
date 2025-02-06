@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mesh_container_2d.hpp"
+#include <mesh/mesh_2d/mesh_container_2d.hpp>
 
 #include "matrix_indexator_base.hpp"
 #include "matrix_separator_base.hpp"

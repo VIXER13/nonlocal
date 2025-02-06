@@ -2,9 +2,9 @@
 
 #include "config/config_utils.hpp"
 
-#include "mesh_1d.hpp"
-#include "thermal/heat_equation_solution_2d.hpp"
-#include "mechanical/mechanical_solution_2d.hpp"
+#include <mesh/mesh_1d/mesh_1d.hpp>
+#include <solvers/solver_2d/mechanical/mechanical_solution_2d.hpp>
+#include <solvers/solver_2d/thermal/heat_equation_solution_2d.hpp>
 
 namespace nonlocal {
 

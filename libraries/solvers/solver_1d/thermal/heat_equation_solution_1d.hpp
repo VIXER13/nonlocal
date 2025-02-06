@@ -1,7 +1,7 @@
 #pragma once
 
-#include "solution_1d.hpp"
-#include "mesh_1d_utils.hpp"
+#include <mesh/mesh_1d/mesh_1d_utils.hpp>
+#include <solvers/solver_1d/base/solution_1d.hpp>
 
 namespace nonlocal::thermal {
 

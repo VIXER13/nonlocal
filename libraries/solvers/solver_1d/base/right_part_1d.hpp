@@ -1,6 +1,6 @@
 #pragma once
 
-#include "mesh_1d.hpp"
+#include <mesh/mesh_1d/mesh_1d.hpp>
 
 namespace nonlocal {
 

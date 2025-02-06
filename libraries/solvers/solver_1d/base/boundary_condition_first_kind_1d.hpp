@@ -1,6 +1,6 @@
 #pragma once
 
-#include "boundary_conditions_1d.hpp"
+#include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
 
 #include <ranges>
 #include <unordered_map>

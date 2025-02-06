@@ -1,15 +1,15 @@
 #pragma once
 
-#include "solvers_utils.hpp"
 #include "thermal_conductivity_matrix_2d.hpp"
-#include "thermal_boundary_conditions_2d.hpp"
-#include "boundary_condition_first_kind_2d.hpp"
-#include "boundary_condition_second_kind_2d.hpp"
 #include "convection_condition_2d.hpp"
-#include "right_part_2d.hpp"
+#include "thermal_boundary_conditions_2d.hpp"
 #include "heat_equation_solution_2d.hpp"
 
-#include "conjugate_gradient.hpp"
+#include <solvers/solvers_utils.hpp>
+#include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
+#include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
+#include <solvers/solver_2d/base/right_part_2d.hpp>
 
 #include <chrono>
 

@@ -1,9 +1,8 @@
 #pragma once
 
-#include "../solvers_utils.hpp"
-
-#include "mesh_1d.hpp"
 #include <logger/logger.hpp>
+#include <mesh/mesh_1d/mesh_1d.hpp>
+#include <solvers/solvers_utils.hpp>
 
 #include <Eigen/Sparse>
 

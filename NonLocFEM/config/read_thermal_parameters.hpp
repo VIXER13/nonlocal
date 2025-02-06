@@ -2,8 +2,8 @@
 
 #include "read_model.hpp"
 
-#include "thermal/thermal_parameters_1d.hpp"
-#include "thermal/thermal_parameters_2d.hpp"
+#include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
+#include <solvers/solver_2d/thermal/thermal_parameters_2d.hpp>
 
 namespace nonlocal::config {
 

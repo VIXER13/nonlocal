@@ -1,9 +1,10 @@
 #pragma once
 
 #include "config_utils.hpp"
-#include "../equation_parameters.hpp"
-#include "influence_functions_1d.hpp"
-#include "influence_functions_2d.hpp"
+
+#include <solvers/equation_parameters.hpp>
+#include <solvers/solver_1d/influence_functions_1d.hpp>
+#include <solvers/solver_2d/influence_functions_2d.hpp>
 
 namespace nonlocal::config {
 

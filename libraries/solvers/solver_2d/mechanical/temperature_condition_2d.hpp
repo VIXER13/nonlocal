@@ -1,6 +1,7 @@
 #pragma once
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+
 #include <Eigen/Dense>
 
 namespace nonlocal::mechanical {

@@ -6,10 +6,10 @@
 #include "config/time_data.hpp"
 
 #include <logger/logger.hpp>
-#include "thermal/stationary_heat_equation_solver_2d.hpp"
-#include "thermal/nonstationary_heat_equation_solver_2d.hpp"
-#include "cuthill_mckee.hpp"
-#include "find_neighbours.hpp"
+#include <mesh/mesh_2d/cuthill_mckee.hpp>
+#include <mesh/mesh_2d/find_neighbours.hpp>
+#include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
+#include <solvers/solver_2d/thermal/nonstationary_heat_equation_solver_2d.hpp>
 
 namespace nonlocal::thermal {
 

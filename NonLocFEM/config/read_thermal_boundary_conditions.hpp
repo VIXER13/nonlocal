@@ -2,8 +2,8 @@
 
 #include "config_utils.hpp"
 
-#include "thermal/thermal_boundary_conditions_1d.hpp"
-#include "thermal/thermal_boundary_conditions_2d.hpp"
+#include <solvers/solver_1d/thermal/thermal_boundary_conditions_1d.hpp>
+#include <solvers/solver_2d/thermal/thermal_boundary_conditions_2d.hpp>
 
 namespace nonlocal::config {
 

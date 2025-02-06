@@ -2,14 +2,14 @@
 
 #include "thermal_conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
-#include "right_part_2d.hpp"
-#include "boundary_condition_first_kind_2d.hpp"
-#include "boundary_condition_second_kind_2d.hpp"
 #include "convection_condition_2d.hpp"
 #include "radiation_condition_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
-#include "conjugate_gradient.hpp"
+#include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
+#include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
+#include <solvers/solver_2d/base/right_part_2d.hpp>
 
 namespace nonlocal::thermal {
 

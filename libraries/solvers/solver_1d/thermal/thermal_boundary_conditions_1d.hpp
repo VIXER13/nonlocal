@@ -1,7 +1,7 @@
 #pragma once
 
-#include "boundary_conditions_1d.hpp"
 #include <metamath/metamath.hpp>
+#include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
 
 namespace nonlocal::thermal {
 

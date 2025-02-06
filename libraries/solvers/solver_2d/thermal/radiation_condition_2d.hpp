@@ -1,7 +1,8 @@
 #pragma once
 
 #include "thermal_boundary_conditions_2d.hpp"
-#include "solvers_utils.hpp"
+
+#include <solvers/solvers_utils.hpp>
 
 #include <Eigen/Sparse>
 
