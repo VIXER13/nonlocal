@@ -2,7 +2,7 @@
 
 namespace nonlocal::config {
 
-std::optional<std::bitset<2>> read_null(const nlohmann::json& config, const std::string& path) {
+std::optional<std::bitset<2>> _mechanical_parameters_2d::read_null(const nlohmann::json& config, const std::string& path) {
     if (config.is_number())
         return std::nullopt;
     if (config.is_array() && config.size() == 2) {
@@ -16,9 +16,9 @@ std::optional<std::bitset<2>> read_null(const nlohmann::json& config, const std:
                             "or an array of size 2 in the orthotropic case."};
 }
 
-void check_null_combinations(const std::optional<std::bitset<2>> is_null_youngs_modulus,
-                             const std::optional<std::bitset<2>> is_null_poissons_ratio,
-                             const std::string& path) {
+void _mechanical_parameters_2d::check_null_combinations(const std::optional<std::bitset<2>> is_null_youngs_modulus,
+                                                        const std::optional<std::bitset<2>> is_null_poissons_ratio,
+                                                        const std::string& path) {
     if (is_null_youngs_modulus && !is_null_poissons_ratio || !is_null_youngs_modulus && is_null_poissons_ratio)
         throw std::domain_error{"youngs_modulus or poissons_ratio is incorrectly specified for material \"" + path + "\". "
                                 "For the isotropic case, both materials must be specified as a number, for the orthotropic case, as arrays of size 2."};

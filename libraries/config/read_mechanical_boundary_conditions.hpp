@@ -7,20 +7,35 @@
 
 namespace nonlocal::config {
 
-enum class mechanical_boundary_condition_t : uint8_t {
-    Undefined,
-    Displacement,
-    Pressure
+class _mechanical_boundary_conditions final {
+    enum class mechanical_boundary_condition_t : uint8_t {
+        Undefined,
+        Displacement,
+        Pressure
+    };
+
+    NLOHMANN_JSON_SERIALIZE_ENUM(mechanical_boundary_condition_t, {
+        {mechanical_boundary_condition_t::Undefined, nullptr},
+        {mechanical_boundary_condition_t::Displacement, "displacement"},
+        {mechanical_boundary_condition_t::Pressure, "pressure"}
+    })
+
+    template<std::floating_point T>
+    static std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path);
+
+    template<std::floating_point T>
+    static mechanical::mechanical_boundary_conditions_2d<T> read_mechanical_boundary_conditions_2d(const nlohmann::json& config, const std::string& path);
+
+    explicit _mechanical_boundary_conditions() noexcept = default;
+
+public:
+    template<std::floating_point T>
+    friend mechanical::mechanical_boundaries_conditions_2d<T> read_mechanical_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path);
 };
 
-NLOHMANN_JSON_SERIALIZE_ENUM(mechanical_boundary_condition_t, {
-    {mechanical_boundary_condition_t::Undefined, nullptr},
-    {mechanical_boundary_condition_t::Displacement, "displacement"},
-    {mechanical_boundary_condition_t::Pressure, "pressure"}
-})
-
 template<std::floating_point T>
-std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path) {
+std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> 
+_mechanical_boundary_conditions::read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path) {
     const bool has_pressure = config.contains("pressure");
     const bool has_displacement = config.contains("displacement");
     if ((has_pressure && has_displacement) || (!has_pressure && !has_displacement))
@@ -32,7 +47,8 @@ std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> read_mechanical
 }
 
 template<std::floating_point T>
-mechanical::mechanical_boundary_conditions_2d<T> read_mechanical_boundary_conditions_2d(const nlohmann::json& config, const std::string& path) {
+mechanical::mechanical_boundary_conditions_2d<T> 
+_mechanical_boundary_conditions::read_mechanical_boundary_conditions_2d(const nlohmann::json& config, const std::string& path) {
     static constexpr size_t Dimension = 2u;
     if (!config.is_array() || config.size() != Dimension)
         throw std::domain_error{"The dimension of the boundary condition \"" + path + "\" does not correspond to the dimension of the problem"};
@@ -52,7 +68,7 @@ mechanical::mechanical_boundaries_conditions_2d<T> read_mechanical_boundaries_co
     const std::string path_with_access = append_access_sign(path);
     mechanical::mechanical_boundaries_conditions_2d<T> boundaries_conditions;
     for(const auto& [name, conditions] : config.items())
-        boundaries_conditions[name] = read_mechanical_boundary_conditions_2d<T>(conditions, path_with_access + name);
+        boundaries_conditions[name] = _mechanical_boundary_conditions::read_mechanical_boundary_conditions_2d<T>(conditions, path_with_access + name);
     return boundaries_conditions;
 }
 

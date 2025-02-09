@@ -9,18 +9,42 @@
 
 namespace nonlocal::config {
 
-// return std::nullopt in isotropic case.
-// return std::bitset<2> in orthotropic case.
-// throw an error if parameter specified in wrong way.
-std::optional<std::bitset<2>> read_null(const nlohmann::json& config, const std::string& path);
+class _mechanical_parameters_2d final {
+    // return std::nullopt in isotropic case.
+    // return std::bitset<2> in orthotropic case.
+    // throw an error if parameter specified in wrong way.
+    static std::optional<std::bitset<2>> read_null(const nlohmann::json& config, const std::string& path);
 
-void check_null_combinations(const std::optional<std::bitset<2>> is_null_youngs_modulus,
-                             const std::optional<std::bitset<2>> is_null_poissons_ratio,
-                             const std::string& path);
+    static void check_null_combinations(const std::optional<std::bitset<2>> is_null_youngs_modulus,
+                                        const std::optional<std::bitset<2>> is_null_poissons_ratio,
+                                        const std::string& path);
+
+    template<std::floating_point T>
+    static std::array<T, 2> read_elastic_parameter(const nlohmann::json& config,
+                                                   const std::optional<std::bitset<2>> is_null_optional);
+    template<std::floating_point T>
+    static void calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
+                                             const std::bitset<2> is_null_youngs_modulus,
+                                             const std::bitset<2> is_null_poissons_ratio) noexcept;
+    template<std::floating_point T>
+    static bool check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) noexcept;
+    template<std::floating_point T>
+    static mechanical::parameter_2d<T> read_elastic_parameters(
+        const nlohmann::json& config,
+        const std::string& path_with_access,
+        const std::optional<std::bitset<2>> is_null_youngs_modulus,
+        const std::optional<std::bitset<2>> is_null_poissons_ratio);
+    template<std::floating_point T>
+    static mechanical::parameter_2d<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path);
+
+public:
+    template<std::floating_point T>
+    friend mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path);
+};
 
 template<std::floating_point T>
-std::array<T, 2> read_elastic_parameter(const nlohmann::json& config,
-                                        const std::optional<std::bitset<2>> is_null_optional) {
+std::array<T, 2> _mechanical_parameters_2d::read_elastic_parameter(const nlohmann::json& config,
+                                                                   const std::optional<std::bitset<2>> is_null_optional) {
     std::array<T, 2> parameter;
     if (!is_null_optional)
         parameter.fill(config.get<T>());
@@ -33,9 +57,9 @@ std::array<T, 2> read_elastic_parameter(const nlohmann::json& config,
 }
 
 template<std::floating_point T>
-void calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
-                                  const std::bitset<2> is_null_youngs_modulus,
-                                  const std::bitset<2> is_null_poissons_ratio) noexcept {
+void _mechanical_parameters_2d::calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
+                                                             const std::bitset<2> is_null_youngs_modulus,
+                                                             const std::bitset<2> is_null_poissons_ratio) noexcept {
     // youngs_modulus[1] * poissons_ratio[0] == Ey * nuxy == Ex * nuyx == youngs_modulus[0] * poissons_ratio[1]
     auto& youngs_modulus = parameters.youngs_modulus;
     auto& poissons_ratio = parameters.poissons_ratio;
@@ -54,7 +78,7 @@ void calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
 }
 
 template<std::floating_point T>
-bool check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) noexcept {
+bool _mechanical_parameters_2d::check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) noexcept {
     for(const size_t i : std::ranges::iota_view{0u, 2u}) {
         if (std::isinf(parameters.poissons_ratio[i]) || std::isinf(parameters.youngs_modulus[i]))
             return false;
@@ -70,9 +94,11 @@ bool check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) 
 }
 
 template<std::floating_point T>
-mechanical::parameter_2d<T> read_elastic_parameters(const nlohmann::json& config, const std::string& path_with_access,
-                                                    const std::optional<std::bitset<2>> is_null_youngs_modulus,
-                                                    const std::optional<std::bitset<2>> is_null_poissons_ratio) {
+mechanical::parameter_2d<T> _mechanical_parameters_2d::read_elastic_parameters(
+    const nlohmann::json& config,
+    const std::string& path_with_access,
+    const std::optional<std::bitset<2>> is_null_youngs_modulus,
+    const std::optional<std::bitset<2>> is_null_poissons_ratio) {
     mechanical::parameter_2d<T> parameters;
     parameters.thermal_expansion = config.value("thermal_expansion", T{0});
     parameters.youngs_modulus = read_elastic_parameter<T>(config["youngs_modulus"], is_null_youngs_modulus);
@@ -86,7 +112,7 @@ mechanical::parameter_2d<T> read_elastic_parameters(const nlohmann::json& config
 }
 
 template<std::floating_point T>
-mechanical::parameter_2d<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path) {
+mechanical::parameter_2d<T> _mechanical_parameters_2d::read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, { "youngs_modulus", "poissons_ratio" }, path);
     check_optional_fields(config, { "thermal_expansion" }, path);
@@ -110,10 +136,10 @@ mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nloh
     mechanical::mechanical_parameters_2d<T> parameters;
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_access_to_material = append_access_sign(path_with_access + name);
-        const std::string model_field = get_model_field(material, path_with_access, "thermal");
+        const std::string model_field = get_model_field(material, path_with_access, "mechanical");
         parameters.materials[name] = {
             .model = model_field.empty() ? model_parameters<2u, T>{} : read_model_2d<T>(material[model_field], path_with_access + model_field),
-            .physical = read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical")
+            .physical = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical")
         };
     }
     return parameters;

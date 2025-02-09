@@ -3,6 +3,8 @@
 #include "elements_set.hpp"
 #include "mesh_parser.hpp"
 
+#include <logger/logger.hpp>
+
 #include <filesystem>
 #include <fstream>
 #include <ranges>

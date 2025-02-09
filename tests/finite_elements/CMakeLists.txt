@@ -18,7 +18,7 @@ add_library(finite_elements_test_lib OBJECT
 )
 
 target_include_directories(finite_elements_test_lib PUBLIC 
-    "."
+    ${LIBRARIES_DIR}
     ${INCLUDES}
 )
 target_link_libraries(finite_elements_test_lib

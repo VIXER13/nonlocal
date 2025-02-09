@@ -1,11 +1,12 @@
 #pragma once
 
-#include "config/read_mesh.hpp"
-#include "config/read_thermal_boundary_conditions.hpp"
-#include "config/read_thermal_parameters.hpp"
-
 #include "save_results.hpp"
 
+#include <config/thermal_auxiliary_data.hpp>
+#include <config/time_data.hpp>
+#include <config/read_mesh.hpp>
+#include <config/read_thermal_boundary_conditions.hpp>
+#include <config/read_thermal_parameters.hpp>
 #include <solvers/solver_1d/thermal/stationary_heat_equation_solver_1d.hpp>
 #include <solvers/solver_1d/thermal/nonstationary_heat_equation_solver_1d.hpp>
 

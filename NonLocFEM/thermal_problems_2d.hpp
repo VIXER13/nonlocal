@@ -2,9 +2,8 @@
 
 #include "save_results.hpp"
 
-#include "config/thermal_auxiliary_data.hpp"
-#include "config/time_data.hpp"
-
+#include <config/thermal_auxiliary_data.hpp>
+#include <config/time_data.hpp>
 #include <logger/logger.hpp>
 #include <mesh/mesh_2d/cuthill_mckee.hpp>
 #include <mesh/mesh_2d/find_neighbours.hpp>

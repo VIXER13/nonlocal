@@ -1,0 +1,13 @@
+{
+    "model_with_prefix": {
+        "some_prefix_model": {}
+    },
+    "model_without_prefix": {
+        "model": {}
+    },
+    "model_with_and_without_prefix": {
+        "some_prefix_model": {},
+        "model": {}
+    },
+    "no_model": {}
+}

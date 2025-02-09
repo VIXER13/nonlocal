@@ -40,8 +40,8 @@ void dump_json(const nlohmann::json& value, const std::filesystem::path& path, c
 
 std::string append_access_sign(std::string path, const std::optional<size_t> index) {
     using namespace std::literals;
-    return path += path.empty() ? ""s :
-                   index        ? '[' + std::to_string(*index) + ']' : "."s;
+    return path += index ? '[' + std::to_string(*index) + ']' :
+                   path.empty() ? ""s : "."s;
 }
 
 void check_required_fields(const nlohmann::json& value, const std::vector<std::string>& required, const std::string& path) {
