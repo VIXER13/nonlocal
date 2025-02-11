@@ -17,6 +17,8 @@ class _read_model final {
     template<std::floating_point T, size_t Dimension>
     static auto read_nonlocal_radius(const nlohmann::json& config, const std::string& path);
 
+    explicit _read_model() noexcept = default;
+
 public:
     template<std::floating_point T>
     friend model_parameters<1u, T> read_model_1d(const nlohmann::json& config, const std::string& path);

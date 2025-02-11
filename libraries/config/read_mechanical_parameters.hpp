@@ -37,6 +37,8 @@ class _mechanical_parameters_2d final {
     template<std::floating_point T>
     static mechanical::parameter_2d<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path);
 
+    explicit _mechanical_parameters_2d() noexcept = default;
+
 public:
     template<std::floating_point T>
     friend mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path);

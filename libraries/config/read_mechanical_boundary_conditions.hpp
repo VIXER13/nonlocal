@@ -5,21 +5,11 @@
 #include <logger/logger.hpp>
 #include <solvers/solver_2d/mechanical/mechanical_boundary_conditions_2d.hpp>
 
+#include <iostream>
+
 namespace nonlocal::config {
 
 class _mechanical_boundary_conditions final {
-    enum class mechanical_boundary_condition_t : uint8_t {
-        Undefined,
-        Displacement,
-        Pressure
-    };
-
-    NLOHMANN_JSON_SERIALIZE_ENUM(mechanical_boundary_condition_t, {
-        {mechanical_boundary_condition_t::Undefined, nullptr},
-        {mechanical_boundary_condition_t::Displacement, "displacement"},
-        {mechanical_boundary_condition_t::Pressure, "pressure"}
-    })
-
     template<std::floating_point T>
     static std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path);
 

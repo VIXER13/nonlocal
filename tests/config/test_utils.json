@@ -1,4 +1,9 @@
 {
+    "test_required_fields": {
+        "first": null,
+        "second": null
+    },
+
     "model_with_prefix": {
         "some_prefix_model": {}
     },
