@@ -2,6 +2,7 @@
 
 #include <config/read_mechanical_boundary_conditions.hpp>
 #include <config/read_thermal_boundary_conditions.hpp>
+#include <config/read_thermal_parameters.hpp>
 #include <config/read_mesh.hpp>
 #include <config/read_model.hpp>
 
@@ -26,7 +27,7 @@ const suite<"config_exceptions"> _ = [] {
     using T = double;
     const nlohmann::json config = nlohmann::json::parse(test_exceptions_json_data);
 
-    "read_model_1d"_test = [&config]{
+    "read_model_1d"_test = [&config] {
         expect_throws(read_model_1d<T>, config, "model_1d_local_weight_is_missed_fail");
         expect_throws(read_model_1d<T>, config, "model_1d_nonlocal_radius_is_missed_fail");
         expect_throws(read_model_1d<T>, config, "model_1d_local_weight_is_negative_fail");
@@ -36,7 +37,7 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(read_model_1d<T>, config, "model_1d_ok");
     };
 
-    "read_model_2d"_test = [&config]{
+    "read_model_2d"_test = [&config] {
         expect_throws(read_model_2d<T>, config, "model_2d_local_weight_is_missed_fail");
         expect_throws(read_model_2d<T>, config, "model_2d_nonlocal_radius_is_missed_fail");
         expect_throws(read_model_2d<T>, config, "model_2d_nonlocal_radius_wrong_dimension_fail");
@@ -49,7 +50,19 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(read_model_2d<T>, config, "model_2d_two_radii_ok");
     };
 
-    "read_thermal_boundaries_conditions_1d"_test = [&config]{
+    "thermal_parameters_1d"_test = [&config] {
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_not_array_fail");
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_missed_physical_fail");
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_missed_conductivity_fail");
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_missed_negative_conductivity_fail");
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_missed_negative_capacity_fail");
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_missed_negative_density_fail");
+        expect_throws(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_missed_negative_relaxation_time_fail");
+        expect_nothrows(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_ok");
+        expect_nothrows(read_thermal_parameters_1d<T>, config, "thermal_parameters_1d_full_ok");
+    };
+
+    "read_thermal_boundaries_conditions_1d"_test = [&config] {
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_empty_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_missed_left_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_missed_right_fail");
@@ -70,7 +83,7 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_ok");
     };
 
-    "read_thermal_boundaries_conditions_2d"_test = [&config]{
+    "read_thermal_boundaries_conditions_2d"_test = [&config] {
         expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_empty_fail");
         expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_missed_left_fail");
         expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_missed_right_fail");
@@ -91,7 +104,7 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_combined_ok");
     };
 
-    "read_mechanical_boundaries_conditions_2d"_test = [&config]{
+    "read_mechanical_boundaries_conditions_2d"_test = [&config] {
         expect_nothrows(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_empty_ok");
         expect_throws(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_empty_condition_fail");
         expect_throws(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_wrong_dimension_1_fail");

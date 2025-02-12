@@ -65,6 +65,65 @@
         "nonlocal_radius": [1, 2]
     },
 
+    "thermal_parameters_1d_not_array_fail": {},
+    "thermal_parameters_1d_missed_physical_fail": [
+        {
+            "model": {
+                "nonlocal_radius": 0.1,
+                "local_weight": 0.5
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_conductivity_fail": [
+        {
+            "physical": {
+                "capacity": 1,
+                "density": 1,
+                "relaxation_time": 0
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_negative_conductivity_fail": [
+        { "physical": { "conductivity": -0.01 } }
+    ],
+    "thermal_parameters_1d_missed_negative_capacity_fail": [
+        { 
+            "physical": { 
+                "conductivity": 1,
+                "capacity": -0.01
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_negative_density_fail": [
+        { 
+            "physical": { 
+                "conductivity": 1,
+                "density": -0.01
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_negative_relaxation_time_fail": [
+        { 
+            "physical": { 
+                "conductivity": 1,
+                "relaxation_time": -0.01
+            }
+        }
+    ],
+    "thermal_parameters_1d_ok": [
+        { "physical": { "conductivity": 1 } }
+    ],
+    "thermal_parameters_1d_full_ok": [
+        { 
+            "physical": {
+                "conductivity": 1,
+                "capacity": 2,
+                "density": 3,
+                "relaxation_time": 4
+            } 
+        }
+    ],
+
     "thermal_boundaries_conditions_empty_fail": {},
     "thermal_boundaries_conditions_missed_left_fail": {
         "right": {

@@ -22,18 +22,22 @@ class _mechanical_parameters_2d final {
     template<std::floating_point T>
     static std::array<T, 2> read_elastic_parameter(const nlohmann::json& config,
                                                    const std::optional<std::bitset<2>> is_null_optional);
+                                                   
     template<std::floating_point T>
     static void calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
                                              const std::bitset<2> is_null_youngs_modulus,
                                              const std::bitset<2> is_null_poissons_ratio) noexcept;
+
     template<std::floating_point T>
     static bool check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) noexcept;
+
     template<std::floating_point T>
     static mechanical::parameter_2d<T> read_elastic_parameters(
         const nlohmann::json& config,
         const std::string& path_with_access,
         const std::optional<std::bitset<2>> is_null_youngs_modulus,
         const std::optional<std::bitset<2>> is_null_poissons_ratio);
+
     template<std::floating_point T>
     static mechanical::parameter_2d<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path);
 
