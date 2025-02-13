@@ -35,11 +35,6 @@
                 "conductivity": 1.0,
                 "capacity": 1.0,
                 "density": 1.0
-            },
-            "model": {
-                "local_weight": 1.0,
-                "nonlocal_radius": 0,
-                "search_radius": 0
             }
         },
         "Right_Material": {

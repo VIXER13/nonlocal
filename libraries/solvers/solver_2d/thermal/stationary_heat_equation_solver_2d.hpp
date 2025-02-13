@@ -1,6 +1,6 @@
 #pragma once
 
-#include "thermal_conductivity_matrix_2d.hpp"
+#include "conductivity_matrix_2d.hpp"
 #include "convection_condition_2d.hpp"
 #include "thermal_boundary_conditions_2d.hpp"
 #include "heat_equation_solution_2d.hpp"
@@ -34,9 +34,10 @@ bool is_neumann_problem(const thermal_boundaries_conditions_2d<T>& boundaries_co
 
 template<class T>
 bool is_nonlinear_problem(const parameters_2d<T>& parameters) {
-    return std::any_of(parameters.begin(), parameters.end(), [](const auto& parameter) {
-        return parameter.second.physical->type != coefficients_t::CONSTANTS;
-    });
+    return false;
+    // return std::any_of(parameters.begin(), parameters.end(), [](const auto& parameter) {
+    //     return parameter.second.physical->type != coefficients_t::CONSTANTS;
+    // });
 }
 
 template<class T>
@@ -69,7 +70,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     }
 
     logger::info() << "Original matrix" << std::endl;
-    thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
+    conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
     conductivity.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
     convection_condition_2d(conductivity.matrix().inner(), *mesh, boundaries_conditions);
     if (!is_neumann)
@@ -78,7 +79,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature;
     if (is_symmetric) {
         logger::info() << "Local matrix" << std::endl;
-        thermal_conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
+        conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
         conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
         conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
         slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};

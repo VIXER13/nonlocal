@@ -4,7 +4,7 @@ project(heat_equation_solver_2d)
 add_library(heat_equation_solver_2d_lib INTERFACE)
 target_sources(heat_equation_solver_2d_lib INTERFACE
     heat_equation_solution_2d.hpp
-    thermal_conductivity_matrix_2d.hpp
+    conductivity_matrix_2d.hpp
     heat_capacity_matrix_2d.hpp
     convection_condition_2d.hpp
     stationary_heat_equation_solver_2d.hpp

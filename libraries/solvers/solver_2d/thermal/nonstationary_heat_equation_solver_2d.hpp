@@ -1,6 +1,6 @@
 #pragma once
 
-#include "thermal_conductivity_matrix_2d.hpp"
+#include "conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
 #include "convection_condition_2d.hpp"
 #include "radiation_condition_2d.hpp"
@@ -19,7 +19,7 @@ class nonstationary_heat_equation_solver_2d final {
 
     std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     heat_capacity_matrix_2d<T, I, Matrix_Index> _capacity;
-    thermal_conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
+    conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _conductivity_initial_matrix_inner;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
