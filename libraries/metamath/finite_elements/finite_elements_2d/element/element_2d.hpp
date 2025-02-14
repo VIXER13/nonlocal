@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_HPP
-#define FINITE_ELEMENT_2D_HPP
+#pragma once
 
 #include "element_2d_base.hpp"
 #include "derivative_element_basis_2d.hpp"
@@ -26,5 +25,3 @@ public:
 };
 
 }
-
-#endif

@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_RIGHT_PART_2D_HPP
-#define NONLOCAL_RIGHT_PART_2D_HPP
+#pragma once
 
-#include "mesh_2d.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -36,5 +35,3 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
 }
 
 }
-
-#endif

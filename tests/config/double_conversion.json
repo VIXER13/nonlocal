@@ -13,11 +13,6 @@
         "field3": "name3",
         "precision": 25
     },
-    
-    "mesh_1d": {
-        "element_order": "qubic",
-        "quadrature_order": "quadratic"
-    },
 
     "mesh_2d": {
         "path": "path/to/mesh.su2"
@@ -28,18 +23,6 @@
         "initial_time": -2.0,
         "steps_count": 123,
         "save_frequency": 17
-    },
-
-    "boundaries_conditions_1d": {
-        "right": "mock",
-        "left": 42
-    },
-
-    "boundaries_conditions_2d": {
-        "right": "mock",
-        "left": 42,
-        "up": 3.0,
-        "down": false
     },
 
     "model_1d": {
@@ -93,14 +76,6 @@
                 "n": 5
             }
         }
-    },
-
-    "thermal_boundary_condition": {
-        "kind": "combined",
-        "temperature": 1.0,
-        "flux": 2.0,
-        "heat_transfer": 3.0,
-        "emissivity": 4.0
     },
 
     "thermal_auxiliary": {

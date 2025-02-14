@@ -127,8 +127,7 @@ neighbours_t<T, I> find_neighbours(const mesh_2d<T, I>& mesh, const std::unorder
     const std::unordered_map<std::string, T> radii = search_radii(mesh, nonlocal_radii, centers, add_diam);
     for(const auto& [group, radius] : radii) {
         if (radius <= T{0}) {
-            logger::get().log(logger::log_level::WARNING)
-                << "The search radius for the \"" << group << "\" group turned out to be less than 0" << std::endl;
+            logger::warning() << "The search radius for the \"" << group << "\" group turned out to be less than 0" << std::endl;
             continue;
         }
         const auto elements_range = mesh.container().elements(group);

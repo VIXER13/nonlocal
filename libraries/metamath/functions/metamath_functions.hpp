@@ -1,7 +1,4 @@
-#ifndef METAMATH_FUNCTIONS_HPP
-#define METAMATH_FUNCTIONS_HPP
+#pragma once
 
 #include "norm.hpp"
 #include "factorial.hpp"
-
-#endif

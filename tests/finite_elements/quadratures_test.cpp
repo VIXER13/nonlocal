@@ -1,4 +1,4 @@
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
 
 #include <boost/ut.hpp>
 

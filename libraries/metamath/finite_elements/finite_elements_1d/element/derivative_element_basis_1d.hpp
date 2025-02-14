@@ -1,9 +1,8 @@
-#ifndef FINITE_ELEMENT_DERIVATIVE_BASIS_1D_HPP
-#define FINITE_ELEMENT_DERIVATIVE_BASIS_1D_HPP
+#pragma once
 
-#include "derivative.hpp"
-#include "to_function.hpp"
-#include "simplify.hpp"
+#include <metamath/symbolic/utils/derivative.hpp>
+#include <metamath/symbolic/utils/to_function.hpp>
+#include <metamath/symbolic/utils/simplify.hpp>
 
 namespace metamath::finite_element {
 
@@ -27,5 +26,3 @@ protected:
 };
 
 }
-
-#endif

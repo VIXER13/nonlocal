@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_THERMAL_BOUNDARY_CONDITION_2D_HPP
-#define NONLOCAL_THERMAL_BOUNDARY_CONDITION_2D_HPP
+#pragma once
 
-#include "boundary_conditions_2d.hpp"
+#include <solvers/solver_2d/base/boundary_conditions_2d.hpp>
 
 #include <functional>
 
@@ -105,5 +104,3 @@ template<class T>
 using thermal_boundaries_conditions_2d = boundaries_conditions_2d<T, physics_t::THERMAL, 1>;
 
 }
-
-#endif

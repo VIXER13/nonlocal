@@ -1,8 +1,7 @@
-#ifndef SYMBOLIC_SIGN_EXPRESSION_HPP
-#define SYMBOLIC_SIGN_EXPRESSION_HPP
+#pragma once
 
-#include "integral_constant.hpp"
-#include "unary_expression.hpp"
+#include <metamath/symbolic/base/integral_constant.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 namespace metamath::symbolic {
 
@@ -33,5 +32,3 @@ constexpr sign_expression<E> sign(const expression<E>& e) {
 }
 
 }
-
-#endif

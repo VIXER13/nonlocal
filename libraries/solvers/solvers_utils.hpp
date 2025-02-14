@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SOLVERS_UTILS_HPP
-#define NONLOCAL_SOLVERS_UTILS_HPP
+#pragma once
 
 #include <Eigen/Sparse>
 
@@ -33,5 +32,3 @@ void sort_indices(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& K) {
 }
 
 }
-
-#endif

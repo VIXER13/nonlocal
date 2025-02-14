@@ -1,7 +1,7 @@
-#ifndef NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
-#define NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
+#pragma once
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+
 #include <Eigen/Dense>
 
 namespace nonlocal::mechanical {
@@ -97,5 +97,3 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 }
 
 }
-
-#endif

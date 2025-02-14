@@ -1,9 +1,8 @@
-#ifndef NONLOCAL_SOLVERS_2D_UTILS_HPP
-#define NONLOCAL_SOLVERS_2D_UTILS_HPP
+#pragma once
 
 #include "boundary_conditions_2d.hpp"
 
-#include "mesh_2d.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 namespace nonlocal::utils {
 
@@ -41,5 +40,3 @@ std::vector<bool> inner_nodes(const mesh::mesh_container_2d<T, I>& mesh,
 }
 
 }
-
-#endif

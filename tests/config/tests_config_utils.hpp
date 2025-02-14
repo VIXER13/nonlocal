@@ -1,5 +1,4 @@
-#ifndef UNIT_TESTS_CONFIG_UTILS_HPP
-#define UNIT_TESTS_CONFIG_UTILS_HPP
+#pragma once
 
 #include <nlohmann/json.hpp>
 
@@ -22,5 +21,3 @@ public:
 };
 
 }
-
-#endif

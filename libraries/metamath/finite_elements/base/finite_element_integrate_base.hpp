@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_INTEGRATE_BASE_HPP
-#define FINITE_ELEMENT_INTEGRATE_BASE_HPP
+#pragma once
 
 #include <vector>
 
@@ -29,5 +28,3 @@ public:
 };
 
 }
-
-#endif

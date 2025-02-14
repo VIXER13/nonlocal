@@ -1,7 +1,6 @@
-#ifndef FINITE_ELEMENT_QUADRATURE_1D_HPP
-#define FINITE_ELEMENT_QUADRATURE_1D_HPP
+#pragma once
 
-#include "quadrature_1d_base.hpp"
+#include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
 
 namespace metamath::finite_element {
 
@@ -26,5 +25,3 @@ public:
 };
 
 }
-
-#endif

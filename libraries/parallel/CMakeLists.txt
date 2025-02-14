@@ -16,6 +16,7 @@ target_include_directories(parallel_lib PUBLIC "."
     ${MPI_C_INCLUDE_DIRS} 
     ${MPI_CXX_INCLUDE_DIRS}
     ${INCLUDES}
+    ${LIBRARIES_DIR}
 )
 target_link_libraries(parallel_lib 
     ${MPI_C_LIBRARIES} 

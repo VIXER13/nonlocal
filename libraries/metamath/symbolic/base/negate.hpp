@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_NEGATE_HPP
-#define SYMBOLIC_NEGATE_HPP
+#pragma once
 
 #include "constant.hpp"
 #include "unary_expression.hpp"
@@ -46,5 +45,3 @@ constexpr auto simplify(const negate<negate<E>>& e) {
 }
 
 }
-
-#endif

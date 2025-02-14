@@ -1,5 +1,4 @@
-#ifndef METAMATH_FIXED_MATRIX_HPP
-#define METAMATH_FIXED_MATRIX_HPP
+#pragma once
 
 #include <array>
 #include <ranges>
@@ -28,5 +27,3 @@ square_matrix<T, N> make_square_matrix(const std::array<T, N * N>& arr) {
 }
 
 }
-
-#endif

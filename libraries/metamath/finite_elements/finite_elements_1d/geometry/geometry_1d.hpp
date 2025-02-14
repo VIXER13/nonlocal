@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_GEOMETRY_1D_HPP
-#define FINITE_ELEMENT_GEOMETRY_1D_HPP
+#pragma once
 
 #include "geometry_1d_base.hpp"
 
@@ -19,5 +18,3 @@ public:
 };
 
 }
-
-#endif

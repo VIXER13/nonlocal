@@ -1,8 +1,7 @@
-#ifndef FINITE_ELEMENT_QUADRATURE_BASE_1D_HPP
-#define FINITE_ELEMENT_QUADRATURE_BASE_1D_HPP
+#pragma once
 
-#include "quadrature_base.hpp"
-#include "side_1d.hpp"
+#include <metamath/finite_elements/base/quadrature_base.hpp>
+#include <metamath/finite_elements/finite_elements_1d/geometry/side_1d.hpp>
 
 #include <array>
 #include <memory>
@@ -19,5 +18,3 @@ public:
 };
 
 }
-
-#endif

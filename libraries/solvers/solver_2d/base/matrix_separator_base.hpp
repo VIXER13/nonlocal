@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MATRIX_SEPARATOR_HPP
-#define NONLOCAL_MATRIX_SEPARATOR_HPP
+#pragma once
 
 #include "finite_element_matrix.hpp"
 
@@ -59,5 +58,3 @@ matrix_part matrix_separator_base<T, I>::part(const size_t row, const size_t col
 }
 
 }
-
-#endif

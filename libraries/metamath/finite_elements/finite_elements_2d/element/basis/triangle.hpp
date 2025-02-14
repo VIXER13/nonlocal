@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_BASIS_TRIANGLE_HPP
-#define FINITE_ELEMENT_2D_BASIS_TRIANGLE_HPP
+#pragma once
 
 #include "barycentric.hpp"
 
@@ -131,5 +130,3 @@ protected:
 };
 
 }
-
-#endif

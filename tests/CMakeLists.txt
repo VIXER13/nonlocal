@@ -10,7 +10,7 @@ add_subdirectory(parallel)
 add_subdirectory(nonstationary_thermal_1d)
 
 add_executable(unit_tests nonlocal_tests.cpp)
-target_include_directories(unit_tests PUBLIC ".")
+target_include_directories(unit_tests PUBLIC ${LIBRARIES_DIR})
 target_link_libraries(unit_tests
     finite_elements_test_lib
     parallel_test_lib

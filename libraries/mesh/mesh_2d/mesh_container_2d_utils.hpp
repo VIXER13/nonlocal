@@ -2,7 +2,7 @@
 
 #include "su2_parser.hpp"
 
-#include "nonlocal_constants.hpp"
+#include <constants/nonlocal_constants.hpp>
 
 namespace nonlocal::mesh::utils {
 

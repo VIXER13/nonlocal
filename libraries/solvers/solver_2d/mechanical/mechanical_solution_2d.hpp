@@ -1,9 +1,9 @@
 #pragma once
 
-#include "solution_2d.hpp"
 #include "mechanical_parameters_2d.hpp"
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+#include <solvers/solver_2d/base/solution_2d.hpp>
 
 namespace nonlocal::mechanical {
 

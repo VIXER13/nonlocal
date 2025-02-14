@@ -1,8 +1,8 @@
 #pragma once
 
-#include "mesh_2d.hpp"
-#include "nonlocal_constants.hpp"
-#include "../equation_parameters.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
+#include <constants/nonlocal_constants.hpp>
+#include <solvers/equation_parameters.hpp>
 
 namespace nonlocal {
 

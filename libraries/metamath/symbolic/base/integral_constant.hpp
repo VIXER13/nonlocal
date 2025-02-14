@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_INTEGRAL_CONSTANT_HPP
-#define SYMBOLIC_INTEGRAL_CONSTANT_HPP
+#pragma once
 
 #include "expression.hpp"
 
@@ -29,5 +28,3 @@ constexpr integral_constant<N> simplify(const integral_constant<N>) noexcept {
 }
 
 }
-
-#endif

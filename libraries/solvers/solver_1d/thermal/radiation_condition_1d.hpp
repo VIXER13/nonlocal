@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_RADIATION_CONDITION_1D_HPP
-#define NONLOCAL_RADIATION_CONDITION_1D_HPP
+#pragma once
 
 #include "thermal_boundary_conditions_1d.hpp"
 #include <Eigen/Sparse>
@@ -34,5 +33,3 @@ void radiation_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
 }
 
 }
-
-#endif

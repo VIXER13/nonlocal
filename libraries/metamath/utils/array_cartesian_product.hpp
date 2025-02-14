@@ -1,5 +1,4 @@
-#ifndef METAMATH_ARRAY_CARTESIAN_PRODUCT_HPP
-#define METAMATH_ARRAY_CARTESIAN_PRODUCT_HPP
+#pragma once
 
 #include "array_concatenation.hpp"
 
@@ -68,5 +67,3 @@ constexpr std::array<T, N> cartesian_product(const std::array<T, N> first) {
 }
 
 }
-
-#endif

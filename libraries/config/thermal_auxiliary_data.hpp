@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_THERMAL_AUXILIARY_DATA_HPP
-#define NONLOCAL_CONFIG_THERMAL_AUXILIARY_DATA_HPP
+#pragma once
 
 #include "config_utils.hpp"
 
@@ -29,5 +28,3 @@ struct thermal_auxiliary_data final {
 };
 
 }
-
-#endif

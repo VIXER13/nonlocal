@@ -1,5 +1,4 @@
-#ifndef METAMATH_NORM_HPP
-#define METAMATH_NORM_HPP
+#pragma once
 
 #include "power.hpp"
 #include "operators.hpp"
@@ -98,5 +97,3 @@ T distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::arra
 }
 
 }
-
-#endif

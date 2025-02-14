@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_RUNNER_TYPES_HPP
-#define NONLOCAL_MESH_RUNNER_TYPES_HPP
+#pragma once
 
 #include <Eigen/Sparse>
 
@@ -33,5 +32,3 @@ public:
 };
 
 }
-
-#endif

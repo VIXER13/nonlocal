@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_MINUS_HPP
-#define SYMBOLIC_MINUS_HPP
+#pragma once
 
 #include "binary_expression.hpp"
 #include "constant.hpp"
@@ -79,5 +78,3 @@ constexpr auto simplify(const minus<E, integral_constant<N>>& p) noexcept {
 }
 
 }
-
-#endif

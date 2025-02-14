@@ -1,8 +1,7 @@
-#ifndef SYMBOLIC_LOG_EXPRESSION_HPP
-#define SYMBOLIC_LOG_EXPRESSION_HPP
+#pragma once
 
-#include "divides.hpp"
-#include "unary_expression.hpp"
+#include <metamath/symbolic/base/divides.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 #include <cmath>
 
@@ -33,5 +32,3 @@ constexpr log_expression<E> log(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

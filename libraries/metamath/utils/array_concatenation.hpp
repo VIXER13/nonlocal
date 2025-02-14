@@ -1,5 +1,4 @@
-#ifndef METAMATH_ARRAY_CONCATENATION_HPP
-#define METAMATH_ARRAY_CONCATENATION_HPP
+#pragma once
 
 #include <array>
 #include <cstddef>
@@ -42,5 +41,3 @@ constexpr std::array<T, N> concat(const std::array<T, N> first) {
 }
 
 }
-
-#endif

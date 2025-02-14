@@ -1,7 +1,6 @@
-#ifndef SYMBOLIC_LAGRANGIAN_BASIS_HPP
-#define SYMBOLIC_LAGRANGIAN_BASIS_HPP
+#pragma once
 
-#include "variable.hpp"
+#include <metamath/symbolic/base/variable.hpp>
 
 namespace metamath::symbolic {
 
@@ -53,5 +52,3 @@ constexpr auto generate_lagrangian_basis(const std::array<T, N>& nodes) noexcept
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef MPI_UTILS_HPP
-#define MPI_UTILS_HPP
+#pragma once
 
 #if MPI_BUILD
 #   include <mpi.h>
@@ -79,5 +78,3 @@ constexpr std::enable_if_t<std::is_floating_point_v<T>, T> reduce(T local_sum) {
 }
 
 }
-
-#endif

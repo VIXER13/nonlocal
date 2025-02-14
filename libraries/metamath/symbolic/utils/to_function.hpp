@@ -1,5 +1,4 @@
-#ifndef SYMDIFF_TO_FUNCTION_HPP
-#define SYMDIFF_TO_FUNCTION_HPP
+#pragma once
 
 #include <array>
 #include <tuple>
@@ -32,5 +31,3 @@ std::array<std::function<T(const std::array<T, N>&)>, sizeof...(E)> to_function(
 }
 
 }
-
-#endif

@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_HEAT_CAPACITY_MATRIX_2D_HPP
-#define NONLOCAL_HEAT_CAPACITY_MATRIX_2D_HPP
+#pragma once
 
-#include "matrix_assembler_2d.hpp"
+#include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
 
 namespace nonlocal::thermal {
 
@@ -55,12 +54,10 @@ void heat_capacity_matrix_2d<T, I, J>::calc_matrix(const parameters_2d<T>& param
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& parameter = parameters.at(group).physical;
-            return parameter->density * parameter->capacity * integrate_basic_pair(e, i, j); 
+            return parameter.density * parameter.capacity * integrate_basic_pair(e, i, j); 
         },
         [](const std::string&, const size_t, const size_t, const size_t, const size_t) constexpr noexcept { return T{0}; }
     );
 }
 
 }
-
-#endif

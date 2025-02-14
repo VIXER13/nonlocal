@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_EQUATION_PARAMETERS_HPP
-#define NONLOCAL_EQUATION_PARAMETERS_HPP
+#pragma once
 
-#include "nonlocal_constants.hpp"
+#include <constants/nonlocal_constants.hpp>
 
 #include <algorithm>
 #include <array>
@@ -86,5 +85,3 @@ std::unordered_map<std::string, theory_t> theories_types(const std::unordered_ma
 }
 
 }
-
-#endif

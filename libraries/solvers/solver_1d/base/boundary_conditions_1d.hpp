@@ -1,7 +1,6 @@
-#ifndef BOUNDARY_CONDITION_1D_HPP
-#define BOUNDARY_CONDITION_1D_HPP
+#pragma once
 
-#include "nonlocal_constants.hpp"
+#include <constants/nonlocal_constants.hpp>
 
 #include <array>
 #include <memory>
@@ -40,5 +39,3 @@ template<class T, physics_t Physics>
 using boundaries_conditions_1d = std::array<std::unique_ptr<boundary_condition_1d<T, Physics>>, 2>;
 
 }
-
-#endif

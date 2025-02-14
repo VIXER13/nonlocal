@@ -1,5 +1,4 @@
-#ifndef OMP_UTILS_HPP
-#define OMP_UTILS_HPP
+#pragma once
 
 #include <cstddef>
 #include <ranges>
@@ -23,5 +22,3 @@ public:
 };
 
 }
-
-#endif

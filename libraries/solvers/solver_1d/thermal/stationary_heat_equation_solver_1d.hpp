@@ -1,13 +1,13 @@
-#ifndef STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
-#define STATIONARY_HEAT_EQUATION_SOLVER_1D_HPP
+#pragma once
 
 #include "thermal_conductivity_matrix_1d.hpp"
-#include "right_part_1d.hpp"
-#include "boundary_condition_first_kind_1d.hpp"
-#include "boundary_condition_second_kind_1d.hpp"
 #include "convection_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
-#include "mesh_1d_utils.hpp"
+
+#include <mesh/mesh_1d/mesh_1d_utils.hpp>
+#include <solvers/solver_1d/base/right_part_1d.hpp>
+#include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
+#include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 
 #include <chrono>
 
@@ -76,16 +76,16 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         );
 
         if (is_neumann) {
-            logger::get().log() << "neumann problem" << std::endl;
+            logger::info() << "neumann problem" << std::endl;
             if (is_symmetric) {
-                logger::get().log() << "symmetric problem" << std::endl;
+                logger::info() << "symmetric problem" << std::endl;
                 const Eigen::ConjugateGradient<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                     Eigen::Upper
                 > solver{conductivity.matrix_inner()};
                 temperature_curr = solver.solveWithGuess(f, temperature_prev);
             } else {
-                logger::get().log() << "asymmetric problem" << std::endl;
+                logger::info() << "asymmetric problem" << std::endl;
                 const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix_inner()};
                 temperature_curr = solver.solveWithGuess(f, temperature_prev);
             }
@@ -113,12 +113,10 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
 
         ++iteration;
         difference = (temperature_curr - temperature_prev).norm() / (temperature_curr.norm() ?: T{1});
-        logger::get().log() << "norm(prev - curr) = " << difference << std::endl;
+        logger::info() << "norm(prev - curr) = " << difference << std::endl;
     }
-    logger::get().log() << "Iterations: " << iteration << std::endl;
+    logger::info() << "Iterations: " << iteration << std::endl;
     return heat_equation_solution_1d<T>{mesh, parameters, temperature_curr};
 }
 
 }
-
-#endif

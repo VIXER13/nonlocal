@@ -13,8 +13,8 @@ class mesh_parser<T, I, mesh_format::SU2> final {
     static std::vector<I> read_element(std::stringstream& stream);
     static std::tuple<size_t, std::vector<I>> read_element(const std::string& element);
 
-    template<class Stream>
-    static std::unordered_set<std::string> read_elements(Stream& mesh_file, const size_t count, const bool is_group);
+    template<bool Is_Group, class Stream>
+    static std::unordered_set<std::string> read_elements(Stream& mesh_file, const size_t count);
     template<class Stream>
     static std::unordered_set<std::string> read_elements_2d(Stream& mesh_file);
     template<class Stream>
@@ -22,10 +22,9 @@ class mesh_parser<T, I, mesh_format::SU2> final {
     template<class Stream>
     static std::unordered_map<std::string, std::unordered_set<std::string>> read_elements_groups(Stream& mesh_file);
 
-    static void filter_elements(std::unordered_set<std::string>& elements_2d,
-                                const std::unordered_map<std::string, std::unordered_set<std::string>>& elements_groups);
-
-    bool is_1d_group(const std::unordered_set<std::string>& element_group) const;
+    bool is_2d_group(const std::unordered_set<std::string>& element_group) const;
+    void filter_elements(std::unordered_set<std::string>& elements_2d,
+                         const std::unordered_map<std::string, std::unordered_set<std::string>>& elements_groups) const;
     size_t read_group(const std::string& group, const std::unordered_set<std::string>& elements, size_t element_shift);
 
 public:
@@ -73,14 +72,17 @@ std::tuple<size_t, std::vector<I>> mesh_parser<T, I, mesh_format::SU2>::read_ele
 }
 
 template<class T, class I>
-template<class Stream>
-std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elements(Stream& mesh_file, const size_t count, const bool is_group) {
+template<bool Is_Group, class Stream>
+std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elements(Stream& mesh_file, const size_t count) {
     std::string element;
     std::unordered_set<std::string> elements(count);
     for(const size_t e : std::ranges::iota_view{0u, count}) {
         std::getline(mesh_file, element);
-        element.resize(element.rfind(' ')); // Remove element number from string
-        if (element.back() == ' ')
+
+        if constexpr (!Is_Group)
+            element.resize(element.rfind(' ')); // Remove element number from string
+        else if (element.back() == ' ')
+        
             element.pop_back(); // remove final space if there is one
         elements.emplace(std::move(element));
     }
@@ -96,7 +98,7 @@ std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elemen
     mesh_file >> _ >> _ >> _ >> elements_count;
     std::getline(mesh_file, _); // read the line to the end
     static constexpr bool Is_Group = false;
-    return read_elements(mesh_file, elements_count, Is_Group);
+    return read_elements<Is_Group>(mesh_file, elements_count);
 }
 
 template<class T, class I>
@@ -125,26 +127,27 @@ mesh_parser<T, I, mesh_format::SU2>::read_elements_groups(Stream& mesh_file) {
         mesh_file >> _ >> group_name >> _ >> elements_count;
         std::getline(mesh_file, _); // read the line to the end
         static constexpr bool Is_Group = true;
-        groups[group_name] = read_elements(mesh_file, elements_count, Is_Group);
+        groups[group_name] = read_elements<Is_Group>(mesh_file, elements_count);
     }
     return groups;
 }
 
 template<class T, class I>
-void mesh_parser<T, I, mesh_format::SU2>::filter_elements(
-    std::unordered_set<std::string>& elements_2d,
-    const std::unordered_map<std::string, std::unordered_set<std::string>>& elements_groups) {
-    for(const auto& [group, elements] : elements_groups)
-        for(const auto& element : elements) 
-            if (const auto it = elements_2d.find(element); it != elements_2d.end()) 
-                elements_2d.erase(it);
+bool mesh_parser<T, I, mesh_format::SU2>::is_2d_group(const std::unordered_set<std::string>& element_group) const {
+    // We assume that the group contains only two dimension elements
+    const auto [type, _] = read_element(*element_group.begin()); // We do a test reading of the first element
+    return _mesh.get_elements_set().is_element_2d(type);
 }
 
 template<class T, class I>
-bool mesh_parser<T, I, mesh_format::SU2>::is_1d_group(const std::unordered_set<std::string>& element_group) const {
-    // We assume that the group contains only one dimension elements
-    const auto [type, _] = read_element(*element_group.begin()); // We do a test reading of the first element
-    return _mesh.get_elements_set().is_element_1d(type);
+void mesh_parser<T, I, mesh_format::SU2>::filter_elements(
+    std::unordered_set<std::string>& elements_2d,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& elements_groups) const {
+    for(const auto& [group, elements] : elements_groups)
+        if (is_2d_group(elements))
+            for(const auto& element : elements)
+                if (const auto it = elements_2d.find(element); it != elements_2d.end())
+                    elements_2d.erase(it);
 }
 
 template<class T, class I>
@@ -169,11 +172,12 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
     _mesh._elements_2d_count = elements_2d.size();
     _mesh._nodes = read_nodes(mesh_file);
     auto elements_groups = read_elements_groups(mesh_file);
-    if (elements_groups.contains(Default_Group_Name))
-        throw std::domain_error{"The group name cannot be named \"" + Default_Group_Name + "\", as it is a reserved group name."};
+    using namespace std::string_literals;
+    if (elements_groups.contains(Default_Group_Name.data()))
+        throw std::domain_error{"The group name cannot be named \""s + Default_Group_Name.data() + "\", as it is a reserved group name."};
     filter_elements(elements_2d, elements_groups);
     if (!elements_2d.empty())
-        elements_groups[Default_Group_Name] = std::move(elements_2d);
+        elements_groups[Default_Group_Name.data()] = std::move(elements_2d);
 
     constexpr auto elements_counter = [](const size_t sum, const auto& group) noexcept { return sum + group.second.size(); };
     _mesh._elements.resize(std::accumulate(elements_groups.begin(), elements_groups.end(), size_t{0}, elements_counter));
@@ -182,12 +186,12 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
     size_t elements_2d_shift = 0;
     size_t elements_1d_shift = _mesh._elements_2d_count;
     for(const auto& [group, elements] : elements_groups) {
-        if (is_1d_group(elements)) {
-            _mesh._groups_1d.insert(group);
-            elements_1d_shift = read_group(group, elements, elements_1d_shift);
-        } else {
+        if (is_2d_group(elements)) {
             _mesh._groups_2d.insert(group);
             elements_2d_shift = read_group(group, elements, elements_2d_shift);
+        } else {
+            _mesh._groups_1d.insert(group);
+            elements_1d_shift = read_group(group, elements, elements_1d_shift);
         }
     }
 }

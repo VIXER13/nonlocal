@@ -1,7 +1,6 @@
-#ifndef FINITE_ELEMENT_GEOMETRY_PRIMITIVES_HPP
-#define FINITE_ELEMENT_GEOMETRY_PRIMITIVES_HPP
+#pragma once
 
-#include "variable.hpp"
+#include <metamath/symbolic/base/variable.hpp>
 
 #include <array>
 
@@ -19,5 +18,3 @@ public:
 };
 
 }
-
-#endif

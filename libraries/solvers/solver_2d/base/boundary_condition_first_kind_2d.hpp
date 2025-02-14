@@ -1,10 +1,9 @@
-#ifndef NONLOCAL_BOUNDARY_CONDITION_FIRST_KIND_2D_HPP
-#define NONLOCAL_BOUNDARY_CONDITION_FIRST_KIND_2D_HPP
+#pragma once
 
 #include "boundary_conditions_2d.hpp"
 #include "solvers_utils.hpp"
 
-#include "mesh_2d.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -61,5 +60,3 @@ void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 }
     
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_UNARY_EXPRESSION_HPP
-#define SYMBOLIC_UNARY_EXPRESSION_HPP
+#pragma once
 
 #include "expression.hpp"
 
@@ -28,5 +27,3 @@ constexpr auto simplify(const unary_expression<E, Op, Args...>& e) noexcept {
 }
 
 }
-
-#endif

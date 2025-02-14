@@ -1,5 +1,4 @@
-#ifndef METAMATH_POWER_HPP
-#define METAMATH_POWER_HPP
+#pragma once
 
 #include <type_traits>
 
@@ -22,5 +21,3 @@ constexpr T power(const T& x) {
 }
 
 }
-
-#endif

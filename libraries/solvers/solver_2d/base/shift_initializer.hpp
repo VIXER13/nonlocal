@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_SHIFT_INITIALIZER_HPP
-#define NONLOCAL_SHIFT_INITIALIZER_HPP
+#pragma once
 
-#include "mesh_container_2d.hpp"
+#include <mesh/mesh_2d/mesh_container_2d.hpp>
 
 #include "matrix_indexator_base.hpp"
 #include "matrix_separator_base.hpp"
@@ -58,5 +57,3 @@ void shift_initializer<T, I, J, DoF>::operator()(const std::string&, const size_
 }
 
 }
-
-#endif

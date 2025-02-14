@@ -16,18 +16,6 @@
         "time_step": 0.1
     },
 
-    "boundaries_conditions_missed_all": {},
-    "boundaries_conditions_missed_left": {
-        "right": {}
-    },
-    "boundaries_conditions_missed_right": {
-        "left": {}
-    },
-    "boundaries_conditions_all_required_exists": {
-        "right": {},
-        "left": {}
-    },
-
     "model_dim_missed_all": {},
     "model_dim_missed_local_weight": {
         "nonlocal_radius": 0.1
@@ -68,94 +56,6 @@
     },
     "material_dim_all_required_exists": {
         "physical": {}
-    },
-
-    "mechanical_boundary_condition_missed_all": [
-    ],
-    "mechanical_only_displacement": [
-        { "displacement": 1 },
-        { "displacement": 2 }
-    ],
-    "mechanical_only_pressure": [
-        { "pressure": 1 },
-        { "pressure": 2 }
-    ],
-    "mechanical_displacement_pressure_combination": [
-        { "displacement": 1 },
-        { "pressure": 2 }
-    ],
-    "mechanical_pressure_displacement_combination": [
-        { "pressure": 1 },
-        { "displacement": 2 }
-    ],
-    "mechanical_displacement_null_combination": [
-        { 
-            "displacement": 1 
-        },
-        null
-    ],
-    "mechanical_null_displacement_combination": [
-        null,
-        { 
-            "displacement": 1 
-        }
-    ],
-    "mechanical_pressure_null_combination": [
-        { 
-            "pressure": 1 
-        },
-        null
-    ],
-    "mechanical_null_pressure_combination": [
-        null,
-        { 
-            "pressure": 1 
-        }
-    ],
-
-    "thermal_boundary_condition_missed_all": {},
-    "thermal_boundary_condition_missed_kind": {
-        "temperature": 1.0,
-        "flux": 2.0,
-        "heat_transfer": 3.0,
-        "emissivity": 4.0
-    },
-    "temperature_condition_missed_temperature": {
-        "kind": "temperature"
-    },
-    "flux_condition_missed_flux": {
-        "kind": "flux"
-    },
-    "convection_condition_missed_temperature": {
-        "kind": "convection",
-        "heat_transfer": 1.0
-    },
-    "convection_condition_missed_heat_transfer": {
-        "kind": "convection",
-        "temperature": 1.0
-    },
-    "radiation_condition_missed_emissivity": {
-        "kind": "radiation"
-    },
-    "temperature_condition_all_required_exists": {
-        "kind": "temperature",
-        "temperature": 1.0
-    },
-    "flux_condition_all_required_exists": {
-        "kind": "flux",
-        "flux": 2.0
-    },
-    "convection_condition_all_required_exists": {
-        "kind": "convection",
-        "temperature": 1.0,
-        "heat_transfer": 1.0
-    },
-    "radiation_condition_all_required_exists": {
-        "kind": "radiation",
-        "emissivity": 1.0
-    },
-    "combined_condition_flux_missed_all": {
-        "kind": "combined"
     },
 
     "mechanical_material_dim_missed_all": {},
