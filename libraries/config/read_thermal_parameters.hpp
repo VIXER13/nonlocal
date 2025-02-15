@@ -1,6 +1,7 @@
 #pragma once
 
 #include "read_model.hpp"
+#include "parser.hpp"
 
 #include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 #include <solvers/solver_2d/thermal/thermal_parameters_2d.hpp>
@@ -59,7 +60,7 @@ void _read_thermal_parameters::check_parameters(const T conductivity, const T ca
 
 template<std::floating_point T>
 void _read_thermal_parameters::check_coefficient(const thermal::coefficient_t<T>& coefficient, const std::string& path_with_access) {
-    if (std::holds_alternative<T>(coefficient) && std::get<T>(coefficient) <= T{0})
+    if (std::holds_alternative<T>(coefficient) && std::get<T>(coefficient) < T{0})
         throw std::domain_error{"Parameter \"" + path_with_access + "\" shall be greater than 0."};
 }
 
@@ -107,6 +108,27 @@ thermal::coefficient_t<T> _read_thermal_parameters::read_coefficient(const nlohm
         return config.get<T>();
     if (config.is_string()) {
         // TODO: formula parsing
+        const parser::MathParser parsed_formula(config.get<std::string>());
+        const size_t number_of_variables = parsed_formula.variables_count();
+        if (number_of_variables == 2) {
+            // arguments = {x, y}
+            const thermal::coefficient_t<T> formula = thermal::spatial_dependency<T>(
+                [&parsed_formula](const std::array<T, 2>& arguments) -> T { 
+                    return parsed_formula({arguments[0], arguments[1]}); 
+                }
+            );
+            return formula;
+        } else if (number_of_variables == 3) {
+            // arguments = {x, y, T}
+            const thermal::coefficient_t<T> formula = thermal::solution_dependency<T>(
+                [&parsed_formula](const T solution, const std::array<T, 2>& arguments) -> T { 
+                    return parsed_formula({arguments[0], arguments[1], solution}); 
+                }
+            );
+            return formula;
+        } else if (number_of_variables < 2 || number_of_variables > 3) {
+            throw std::domain_error{"Unsupported number of variables in thermal parameters."};
+        }
     }
     throw std::domain_error{"Unsupported coefficient type: " + path};
 }

@@ -4,6 +4,7 @@ set(LIBRARIES_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(config)
 add_subdirectory(constants)
+add_subdirectory(formula_parser)
 add_subdirectory(logger)
 add_subdirectory(mesh)
 add_subdirectory(metamath)
