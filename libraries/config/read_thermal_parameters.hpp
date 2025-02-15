@@ -107,25 +107,22 @@ thermal::coefficient_t<T> _read_thermal_parameters::read_coefficient(const nlohm
     if (config.is_number())
         return config.get<T>();
     if (config.is_string()) {
-        // TODO: formula parsing
         const parser::MathParser parsed_formula(config.get<std::string>());
         const size_t number_of_variables = parsed_formula.variables_count();
         if (number_of_variables == 2) {
             // arguments = {x, y}
-            const thermal::coefficient_t<T> formula = thermal::spatial_dependency<T>(
-                [&parsed_formula](const std::array<T, 2>& arguments) -> T { 
+            return thermal::spatial_dependency<T>(
+                [parsed_formula](const std::array<T, 2>& arguments) -> T { 
                     return parsed_formula({arguments[0], arguments[1]}); 
                 }
             );
-            return formula;
         } else if (number_of_variables == 3) {
             // arguments = {x, y, T}
-            const thermal::coefficient_t<T> formula = thermal::solution_dependency<T>(
-                [&parsed_formula](const T solution, const std::array<T, 2>& arguments) -> T { 
+            return thermal::solution_dependency<T>(
+                [parsed_formula](const T solution, const std::array<T, 2>& arguments) -> T { 
                     return parsed_formula({arguments[0], arguments[1], solution}); 
                 }
             );
-            return formula;
         } else if (number_of_variables < 2 || number_of_variables > 3) {
             throw std::domain_error{"Unsupported number of variables in thermal parameters."};
         }

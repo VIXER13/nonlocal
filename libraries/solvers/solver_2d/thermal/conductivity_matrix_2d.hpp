@@ -197,7 +197,6 @@ void conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters
                                                                local_theories(_base::mesh().container()) : 
                                                                theories_types(parameters);
     create_matrix_portrait(theories, is_inner, is_symmetric, is_neumann);
-    logger::info() << "HERE1" << std::endl;
     if (is_neumann)
         integral_condition(is_symmetric);
     _base::calc_coeffs(theories, is_inner, is_symmetric,
