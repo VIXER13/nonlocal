@@ -1,19 +1,17 @@
-# formula_parser
+# Math parser
+## Author :  [Safronov Yury](https://github.com/UncleRais)
+## Education : [Applied Mathematics department of BMSTU](http://fn.bmstu.ru/tm-fs-2)
 
-Contains implementations of run time formula parser
+Library contains implementation of run time math parser. It converts infix notation to polish notation in order to further substituting variables into corresponding formula and its evaluation.
 
-# run_time_parser
-
-Special input format is required 
-* pre_infix_notation -> |variables : expression|. Example: |x y z t : x * y * z - t / x + sin(x * y * z)|.
-* infix notation (standart) -> x + 5 * (y - z / t), polish notation (prefix) -> x 5 y z t / - * +
-  
-We convert pre_infix_notation to polish_notation in order to further substituting variables into corresponding formula and its evaluation.
+Special input format is required: 
+* Simple scheme : pre_infix_notation -> |variables : expression|. Example: |x y z t : x * y * z - t / x + sin(x * y * z)|.
+* Infix notation (standart) -> x + 5 * (y - z / t), polish notation (prefix) -> x 5 y z t / - * +.
 
 # How to use
 ## Example №1
 ```c++
-#include "math_expression.h"
+#include "math_expression.hpp"
 
 int main(int argc, char** argv) {
 	auto test = math_expression("v1 v2 v3 p1 p2 p3 m : (p1^2 + p2^2 + p3^2) / (2 * m) + .5 * (v1^2 + v2^2 + v3^2) ");
@@ -31,9 +29,9 @@ int main(int argc, char** argv) {
 	test = math_expression("x y t : x * cos(y) / exp(t) + 10");
 	assert(test.get_polish_notation() == "xycos*texp/10+");
 	assert(test.get_n_vars() == 3);
-	assert(std::abs(test({ 2., M_PI, 10. }) - 9.99991) < 1e-5);
+	assert(std::abs(test({ 2., std::numbers::pi, 10. }) - 9.99991) < 1e-5);
 	return 0;
 }
 ```
 
-You can use math_expression as ordinary scalar function of vector argument.
+You can use math_expression as an ordinary scalar function of a vector argument.

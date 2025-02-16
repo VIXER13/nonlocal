@@ -16,7 +16,7 @@ bool is_latin_str(const std::string& s);
 bool is_number(const std::string& s);
 
 template<arithmetic T>
-T get_number(const std::string& number, std::size_t* idx = 0, int base = 10) {
+T get_number(const std::string& number, std::size_t* idx = nullptr, int base = 10) {
     if constexpr (std::is_same_v<T, float>)       
         return std::stof(number, idx);
     if constexpr (std::is_same_v<T, double>)      

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "read_model.hpp"
-#include "math_expression.hpp"
 
 #include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 #include <solvers/solver_2d/thermal/thermal_parameters_2d.hpp>
+#include <math_expression/math_expression.hpp>
 
 namespace nonlocal::config {
 
@@ -108,22 +108,21 @@ thermal::coefficient_t<T> _read_thermal_parameters::read_coefficient(const nlohm
         return config.get<T>();
     if (config.is_string()) {
         const formula::math_expression parsed_formula(config.get<std::string>());
-        const size_t number_of_variables = parsed_formula.variables_count();
-        if (number_of_variables == 2) {
+        if (parsed_formula.variables_count() == 2) {
             // arguments = {x, y}
-            return thermal::spatial_dependency<T>(
+            return thermal::spatial_dependency<T>{
                 [parsed_formula](const std::array<T, 2>& arguments) -> T { 
                     return parsed_formula({arguments[0], arguments[1]}); 
                 }
-            );
-        } else if (number_of_variables == 3) {
+            };
+        } else if (parsed_formula.variables_count() == 3) {
             // arguments = {x, y, T}
-            return thermal::solution_dependency<T>(
+            return thermal::solution_dependency<T>{
                 [parsed_formula](const std::array<T, 2>& arguments, const T solution) -> T { 
                     return parsed_formula({arguments[0], arguments[1], solution}); 
                 }
-            );
-        } else if (number_of_variables < 2 || number_of_variables > 3) {
+            };
+        } else {
             throw std::domain_error{"Unsupported number of variables in thermal parameters."};
         }
     }
