@@ -78,9 +78,11 @@ std::unordered_set<std::string> mesh_parser<T, I, mesh_format::SU2>::read_elemen
     std::unordered_set<std::string> elements(count);
     for(const size_t e : std::ranges::iota_view{0u, count}) {
         std::getline(mesh_file, element);
-        //if constexpr (!Is_Group)
-        element.resize(element.rfind(' ')); // Remove element number from string
-        if (element.back() == ' ')
+
+        if constexpr (!Is_Group)
+            element.resize(element.rfind(' ')); // Remove element number from string
+        else if (element.back() == ' ')
+        
             element.pop_back(); // remove final space if there is one
         elements.emplace(std::move(element));
     }
@@ -183,7 +185,6 @@ void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
 
     size_t elements_2d_shift = 0;
     size_t elements_1d_shift = _mesh._elements_2d_count;
-
     for(const auto& [group, elements] : elements_groups) {
         if (is_2d_group(elements)) {
             _mesh._groups_2d.insert(group);

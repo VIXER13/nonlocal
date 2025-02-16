@@ -85,7 +85,7 @@ T heat_equation_solution_2d<T, I>::evaluate(const coefficient_t<T>& conductivity
     return std::visit(visitor{
         [](const T value) noexcept { return value; },
         [this, qshift](const spatial_dependency<T>& value) { return value(_base::mesh().quad_coord(qshift)); },
-        [this, qshift](const solution_dependency<T>& value) { return value(_solution[qshift], _base::mesh().quad_coord(qshift)); }
+        [this, qshift](const solution_dependency<T>& value) { return value(_base::mesh().quad_coord(qshift), _solution[qshift]); }
     }, conductivity);
 }
 

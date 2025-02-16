@@ -20,4 +20,4 @@ target_include_directories(config_lib PUBLIC
     ${LIBRARIES_DIR}
     ${INCLUDES}
 )
-target_link_libraries(config_lib logger_lib parser_lib)
+target_link_libraries(config_lib logger_lib math_expression_lib)
