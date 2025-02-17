@@ -4,6 +4,7 @@
 
 #include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 #include <solvers/solver_2d/thermal/thermal_parameters_2d.hpp>
+#include <math_expression/math_expression.hpp>
 
 namespace nonlocal::config {
 
@@ -106,7 +107,24 @@ thermal::coefficient_t<T> _read_thermal_parameters::read_coefficient(const nlohm
     if (config.is_number())
         return config.get<T>();
     if (config.is_string()) {
-        // TODO: formula parsing
+        const formula::math_expression parsed_formula(config.get<std::string>());
+        if (parsed_formula.variables_count() == 2) {
+            // arguments = {x, y}
+            return thermal::spatial_dependency<T>{
+                [parsed_formula](const std::array<T, 2>& arguments) -> T { 
+                    return parsed_formula({arguments[0], arguments[1]}); 
+                }
+            };
+        } else if (parsed_formula.variables_count() == 3) {
+            // arguments = {x, y, T}
+            return thermal::solution_dependency<T>{
+                [parsed_formula](const std::array<T, 2>& arguments, const T solution) -> T { 
+                    return parsed_formula({arguments[0], arguments[1], solution}); 
+                }
+            };
+        } else {
+            throw std::domain_error{"Unsupported number of variables in thermal parameters."};
+        }
     }
     throw std::domain_error{"Unsupported coefficient type: " + path};
 }

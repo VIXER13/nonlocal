@@ -13,7 +13,7 @@ template<std::floating_point T>
 using spatial_dependency = std::function<T(const std::array<T, 2>&)>;
 
 template<std::floating_point T>
-using solution_dependency = std::function<T(const T, const std::array<T, 2>&)>;
+using solution_dependency = std::function<T(const std::array<T, 2>&, const T)>;
 
 template<std::floating_point T>
 using coefficient_t = std::variant<T, spatial_dependency<T>, solution_dependency<T>>;

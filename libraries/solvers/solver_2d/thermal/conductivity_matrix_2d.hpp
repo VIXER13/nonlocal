@@ -117,7 +117,7 @@ T conductivity_matrix_2d<T, I, J>::evaluate(const coefficient_t<T>& conductivity
         [this, e, q](const spatial_dependency<T>& value) { return value(_base::mesh().quad_coord(e, q)); },
         [this, e, q](const solution_dependency<T>& value) { 
             const size_t qshift = _base::mesh().quad_shift(e) + q;
-            return value(_solution[qshift], _base::mesh().quad_coord(qshift)); 
+            return value(_base::mesh().quad_coord(qshift), _solution[qshift]); 
         }
     }, conductivity);
 }
