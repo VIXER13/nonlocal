@@ -4,12 +4,31 @@
 
 #include <algorithm>
 #include <array>
-#include <vector>
-#include <unordered_map>
+#include <concepts>
 #include <functional>
 #include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 namespace nonlocal {
+
+template<class... Ts>
+struct visitor : Ts... {
+    using Ts::operator()...;
+};
+
+template<std::floating_point T, size_t Dimension>
+using point = std::conditional_t<Dimension == 1, T, std::array<T, Dimension>>;
+
+template<std::floating_point T, size_t Dimension>
+using spatial_dependency = std::function<T(const point<T, Dimension>&)>;
+
+template<std::floating_point T, size_t Dimension>
+using solution_dependency = std::function<T(const point<T, Dimension>&, const T)>;
+
+template<std::floating_point T, size_t Dimension>
+using coefficient_t = std::variant<T, spatial_dependency<T, Dimension>, solution_dependency<T, Dimension>>;
 
 template<size_t Dimension, class T>
 struct model_parameters final {

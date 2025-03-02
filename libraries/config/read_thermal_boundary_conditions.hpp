@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config_utils.hpp"
+#include "read_coefficient.hpp"
 
 #include <solvers/solver_1d/thermal/thermal_boundary_conditions_1d.hpp>
 #include <solvers/solver_2d/thermal/thermal_boundary_conditions_2d.hpp>
@@ -110,18 +111,18 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_2d(const nloh
     switch (config["kind"].get<thermal_boundary_condition_t>()) {
     case thermal_boundary_condition_t::Temperature:
         check_required_fields(config, { "temperature" }, path_with_access);
-        return std::make_unique<thermal::temperature_2d<T>>(config["temperature"].get<T>());
+        return std::make_unique<thermal::temperature_2d<T>>(read_coefficient<T, 2u>(config["temperature"], path_with_access + "temperature"));
 
     case thermal_boundary_condition_t::Flux:
         check_required_fields(config, { "flux" }, path_with_access);
-        return std::make_unique<thermal::flux_2d<T>>(config["flux"].get<T>());
+        return std::make_unique<thermal::flux_2d<T>>(read_coefficient<T, 2u>(config["flux"], path_with_access + "flux"));
 
     case thermal_boundary_condition_t::Convection: {
         check_required_fields(config, { "temperature", "heat_transfer" }, path_with_access);
         const T heat_transfer = config["heat_transfer"].get<T>();
         static constexpr T emissivity = T{0};
         check_parameters(heat_transfer, emissivity, path_with_access);
-        return std::make_unique<thermal::convection_2d<T>>(config["temperature"].get<T>(), heat_transfer);
+        return std::make_unique<thermal::convection_2d<T>>(heat_transfer, read_coefficient<T, 2u>(config["temperature"], path_with_access + "temperature"));
     }
 
     case thermal_boundary_condition_t::Radiation: {
@@ -143,8 +144,8 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_2d(const nloh
         const T emissivity = config.value("emissivity", T{0});
         check_parameters(heat_transfer, emissivity, path_with_access);
         return std::make_unique<thermal::combined_flux_2d<T>>(
-            config.value("flux", T{0}),
-            heat_transfer, config.value("temperature", T{0}),
+            config.contains("flux") ? read_coefficient<T, 2u>(config["flux"], path_with_access + "flux") : T{0},
+            heat_transfer, config.contains("temperature") ? read_coefficient<T, 2u>(config["temperature"], path_with_access + "temperature") : T{0},
             emissivity);
     }
     }

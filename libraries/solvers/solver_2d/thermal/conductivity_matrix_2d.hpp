@@ -111,11 +111,11 @@ void conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric
 }
 
 template<std::floating_point T, std::integral I, std::integral J>
-T conductivity_matrix_2d<T, I, J>::evaluate(const coefficient_t<T>& conductivity, const size_t e, const size_t q) const {
+T conductivity_matrix_2d<T, I, J>::evaluate(const coefficient_t<T, 2u>& conductivity, const size_t e, const size_t q) const {
     return std::visit(visitor{
         [](const T value) noexcept { return value; },
-        [this, e, q](const spatial_dependency<T>& value) { return value(_base::mesh().quad_coord(e, q)); },
-        [this, e, q](const solution_dependency<T>& value) { 
+        [this, e, q](const spatial_dependency<T, 2u>& value) { return value(_base::mesh().quad_coord(e, q)); },
+        [this, e, q](const solution_dependency<T, 2u>& value) { 
             const size_t qshift = _base::mesh().quad_shift(e) + q;
             return value(_base::mesh().quad_coord(qshift), _solution[qshift]); 
         }

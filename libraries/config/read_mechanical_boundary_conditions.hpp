@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config_utils.hpp"
+#include "read_coefficient.hpp"
 
 #include <logger/logger.hpp>
 #include <solvers/solver_2d/mechanical/mechanical_boundary_conditions_2d.hpp>
@@ -31,9 +32,10 @@ _mechanical_boundary_conditions::read_mechanical_boundary_condition_2d(const nlo
     if ((has_pressure && has_displacement) || (!has_pressure && !has_displacement))
         throw std::domain_error{"The boundary condition in \"" + path + 
                                 "\" must contain only \"displacement\" or \"pressure\" field with a numerical value in it."};
+    const std::string path_with_access = append_access_sign(path);
     if (has_pressure)
-        return std::make_unique<mechanical::pressure_2d<T>>(config["pressure"].get<T>());
-    return std::make_unique<mechanical::displacement_2d<T>>(config["displacement"].get<T>());
+        return std::make_unique<mechanical::pressure_2d<T>>(read_coefficient<T, 2u>(config["pressure"], path_with_access + "pressure"));
+    return std::make_unique<mechanical::displacement_2d<T>>(read_coefficient<T, 2u>(config["displacement"], path_with_access + "displacement"));
 }
 
 template<std::floating_point T>

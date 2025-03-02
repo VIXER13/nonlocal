@@ -1,10 +1,10 @@
 #pragma once
 
 #include "read_model.hpp"
+#include "read_coefficient.hpp"
 
 #include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 #include <solvers/solver_2d/thermal/thermal_parameters_2d.hpp>
-#include <math_expression/math_expression.hpp>
 
 namespace nonlocal::config {
 
@@ -15,7 +15,7 @@ class _read_thermal_parameters final {
     static void check_parameters(const T conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access);
     // Checks only numerical parameters
     template<std::floating_point T>
-    static void check_coefficient(const thermal::coefficient_t<T>& coefficient, const std::string& path_with_access);
+    static void check_coefficient(const coefficient_t<T, 2u>& coefficient, const std::string& path_with_access);
     template<std::floating_point T>
     static void check_conductivity(const thermal::conductivity_t<T>& conductivity, const std::string& path_with_access);
     template<std::floating_point T>
@@ -24,8 +24,6 @@ class _read_thermal_parameters final {
     template<std::floating_point T>
     static thermal::parameter_1d_sptr<T> read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path);
 
-    template<std::floating_point T>
-    static thermal::coefficient_t<T> read_coefficient(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
     static thermal::conductivity_t<T> read_conductivity_2d(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
@@ -59,14 +57,14 @@ void _read_thermal_parameters::check_parameters(const T conductivity, const T ca
 }
 
 template<std::floating_point T>
-void _read_thermal_parameters::check_coefficient(const thermal::coefficient_t<T>& coefficient, const std::string& path_with_access) {
+void _read_thermal_parameters::check_coefficient(const coefficient_t<T, 2u>& coefficient, const std::string& path_with_access) {
     if (std::holds_alternative<T>(coefficient) && std::get<T>(coefficient) <= T{0})
         throw std::domain_error{"Parameter \"" + path_with_access + "\" shall be greater than 0."};
 }
 
 template<std::floating_point T>
 void _read_thermal_parameters::check_conductivity(const thermal::conductivity_t<T>& conductivity, const std::string& path_with_access) {
-    std::visit(thermal::visitor{
+    std::visit(visitor{
         [&](const thermal::isotropic_conductivity_t<T>& conductivity) { 
             check_coefficient(conductivity, path_with_access);
         },
@@ -103,45 +101,18 @@ thermal::parameter_1d_sptr<T> _read_thermal_parameters::read_thermal_coefficient
 }
 
 template<std::floating_point T>
-thermal::coefficient_t<T> _read_thermal_parameters::read_coefficient(const nlohmann::json& config, const std::string& path) {
-    if (config.is_number())
-        return config.get<T>();
-    if (config.is_string()) {
-        const formula::math_expression parsed_formula(config.get<std::string>());
-        if (parsed_formula.variables_count() == 2) {
-            // arguments = {x, y}
-            return thermal::spatial_dependency<T>{
-                [parsed_formula](const std::array<T, 2>& arguments) -> T { 
-                    return parsed_formula({arguments[0], arguments[1]}); 
-                }
-            };
-        } else if (parsed_formula.variables_count() == 3) {
-            // arguments = {x, y, T}
-            return thermal::solution_dependency<T>{
-                [parsed_formula](const std::array<T, 2>& arguments, const T solution) -> T { 
-                    return parsed_formula({arguments[0], arguments[1], solution}); 
-                }
-            };
-        } else {
-            throw std::domain_error{"Unsupported number of variables in thermal parameters."};
-        }
-    }
-    throw std::domain_error{"Unsupported coefficient type: " + path};
-}
-
-template<std::floating_point T>
 thermal::conductivity_t<T> _read_thermal_parameters::read_conductivity_2d(const nlohmann::json& config, const std::string& path) {
     if (config.is_number())
-        return read_coefficient<T>(config, path);
+        return read_coefficient<T, 2u>(config, path);
     if (config.is_array() && config.size() == 2)
-        return thermal::orthotropic_conductivity_t<T>{ read_coefficient<T>(config[0], append_access_sign(path, 0)), 
-                                                       read_coefficient<T>(config[1], append_access_sign(path, 1)) };
+        return thermal::orthotropic_conductivity_t<T>{ read_coefficient<T, 2u>(config[0], append_access_sign(path, 0)), 
+                                                       read_coefficient<T, 2u>(config[1], append_access_sign(path, 1)) };
     if (config.is_array() && config.size() == 4)
         return thermal::anisotropic_conductivity_t<T>{
-            read_coefficient<T>(config[0], append_access_sign(path, 0)),
-            read_coefficient<T>(config[1], append_access_sign(path, 1)),
-            read_coefficient<T>(config[2], append_access_sign(path, 2)),
-            read_coefficient<T>(config[3], append_access_sign(path, 3))
+            read_coefficient<T, 2u>(config[0], append_access_sign(path, 0)),
+            read_coefficient<T, 2u>(config[1], append_access_sign(path, 1)),
+            read_coefficient<T, 2u>(config[2], append_access_sign(path, 2)),
+            read_coefficient<T, 2u>(config[3], append_access_sign(path, 3))
         };
     throw std::domain_error{"The thermal parameter \"" + path + "\" "
                             "must be either a number in the isotropic case, "
