@@ -104,14 +104,11 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         const config::time_data<T> time{config["time"], "time"};
         nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
 
-        //static constexpr auto exact_solution = [](const T t, const T x) { return x * t; }; // example 1
-        //static constexpr auto exact_solution = [](const T t, const T x) { return x * x * t; }; // example 2
-        //static constexpr auto exact_solution = [](const T t, const T x) { return x * x * t * t; }; // example 3
-        //static constexpr auto exact_solution = [](const T t, const T x) { return std::exp(x) * t; }; // example 4
-        //static constexpr auto exact_solution = [](const T t, const T x) { return std::exp(-x) * (t + 1); }; // example 5
-        static constexpr auto exact_solution = [](const T t, const T x) { return std::exp(-t) * (x + 1) * (x + 1); }; // example 6
-        
-        solver.initialize_temperature([](const T x) { return exact_solution(0, x); }); // example N
+        static constexpr auto left_flux = [](const T time) {
+            static constexpr size_t m = 8;
+            using namespace metamath::functions;
+            return power<m>(m * time) / factorial(m - 1) * std::exp(-time * m);
+        };
 
         solver.compute(boundaries_conditions);
         {   // Step 0
@@ -120,16 +117,10 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
             save_solution(solution, save, 0u);
         }
         for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-            const T t = time.time_step * step; // example N
-            boundaries_conditions.front() = std::make_unique<temperature_1d<T>>(exact_solution(t, 0)); // example N
-            boundaries_conditions.back() = std::make_unique<temperature_1d<T>>(exact_solution(t, 1)); // example N
-            //const auto right_part = [](const T) { return 0; };
-            //const auto right_part = [t](const T x) { return x; }; // example 1
-            //const auto right_part = [t](const T x) { return 2 - 2 * std::exp(-t) - 2 * t + x * x; }; // example 2
-            //const auto right_part = [t](const T x) { return -4 + 4 * std::exp(-t) + 4 * t - 2 * t * t + 2 * t * x * x; }; // example 3
-            //const auto right_part = [t](const T x) { return 2 * std::exp(x) - std::exp(-t + x) - std::exp(x) * t; }; // example 4
-            //const auto right_part = [t](const T x) { return std::exp(-x) * (1 - t); }; // example 5
-            const auto right_part = [t](const T x) { return -std::exp(-t) * (1 + 2 * (t + x) + x * x); }; // example 6
+            const T t = time.time_step * step;
+            boundaries_conditions.front() = std::make_unique<flux_1d<T>>(left_flux(t));
+            boundaries_conditions.back() = std::make_unique<flux_1d<T>>(0);
+            const auto right_part = [](const T) { return 0; };
 
             solver.calc_step(boundaries_conditions, right_part);
             if (step % time.save_frequency == 0) {
