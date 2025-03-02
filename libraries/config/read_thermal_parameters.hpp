@@ -59,7 +59,7 @@ void _read_thermal_parameters::check_parameters(const T conductivity, const T ca
 template<std::floating_point T>
 void _read_thermal_parameters::check_coefficient(const coefficient_t<T, 2u>& coefficient, const std::string& path_with_access) {
     if (std::holds_alternative<T>(coefficient) && std::get<T>(coefficient) <= T{0})
-        throw std::domain_error{"Parameter \"" + path_with_access + "\" shall be greater than 0."};
+        throw std::domain_error{"Parameter \"" + path_with_access + "conductivity\" shall be greater than 0."};
 }
 
 template<std::floating_point T>
@@ -73,10 +73,8 @@ void _read_thermal_parameters::check_conductivity(const thermal::conductivity_t<
             check_coefficient(conductivity[Y], path_with_access);
         },
         [&](const thermal::anisotropic_conductivity_t<T>& conductivity) {
-            check_coefficient(conductivity[X][X], path_with_access);
-            check_coefficient(conductivity[X][Y], path_with_access);
-            check_coefficient(conductivity[Y][X], path_with_access);
-            check_coefficient(conductivity[Y][Y], path_with_access);
+            if (!metamath::types::is_positive(conductivity))
+                throw std::domain_error{"Parameter \"" + path_with_access + "conductivity\" shall be positive matrix."};
         }
     }, conductivity);
 }
