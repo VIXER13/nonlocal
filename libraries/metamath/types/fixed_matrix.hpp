@@ -3,6 +3,7 @@
 #include <array>
 #include <ranges>
 #include <cstddef>
+#include <cmath>
 
 namespace metamath::types {
 
