@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_VARIABLE_HPP
-#define SYMBOLIC_VARIABLE_HPP
+#pragma once
 
 #include "integral_constant.hpp"
 
@@ -52,5 +51,3 @@ constexpr variable<N> simplify(const variable<N>) noexcept {
 }
 
 }
-
-#endif

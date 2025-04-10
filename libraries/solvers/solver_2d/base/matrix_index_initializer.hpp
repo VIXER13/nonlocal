@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MATRIX_INDEX_INITIALIZER_HPP
-#define NONLOCAL_MATRIX_INDEX_INITIALIZER_HPP
+#pragma once
 
 #include "matrix_indexator_base.hpp"
 #include "matrix_separator_base.hpp"
@@ -67,5 +66,3 @@ void matrix_index_initializer<T, I, J, DoF>::operator()(const std::string&, cons
 }
 
 }
-
-#endif

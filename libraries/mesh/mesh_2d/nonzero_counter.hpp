@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_NONZERO_COUNTER_HPP
-#define NONLOCAL_NONZERO_COUNTER_HPP
+#pragma once
 
 #include "indexator_base.hpp"
 #include "mesh_container_2d.hpp"
@@ -55,5 +54,3 @@ void nonzero_counter<T, I>::operator()(const std::string&, const size_t eL, cons
 }
 
 }
-
-#endif

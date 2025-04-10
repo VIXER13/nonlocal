@@ -1,21 +1,27 @@
 #pragma once
 
-#include "solution_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+#include <solvers/solver_2d/base/solution_2d.hpp>
 
 namespace nonlocal::thermal {
 
-template<class T, class I = uint32_t>
+template<std::floating_point T, std::integral I = uint32_t>
 class heat_equation_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
+    std::vector<T> _solution; // stub for nonlinear problems
+
     std::vector<T> _temperature;
     std::array<std::vector<T>, 2> _flux;
-    std::unordered_map<std::string, parameter_2d_sptr<T>> _parameters;
+    std::unordered_map<std::string, parameter_2d<T>> _parameters;
 
     std::array<std::vector<T>, 2> local_flux_in_qnodes() const;
+
+    T evaluate(const isotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
+    std::array<T, 2> evaluate(const orthotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
+    metamath::types::square_matrix<T, 2> evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
 
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
@@ -33,12 +39,12 @@ public:
     const std::array<std::vector<T>, 2>& calc_flux();
 };
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _base{mesh}
     , _temperature(mesh->container().nodes_count(), T{0}) {}
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 template<class Vector>
 heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                                            const parameters_2d<T>& parameters, const Vector& temperature)
@@ -46,108 +52,86 @@ heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr
     , _temperature{temperature.cbegin(), std::next(temperature.cbegin(), mesh->container().nodes_count())}
     , _parameters{get_physical_parameters(parameters)} {}
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::vector<T>& heat_equation_solution_2d<T, I>::temperature() const noexcept {
     return _temperature;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::flux() const {
     if (!is_flux_calculated())
         throw std::runtime_error{"Flux wasn't calculated"};
     return _flux;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const parameter_2d<T>& heat_equation_solution_2d<T, I>::parameter(const std::string& group) const {
     return _parameters.at(group);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T heat_equation_solution_2d<T, I>::calc_energy() const {
     //return mesh::integrate(*_base::mesh_proxy(), temperature());
     return 0;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 bool heat_equation_solution_2d<T, I>::is_flux_calculated() const noexcept {
     return !_flux[X].empty() && !_flux[Y].empty();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
+T heat_equation_solution_2d<T, I>::evaluate(const coefficient_t<T, 2u>& conductivity, const size_t qshift) const {
+    return std::visit(visitor{
+        [](const T value) noexcept { return value; },
+        [this, qshift](const spatial_dependency<T, 2u>& value) { return value(_base::mesh().quad_coord(qshift)); },
+        [this, qshift](const solution_dependency<T, 2u>& value) { return value(_base::mesh().quad_coord(qshift), _solution[qshift]); }
+    }, conductivity);
+}
+
+template<std::floating_point T, std::integral I>
+std::array<T, 2> heat_equation_solution_2d<T, I>::evaluate(const orthotropic_conductivity_t<T>& conductivity, const size_t qshift) const {
+    return { evaluate(conductivity[X], qshift), evaluate(conductivity[Y], qshift) };
+}
+
+template<std::floating_point T, std::integral I>
+metamath::types::square_matrix<T, 2> heat_equation_solution_2d<T, I>::evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const {
+    return {
+        evaluate(conductivity[X][X], qshift), evaluate(conductivity[X][Y], qshift),
+        evaluate(conductivity[Y][X], qshift), evaluate(conductivity[Y][Y], qshift)
+    };
+}
+
+template<std::floating_point T, std::integral I>
 std::array<std::vector<T>, 2> heat_equation_solution_2d<T, I>::local_flux_in_qnodes() const {
     auto flux = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
-    for(const auto& [group, parameter] : _parameters)
+    for (const auto& [group, parameter] : _parameters)
         for(const size_t e : _base::mesh().container().elements(group))
             for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
-                const std::array<T, 2>& qnode = _base::mesh().quad_coord(qshift);
-                using enum coefficients_t;
-                switch (parameter->material) {
-                case material_t::ISOTROPIC: {
-                    const T conductivity =
-                        parameter->type == CONSTANTS ?
-                        parameter_cast<CONSTANTS>(*parameter).conductivity[X][X] :
-                        parameter->type == SPACE_DEPENDENT ?
-                        parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[X][X](qnode) :
-                        parameter->type == SOLUTION_DEPENDENT ?
-                        parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[X][X](qnode, 0.0) :
-                        throw std::domain_error{"Unknown parameter type"};
-                    flux[X][qshift] *= -conductivity;
-                    flux[Y][qshift] *= -conductivity;
-                } break;
-
-                case material_t::ORTHOTROPIC: {
-                    using U = std::array<T, 2>;
-                    const U conductivity =
-                        parameter->type == CONSTANTS ?
-                        U{parameter_cast<CONSTANTS>(*parameter).conductivity[X][X], 
-                          parameter_cast<CONSTANTS>(*parameter).conductivity[Y][Y]} :
-                        parameter->type == SPACE_DEPENDENT ?
-                        U{parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[X][X](qnode),
-                          parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[Y][Y](qnode)} :
-                        parameter->type == SOLUTION_DEPENDENT ?
-                        U{parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[X][X](qnode, 0.0),
-                          parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[Y][Y](qnode, 0.0)} :
-                        throw std::domain_error{"Unknown parameter type"};
-                    flux[X][qshift] *= -conductivity[X];
-                    flux[Y][qshift] *= -conductivity[X];
-                } break;
-
-                case material_t::ANISOTROPIC: {
-                    using U = metamath::types::square_matrix<T, 2>;
-                    const U conductivity =
-                        parameter->type == CONSTANTS ?
-                        U{parameter_cast<CONSTANTS>(*parameter).conductivity[X][X],
-                          parameter_cast<CONSTANTS>(*parameter).conductivity[X][Y],
-                          parameter_cast<CONSTANTS>(*parameter).conductivity[Y][X],
-                          parameter_cast<CONSTANTS>(*parameter).conductivity[Y][Y]} :
-                        parameter->type == SPACE_DEPENDENT ?
-                        U{parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[X][X](qnode),
-                          parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[X][Y](qnode),
-                          parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[Y][X](qnode),
-                          parameter_cast<SPACE_DEPENDENT>(*parameter).conductivity[Y][Y](qnode)} :
-                        parameter->type == SOLUTION_DEPENDENT ?
-                        U{parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[X][X](qnode, 0.0),
-                          parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[X][Y](qnode, 0.0),
-                          parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[Y][X](qnode, 0.0),
-                          parameter_cast<SOLUTION_DEPENDENT>(*parameter).conductivity[Y][Y](qnode, 0.0)} :
-                        throw std::domain_error{"Unknown parameter type"};
-                    const std::array<T, 2> temp = {
-                        -(conductivity[X][X] * flux[X][qshift] + conductivity[X][Y] * flux[Y][qshift]),
-                        -(conductivity[Y][X] * flux[X][qshift] + conductivity[Y][Y] * flux[Y][qshift])
-                    };
-                    flux[X][qshift] = temp[X];
-                    flux[Y][qshift] = temp[Y];
-                } break;
-
-                default:
-                    throw std::runtime_error{"Unknown material type."};
-                }
+                std::visit(visitor{
+                    [&](const isotropic_conductivity_t<T>& conductivity) { 
+                        const T cond = evaluate(conductivity, qshift);
+                        flux[X][qshift] *= -cond;
+                        flux[Y][qshift] *= -cond;
+                    },
+                    [&](const orthotropic_conductivity_t<T>& conductivity) {
+                        const auto cond = evaluate(conductivity, qshift);
+                        flux[X][qshift] *= -cond[X];
+                        flux[Y][qshift] *= -cond[Y];
+                    },
+                    [&](const anisotropic_conductivity_t<T>& conductivity) {
+                        const auto cond = evaluate(conductivity, qshift);
+                        std::tie(flux[X][qshift], flux[Y][qshift]) = std::make_tuple(
+                            -cond[X][X] * flux[X][qshift] - cond[X][Y] * flux[Y][qshift],
+                            -cond[Y][X] * flux[X][qshift] - cond[Y][Y] * flux[Y][qshift]
+                        );
+                    }
+                }, parameter.conductivity);
             }
     return flux;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux() {
     if (is_flux_calculated())
         return _flux;

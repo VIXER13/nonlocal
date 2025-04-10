@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONSTANTS_HPP
-#define NONLOCAL_CONSTANTS_HPP
+#pragma once
 
 #include <cstdint>
 #include <concepts>
@@ -68,5 +67,3 @@ inline constexpr T NEUMANN_PROBLEM_ERROR_THRESHOLD = std::is_same_v<T, float> ? 
 }
 
 }
-
-#endif

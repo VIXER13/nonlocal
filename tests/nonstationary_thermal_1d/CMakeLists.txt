@@ -7,11 +7,9 @@ if (NOT DEFINED NO_CONAN)
     set(INCLUDES ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT})
 endif()
 
-add_library(nonstationary_thermal_1d_lib OBJECT 
-    boundary_conditions_1d.cpp
-)
+add_library(nonstationary_thermal_1d_lib OBJECT boundary_conditions_1d.cpp)
 target_include_directories(nonstationary_thermal_1d_lib PUBLIC
-    "."
+    ${LIBRARIES_DIR}
     ${INCLUDES}
 )
 

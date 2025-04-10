@@ -1,5 +1,4 @@
-#ifndef METAMATH_UNIFORM_PARTITION_HPP
-#define METAMATH_UNIFORM_PARTITION_HPP
+#pragma once
 
 #include <array>
 
@@ -28,5 +27,3 @@ constexpr std::array<T, N> uniform_partition(const std::array<T, 2>& segment) no
 }
 
 }
-
-#endif

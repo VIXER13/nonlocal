@@ -1,8 +1,7 @@
-#ifndef FINITE_ELEMENT_2D_BASIS_BARYCENTRIC_HPP
-#define FINITE_ELEMENT_2D_BASIS_BARYCENTRIC_HPP
+#pragma once
 
-#include "geometry_2d.hpp"
-#include "geometric_primitives/triangle.hpp"
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometric_primitives/triangle.hpp>
 
 namespace metamath::finite_element {
 
@@ -21,5 +20,3 @@ protected:
 };
 
 }
-
-#endif

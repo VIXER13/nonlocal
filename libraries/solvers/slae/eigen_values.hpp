@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_EIGEN_VALUES_HPP
-#define NONLOCAL_EIGEN_VALUES_HPP
+#pragma once
 
 #include <Eigen/Eigen>
 #include <Eigen/Core>
@@ -32,5 +31,3 @@ T find_eigen_value(const Eigen::SparseMatrix<T, Major, I>& matrix, const bool is
 }
 
 }
-
-#endif

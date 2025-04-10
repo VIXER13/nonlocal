@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SLAE_ITERATIVE_SOLVER_BASE_HPP
-#define NONLOCAL_SLAE_ITERATIVE_SOLVER_BASE_HPP
+#pragma once
 
 #include "solver_base.hpp"
 #include "preconditioner_base.hpp"
@@ -61,5 +60,3 @@ public:
 };
 
 }
-
-#endif

@@ -1,7 +1,7 @@
-#ifndef NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
-#define NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
+#pragma once
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+
 #include <Eigen/Dense>
 
 namespace nonlocal::mechanical {
@@ -17,7 +17,7 @@ class _temperature_condition final {
         std::vector<T> temperature_in_qnodes = nonlocal::mesh::utils::nodes_to_qnodes(mesh, parameters.delta_temperature);
         for(const std::string& group : mesh.container().groups_2d()) {
             const auto& parameter = parameters.materials.at(group).physical;
-            const T factor = parameter.thermal_expansion * parameter.E(parameters.plane) / (T{1} - parameter.nu(parameters.plane));
+            const T factor = parameter.thermal_expansion * parameter.E(parameters.plane, 0) / (T{1} - parameter.nu(parameters.plane, 0));
             for(const size_t e : mesh.container().elements(group))
                 for(const size_t qshift : mesh.quad_shifts_count(e))
                     temperature_in_qnodes[qshift] *= factor;
@@ -97,5 +97,3 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 }
 
 }
-
-#endif

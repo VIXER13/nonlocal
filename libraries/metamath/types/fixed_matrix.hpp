@@ -1,9 +1,9 @@
-#ifndef METAMATH_FIXED_MATRIX_HPP
-#define METAMATH_FIXED_MATRIX_HPP
+#pragma once
 
 #include <array>
 #include <ranges>
 #include <cstddef>
+#include <cmath>
 
 namespace metamath::types {
 
@@ -27,6 +27,13 @@ square_matrix<T, N> make_square_matrix(const std::array<T, N * N>& arr) {
     return make_fixed_matrix<T, N, N>(arr);
 }
 
+template<class T>
+bool is_positive(const square_matrix<T, 2u>& matrix) {
+    const T determinant = matrix[0][0] * matrix[0][0] - 2 * matrix[0][0] * matrix[1][1] + 
+                          matrix[1][1] * matrix[1][1] + 4 * matrix[0][1] * matrix[1][0];
+    if (determinant < T{0})
+        return false;
+    return matrix[0][0] + matrix[1][1] - std::sqrt(determinant) > T{0};
 }
 
-#endif
+}

@@ -1,10 +1,8 @@
-#ifndef FINITE_ELEMENT_2D_BASIS_SERENDIPITY_HPP
-#define FINITE_ELEMENT_2D_BASIS_SERENDIPITY_HPP
+#pragma once
 
-#include "symbolic_base.hpp"
-
-#include "geometry_2d.hpp"
-#include "geometric_primitives/rectangle.hpp"
+#include <metamath/symbolic/base/symbolic_base.hpp>
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometric_primitives/rectangle.hpp>
 
 namespace metamath::finite_element {
 
@@ -344,5 +342,3 @@ protected:
 };
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_GEOMETRY_1D_BASE_HPP
-#define FINITE_ELEMENT_GEOMETRY_1D_BASE_HPP
+#pragma once
 
 #include "side_1d.hpp"
 
@@ -19,5 +18,3 @@ public:
 };
 
 }
-
-#endif

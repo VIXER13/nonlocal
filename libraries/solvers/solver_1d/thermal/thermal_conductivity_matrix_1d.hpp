@@ -1,10 +1,9 @@
-#ifndef NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_1D_HPP
-#define NONLOCAL_THERMAL_CONDUCTIVITY_MATRIX_1D_HPP
+#pragma once
 
-#include "../../equation_parameters.hpp"
-
-#include "finite_element_matrix_1d.hpp"
 #include "thermal_parameters_1d.hpp"
+
+#include <solvers/equation_parameters.hpp>
+#include <solvers/solver_1d/base/finite_element_matrix_1d.hpp>
 
 #include <optional>
 
@@ -222,5 +221,3 @@ void thermal_conductivity_matrix_1d<T, I>::calc_matrix(const parameters_1d<T>& p
 }
 
 }
-
-#endif

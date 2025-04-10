@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_BASE_HPP
-#define FINITE_ELEMENT_BASE_HPP
+#pragma once
 
 #include <cstddef>
 #include <ranges>
@@ -15,5 +14,3 @@ public:
 };
 
 }
-
-#endif

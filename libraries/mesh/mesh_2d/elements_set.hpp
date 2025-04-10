@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_ELEMENTS_SET_2D_HPP
-#define NONLOCAL_ELEMENTS_SET_2D_HPP
+#pragma once
 
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
 
 namespace nonlocal::mesh {
 
@@ -102,5 +101,3 @@ public:
 };
 
 }
-
-#endif

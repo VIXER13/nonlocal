@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_ERF_EXPRESSION_HPP
-#define SYMBOLIC_ERF_EXPRESSION_HPP
+#pragma once
 
 #include "exp_expression.hpp"
 
@@ -33,5 +32,3 @@ constexpr erf_expression<E, T{}> erf(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

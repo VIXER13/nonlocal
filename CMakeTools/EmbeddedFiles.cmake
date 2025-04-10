@@ -57,12 +57,10 @@ const size_t ${c_name}_size = sizeof(${c_name}_data)\;"
 )
 
     set(output_h 
-"#ifndef ${c_name}_H
-#define ${c_name}_H
+"#pragma once
 #include <stddef.h>
 extern const char ${c_name}_data[]\;
-extern const size_t ${c_name}_size\;
-#endif"
+extern const size_t ${c_name}_size\;"
 )
 
     if (NOT EXISTS ${CMAKE_BINARY_DIR}/embedded_files)

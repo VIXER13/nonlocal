@@ -1,16 +1,15 @@
-#ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
-#define NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
+#pragma once
 
-#include "thermal_conductivity_matrix_2d.hpp"
+#include "conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
-#include "right_part_2d.hpp"
-#include "boundary_condition_first_kind_2d.hpp"
-#include "boundary_condition_second_kind_2d.hpp"
 #include "convection_condition_2d.hpp"
 #include "radiation_condition_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
-#include "conjugate_gradient.hpp"
+#include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
+#include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
+#include <solvers/solver_2d/base/right_part_2d.hpp>
 
 namespace nonlocal::thermal {
 
@@ -20,7 +19,7 @@ class nonstationary_heat_equation_solver_2d final {
 
     std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     heat_capacity_matrix_2d<T, I, Matrix_Index> _capacity;
-    thermal_conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
+    conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
     Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _conductivity_initial_matrix_inner;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
@@ -106,5 +105,3 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
 }
 
 }
-
-#endif

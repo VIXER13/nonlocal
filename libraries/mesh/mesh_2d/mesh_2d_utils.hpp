@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_UTILS_HPP
-#define NONLOCAL_MESH_UTILS_HPP
+#pragma once
 
 #include "nonzero_counter.hpp"
 #include "integral_counter.hpp"
@@ -159,5 +158,3 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
 // }
 
 }
-
-#endif

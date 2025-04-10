@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_TAN_EXPRESSION_HPP
-#define SYMBOLIC_TAN_EXPRESSION_HPP
+#pragma once
 
 #include "cos_expression.hpp"
 #include "power_expression.hpp"
@@ -31,5 +30,3 @@ constexpr tan_expression<E> tan(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

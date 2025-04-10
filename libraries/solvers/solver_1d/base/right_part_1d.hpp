@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_RIGHT_PART_1D_HPP
-#define NONLOCAL_RIGHT_PART_1D_HPP
+#pragma once
 
-#include "mesh_1d.hpp"
+#include <mesh/mesh_1d/mesh_1d.hpp>
 
 namespace nonlocal {
 
@@ -22,5 +21,3 @@ void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_P
 }
 
 }
-
-#endif

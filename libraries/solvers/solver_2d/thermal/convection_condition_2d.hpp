@@ -1,8 +1,8 @@
-#ifndef NONLOCAL_CONVECTION_CONDITION_2D_HPP
-#define NONLOCAL_CONVECTION_CONDITION_2D_HPP
+#pragma once
 
 #include "thermal_boundary_conditions_2d.hpp"
-#include "solvers_utils.hpp"
+
+#include <solvers/solver_2d/base/solvers_utils.hpp>
 
 #include <Eigen/Sparse>
 
@@ -31,5 +31,3 @@ void convection_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Inde
 }
 
 }
-
-#endif

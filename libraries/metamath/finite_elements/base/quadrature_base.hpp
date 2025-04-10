@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_QUADRATURE_BASE_HPP
-#define FINITE_ELEMENT_QUADRATURE_BASE_HPP
+#pragma once
 
 #include <cstddef>
 #include <type_traits>
@@ -21,5 +20,3 @@ public:
 };
 
 }
-
-#endif

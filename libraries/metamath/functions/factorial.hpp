@@ -1,5 +1,4 @@
-#ifndef METAMATH_FACTORIAL_HPP
-#define METAMATH_FACTORIAL_HPP
+#pragma once
 
 #include <concepts>
 #include <stdexcept>
@@ -15,5 +14,3 @@ constexpr T factorial(const T n) noexcept(!Check) {
 }
 
 }
-
-#endif

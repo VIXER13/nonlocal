@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_MULTIPLIES_HPP
-#define SYMBOLIC_MULTIPLIES_HPP
+#pragma once
 
 #include "plus.hpp"
 
@@ -87,5 +86,3 @@ constexpr auto simplify(const multiplies<E, integral_constant<N>>& m) noexcept {
 }
 
 }
-
-#endif

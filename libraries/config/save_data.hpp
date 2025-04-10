@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_CONFIG_SAVE_DATA_HPP
-#define NONLOCAL_CONFIG_SAVE_DATA_HPP
+#pragma once
 
 #include <nlohmann/json.hpp>
 
@@ -33,5 +32,3 @@ public:
 };
 
 }
-
-#endif

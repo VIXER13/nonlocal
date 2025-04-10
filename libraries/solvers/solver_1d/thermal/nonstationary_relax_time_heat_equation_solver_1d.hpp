@@ -1,5 +1,4 @@
-#ifndef NONSTATIONARY_RELAX_TIME_HEAT_EQUATION_SOLVER_1D_HPP
-#define NONSTATIONARY_RELAX_TIME_HEAT_EQUATION_SOLVER_1D_HPP
+#pragma once
 
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "heat_capacity_matrix_1d.hpp"
@@ -153,5 +152,3 @@ void nonstationary_relax_time_heat_equation_solver_1d<T, I>::calc_step(const the
 }
 
 }
-
-#endif

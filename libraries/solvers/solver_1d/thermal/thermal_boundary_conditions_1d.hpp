@@ -1,8 +1,7 @@
-#ifndef NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
-#define NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
+#pragma once
 
-#include "boundary_conditions_1d.hpp"
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
+#include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
 
 namespace nonlocal::thermal {
 
@@ -97,5 +96,3 @@ template<class T>
 using thermal_boundaries_conditions_1d = boundaries_conditions_1d<T, physics_t::THERMAL>;
 
 }
-
-#endif

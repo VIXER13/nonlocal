@@ -1,5 +1,4 @@
-#ifndef SYMBOLIC_FUNCTIONS_HPP
-#define SYMBOLIC_FUNCTIONS_HPP
+#pragma once
 
 #include "abs_expression.hpp"
 #include "erf_expression.hpp"
@@ -8,5 +7,3 @@
 #include "sin_expression.hpp"
 #include "sqrt_expression.hpp"
 #include "tan_expression.hpp"
-
-#endif

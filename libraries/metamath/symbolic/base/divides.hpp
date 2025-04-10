@@ -1,9 +1,9 @@
-#ifndef SYMBOLIC_DIVIDES_HPP
-#define SYMBOLIC_DIVIDES_HPP
+#pragma once
 
 #include "minus.hpp"
 #include "multiplies.hpp"
-#include "power_expression.hpp"
+
+#include <metamath/symbolic/functions/power_expression.hpp>
 
 namespace metamath::symbolic {
 
@@ -81,5 +81,3 @@ constexpr auto simplify(const multiplies<divides<E1U, E1D>, divides<E2U, E2D>>& 
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_2D_INTEGRATE_HPP
-#define FINITE_ELEMENT_2D_INTEGRATE_HPP
+#pragma once
 
 #include "element_2d_integrate_base.hpp"
 #include "element_2d_serendipity.hpp"
@@ -78,5 +77,3 @@ public:
 };
 
 }
-
-#endif

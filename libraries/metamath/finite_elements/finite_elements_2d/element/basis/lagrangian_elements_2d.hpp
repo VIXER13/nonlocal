@@ -1,9 +1,8 @@
-#ifndef FINITE_ELEMENTS_BASIS_LAGRANGIAN_ELEMENTS_2D_HPP
-#define FINITE_ELEMENTS_BASIS_LAGRANGIAN_ELEMENTS_2D_HPP
+#pragma once
 
-#include "geometry_2d.hpp"
-#include "array_cartesian_product.hpp"
-#include "uniform_partition.hpp"
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
+#include <metamath/utils/array_cartesian_product.hpp>
+#include <metamath/utils/uniform_partition.hpp>
 
 namespace metamath::finite_element {
 
@@ -29,5 +28,3 @@ protected:
 };
 
 }
-
-#endif

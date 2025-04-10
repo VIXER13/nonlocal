@@ -1,8 +1,7 @@
-#ifndef SYMBOLIC_SIN_EXPRESSION_HPP
-#define SYMBOLIC_SIN_EXPRESSION_HPP
+#pragma once
 
-#include "multiplies.hpp"
-#include "unary_expression.hpp"
+#include <metamath/symbolic/base/multiplies.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 #include <cmath>
 
@@ -36,5 +35,3 @@ constexpr sin_expression<E> sin(const expression<E>& e) noexcept {
 }
 
 }
-
-#endif

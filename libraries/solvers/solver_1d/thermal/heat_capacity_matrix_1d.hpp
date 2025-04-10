@@ -1,10 +1,9 @@
-#ifndef NONLOCAL_HEAT_CAPACITY_MATRIX_1D_HPP
-#define NONLOCAL_HEAT_CAPACITY_MATRIX_1D_HPP
+#pragma once
 
 #include "../../equation_parameters.hpp"
 
-#include "finite_element_matrix_1d.hpp"
-#include "thermal_parameters_1d.hpp"
+#include <solvers/solver_1d/base/finite_element_matrix_1d.hpp>
+#include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 
 namespace nonlocal::thermal {
 
@@ -65,5 +64,3 @@ void heat_capacity_matrix_1d<T, I>::calc_matrix(const nonlocal::thermal::paramet
 }
 
 }
-
-#endif

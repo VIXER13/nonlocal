@@ -16,18 +16,6 @@
         "time_step": 0.1
     },
 
-    "boundaries_conditions_missed_all": {},
-    "boundaries_conditions_missed_left": {
-        "right": {}
-    },
-    "boundaries_conditions_missed_right": {
-        "left": {}
-    },
-    "boundaries_conditions_all_required_exists": {
-        "right": {},
-        "left": {}
-    },
-
     "model_dim_missed_all": {},
     "model_dim_missed_local_weight": {
         "nonlocal_radius": 0.1
@@ -70,49 +58,91 @@
         "physical": {}
     },
 
-    "thermal_boundary_condition_missed_all": {},
-    "thermal_boundary_condition_missed_kind": {
-        "temperature": 1.0,
-        "flux": 2.0,
-        "heat_transfer": 3.0,
-        "emissivity": 4.0
+    "mechanical_material_dim_missed_all": {},
+    "mechanical_material_1d_all_required_exists": {
+        "youngs_modulus": 1.0
     },
-    "temperature_condition_missed_temperature": {
-        "kind": "temperature"
+    "mechanical_material_2d_isotropic_all_params": {
+        "poissons_ratio": 0.200,
+        "shear_modulus" : 811407.0,
+        "youngs_modulus": 3898000.0
     },
-    "flux_condition_missed_flux": {
-        "kind": "flux"
+    "mechanical_material_2d_isotropic_all_required_exists": {
+        "poissons_ratio": 0.200,
+        "youngs_modulus": 3898000.0
     },
-    "convection_condition_missed_temperature": {
-        "kind": "convection",
-        "heat_transfer": 1.0
+    "mechanical_material_2d_orthotropic_all_params_exists": {
+        "poissons_ratio": [0.200, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, 3898000.0]
     },
-    "convection_condition_missed_heat_transfer": {
-        "kind": "convection",
-        "temperature": 1.0
+    "mechanical_material_2d_orthotropic_two_nulls_first": {
+        "poissons_ratio": [null, null],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, 3898000.0]
     },
-    "radiation_condition_missed_emissivity": {
-        "kind": "radiation"
+    "mechanical_material_2d_orthotropic_two_nulls_second": {
+        "poissons_ratio": [0.200, null],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [null, 3898000.0]
     },
-    "temperature_condition_all_required_exists": {
-        "kind": "temperature",
-        "temperature": 1.0
+    "mechanical_material_2d_orthotropic_two_nulls_third": {
+        "poissons_ratio": [0.200, null],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, null]
     },
-    "flux_condition_all_required_exists": {
-        "kind": "flux",
-        "flux": 2.0
+    "mechanical_material_2d_orthotropic_two_nulls_fourth": {
+        "poissons_ratio": [null, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, null]
     },
-    "convection_condition_all_required_exists": {
-        "kind": "convection",
-        "temperature": 1.0,
-        "heat_transfer": 1.0
+    "mechanical_material_2d_orthotropic_two_nulls_fifth": {
+        "poissons_ratio": [null, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [null, 3898000.0]
     },
-    "radiation_condition_all_required_exists": {
-        "kind": "radiation",
-        "emissivity": 1.0
+    "mechanical_material_2d_orthotropic_two_nulls_sixth": {
+        "poissons_ratio": [0.200, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [null, null]
     },
-    "combined_condition_flux_missed_all": {
-        "kind": "combined"
+    "mechanical_material_2d_orthotropic_without_shear_modulus_first": {
+        "poissons_ratio": 0.200,
+        "youngs_modulus": [1949000.0, 3898000.0]
+    },
+    "mechanical_material_2d_orthotropic_without_shear_modulus_second": {
+        "poissons_ratio": [0.200, 0.400],
+        "youngs_modulus": 1949000.0
+    },
+    "mechanical_material_2d_orthotropic_youngs_modulus": {
+        "poissons_ratio": [0.200, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": 1949000.0
+    },
+    "mechanical_material_2d_orthotropic_poissons_ratio": {
+        "poissons_ratio": 0.200,
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, 3898000.0]
+    },
+    "mechanical_material_2d_orthotropic_one_null_youngs_modulus_first": {
+        "poissons_ratio": [0.200, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [null, 3898000.0]
+    },
+    "mechanical_material_2d_orthotropic_one_null_youngs_modulus_second": {
+        "poissons_ratio": [0.200, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, null]
+    },
+    "mechanical_material_2d_orthotropic_one_null_poissons_ratio_first": {
+        "poissons_ratio": [null, 0.400],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, 3898000.0]
+    },
+    "mechanical_material_2d_orthotropic_one_null_poissons_ratio_second": {
+        "poissons_ratio": [0.200, null],
+        "shear_modulus": 811407.0,
+        "youngs_modulus": [1949000.0, 3898000.0]
     },
 
     "thermal_material_dim_missed_all": {},

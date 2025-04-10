@@ -1,9 +1,8 @@
-#ifndef SYMBOLIC_MAKE_VARIABLES_HPP
-#define SYMBOLIC_MAKE_VARIABLES_HPP
+#pragma once
+
+#include <metamath/symbolic/base/variable.hpp>
 
 #include <tuple>
-
-#include "variable.hpp"
 
 namespace metamath::symbolic {
 
@@ -26,5 +25,3 @@ constexpr auto make_variables() noexcept {
 }
 
 }
-
-#endif

@@ -1,7 +1,6 @@
-#ifndef NONLOCAL_BOUNDARY_CONDITIONS_2D_HPP
-#define NONLOCAL_BOUNDARY_CONDITIONS_2D_HPP
+#pragma once
 
-#include "nonlocal_constants.hpp"
+#include <solvers/equation_parameters.hpp>
 
 #include <array>
 #include <memory>
@@ -14,10 +13,16 @@ template<class T, physics_t Physics>
 class boundary_condition_2d {
 protected:
     template<class U>
-    static constexpr auto from_value(const U& value) noexcept {
+    static constexpr auto from_value(const U& value) {
         if constexpr (std::is_arithmetic_v<U>)
             return [result = T(value)](const std::array<T, 2>&) constexpr noexcept { return result; };
-        else // Otherwise, we assume that is a functor
+        else if constexpr (std::is_same_v<U, coefficient_t<T, 2u>>) {
+            if (std::holds_alternative<T>(value))
+                return spatial_dependency<T, 2u>{[result = std::get<T>(value)](const std::array<T, 2>&) constexpr noexcept { return result; }};
+            if (std::holds_alternative<spatial_dependency<T, 2u>>(value))
+                return std::get<spatial_dependency<T, 2u>>(value);
+            throw std::domain_error{"A boundary condition cannot be constructed from this object."};
+        } else // Otherwise, we assume that is a functor
             return value;
     }
 
@@ -67,5 +72,3 @@ public:
 };
 
 }
-
-#endif

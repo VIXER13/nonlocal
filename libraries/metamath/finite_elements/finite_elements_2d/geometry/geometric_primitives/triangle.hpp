@@ -1,5 +1,4 @@
-#ifndef FINITE_ELEMENT_TRIANGLE_HPP
-#define FINITE_ELEMENT_TRIANGLE_HPP
+#pragma once
 
 #include <array>
 #include <functional>
@@ -22,5 +21,3 @@ public:
 };
 
 }
-
-#endif

@@ -1,7 +1,6 @@
-#ifndef SYMBOLIC_DERIVATIVE_HPP
-#define SYMBOLIC_DERIVATIVE_HPP
+#pragma once
 
-#include "expression.hpp"
+#include <metamath/symbolic/base/expression.hpp>
 
 #include <cinttypes>
 #include <tuple>
@@ -41,5 +40,3 @@ constexpr auto derivative(const std::tuple<E...>& e) {
 }
 
 }
-
-#endif

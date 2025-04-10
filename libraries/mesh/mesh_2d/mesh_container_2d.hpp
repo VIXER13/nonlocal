@@ -1,8 +1,9 @@
-#ifndef NONLOCAL_MESH_CONTAINER_2D_HPP
-#define NONLOCAL_MESH_CONTAINER_2D_HPP
+#pragma once
 
 #include "elements_set.hpp"
 #include "mesh_parser.hpp"
+
+#include <logger/logger.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -11,6 +12,8 @@
 #include <unordered_set>
 
 namespace nonlocal::mesh {
+
+constexpr std::string_view Default_Group_Name = "DEFAULT";
 
 template<class T, class I>
 class mesh_container_2d final {
@@ -300,7 +303,7 @@ void mesh_container_2d<T, I>::clear() {
 
 template<class T, class I>
 void mesh_container_2d<T, I>::read_from_file(const std::filesystem::path& path_to_mesh) {
-    logger::get().log() << "Read mesh: " << path_to_mesh << std::endl;
+    logger::info() << "Read mesh: " << path_to_mesh << std::endl;
     if (!std::filesystem::is_regular_file(path_to_mesh))
         throw std::domain_error{"The mesh cannot be read because the path is invalid."};
     const std::string extension = path_to_mesh.extension().string();
@@ -334,5 +337,3 @@ void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation
 }
 
 }
-
-#endif

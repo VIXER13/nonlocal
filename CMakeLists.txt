@@ -37,19 +37,10 @@ if (NOT DEFINED NO_CONAN)
 endif()
 
 # libraries
-add_subdirectory(libraries/logger)
-add_subdirectory(libraries/parallel)
-add_subdirectory(libraries/metamath)
-add_subdirectory(libraries/constants)
-add_subdirectory(libraries/mesh/mesh_1d)
-add_subdirectory(libraries/mesh/mesh_2d)
-add_subdirectory(libraries/solvers/slae)
-add_subdirectory(libraries/solvers/solver_1d)
-add_subdirectory(libraries/solvers/solver_2d)
-add_subdirectory(libraries/config)
+add_subdirectory(libraries)
 
 # NonLocFEM
-add_subdirectory(src)
+add_subdirectory(NonLocFEM)
 
 # unit tests
 include(CMakeTools/EmbeddedFiles.cmake)
