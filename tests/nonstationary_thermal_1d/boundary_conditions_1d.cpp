@@ -246,42 +246,6 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         solve_nonstationary_thermal_1d_problem<flux_1d,        temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
                                                                                      left_flux, right_temp, ref_sol, 1e-2, true);
     };
-
-    // "ref_radiation"_test = [] {
-    //     // Radiation boundary condition
-    //     // d/dx(k dT/dx) = qv
-    //     // qv(x) = 4 * er * sigma * (-3(x - 2))^(-4/3)
-    //     // T|x=0 = 6^(-1/3), q*n|x=1 = -er * sigma * T^4,
-    //     // Exact solution : T(x) = (-3(x - 2))^(-1/3)
-    //     constexpr T emissivity = T(1.0 / 5.67036713e-8);
-    //     constexpr T left_temperature = T(std::pow(6.0, -1./3.));
-    //     const auto left_bc =  [&left_temperature] (const T t) constexpr noexcept { return left_temperature; };
-    //     const auto right_bc = [&emissivity](const T t) constexpr noexcept { return emissivity; };
-    //     constexpr auto ref_sol = [](T t, T x) constexpr noexcept {
-    //         return std::pow(-3. * (x - 2.), -1./3.);
-    //     };
-
-    //     const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(100) }});
-
-    //     parameters_1d<T> parameters(segments.size());
-    //     parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-    //                                  // conductivity, capacity, density, relaxation_time
-    //                                  .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>
-    //                                  (T(1.0), T(1.0), T(1.0), T(0.0)) };
-        
-    //     const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
-
-    //     constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
-    //     constexpr auto right_part = [](const T t, const T x) constexpr noexcept { 
-    //         return 4. * std::pow((-3. * (x - 2.)), -7./3.); 
-    //     };
-        
-    //     const time_data<T> time ({.time_step = T(0.001), .initial_time = T(0.0), .steps_count =  I(1) });
-
-    //     solve_nonstationary_thermal_1d_problem<radiation_1d, radiation_1d, T, I>(mesh, time, parameters, init_dist, right_part, 
-    //                                                                              left_bc, right_bc, ref_sol, 1e-8);
-
-    // };
 };
     
 }
