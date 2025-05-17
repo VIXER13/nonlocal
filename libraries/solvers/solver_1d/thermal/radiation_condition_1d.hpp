@@ -32,4 +32,29 @@ void radiation_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
         radiation_condition_1d(matrix, f, *boundaries_conditions[b], temperature_prev, time_step, indices[b]);
 }
 
+template<class T, class I>
+void radiation_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
+                            Eigen::Matrix<T, Eigen::Dynamic, 1>& residual,
+                            const thermal_boundary_condition_1d<T>& boundary_condition,
+                            const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature_prev,
+                            const size_t index) {
+    if (const auto* const condition = dynamic_cast<const radiation_1d<T>*>(&boundary_condition)) {
+        static constexpr T STEFAN_BOLTZMANN_CONSTANT_X4 = T{4} * STEFAN_BOLTZMANN_CONSTANT<T>;
+        const T temperature_pow_3 = metamath::functions::power<3>(temperature_prev[index]);
+        matrix.coeffRef(index, index) -= STEFAN_BOLTZMANN_CONSTANT_X4 * condition->emissivity() * temperature_pow_3;
+        residual[index] -= STEFAN_BOLTZMANN_CONSTANT<T> * condition->emissivity() * temperature_pow_3 * temperature_prev[index];
+    }
+}
+
+template<class T, class I>
+void radiation_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
+                            Eigen::Matrix<T, Eigen::Dynamic, 1>& residual,
+                            const thermal_boundaries_conditions_1d<T>& boundaries_conditions, 
+                            const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature_prev) {
+    const std::array<size_t, 2> indices = {0, size_t(matrix.outerSize() - 1)};
+    for(const size_t b : std::ranges::iota_view{0u, 2u}) {
+        radiation_condition_1d(matrix, residual, *boundaries_conditions[b], temperature_prev, indices[b]);
+    }
+}
+
 }

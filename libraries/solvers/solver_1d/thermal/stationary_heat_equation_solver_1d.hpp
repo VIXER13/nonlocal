@@ -2,6 +2,7 @@
 
 #include "thermal_conductivity_matrix_1d.hpp"
 #include "convection_condition_1d.hpp"
+#include "radiation_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
 
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
@@ -42,6 +43,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     const Eigen::Matrix<T, Eigen::Dynamic, 1> initial_f = f;
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
+    Eigen::Matrix<T, Eigen::Dynamic, 1> residual = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(f.size());
     if (additional_parameters.initial_distribution)
         for(const size_t node : mesh->nodes())
             temperature_prev[node] = (*additional_parameters.initial_distribution)(mesh->node_coord(node));
@@ -50,7 +52,12 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     static constexpr auto is_solution_depend_parameter = [](const auto& parameter) noexcept {
         return parameter.physical->type == coefficients_t::SOLUTION_DEPENDENT;
     };
+
+    static constexpr auto is_radiation_boundary_condition = [](const auto& condition) noexcept {
+        return bool(dynamic_cast<const radiation_1d<T>*>(condition.get()));
+    };
     const bool is_sol_depend = std::any_of(parameters.begin(), parameters.end(), is_solution_depend_parameter);
+    const bool is_radiation  = std::any_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_radiation_boundary_condition); 
 
     static constexpr auto check_nonlinear = [](const auto& parameter) { return parameter.physical->type != coefficients_t::CONSTANTS; };
     const bool is_nonlinear = std::any_of(parameters.begin(), parameters.end(), check_nonlinear);
@@ -92,28 +99,45 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         } else {
             convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
             boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);
-            if (is_symmetric) {
-                const Eigen::SimplicialCholesky<
-                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
-                    Eigen::Upper, 
-                    Eigen::NaturalOrdering<I>
-                > solver{conductivity.matrix_inner()};
-                temperature_curr = solver.solve(f);
+            if (is_radiation) {
+                residual = conductivity.matrix_inner().template selfadjointView<Eigen::Upper>() * temperature_prev - f;
+                radiation_condition_1d(conductivity.matrix_inner(), residual, boundaries_conditions, temperature_prev);
+                if (is_symmetric) {
+                    const Eigen::SimplicialCholesky<
+                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
+                        Eigen::Upper, 
+                        Eigen::NaturalOrdering<I>
+                    > solver{conductivity.matrix_inner()};
+                    temperature_curr = temperature_prev - solver.solve(residual);
+                } else {
+                    const Eigen::SparseLU<
+                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
+                        Eigen::NaturalOrdering<I>
+                    > solver{conductivity.matrix_inner()};
+                    temperature_curr = temperature_prev - solver.solve(residual);
+                }
             } else {
-                const Eigen::SparseLU<
-                    Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
-                    Eigen::NaturalOrdering<I>
-                > solver{conductivity.matrix_inner()};
-                temperature_curr = solver.solve(f);
+                if (is_symmetric) {
+                    const Eigen::SimplicialCholesky<
+                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
+                        Eigen::Upper, 
+                        Eigen::NaturalOrdering<I>
+                    > solver{conductivity.matrix_inner()};
+                    temperature_curr = solver.solve(f);
+                } else {
+                    const Eigen::SparseLU<
+                        Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
+                        Eigen::NaturalOrdering<I>
+                    > solver{conductivity.matrix_inner()};
+                    temperature_curr = solver.solve(f);
+                }
             }
         }
-
-        if (!is_sol_depend)
+        if (!is_sol_depend and !is_radiation)
             break;
-
         ++iteration;
         difference = (temperature_curr - temperature_prev).norm() / (temperature_curr.norm() ?: T{1});
-        logger::info() << "norm(prev - curr) = " << difference << std::endl;
+        logger::info() << "; norm(prev - curr) = " << difference << "; residual = " << residual.norm() << std::endl;
     }
     logger::info() << "Iterations: " << iteration << std::endl;
     return heat_equation_solution_1d<T>{mesh, parameters, temperature_curr};

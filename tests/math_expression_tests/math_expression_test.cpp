@@ -177,6 +177,12 @@ const suite<"formula"> _ = [] {
         expect(test.to_polish() == "xycos*texp/10+");
         expect(test.variables_count() == 3);
         expect(std::abs(test({ 2., pi, 10. }) - 9.99991) < 1e-6);
+
+        test = math_expression("x y : 400.0 * exp((x - 1.0)^2 * -400.0 )");
+        expect(test.variables_count() == 2);
+        expect(std::abs(test({ 1., 100. }) - 400.) < 1e-6);
+        std::cout << test({ 1.13, 100. }) << std::endl;
+        expect(std::abs(test({ 1.13, 100. }) - 0.463692) < 1e-6);
     };
 
     "polish_notation_throws"_test = [] {
