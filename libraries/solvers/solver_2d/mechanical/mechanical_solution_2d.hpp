@@ -176,7 +176,7 @@ template<class T, class I>
 void mechanical_solution_2d<T, I>::add_stress(const hooke_matrix<T>& hooke, const std::array<T, 3>& strain, const size_t qshift) {
     _stress[_11][qshift] += hooke[c_11] * strain[_11] + hooke[c_12] * strain[_22];
     _stress[_22][qshift] += hooke[c_12] * strain[_11] + hooke[c_22] * strain[_22];
-    _stress[_12][qshift] += hooke[c_33] * strain[_12];
+    _stress[_12][qshift] += 2 * hooke[c_33] * strain[_12];
 }
 
 template<class T, class I>
