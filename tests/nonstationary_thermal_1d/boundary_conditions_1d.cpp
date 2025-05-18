@@ -28,7 +28,9 @@ void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_eq
                     std::function<T(T, T)> ref, T eps = T{1e-8}) {
     auto& sol = solution.temperature();
     for (std::size_t k = 0; k < sol.size(); ++k) {
-        expect(lt(std::abs(sol[k] - ref(time_layer, mesh->node_coord(k))), eps * step));
+        const T ref_val = ref(time_layer, mesh->node_coord(k));
+        const T err = ref_val > 0 ? (sol[k] - ref_val) / ref_val : sol[k] - ref_val;     
+        expect(lt(std::abs(err), eps * step));
     }
 }
 
