@@ -11,7 +11,6 @@
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
-#include <solvers/solver_2d/base/initial_distribution_2d.hpp>
 
 #include <chrono>
 
@@ -82,7 +81,8 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
     if (auxiliary_data.initial_distribution)
-        initialize_solution<DoF>(temperature_curr, *mesh, *auxiliary_data.initial_distribution);
+        for(const size_t node : mesh->container().nodes())
+            temperature_curr[node] = (*auxiliary_data.initial_distribution)(mesh->container().node_coord(node));
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev = temperature_curr;
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual = temperature_curr;
 
