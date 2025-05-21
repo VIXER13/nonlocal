@@ -34,10 +34,15 @@ heat_equation_solution_2d<T> solve_thermal_2d_problem(
     const parameters_2d<T>& parameters,
     const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data<T>& auxiliary) {
-    auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>(
-        mesh, parameters, boundaries_conditions, 
-        [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
-        auxiliary.energy
+    const stationary_equation_parameters_2d<T> auxiliary_data {
+        .right_part = [value = auxiliary.right_part](const std::array<T, 2>& x) constexpr noexcept { return value; },
+        .initial_distribution = [value = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return value; },
+        .tolerance = std::is_same_v<T, float> ? 1e-5 : 1e-8,
+        .max_iterations = 10,
+        .energy = auxiliary.energy
+    };
+    auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>( 
+        mesh, parameters, boundaries_conditions, auxiliary_data
     );
     solution.calc_flux();
     return solution;
