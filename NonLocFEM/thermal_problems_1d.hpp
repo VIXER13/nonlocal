@@ -27,7 +27,7 @@ template<std::floating_point T, std::signed_integral I>
 void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save, const bool time_dependency) {
     const auto mesh = nonlocal::config::read_mesh_1d<T>(config, {});
     const auto parameters = config::read_thermal_parameters_1d<T>(config["materials"], "materials");
-    const auto auxiliary = config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
+    const auto auxiliary = config::thermal_auxiliary_data_1d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = config::read_thermal_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
 
     if (!time_dependency) {

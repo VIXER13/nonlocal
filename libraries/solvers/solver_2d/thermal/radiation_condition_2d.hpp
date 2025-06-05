@@ -3,7 +3,6 @@
 #include "thermal_boundary_conditions_2d.hpp"
 
 #include <solvers/solvers_utils.hpp>
-
 #include <Eigen/Sparse>
 
 namespace nonlocal::thermal {
@@ -90,7 +89,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
                 const auto element = mesh.container().element_1d_data(be);
                 const size_t i = mesh.global_to_local(be, row);
                 for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})
-                    if (const size_t col = mesh.container().node_number(be, j); col >= row)
+                    if (const size_t col = mesh.container().node_number(be, j); col >= row) 
                         K.coeffRef(row, col) -= integrate_matrix(condition, element, i, j);
                 residual[row] -= integrate_vector(condition, element, i);
             }

@@ -7,6 +7,7 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <iostream>
 
 namespace nonlocal
 {
@@ -58,5 +59,23 @@ void boundary_condition_first_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
     f.block(DoF * process_nodes.front(), 0, DoF * process_nodes.size(), 1) -= K_bound * x;
     _boundary_condition_first_kind_2d::set_values(f, x, mesh, boundaries_conditions);
 }
+
+template<class T, class I, class Matrix_Index, physics_t Physics, size_t DoF>
+void first_kind_matrix_fill_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
+                               Eigen::Matrix<T, Eigen::Dynamic, 1>& residual,
+                               const mesh::mesh_2d<T, I>& mesh,
+                               const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
+    utils::run_by_boundaries<first_kind_2d, Physics>(mesh.container(), boundaries_conditions,
+        [&K, &mesh, &residual, process_nodes = mesh.process_nodes()]
+        (const  first_kind_2d<T, Physics>&, const size_t be, const size_t row, const size_t) {
+            if (row >= process_nodes.front() && row <= process_nodes.back()) {
+                for (typename Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>::InnerIterator it(K, row); it; ++it)
+                    if (row <= it.index())
+                        it.valueRef() = (row == it.index() ? T(1) : T(0));
+                residual[row] = T(0);
+            }
+        });
+}
+    
     
 }

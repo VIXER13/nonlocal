@@ -77,7 +77,7 @@ std::optional<thermal::heat_equation_solution_2d<T>> thermal_stationary_2d(
     return thermal::solve_thermal_2d_problem<T, I>(mesh,
         config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
         config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
-        config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
+        config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
     );
 }
 
@@ -92,7 +92,7 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
     thermal::solve_thermal_2d_problem<T, I>(mesh, 
         config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
         config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries"),
-        config::thermal_auxiliary_data<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
+        config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
         config::time_data<T>{config["time"], "time"},
         save);
 }

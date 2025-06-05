@@ -8,8 +8,8 @@ if (NOT DEFINED NO_CONAN)
 endif()
 
 add_library(stationary_thermal_2d_lib OBJECT 
-    init_2d_mesh.cpp
     boundary_conditions_2d.cpp
+    init_2d_mesh.cpp
 )
 
 target_include_directories(stationary_thermal_2d_lib PUBLIC
@@ -18,6 +18,5 @@ target_include_directories(stationary_thermal_2d_lib PUBLIC
 )
 
 target_link_libraries(stationary_thermal_2d_lib
-    finite_element_solver_2d_lib
     heat_equation_solver_2d_lib
 )

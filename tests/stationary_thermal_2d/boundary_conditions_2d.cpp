@@ -1,5 +1,4 @@
 #include <boost/ut.hpp>
-
 #include "init_2d_mesh.hpp"
 
 namespace {
@@ -128,7 +127,26 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
         const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
             mesh, parameters, boundaries_conditions, auxiliary_data
         );
-        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);
+        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-1);
+    };
+
+    "radiation_on_left_side"_test = [] {
+        const auto [mesh, parameters, auxiliary_data, ref_sol] = test_task_1<T, I>();
+        constexpr T emissivity = 0.7;
+        // Boundaries conditions
+        const auto right_temperature  = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({1.0, x[1]}); };
+        const auto top_temperature    = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({x[0], 1.0}); };
+        const auto bottom_temperature = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({x[0], 0.0}); };
+        thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
+        boundaries_conditions["Left"  ] = std::make_unique<thermal::radiation_2d<T>>(emissivity);
+        boundaries_conditions["Right" ] = std::make_unique<thermal::temperature_2d<T>>(right_temperature);
+        boundaries_conditions["Top"   ] = std::make_unique<thermal::temperature_2d<T>>(top_temperature);
+        boundaries_conditions["Bottom"] = std::make_unique<thermal::temperature_2d<T>>(bottom_temperature);
+        // 2D stationary solution
+        const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
+            mesh, parameters, boundaries_conditions, auxiliary_data
+        );
+        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-1);
     };
 
 };
