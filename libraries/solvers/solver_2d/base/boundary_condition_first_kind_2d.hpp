@@ -7,7 +7,6 @@
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
-#include <iostream>
 
 namespace nonlocal
 {
