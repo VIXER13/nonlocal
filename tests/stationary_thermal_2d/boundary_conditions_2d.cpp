@@ -25,7 +25,7 @@ void check_solution(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const heat
 template<std::floating_point T, std::signed_integral I>
 std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
            stationary_equation_parameters_2d<T>, 
-           std::function<T(const std::array<T, 2>&)>> test_task_1() {
+           std::function<T(const std::array<T, 2>&)>> test_task_1(double mult = 1.0) {
     // div(k grad T) + qv = kx d^2T/dx^2 + ky d^2T/dy^2 + qv = 0
     // Exact solution : T(x, y) = f(x) * g(y) 
     // Let f be : df/dx = alpha * f^4
@@ -40,9 +40,10 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
     constexpr T sigma = STEFAN_BOLTZMANN_CONSTANT<T>;
     constexpr T lambda = 10.;
     constexpr T emissivity = 0.7;
-    constexpr T alpha = emissivity * sigma / lambda;
+    constexpr T alpha = mult * emissivity * sigma / lambda;
+    constexpr T shift = mult * 1.01;
     const auto f = [&](T x) constexpr noexcept -> T {
-        return std::pow(-3. * alpha * (x - 1.01), -1./3.);
+        return std::pow(-3. * alpha * (x - shift), -1./3.);
     };
     constexpr T A = 1., m = 0.5, d = 0.1;
     const auto g = [&](T y) constexpr noexcept -> T {
@@ -112,7 +113,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
     };
 
     "radiation_on_right_side"_test = [] {
-        const auto [mesh, parameters, auxiliary_data, ref_sol] = test_task_1<T, I>();
+        const auto [mesh, parameters, auxiliary_data, ref_sol] = test_task_1<T, I>(-1.0);
         constexpr T emissivity = 0.7;
         // Boundaries conditions
         const auto left_temperature   = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({0.0, x[1]}); };
@@ -127,7 +128,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
         const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
             mesh, parameters, boundaries_conditions, auxiliary_data
         );
-        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-1);
+        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);
     };
 
     "radiation_on_left_side"_test = [] {
@@ -146,7 +147,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
         const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
             mesh, parameters, boundaries_conditions, auxiliary_data
         );
-        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-1);
+        check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);
     };
 
 };

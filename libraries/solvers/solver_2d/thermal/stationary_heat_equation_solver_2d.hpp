@@ -106,7 +106,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
             first_kind_matrix_fill_2d(conductivity.matrix().inner(), residual_rad, *mesh, boundaries_conditions);
             boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix().bound());
         }           
-        residual += residual_rad - f ;
+        residual -= residual_rad + f;
         if (is_symmetric) {
             logger::info() << "Local matrix" << std::endl;
             //conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
