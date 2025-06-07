@@ -12,11 +12,13 @@ add_library(stationary_thermal_2d_lib OBJECT
     init_2d_mesh.cpp
 )
 
-target_include_directories(stationary_thermal_2d_lib PUBLIC
+target_include_directories(stationary_thermal_2d_lib PRIVATE
     ${LIBRARIES_DIR}
     ${INCLUDES}
+        ${PROJECT_ROOT}/build/embedded_files
 )
 
 target_link_libraries(stationary_thermal_2d_lib
+    PRIVATE
     heat_equation_solver_2d_lib
 )

@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 3.16)
 
 project(nonlocal_tests)
 
+set(PROJECT_ROOT ${CMAKE_SOURCE_DIR})
+message(STATUS "PROJECT_ROOT: ${PROJECT_ROOT}")
+
 FileEmbedSetup()
+
+FileEmbedAdd(./embedded/test_exceptions.json)
+FileEmbedAdd(./embedded/test_utils.json)
+FileEmbedAdd(./embedded/mesh.json)
 
 add_subdirectory(config)
 add_subdirectory(finite_elements)
@@ -23,6 +30,7 @@ target_link_libraries(unit_tests
 	stationary_thermal_1d_lib
     stationary_thermal_2d_lib
     math_expression_test_lib
+    embedded_files
 )
 
 add_test(NAME unit_tests COMMAND unit_tests)

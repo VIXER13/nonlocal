@@ -3,6 +3,7 @@
 #include "thermal_boundary_conditions_2d.hpp"
 
 #include <solvers/solvers_utils.hpp>
+
 #include <Eigen/Sparse>
 
 namespace nonlocal::thermal {

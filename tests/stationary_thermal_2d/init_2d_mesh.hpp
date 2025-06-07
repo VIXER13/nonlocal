@@ -1,4 +1,5 @@
 #pragma once
+
 #include <metamath/metamath.hpp>
 #include <solvers/solver_2d/influence_functions_2d.hpp>
 #include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>

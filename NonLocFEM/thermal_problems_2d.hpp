@@ -35,7 +35,7 @@ heat_equation_solution_2d<T> solve_thermal_2d_problem(
     const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data_2d<T>& auxiliary) {
     const stationary_equation_parameters_2d<T> auxiliary_data {
-        .right_part = [value = std::get<1>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); },
+        .right_part = [value = std::get<spatial_dependency<T, 2>>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); },
         .initial_distribution = [value = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return value; },
         .tolerance = std::is_same_v<T, float> ? 1e-5 : 1e-10,
         .max_iterations = 40,
@@ -66,7 +66,7 @@ void solve_thermal_2d_problem(
     }
     for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
         solver.calc_step(boundaries_conditions, 
-        [value = std::get<1>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); });
+        [value = std::get<spatial_dependency<T, 2>>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); });
         if (step % time.save_frequency == 0) {
             nonlocal::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
             solution.calc_flux();

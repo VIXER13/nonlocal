@@ -89,7 +89,8 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
 
-    T difference = T{1}, norm_of_residual = T{1};
+    T difference = T{1};
+    T norm_of_residual = T{1};
     size_t iteration = 0;
     while (iteration < auxiliary_data.max_iterations && 
            auxiliary_data.tolerance < difference && 
@@ -109,21 +110,25 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         residual -= residual_rad + f;
         if (is_symmetric) {
             logger::info() << "Local matrix" << std::endl;
-            //conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
-            //conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
-            //conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
-            //slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};
-            // logger::info() << "ILLT preconditioner" << std::endl;
-            // solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
-            // conductivity_local.matrix().inner()
-            // );
-            // if (solver.preconditioner().computation_info() != Eigen::Success) {
-            //     solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
-            //     logger::warning() << "The ILLT preconditioner could not be calculated, "
-            //                     << "the preconditioner was switched to Identity." << std::endl;
-            // }        
-            const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{conductivity.matrix().inner()};
-            temperature_curr = temperature_prev - solver.solve(residual);
+            if (is_radiation) {                   
+                const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{conductivity.matrix().inner()};
+                temperature_curr = temperature_prev - solver.solve(residual);
+            } else {
+                conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
+                conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
+                conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
+                slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};
+                logger::info() << "ILLT preconditioner" << std::endl;
+                solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
+                conductivity_local.matrix().inner()
+                );
+                if (solver.preconditioner().computation_info() != Eigen::Success) {
+                    solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
+                    logger::warning() << "The ILLT preconditioner could not be calculated, "
+                                    << "the preconditioner was switched to Identity." << std::endl;
+                } 
+                temperature_curr = temperature_prev - solver.solve(residual);  
+            }
         } else {
             const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{conductivity.matrix().inner()};
             temperature_curr = temperature_prev - solver.solve(residual);

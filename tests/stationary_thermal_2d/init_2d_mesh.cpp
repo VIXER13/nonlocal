@@ -4,9 +4,7 @@ namespace {
 
 template<std::floating_point T, std::signed_integral I>
 std::shared_ptr<nonlocal::mesh::mesh_2d<T, I>> init(const std::string& path_to_mesh) {
-    //static const nonlocal::mesh::mesh_2d<T, I> mesh(path_to_mesh);
-    static const auto mesh_p = std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(path_to_mesh);
-    return mesh_p;
+    return std::make_shared<nonlocal::mesh::mesh_2d<T, I>>(path_to_mesh);
 }
 
 }
