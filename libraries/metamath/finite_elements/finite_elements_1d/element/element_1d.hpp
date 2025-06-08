@@ -6,8 +6,6 @@
 #include <functional>
 #include <tuple>
 
-#include <iostream>
-
 namespace metamath::finite_element {
 
 template<class T, template<class, auto...> class Element_Type, auto... Args>

@@ -76,7 +76,7 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         // Exact solution : T_ref(x) = (-3 * alpha * (x - 1.01))^(-1/3)
         constexpr T sigma = STEFAN_BOLTZMANN_CONSTANT<T>;
         constexpr T lambda = 10.;
-        constexpr T emissivity =  0.7;
+        constexpr T emissivity = 0.7;
         constexpr T alpha = emissivity * sigma / lambda;
         const auto ref_sol = [&](T x) constexpr noexcept -> T {
             return std::pow(-3. * alpha * (x - 1.01), -1./3.);
@@ -104,7 +104,7 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         check_solution<T>(mesh, num_sol, ref_sol, 1e-6);
     };
 
-    "const_radiation_temperature"_test = [] {
+    "radiation_const_temperature"_test = [] {
         // Radiation boundary condition
         // d/dx(lambda * dT/dx) + qv = 0
         // alpha = er * sigma / lambda
