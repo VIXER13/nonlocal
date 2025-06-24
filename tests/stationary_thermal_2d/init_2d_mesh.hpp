@@ -8,6 +8,6 @@ namespace unit_tests {
 
 // Mesh initialization is separated into a separate translation unit to avoid the SIOF problem.
 template<std::floating_point T, std::signed_integral I>
-std::shared_ptr<nonlocal::mesh::mesh_2d<T, I>> init_2d_mesh(const std::string& path_to_mesh);
+std::shared_ptr<nonlocal::mesh::mesh_2d<T, I>> init_2d_mesh(std::stringstream& stream, const nonlocal::mesh::mesh_format format);
 
 }

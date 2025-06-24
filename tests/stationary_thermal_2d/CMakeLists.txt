@@ -7,6 +7,8 @@ if (NOT DEFINED NO_CONAN)
     set(INCLUDES ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT})
 endif()
 
+FileEmbedAdd(./meshes/square_1x1_16el_uniform_mesh.su2)
+
 add_library(stationary_thermal_2d_lib OBJECT 
     boundary_conditions_2d.cpp
     init_2d_mesh.cpp
@@ -15,7 +17,7 @@ add_library(stationary_thermal_2d_lib OBJECT
 target_include_directories(stationary_thermal_2d_lib PRIVATE
     ${LIBRARIES_DIR}
     ${INCLUDES}
-        ${PROJECT_ROOT}/build/embedded_files
+    ${PROJECT_ROOT}/build/embedded_files
 )
 
 target_link_libraries(stationary_thermal_2d_lib

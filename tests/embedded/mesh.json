@@ -1,5 +1,0 @@
-{
-    "mesh_2d_thermal_stationary": {
-        "path": "../tests/stationary_thermal_2d/meshs/square_1x1_16el_uniform_mesh.su2"
-    }
-}

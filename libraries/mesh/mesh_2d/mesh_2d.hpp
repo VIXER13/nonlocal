@@ -45,6 +45,8 @@ class mesh_2d final {
 
 public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
+    template<class Stream>
+    explicit mesh_2d(Stream& stream, const mesh_format format);
 
     const mesh_container_2d<T, I>& container() const;
     
@@ -87,6 +89,20 @@ public:
 template<class T, class I>
 mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh)
     : _mesh{path_to_mesh}
+    , _node_elements{utils::node_elements_2d(container())}
+    , _global_to_local{utils::global_to_local(container())}
+    , _quad_shifts{utils::elements_quadrature_shifts_2d(container())}
+    , _quad_coords{utils::approx_all_quad_nodes(container(), _quad_shifts)}
+    , _jacobi_matrices{utils::approx_all_jacobi_matrices(container(), _quad_shifts)}
+    , _quad_node_shift{utils::element_node_shits_quadrature_shifts_2d(container())}
+    , _derivatives{utils::derivatives_in_quad(container(), _quad_shifts, _quad_node_shift, _jacobi_matrices)}
+    , _MPI_ranges{container().nodes_count()}
+    , _elements_neighbors(container().elements_2d_count()) {}
+
+template<class T, class I>
+template<class Stream>
+mesh_2d<T, I>::mesh_2d(Stream& stream, const mesh_format format)
+    : _mesh{stream, format}
     , _node_elements{utils::node_elements_2d(container())}
     , _global_to_local{utils::global_to_local(container())}
     , _quad_shifts{utils::elements_quadrature_shifts_2d(container())}

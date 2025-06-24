@@ -54,6 +54,8 @@ public:
     };
 
     explicit mesh_container_2d(const std::filesystem::path& path_to_mesh);
+    template<class Stream>
+    explicit mesh_container_2d(Stream& stream, const mesh_format format);
 
     const std::string& group(const size_t element) const;
 
@@ -90,7 +92,8 @@ public:
     element_data_2d element_2d_data(const size_t element) const;
 
     void clear();
-    void read_from_file(const std::filesystem::path& path_to_mesh);
+    template<mesh_format Format, class Stream>
+    void read_from_stream(Stream& stream);
     void renumbering(const std::vector<size_t>& permutation);
 };
 
@@ -158,7 +161,24 @@ metamath::types::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::j
 
 template<class T, class I>
 mesh_container_2d<T, I>::mesh_container_2d(const std::filesystem::path& path_to_mesh) {
-    read_from_file(path_to_mesh);
+    logger::info() << "Read mesh: " << path_to_mesh << std::endl;
+    if (!std::filesystem::is_regular_file(path_to_mesh))
+        throw std::domain_error{"The mesh cannot be read because the path is invalid."};
+    if (const std::string extension = path_to_mesh.extension().string(); extension == ".su2") {
+        std::ifstream mesh_file{path_to_mesh};
+        read_from_stream<mesh_format::SU2>(mesh_file);
+    } else
+        throw std::domain_error{"Unable to read mesh with extension " + extension};
+}
+
+template<class T, class I>
+template<class Stream>
+mesh_container_2d<T, I>::mesh_container_2d(Stream& stream, const mesh_format format) {
+    logger::info() << "Reading mesh from stream." << std::endl;
+    if (format == mesh_format::SU2)
+        read_from_stream<mesh_format::SU2>(stream);
+    else
+        throw std::domain_error{"Unsupported mesh format."};
 }
 
 template<class T, class I>
@@ -302,19 +322,11 @@ void mesh_container_2d<T, I>::clear() {
 }
 
 template<class T, class I>
-void mesh_container_2d<T, I>::read_from_file(const std::filesystem::path& path_to_mesh) {
-    logger::info() << "Read mesh: " << path_to_mesh << std::endl;
-    if (!std::filesystem::is_regular_file(path_to_mesh))
-        throw std::domain_error{"The mesh cannot be read because the path is invalid."};
-    const std::string extension = path_to_mesh.extension().string();
-    if (extension == ".su2") {
-        clear();
-        std::ifstream mesh_file{path_to_mesh};
-        mesh_parser<T, I, mesh_format::SU2> parser{*this};
-        parser.parse(mesh_file);
-        return;
-    }
-    throw std::domain_error{"Unable to read mesh with extension " + extension};
+template<mesh_format Format, class Stream>
+void mesh_container_2d<T, I>::read_from_stream(Stream& stream) {
+    clear();
+    mesh_parser<T, I, Format> parser{*this};
+    parser.parse(stream);
 }
 
 template<class T, class I>

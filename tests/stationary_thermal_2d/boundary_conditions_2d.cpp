@@ -1,9 +1,9 @@
-#include "mesh_json.h"
+#include "square_1x1_16el_uniform_mesh_su2.h"
+
+#include "init_2d_mesh.hpp"
 
 #include <boost/ut.hpp>
 #include <nlohmann/json.hpp>
-
-#include "init_2d_mesh.hpp"
 
 namespace {
 
@@ -57,9 +57,8 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
         return f(x[0]) * g(x[1]);
     };
     // Computational mesh
-    const nlohmann::json config = nlohmann::json::parse(mesh_json_data);
-    const std::string path_to_mesh = config["mesh_2d_thermal_stationary"]["path"];
-    const auto mesh = unit_tests::init_2d_mesh<T, I>(path_to_mesh);
+    std::stringstream stream{square_1x1_16el_uniform_mesh_su2_data};
+    const auto mesh = unit_tests::init_2d_mesh<T, I>(stream, mesh::mesh_format::SU2);
     // Material and model parameters
     thermal::parameters_2d<T> parameters;
     parameters["Layer1"] = {
@@ -94,7 +93,6 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
 }
 
 const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
-
     using T = double;
     using I = int64_t;
 
