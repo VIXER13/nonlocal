@@ -149,7 +149,7 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
                         size_t qshiftNL = _base::mesh().quad_shift(eNL);
                         const auto& elNL = _base::mesh().container().element_2d(eNL);
                         for(const size_t qNL : elNL.qnodes()) {
-                            const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshiftNL)) *
+                            const T influence_weight = elNL.weight(qNL) * _base::mesh().jacobian(qshiftNL) *
                                                        model.influence(qcoordL, _base::mesh().quad_coord(qshiftNL));
                             nonlocal_gradient[X] += influence_weight * _flux[X][qshiftNL];
                             nonlocal_gradient[Y] += influence_weight * _flux[Y][qshiftNL];

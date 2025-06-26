@@ -55,9 +55,8 @@ std::array<std::vector<T>, 2> gradient_in_qnodes(const mesh_2d<T, I>& mesh, cons
                 gradient[X][qshift] += val * derivatives[X];
                 gradient[Y][qshift] += val * derivatives[Y];
             }
-            const T jac = jacobian(mesh.jacobi_matrix(qshift));
-            gradient[X][qshift] /= jac;
-            gradient[Y][qshift] /= jac;
+            gradient[X][qshift] /= mesh.jacobian(qshift);
+            gradient[Y][qshift] /= mesh.jacobian(qshift);
         }
     }
     return gradient;

@@ -52,8 +52,7 @@ class _temperature_condition final {
             size_t qshiftNL = _mesh.quad_shift(eNL);
             const std::array<T, 2>& qcoordL = _mesh.quad_coord(eL, qL);
             for(const size_t qNL : elNL.qnodes()) {
-                const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) *
-                                 mesh::jacobian(_mesh.jacobi_matrix(qshiftNL));
+                const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) * _mesh.jacobian(qshiftNL);
                 inner_integral += weight * _temperature_strains[qshiftNL++];
             }
             integral += elL.weight(qL) * inner_integral * _mesh.derivatives(eL, iL, qL);

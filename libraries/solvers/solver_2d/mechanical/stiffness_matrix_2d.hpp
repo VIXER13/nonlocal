@@ -82,7 +82,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_loc(
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
         using namespace metamath::functions;
-        const T weight = el.weight(q) / mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        const T weight = el.weight(q) / _base::mesh().jacobian(e, q);
         add_to_integral(integral, weight * _base::mesh().derivatives(e, i, q), _base::mesh().derivatives(e, j, q));
     }
     return calc_block(hooke, integral);
@@ -138,7 +138,7 @@ T stiffness_matrix<T, I, J>::integrate_basic(const size_t e, const size_t i) con
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
-        integral += el.weight(q) * el.qN(i, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        integral += el.weight(q) * el.qN(i, q) * _base::mesh().jacobian(e, q);
     return integral;
 }
 

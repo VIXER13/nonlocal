@@ -83,7 +83,7 @@ T conductivity_matrix_2d<T, I, J>::integrate_basic(const size_t e, const size_t 
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
-        integral += el.weight(q) * el.qN(i, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        integral += el.weight(q) * el.qN(i, q) * _base::mesh().jacobian(e, q);
     return integral;
 }
 
@@ -152,7 +152,7 @@ T conductivity_matrix_2d<T, I, J>::integrate_local(const Material& conductivity,
         else if constexpr (std::is_same_v<Material, anisotropic_conductivity_t<T>>)
             value = dNi[X] * (conduct[X][X] * dNj[X] + conduct[X][Y] * dNj[Y]) + 
                     dNi[Y] * (conduct[Y][X] * dNj[X] + conduct[Y][Y] * dNj[Y]);
-        integral += el.weight(q) * value / mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        integral += el.weight(q) * value / _base::mesh().jacobian(e, q);
     }
     return integral;
 }

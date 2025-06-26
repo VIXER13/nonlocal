@@ -163,7 +163,7 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_strain(const size_t
         const size_t qshiftNL = _base::mesh().quad_shift(eNL);
         for(const size_t qNL : elNL.qnodes()) {
             const size_t qshift = qshiftNL + qNL;
-            const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshift)) *
+            const T influence_weight = elNL.weight(qNL) * _base::mesh().jacobian(qshift) *
                                        influence(_base::mesh().quad_coord(qshift));
             for(const size_t i : std::ranges::iota_view{0u, nonlocal_stress.size()})
                 nonlocal_stress[i] += influence_weight * strains[i][qshift];

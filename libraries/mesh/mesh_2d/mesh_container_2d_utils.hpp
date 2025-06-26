@@ -77,6 +77,19 @@ std::vector<metamath::types::square_matrix<T, 2>> approx_all_jacobi_matrices(con
         [](const auto& element_data, const size_t q) { return element_data.jacobi_matrix(q); });
 }
 
+template<class T>
+constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
+    return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
+}
+
+template<class T>
+std::vector<T> calculate_jacobians(const std::vector<metamath::types::square_matrix<T, 2>>& jacobi_matrices) {
+    std::vector<T> jacobians(jacobi_matrices.size());
+    std::transform(jacobi_matrices.begin(), jacobi_matrices.end(), jacobians.begin(), jacobian<T>);
+    return jacobians;
+}
+
+
 template<class T, class I>
 std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>& mesh,
                                                   const std::vector<I>& quad_element_shifts,
