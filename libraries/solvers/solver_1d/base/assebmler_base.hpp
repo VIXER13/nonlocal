@@ -1,23 +1,22 @@
 #pragma once
 
+#include "finite_element_matrix.hpp"
+
 #include <logger/logger.hpp>
 #include <mesh/mesh_1d/mesh_1d.hpp>
 #include <solvers/solvers_utils.hpp>
-
-#include <Eigen/Sparse>
 
 #include <iostream>
 
 namespace nonlocal {
 
 template<class T, class I>
-class finite_element_matrix_1d {
+class assembler_base_1d {
+    finite_element_matrix_1d<T, I>& _matrix;
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I> _matrix_inner;
-    std::array<std::unordered_map<size_t, T>, 2> _matrix_bound;
 
 protected:
-    explicit finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
+    explicit assembler_base_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
 
     void calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind);
     void init_indices();
@@ -30,64 +29,45 @@ protected:
                      const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc);
 
 public:
-    virtual ~finite_element_matrix_1d() = default;
+    virtual ~assembler_base_1d() = default;
 
-    const mesh::mesh_1d<T>& mesh() const noexcept;
+    const mesh::mesh_1d<T>& mesh() const;
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix_inner() noexcept;
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix_inner() const noexcept;
-    std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() noexcept;
-    const std::array<std::unordered_map<size_t, T>, 2>& matrix_bound() const noexcept;
-
-    void clear();
+    finite_element_matrix_1d<T, I>& matrix() noexcept;
+    const finite_element_matrix_1d<T, I>& matrix() const noexcept;
 };
 
 template<class T, class I>
-finite_element_matrix_1d<T, I>::finite_element_matrix_1d(const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
-    : _mesh{mesh} {}
+assembler_base_1d<T, I>::assembler_base_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
+    : _matrix{matrix}
+    , _mesh{mesh} {}
 
 template<class T, class I>
-const mesh::mesh_1d<T>& finite_element_matrix_1d<T, I>::mesh() const noexcept {
+const mesh::mesh_1d<T>& assembler_base_1d<T, I>::mesh() const {
     return *_mesh;
 }
 
 template<class T, class I>
-const std::shared_ptr<mesh::mesh_1d<T>>& finite_element_matrix_1d<T, I>::mesh_ptr() const noexcept {
+const std::shared_ptr<mesh::mesh_1d<T>>& assembler_base_1d<T, I>::mesh_ptr() const noexcept {
     return _mesh;
 }
 
 template<class T, class I>
-Eigen::SparseMatrix<T, Eigen::RowMajor, I>& finite_element_matrix_1d<T, I>::matrix_inner() noexcept {
-    return _matrix_inner;
+finite_element_matrix_1d<T, I>& assembler_base_1d<T, I>::matrix() noexcept {
+    return _matrix;
 }
 
 template<class T, class I>
-const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& finite_element_matrix_1d<T, I>::matrix_inner() const noexcept {
-    return _matrix_inner;
+const finite_element_matrix_1d<T, I>& assembler_base_1d<T, I>::matrix() const noexcept {
+    return _matrix;
 }
 
 template<class T, class I>
-std::array<std::unordered_map<size_t, T>, 2>& finite_element_matrix_1d<T, I>::matrix_bound() noexcept {
-    return _matrix_bound;
-}
-
-template<class T, class I>
-const std::array<std::unordered_map<size_t, T>, 2>& finite_element_matrix_1d<T, I>::matrix_bound() const noexcept {
-    return _matrix_bound;
-}
-
-template<class T, class I>
-void finite_element_matrix_1d<T, I>::clear() {
-    _matrix_inner = {};
-    _matrix_bound = {};
-}
-
-template<class T, class I>
-void finite_element_matrix_1d<T, I>::calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind) {
+void assembler_base_1d<T, I>::calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind) {
     const size_t last_node = mesh().nodes_count() - 1;
     const size_t nodes_in_element = mesh().element().nodes_count() - 1;
     if (is_first_kind.front())
-        matrix_inner().outerIndexPtr()[1] = 1;
+        matrix().inner.outerIndexPtr()[1] = 1;
 #pragma omp parallel for default(none) shared(theories, is_first_kind, last_node, nodes_in_element)
     for(size_t node = is_first_kind.front(); node < mesh().nodes_count() - is_first_kind.back(); ++node) {
         const auto [left, right] = mesh().node_elements(node);
@@ -95,32 +75,32 @@ void finite_element_matrix_1d<T, I>::calc_shifts(const std::vector<theory_t>& th
         const size_t neighbour = theories[mesh().segment_number(e)] == theory_t::LOCAL ? e + 1 : *mesh().neighbours(e).end();
         const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
         const size_t count = (neighbour - e) * nodes_in_element + 1 - i - is_last_first_kind;
-        matrix_inner().outerIndexPtr()[node + 1] += count;
+        matrix().inner.outerIndexPtr()[node + 1] += count;
     }
     if (is_first_kind.back())
-        matrix_inner().outerIndexPtr()[mesh().nodes_count()] = 1;
+        matrix().inner.outerIndexPtr()[mesh().nodes_count()] = 1;
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::init_indices() {
-    for(const size_t i : std::ranges::iota_view{0u, size_t(matrix_inner().rows())})
-        for(size_t j = matrix_inner().outerIndexPtr()[i], k = i; j < matrix_inner().outerIndexPtr()[i+1]; ++j)
-            matrix_inner().innerIndexPtr()[j] = k++;
+void assembler_base_1d<T, I>::init_indices() {
+    for(const size_t i : std::ranges::iota_view{0u, size_t(matrix().inner.rows())})
+        for(size_t j = matrix().inner.outerIndexPtr()[i], k = i; j < matrix().inner.outerIndexPtr()[i+1]; ++j)
+            matrix().inner.innerIndexPtr()[j] = k++;
 }
 
 template<class T, class I>
-void finite_element_matrix_1d<T, I>::create_matrix_portrait(const std::vector<theory_t>& theories,
+void assembler_base_1d<T, I>::create_matrix_portrait(const std::vector<theory_t>& theories,
                                                             const std::array<bool, 2> is_first_kind) {
     calc_shifts(theories, is_first_kind);
-    utils::accumulate_shifts(matrix_inner());
-    logger::info() << "Non-zero elements count: " << matrix_inner().nonZeros() << std::endl;
-    utils::allocate_matrix(matrix_inner());
+    utils::accumulate_shifts(matrix().inner);
+    logger::info() << "Non-zero elements count: " << matrix().inner.nonZeros() << std::endl;
+    utils::allocate_matrix(matrix().inner);
     init_indices();
 }
 
 template<class T, class I>
 template<theory_t Theory, class Callback>
-void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callback& callback) const {
+void assembler_base_1d<T, I>::mesh_run(const size_t segment, const Callback& callback) const {
     const auto correct_node_data =
         [this](const size_t node, const std::ranges::iota_view<size_t, size_t> segment_nodes) constexpr noexcept {
             auto node_elements = mesh().node_elements(node).to_array();
@@ -150,11 +130,11 @@ void finite_element_matrix_1d<T, I>::mesh_run(const size_t segment, const Callba
 
 template<class T, class I>
 template<class Integrate_Loc, class Integrate_Nonloc>
-void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_symmetric,
+void assembler_base_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_symmetric,
                                                  const Integrate_Loc& integrate_rule_loc, const Integrate_Nonloc& integrate_rule_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
         if (col == row)
-            matrix_inner().coeffRef(row, col) = T{1};
+            matrix().inner.coeffRef(row, col) = T{1};
         else if (const auto [it, flag] = matrix_bound.template try_emplace(col, integral); !flag)
             it->second += integral;
     };
@@ -164,12 +144,12 @@ void finite_element_matrix_1d<T, I>::calc_matrix(const std::vector<theory_t>& th
                           (const size_t row, const size_t col, const Integrate& integrate_rule, const Model_Args&... args) {
         if (is_first_kind.front() && (row == 0 || col == 0)) {
             if (row == 0)
-                assemble_bound(matrix_bound().front(), row, col, integrate_rule(args...));
+                assemble_bound(matrix().bound.front(), row, col, integrate_rule(args...));
         } else if (is_first_kind.back() && (row == last_node || col == last_node)) {
             if (row == last_node)
-                assemble_bound(matrix_bound().back(), row, col, integrate_rule(args...));
+                assemble_bound(matrix().bound.back(), row, col, integrate_rule(args...));
         } else if (!is_symmetric || row <= col)
-            matrix_inner().coeffRef(row, col) += integrate_rule(args...);
+            matrix().inner.coeffRef(row, col) += integrate_rule(args...);
     };
 
     for(const size_t segment : mesh().segments())

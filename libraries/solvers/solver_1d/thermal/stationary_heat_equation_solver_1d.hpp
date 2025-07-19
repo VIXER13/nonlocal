@@ -1,6 +1,6 @@
 #pragma once
 
-#include "thermal_conductivity_matrix_1d.hpp"
+#include "thermal_conductivity_assembler.hpp"
 #include "convection_condition_1d.hpp"
 #include "radiation_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
@@ -68,13 +68,14 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
 
     T difference = T{1};
     size_t iteration = 0;
-    thermal_conductivity_matrix_1d<T, I> conductivity{mesh};
+    finite_element_matrix_1d<T, I> conductivity;
+    thermal_conductivity_assembler_1d<T, I> assembler{conductivity, mesh};
     while (iteration < additional_parameters.max_iterations && 
            difference > additional_parameters.tolerance) {
         std::swap(temperature_prev, temperature_curr);
         std::copy(initial_f.begin(), initial_f.end(), f.begin());
         using namespace nonlocal::mesh::utils;
-        conductivity.template calc_matrix(
+        assembler.template calc_matrix(
             parameters,
             { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
               bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) },
@@ -89,31 +90,31 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                 const Eigen::ConjugateGradient<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                     Eigen::Upper
-                > solver{conductivity.matrix_inner()};
+                > solver{conductivity.inner};
                 temperature_curr = solver.solveWithGuess(f, temperature_prev);
             } else {
                 logger::info() << "asymmetric problem" << std::endl;
-                const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.matrix_inner()};
+                const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, I>> solver{conductivity.inner};
                 temperature_curr = solver.solveWithGuess(f, temperature_prev);
             }
         } else {
-            convection_condition_1d(conductivity.matrix_inner(), boundaries_conditions);
-            boundary_condition_first_kind_1d(f, conductivity.matrix_bound(), boundaries_conditions);
+            convection_condition_1d(conductivity.inner, boundaries_conditions);
+            boundary_condition_first_kind_1d(f, conductivity.bound, boundaries_conditions);
             if (is_radiation) {
-                residual = conductivity.matrix_inner().template selfadjointView<Eigen::Upper>() * temperature_prev - f;
-                radiation_condition_1d(conductivity.matrix_inner(), residual, boundaries_conditions, temperature_prev);
+                residual = conductivity.inner.template selfadjointView<Eigen::Upper>() * temperature_prev - f;
+                radiation_condition_1d(conductivity.inner, residual, boundaries_conditions, temperature_prev);
                 if (is_symmetric) {
                     const Eigen::SimplicialCholesky<
                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
                         Eigen::Upper, 
                         Eigen::NaturalOrdering<I>
-                    > solver{conductivity.matrix_inner()};
+                    > solver{conductivity.inner};
                     temperature_curr = temperature_prev - solver.solve(residual);
                 } else {
                     const Eigen::SparseLU<
                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                         Eigen::NaturalOrdering<I>
-                    > solver{conductivity.matrix_inner()};
+                    > solver{conductivity.inner};
                     temperature_curr = temperature_prev - solver.solve(residual);
                 }
             } else {
@@ -122,13 +123,13 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 
                         Eigen::Upper, 
                         Eigen::NaturalOrdering<I>
-                    > solver{conductivity.matrix_inner()};
+                    > solver{conductivity.inner};
                     temperature_curr = solver.solve(f);
                 } else {
                     const Eigen::SparseLU<
                         Eigen::SparseMatrix<T, Eigen::RowMajor, I>,
                         Eigen::NaturalOrdering<I>
-                    > solver{conductivity.matrix_inner()};
+                    > solver{conductivity.inner};
                     temperature_curr = solver.solve(f);
                 }
             }
