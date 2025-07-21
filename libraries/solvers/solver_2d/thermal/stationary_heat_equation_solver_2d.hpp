@@ -6,7 +6,7 @@
 #include "thermal_boundary_conditions_2d.hpp"
 #include "heat_equation_solution_2d.hpp"
 
-#include <solvers/solvers_utils.hpp>
+#include <solvers/base/utils.hpp>
 #include <solvers/slae/conjugate_gradient.hpp>
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>

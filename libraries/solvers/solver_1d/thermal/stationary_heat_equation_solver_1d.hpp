@@ -6,6 +6,7 @@
 #include "heat_equation_solution_1d.hpp"
 
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
+#include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
@@ -68,7 +69,11 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
 
     T difference = T{1};
     size_t iteration = 0;
+    const std::array<bool, 2> is_first_kind = { 
+        bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
+        bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) };
     finite_element_matrix_1d<T, I> conductivity;
+    init_matrix_portrait(conductivity.inner, *mesh, theories_types(parameters), is_first_kind, is_neumann, is_symmetric);
     thermal_conductivity_assembler_1d<T, I> assembler{conductivity, mesh};
     while (iteration < additional_parameters.max_iterations && 
            difference > additional_parameters.tolerance) {

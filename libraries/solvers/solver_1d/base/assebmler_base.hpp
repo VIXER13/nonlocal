@@ -4,7 +4,7 @@
 
 #include <logger/logger.hpp>
 #include <mesh/mesh_1d/mesh_1d.hpp>
-#include <solvers/solvers_utils.hpp>
+#include <solvers/base/utils.hpp>
 
 #include <iostream>
 
@@ -17,10 +17,6 @@ class assembler_base_1d {
 
 protected:
     explicit assembler_base_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
-
-    void calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind);
-    void init_indices();
-    void create_matrix_portrait(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind);
 
     template<theory_t Theory, class Callback>
     void mesh_run(const size_t segment, const Callback& callback) const;
@@ -60,42 +56,6 @@ finite_element_matrix_1d<T, I>& assembler_base_1d<T, I>::matrix() noexcept {
 template<class T, class I>
 const finite_element_matrix_1d<T, I>& assembler_base_1d<T, I>::matrix() const noexcept {
     return _matrix;
-}
-
-template<class T, class I>
-void assembler_base_1d<T, I>::calc_shifts(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind) {
-    const size_t last_node = mesh().nodes_count() - 1;
-    const size_t nodes_in_element = mesh().element().nodes_count() - 1;
-    if (is_first_kind.front())
-        matrix().inner.outerIndexPtr()[1] = 1;
-#pragma omp parallel for default(none) shared(theories, is_first_kind, last_node, nodes_in_element)
-    for(size_t node = is_first_kind.front(); node < mesh().nodes_count() - is_first_kind.back(); ++node) {
-        const auto [left, right] = mesh().node_elements(node);
-        const auto [e, i] = right ? right : left;
-        const size_t neighbour = theories[mesh().segment_number(e)] == theory_t::LOCAL ? e + 1 : *mesh().neighbours(e).end();
-        const bool is_last_first_kind = is_first_kind.back() && neighbour * nodes_in_element == last_node;
-        const size_t count = (neighbour - e) * nodes_in_element + 1 - i - is_last_first_kind;
-        matrix().inner.outerIndexPtr()[node + 1] += count;
-    }
-    if (is_first_kind.back())
-        matrix().inner.outerIndexPtr()[mesh().nodes_count()] = 1;
-}
-
-template<class T, class I>
-void assembler_base_1d<T, I>::init_indices() {
-    for(const size_t i : std::ranges::iota_view{0u, size_t(matrix().inner.rows())})
-        for(size_t j = matrix().inner.outerIndexPtr()[i], k = i; j < matrix().inner.outerIndexPtr()[i+1]; ++j)
-            matrix().inner.innerIndexPtr()[j] = k++;
-}
-
-template<class T, class I>
-void assembler_base_1d<T, I>::create_matrix_portrait(const std::vector<theory_t>& theories,
-                                                            const std::array<bool, 2> is_first_kind) {
-    calc_shifts(theories, is_first_kind);
-    utils::accumulate_shifts(matrix().inner);
-    logger::info() << "Non-zero elements count: " << matrix().inner.nonZeros() << std::endl;
-    utils::allocate_matrix(matrix().inner);
-    init_indices();
 }
 
 template<class T, class I>

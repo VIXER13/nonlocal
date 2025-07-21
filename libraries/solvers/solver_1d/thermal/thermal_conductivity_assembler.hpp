@@ -38,8 +38,6 @@ protected:
 
 
     void integral_condition(); // for Neumann problem
-    void create_matrix_portrait(const std::vector<theory_t>& theories,
-                                const std::array<bool, 2> is_first_kind, const bool is_neumann);
 
 public:
     explicit thermal_conductivity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
@@ -161,20 +159,9 @@ void thermal_conductivity_assembler_1d<T, I>::integral_condition() {
     for(size_t node = 0; node < _base::mesh().nodes_count(); ++node) {
         T& val = _base::matrix().inner.coeffRef(node, _base::mesh().nodes_count());
         for(const auto& [e, i] : _base::mesh().node_elements(node).to_array())
-            if (e) val += integrate_basic(e, i);
+            if (e) 
+                val += integrate_basic(e, i);
     }
-}
-
-template<class T, class I>
-void thermal_conductivity_assembler_1d<T, I>::create_matrix_portrait(const std::vector<theory_t>& theories,
-                                                                  const std::array<bool, 2> is_first_kind, const bool is_neumann) {
-    if (is_neumann)
-        for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix().inner.rows())})
-            _base::matrix().inner.outerIndexPtr()[row + 1] = 1;
-    _base::create_matrix_portrait(theories, is_first_kind);
-    if (is_neumann)
-        for(const size_t row : std::ranges::iota_view{0u, size_t(_base::matrix().inner.rows())})
-            _base::matrix().inner.innerIndexPtr()[_base::matrix().inner.outerIndexPtr()[row + 1] - 1] = _base::mesh().nodes_count();
 }
 
 template<class T, class I>
@@ -182,18 +169,16 @@ void thermal_conductivity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>
                                                        const bool is_neumann, const bool is_symmetric,
                                                        const std::optional<std::vector<T>>& solution) {
     if (parameters.size() != _base::mesh().segments_count())
-        throw std::domain_error{"The number of segments and the number of material parameters do not match."};
-    _base::matrix().clear();
-    const size_t matrix_size = _base::mesh().nodes_count() + is_neumann;
-    _base::matrix().inner.resize(matrix_size, matrix_size);
-    const std::vector<theory_t> theories = theories_types(parameters);
-    create_matrix_portrait(theories, is_first_kind, is_neumann);
+       throw std::domain_error{"The number of segments and the number of material parameters do not match."};
+    _base::matrix().bound.front().clear();
+    _base::matrix().bound.back().clear();
+    std::memset(_base::matrix().inner.valuePtr(), '\0', sizeof(T) * size_t(_base::matrix().inner.nonZeros()));
     if (is_neumann)
         integral_condition();
     if (!is_symmetric)
         _base::matrix().inner = Eigen::SparseMatrix<T, Eigen::RowMajor, I>(_base::matrix().inner.template selfadjointView<Eigen::Upper>());
 
-    _base::template calc_matrix(theories, is_first_kind, is_symmetric,
+    _base::template calc_matrix(theories_types(parameters), is_first_kind, is_symmetric,
         [this, &parameters, &solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
             using enum coefficients_t;
             const auto& [model, physic] = parameters[segment];

@@ -16,4 +16,7 @@ target_sources(finite_element_solver_2d_base_lib INTERFACE
     solvers_utils.hpp
 )
 target_include_directories(finite_element_solver_2d_base_lib INTERFACE ${LIBRARIES_DIR})
-target_link_libraries(finite_element_solver_2d_base_lib INTERFACE mesh_2d_lib)
+target_link_libraries(finite_element_solver_2d_base_lib INTERFACE
+    assembler_base_lib
+    mesh_2d_lib
+)

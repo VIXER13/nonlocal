@@ -6,6 +6,7 @@
 #include "radiation_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
 
+#include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
@@ -95,6 +96,8 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::therma
         bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.front().get())),
         bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.back ().get()))
     };
+    init_matrix_portrait(_capacity.inner, mesh(), std::vector<theory_t>(parameters.size(), theory_t::LOCAL), is_first_kind);
+    init_matrix_portrait(_conductivity.inner, mesh(), theories_types(parameters), is_first_kind);
     heat_capacity_assembler_1d<T, I> capacity_assembler{_capacity, _mesh};
     thermal_conductivity_assembler_1d<T, I> conductivity_assembler{_conductivity, _mesh};
     capacity_assembler.calc_matrix(parameters, is_first_kind);

@@ -2,7 +2,7 @@
 
 #include "thermal_boundary_conditions_2d.hpp"
 
-#include <solvers/solvers_utils.hpp>
+#include <solvers/base/utils.hpp>
 
 #include <Eigen/Sparse>
 
