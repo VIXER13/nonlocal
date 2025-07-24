@@ -112,7 +112,7 @@ void conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric
 
 template<std::floating_point T, std::integral I, std::integral J>
 T conductivity_matrix_2d<T, I, J>::evaluate(const coefficient_t<T, 2u>& conductivity, const size_t e, const size_t q) const {
-    return std::visit(visitor{
+    return std::visit(metamath::visitor{
         [](const T value) noexcept { return value; },
         [this, e, q](const spatial_dependency<T, 2u>& value) { return value(_base::mesh().quad_coord(e, q)); },
         [this, e, q](const solution_dependency<T, 2u>& value) { 
@@ -202,7 +202,7 @@ void conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters
     _base::calc_coeffs(theories, is_inner, is_symmetric,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& [model, physic] = parameters.at(group);
-            const T integral = std::visit(visitor{
+            const T integral = std::visit(metamath::visitor{
                 [&](const isotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); },
                 [&](const orthotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); },
                 [&](const anisotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); }
@@ -211,7 +211,7 @@ void conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters
         },
         [this, &parameters](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             const auto& [model, physic] = parameters.at(group);
-            const T integral = std::visit(visitor{
+            const T integral = std::visit(metamath::visitor{
                 [&](const isotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); },
                 [&](const orthotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); },
                 [&](const anisotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); }

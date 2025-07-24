@@ -20,7 +20,6 @@ class nonstationary_heat_equation_solver_2d final {
     std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     heat_capacity_matrix_2d<T, I, Matrix_Index> _capacity;
     conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
-    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _conductivity_initial_matrix_inner;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
@@ -77,7 +76,6 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
     first_kind_filler(_conductivity.mesh().process_nodes(), is_inner, [&matrix = _conductivity.matrix().inner()](const size_t row) {
         matrix.valuePtr()[matrix.outerIndexPtr()[row]] = T{1};
     });
-    _conductivity_initial_matrix_inner = _conductivity.matrix().inner();
 
     for(const size_t node : _conductivity.mesh().container().nodes())
         _temperature_curr[node] = init_dist(_conductivity.mesh().container().node_coord(node));
@@ -91,7 +89,6 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
                                                                           const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
-    //_conductivity.matrix().inner() = _conductivity_initial_matrix_inner;
     radiation_condition_2d(_conductivity.matrix().inner(), _right_part, _conductivity.mesh(), boundaries_conditions, 
                            _temperature_prev, time_step());
 

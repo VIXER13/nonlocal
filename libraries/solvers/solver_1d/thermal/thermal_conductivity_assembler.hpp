@@ -40,7 +40,8 @@ protected:
     void integral_condition(); // for Neumann problem
 
 public:
-    explicit thermal_conductivity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
+    explicit thermal_conductivity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                               const std::optional<utils::nodes_sequence>& nodes_to_assemble = std::nullopt);
     ~thermal_conductivity_assembler_1d() override = default;
 
     void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind,
@@ -49,8 +50,10 @@ public:
 };
 
 template<class T, class I>
-thermal_conductivity_assembler_1d<T, I>::thermal_conductivity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
-    : _base{matrix, mesh} {}
+thermal_conductivity_assembler_1d<T, I>::thermal_conductivity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, 
+                                                                           const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
+                                                                           const std::optional<utils::nodes_sequence>& nodes_to_assemble)
+    : _base{matrix, mesh, nodes_to_assemble} {}
 
 template<class T, class I>
 T thermal_conductivity_assembler_1d<T, I>::integrate_basic(const size_t e, const size_t i) const {
@@ -170,9 +173,6 @@ void thermal_conductivity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>
                                                        const std::optional<std::vector<T>>& solution) {
     if (parameters.size() != _base::mesh().segments_count())
        throw std::domain_error{"The number of segments and the number of material parameters do not match."};
-    _base::matrix().bound.front().clear();
-    _base::matrix().bound.back().clear();
-    std::memset(_base::matrix().inner.valuePtr(), '\0', sizeof(T) * size_t(_base::matrix().inner.nonZeros()));
     if (is_neumann)
         integral_condition();
     if (!is_symmetric)

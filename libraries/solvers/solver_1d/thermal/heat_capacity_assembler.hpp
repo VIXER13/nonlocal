@@ -50,14 +50,12 @@ void heat_capacity_assembler_1d<T, I>::calc_matrix(const nonlocal::thermal::para
                                                    const std::array<bool, 2> is_first_kind) {
     if (parameters.size() != _base::mesh().segments_count())
         throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
-    std::memset(_base::matrix().inner.valuePtr(), '\0', sizeof(T) * size_t(_base::matrix().inner.nonZeros()));
     const std::vector<theory_t> local_theories(_base::mesh().segments_count(), theory_t::LOCAL);
     static constexpr bool SYMMETRIC = true;
     _base::template calc_matrix(local_theories, is_first_kind, SYMMETRIC,
         [this, factors = calc_factors(parameters)](const size_t segment, const size_t e, const size_t i, const size_t j) {
             return factors[segment] * integrate(e, i, j);
-        },
-        [](const size_t, const size_t, const size_t, const size_t, const size_t) constexpr noexcept { return 0; }
+        }
     );
 }
 

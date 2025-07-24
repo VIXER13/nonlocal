@@ -80,7 +80,8 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         std::swap(temperature_prev, temperature_curr);
         std::copy(initial_f.begin(), initial_f.end(), f.begin());
         using namespace nonlocal::mesh::utils;
-        assembler.template calc_matrix(
+        conductivity.set_zero();
+        assembler.calc_matrix(
             parameters,
             { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
               bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back ().get())) },

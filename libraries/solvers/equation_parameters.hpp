@@ -13,11 +13,6 @@
 
 namespace nonlocal {
 
-template<class... Ts>
-struct visitor : Ts... {
-    using Ts::operator()...;
-};
-
 template<std::floating_point T, size_t Dimension>
 using point = std::conditional_t<Dimension == 1, T, std::array<T, Dimension>>;
 

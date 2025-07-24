@@ -100,8 +100,10 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::therma
     init_matrix_portrait(_conductivity.inner, mesh(), theories_types(parameters), is_first_kind);
     heat_capacity_assembler_1d<T, I> capacity_assembler{_capacity, _mesh};
     thermal_conductivity_assembler_1d<T, I> conductivity_assembler{_conductivity, _mesh};
+    _capacity.set_zero();
     capacity_assembler.calc_matrix(parameters, is_first_kind);
-    conductivity_assembler.template calc_matrix(parameters, is_first_kind);
+    _conductivity.set_zero();
+    conductivity_assembler.calc_matrix(parameters, is_first_kind);
     convection_condition_1d(_conductivity.inner, boundaries_conditions);
 
     auto& conductivity = _conductivity.inner;
