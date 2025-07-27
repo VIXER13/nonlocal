@@ -51,7 +51,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr = temperature_prev;
 
     static constexpr auto is_solution_depend_parameter = [](const auto& parameter) noexcept {
-        return parameter.physical->type == coefficients_t::SOLUTION_DEPENDENT;
+        return std::holds_alternative<solution_dependency<T, 1>>(parameter.physical.conductivity);
     };
 
     static constexpr auto is_radiation_boundary_condition = [](const auto& condition) noexcept {
@@ -60,9 +60,12 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
     const bool is_sol_depend = std::any_of(parameters.begin(), parameters.end(), is_solution_depend_parameter);
     const bool is_radiation  = std::any_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_radiation_boundary_condition); 
 
-    static constexpr auto check_nonlinear = [](const auto& parameter) { return parameter.physical->type != coefficients_t::CONSTANTS; };
+    static constexpr auto check_nonlinear = [](const auto& parameter) {
+        return std::holds_alternative<spatial_dependency<T, 1>>(parameter.physical.conductivity) ||
+               std::holds_alternative<solution_dependency<T, 1>>(parameter.physical.conductivity);
+    };
     const bool is_nonlinear = std::any_of(parameters.begin(), parameters.end(), check_nonlinear);
-    static constexpr auto check_nonlocal = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
+    static constexpr auto check_nonlocal = [](const theory_t theory) noexcept {return theory == theory_t::NONLOCAL; };
     const std::vector<theory_t> theories = theories_types(parameters);
     const bool is_nonlocal = std::any_of(theories.begin(), theories.end(), check_nonlocal);
     const bool is_symmetric = !(is_nonlinear && is_nonlocal);

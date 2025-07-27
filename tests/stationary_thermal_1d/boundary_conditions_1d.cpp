@@ -51,10 +51,13 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         };
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(10) }});
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>
-                                     (T(1.0), T(1.0), T(1.0), T(0.0)) };    
+        parameters[0] = {
+            .model = {
+                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
+                .local_weight = T(1.0)
+            },
+            .physical = { .conductivity = T{1} }
+        };
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
             .right_part = [](const T x) constexpr noexcept {  return -4. * std::pow(-3. * (x - 2.), -7./3.); },
@@ -88,10 +91,13 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         };
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(1000) }});
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>
-                                     (lambda, T(1.0), T(1.0), T(0.0)) };    
+        parameters[0] = {
+            .model = {
+                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
+                .local_weight = T(1.0)
+            },
+            .physical = { .conductivity = lambda }
+        };
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
             .right_part = [&](const T x) constexpr noexcept {  return -4. * lambda * alpha * alpha * std::pow(-3. * alpha * (x - 1.01), -7./3.); },
@@ -125,10 +131,13 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         };
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(1000) }});
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>
-                                     (lambda, T(1.0), T(1.0), T(0.0)) };    
+        parameters[0] = {
+            .model = {
+                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
+                .local_weight = T(1.0)
+            },
+            .physical = { .conductivity = lambda }
+        };
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
             .right_part = [&](const T x) constexpr noexcept {  return -4. * lambda * alpha * alpha * std::pow(3. * alpha * (x + 1.01), -7./3.); },

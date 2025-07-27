@@ -2,7 +2,7 @@
 
 #include "thermal_parameters_1d.hpp"
 
-#include <solvers/equation_parameters.hpp>
+#include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/base/assebmler_base.hpp>
 
 #include <optional>
@@ -10,32 +10,17 @@
 namespace nonlocal::thermal {
 
 template<class T, class I>
-class thermal_conductivity_assembler_1d : public assembler_base_1d<T, I> {
+class thermal_conductivity_assembler_1d final : public assembler_base_1d<T, I> {
     using _base = assembler_base_1d<T, I>;
 
-protected:
+    std::vector<T> _solution; // stub for nonlinear problems
+
+    T evaluate(const coefficient_t<T, 1>& conductivity, const size_t e, const size_t q) const;
+
     T integrate_basic(const size_t e, const size_t i) const;
-
-    template<class Integrator>
-    T integrate_loc(const Integrator& integrator) const;
-    T integrate_loc(const T conductivity, const size_t e, const size_t i, const size_t j) const;
-    T integrate_loc(const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const;
-    T integrate_loc(const std::function<T(const T, const T)>& conductivity, const std::vector<T>& solution,
-                    const size_t e, const size_t i, const size_t j) const;
-
-    template<class Integrator>
-    T integrate_nonloc(const size_t eL, const size_t iL, const Integrator& integrator) const;
-    template<class Influence_Function>
-    T integrate_nonloc(const T conductivity, const Influence_Function& influence,
-                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
-    template<class Influence_Function>
-    T integrate_nonloc(const std::function<T(const T)>& conductivity, const Influence_Function& influence,
-                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
-    template<class Influence_Function>
-    T integrate_nonloc(const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence,
-                       const std::vector<T>& solution,
-                       const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
-
+    T integrate_local(const coefficient_t<T, 1>& conductivity, const size_t e, const size_t i, const size_t j) const;
+    T integrate_nonlocal(const coefficient_t<T, 1>& conductivity, const std::function<T(const T&, const T&)>& influence,
+                         const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
     void integral_condition(); // for Neumann problem
 
@@ -56,6 +41,18 @@ thermal_conductivity_assembler_1d<T, I>::thermal_conductivity_assembler_1d(finit
     : _base{matrix, mesh, nodes_to_assemble} {}
 
 template<class T, class I>
+T thermal_conductivity_assembler_1d<T, I>::evaluate(const coefficient_t<T, 1>& conductivity, const size_t e, const size_t q) const {
+    return std::visit(metamath::visitor{
+        [](const T value) noexcept { return value; },
+        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
+        [this, e, q](const solution_dependency<T, 1u>& value) { 
+            const size_t qshift = _base::mesh().qnode_number(e, q);
+            return value(_base::mesh().qnode_coord(e, q), _solution[qshift]); 
+        }
+    }, conductivity);
+}
+
+template<class T, class I>
 T thermal_conductivity_assembler_1d<T, I>::integrate_basic(const size_t e, const size_t i) const {
     T integral = T{0};
     const auto& el = _base::mesh().element();
@@ -65,95 +62,31 @@ T thermal_conductivity_assembler_1d<T, I>::integrate_basic(const size_t e, const
 }
 
 template<class T, class I>
-template<class Integrator>
-T thermal_conductivity_assembler_1d<T, I>::integrate_loc(const Integrator& integrator) const {
-    const auto qnodes = _base::mesh().element().qnodes();
-    return std::accumulate(qnodes.begin(), qnodes.end(), T{0}, integrator);
-}
-
-template<class T, class I>
-T thermal_conductivity_assembler_1d<T, I>::integrate_loc(const T conductivity, const size_t e, const size_t i, const size_t j) const {
-    const T integral = integrate_loc([&el = _base::mesh().element(), i, j](const T integral, const size_t q) {
-        return integral + el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q);
-    });
-    return conductivity * integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
-}
-
-template<class T, class I>
-T thermal_conductivity_assembler_1d<T, I>::integrate_loc(
-    const std::function<T(const T)>& conductivity, const size_t e, const size_t i, const size_t j) const {
-    const T integral = integrate_loc([this, &conductivity, e, i, j](const T integral, const size_t q) {
-        const auto& el = _base::mesh().element();
-        const T qcoord = _base::mesh().qnode_coord(e, q);
-        return integral + el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord);
-    });
+T thermal_conductivity_assembler_1d<T, I>::integrate_local(const coefficient_t<T, 1>& conductivity, const size_t e, const size_t i, const size_t j) const {
+    T integral = T{0};
+    const auto& el = _base::mesh().element();
+    for(const size_t q : _base::mesh().element().qnodes())
+        integral += evaluate(conductivity, e, q) * el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q);
     return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
 
 template<class T, class I>
-T thermal_conductivity_assembler_1d<T, I>::integrate_loc(
-    const std::function<T(const T, const T)>& conductivity, const std::vector<T>& solution, 
-    const size_t e, const size_t i, const size_t j) const {
-    const T integral = integrate_loc([this, &conductivity, &solution, e, i, j](const T integral, const size_t q) {
-        const auto& el = _base::mesh().element();
-        const T qcoord = _base::mesh().qnode_coord(e, q);
-        const size_t qshift = _base::mesh().qnode_number(e, q); 
-        return integral + el.weight(q) * el.qNxi(i, q) * el.qNxi(j, q) * conductivity(qcoord, solution[qshift]);
-    });
-    return integral / _base::mesh().jacobian(_base::mesh().segment_number(e));
-}
-
-template<class T, class I>
-template<class Integrator>
-T thermal_conductivity_assembler_1d<T, I>::integrate_nonloc(const size_t eL, const size_t iL, const Integrator& integrator) const {
+T thermal_conductivity_assembler_1d<T, I>::integrate_nonlocal(const coefficient_t<T, 1>& conductivity, 
+                                                              const std::function<T(const T&, const T&)>& influence,
+                                                              const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     T integral = T{0};
     const auto& el = _base::mesh().element();
     const auto qnodes = el.qnodes();
     for(const size_t qL : qnodes) {
-        const T inner_integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0},
-            [&integrator, qcoordL = _base::mesh().qnode_coord(eL, qL)](const T integral, const size_t qNL) {
-                return integral + integrator(qcoordL, qNL);
-            });
+        T inner_integral = T{0};
+        const size_t qcoordL = _base::mesh().qnode_coord(eL, qL);
+        for (const size_t qNL : qnodes) {
+            const size_t qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
+            inner_integral += influence(qcoordL, qcoordNL) * evaluate(conductivity, eNL, qNL) * el.weight(qNL) * el.qNxi(jNL, qNL);
+        }
         integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
     }
     return integral;
-}
-
-template<class T, class I>
-template<class Influence_Function>
-T thermal_conductivity_assembler_1d<T, I>::integrate_nonloc(
-    const T conductivity, const Influence_Function& influence,
-    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return conductivity * integrate_nonloc(eL, iL, [this, &influence, eNL, jNL](const T qcoordL, const size_t qNL) {
-        const auto& el = _base::mesh().element();
-        const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
-        return el.weight(qNL) * influence(qcoordL, qcoordNL) * el.qNxi(jNL, qNL);
-    });
-}
-
-template<class T, class I>
-template<class Influence_Function>
-T thermal_conductivity_assembler_1d<T, I>::integrate_nonloc(
-    const std::function<T(const T)>& conductivity, const Influence_Function& influence,
-    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return integrate_nonloc(eL, iL, [this, &conductivity, &influence, eNL, jNL](const T qcoordL, const size_t qNL) {
-        const auto& el = _base::mesh().element();
-        const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
-        return el.weight(qNL) * influence(qcoordL, qcoordNL) * conductivity(qcoordNL) * el.qNxi(jNL, qNL);
-    });
-}
-
-template<class T, class I>
-template<class Influence_Function>
-T thermal_conductivity_assembler_1d<T, I>::integrate_nonloc(
-    const std::function<T(const T, const T)>& conductivity, const Influence_Function& influence, const std::vector<T>& solution,
-    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    return integrate_nonloc(eL, iL, [this, &conductivity, &influence, &solution, eNL, jNL](const T qcoordL, const size_t qNL) {
-        const auto& el = _base::mesh().element();
-        const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
-        const size_t qshiftNL = _base::mesh().qnode_number(eNL, qNL);
-        return el.weight(qNL) * influence(qcoordL, qcoordNL) * conductivity(qcoordNL, solution[qshiftNL]) * el.qNxi(jNL, qNL);
-    });
 }
 
 template<class T, class I>
@@ -180,27 +113,12 @@ void thermal_conductivity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>
 
     _base::template calc_matrix(theories_types(parameters), is_first_kind, is_symmetric,
         [this, &parameters, &solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
-            using enum coefficients_t;
             const auto& [model, physic] = parameters[segment];
-            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
-                return model.local_weight * integrate_loc(parameter->conductivity, e, i, j);
-            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
-                return model.local_weight * integrate_loc(parameter->conductivity, e, i, j);
-            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
-                return model.local_weight * integrate_loc(parameter->conductivity, *solution, e, i, j);
-            return std::numeric_limits<T>::quiet_NaN();
+            return model.local_weight * integrate_local(physic.conductivity, e, i, j);
         },
         [this, &parameters, &solution](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            using enum coefficients_t;
             const auto& [model, physic] = parameters[segment];
-            const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
-            if (const auto* const parameter = parameter_cast<CONSTANTS>(physic.get()); parameter)
-                return nonlocal_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
-            if (const auto* const parameter = parameter_cast<SPACE_DEPENDENT>(physic.get()); parameter)
-                return nonlocal_weight * integrate_nonloc(parameter->conductivity, model.influence, eL, eNL, iL, jNL);
-            if (const auto* const parameter = parameter_cast<SOLUTION_DEPENDENT>(physic.get()); parameter)
-                return nonlocal_weight * integrate_nonloc(parameter->conductivity, model.influence, *solution, eL, eNL, iL, jNL);
-            return std::numeric_limits<T>::quiet_NaN();
+            return nonlocal_weight(model.local_weight) * integrate_nonlocal(physic.conductivity, model.influence, eL, eNL, iL, jNL);
         }
     );
 }

@@ -121,9 +121,18 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
 
         const std::vector<mesh::segment_data<T>> segments = {{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) }};
 
-        parameters_1d<T> parameters ({{ .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                       // conductivity, capacity, density, relaxation_time
-                                        .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) }});
+        parameters_1d<T> parameters = {{
+            .model = {
+                .influence = influence::polynomial_1d<T, 1, 1>{T{0}},
+                .local_weight = T{1}
+            },
+            .physical = {
+                .conductivity = T{1}, 
+                .capacity = T{1},
+                .density = T{1},
+                .relaxation_time = T{0}
+            } 
+        }};
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         
@@ -147,12 +156,21 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
             return temp;
         };
 
-        const std::vector<mesh::segment_data<T>> segments({{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) }});
+        const std::vector<mesh::segment_data<T>> segments = {{.length = T(2.0), .search_radius = T(0.0), .elements = I(100)}};
 
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(T(1.0), T(1.0), T(1.0), T(0.0)) };
+        parameters[0] = {
+            .model = {
+                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
+                .local_weight = T(1.0)
+            },
+            .physical = {
+                .conductivity = T{1}, 
+                .capacity = T{1},
+                .density = T{1},
+                .relaxation_time = T{0}
+            } 
+        };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
 
@@ -184,10 +202,18 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
 
         parameters_1d<T> parameters(segments.size());
         // Parameters of carbon steel
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>
-                                     (T(50.0), T(460.0), T(7800.0), T(0.0)) };
+        parameters[0] = { 
+            .model = { 
+                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
+                .local_weight = T(1.0)
+            },
+            .physical = {
+                .conductivity = T{50}, 
+                .capacity = T{460},
+                .density = T{7800},
+                .relaxation_time = T{0}
+            }
+        };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
 
@@ -226,9 +252,18 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(L), .search_radius = T(0.0), .elements = I(200) }});
 
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .model = { .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)}, .local_weight = T(1.0) },
-                                     // conductivity, capacity, density, relaxation_time
-                                     .physical = std::make_shared<parameter_1d<T, coefficients_t::CONSTANTS>>(lambda, cap, rho, T(0.0)) };
+        parameters[0] = {
+            .model = {
+                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
+                .local_weight = T(1.0)
+            },
+            .physical = {
+                .conductivity = lambda,
+                .capacity = cap,
+                .density = rho,
+                .relaxation_time = T{0}
+            }
+        };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         

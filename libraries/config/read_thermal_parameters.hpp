@@ -22,7 +22,7 @@ class _read_thermal_parameters final {
     static void check_parameters(const thermal::conductivity_t<T>& conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access);
 
     template<std::floating_point T>
-    static thermal::parameter_1d_sptr<T> read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path);
+    static thermal::parameter_1d<T> read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     static thermal::conductivity_t<T> read_conductivity_2d(const nlohmann::json& config, const std::string& path);
@@ -94,7 +94,7 @@ void _read_thermal_parameters::check_parameters(
 }
 
 template<std::floating_point T>
-thermal::parameter_1d_sptr<T> _read_thermal_parameters::read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path) {
+thermal::parameter_1d<T> _read_thermal_parameters::read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, {"conductivity"}, path_with_access);
     check_optional_fields(config, {"capacity", "density", "relaxation_time"}, path_with_access);
@@ -102,7 +102,7 @@ thermal::parameter_1d_sptr<T> _read_thermal_parameters::read_thermal_coefficient
         config["conductivity"].get<T>(), config.value("capacity", T{1}), config.value("density", T{1}), config.value("relaxation_time", T{0})
     );
     check_parameters(conductivity, capacity, density, relaxation_time, path_with_access);
-    return std::make_shared<thermal::parameter_1d<T>>(conductivity, capacity, density, relaxation_time);
+    return {conductivity, capacity, density, relaxation_time};
 }
 
 template<std::floating_point T>

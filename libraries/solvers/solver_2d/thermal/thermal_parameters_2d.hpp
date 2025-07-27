@@ -1,7 +1,7 @@
 #pragma once
 
 #include <metamath/metamath.hpp>
-#include <solvers/equation_parameters.hpp>
+#include <solvers/base/equation_parameters.hpp>
 
 #include <string>
 #include <unordered_map>

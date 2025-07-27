@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../equation_parameters.hpp"
+#include <solvers/base/equation_parameters.hpp>
 
 #include <array>
 #include <string>
