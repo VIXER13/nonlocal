@@ -137,14 +137,14 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
 template<std::floating_point T, std::signed_integral I>
 void determine_problem(const nlohmann::json& config) {
     config::check_required_fields(config, {"task"});
-
-    const bool contains_save = config.contains("save");
-    const auto save = contains_save ? config::save_data{config["save"], "save"} : config::save_data{};
-    if (contains_save)
-        _determine_problem::init_save_data(save, config);
-    else
+    config::save_data save; 
+    if (!config.contains("save"))
         logger::warning() << "There is no \"save\" field in the config. Required data may not be saved." << std::endl;
-
+    else {
+        save = config::save_data{config["save"], "save"};
+        _determine_problem::init_save_data(save, config);
+    }
+    
     if (const config::task_data task{config["task"], "task"}; task.dimension == 1)
         problems_1d<T, I>(config, save, task);
     else if (task.dimension == 2)
