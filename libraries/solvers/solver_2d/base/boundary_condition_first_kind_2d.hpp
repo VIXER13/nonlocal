@@ -8,8 +8,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-namespace nonlocal
-{
+namespace nonlocal::solver_2d {
 
 class _boundary_condition_first_kind_2d final {
     explicit constexpr _boundary_condition_first_kind_2d() noexcept = default;

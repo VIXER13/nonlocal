@@ -16,7 +16,7 @@
 
 #include <chrono>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T>
 struct stationary_equation_parameters_2d final {

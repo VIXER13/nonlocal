@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<std::floating_point T, std::integral I, std::integral J>
 class conductivity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {

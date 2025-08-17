@@ -2,7 +2,7 @@
 
 #include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T, class I, class J>
 class heat_capacity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {

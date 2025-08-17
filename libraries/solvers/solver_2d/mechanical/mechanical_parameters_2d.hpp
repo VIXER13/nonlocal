@@ -6,7 +6,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 enum class plane_t : bool {
     STRESS,

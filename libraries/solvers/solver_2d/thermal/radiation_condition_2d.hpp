@@ -6,7 +6,7 @@
 
 #include <Eigen/Sparse>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T, class I, class Matrix_Index>
 void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,

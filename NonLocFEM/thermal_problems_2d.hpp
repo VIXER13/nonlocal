@@ -10,10 +10,10 @@
 #include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
 #include <solvers/solver_2d/thermal/nonstationary_heat_equation_solver_2d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal {
 
 template<std::floating_point T, std::integral I>
-void save_solution(const heat_equation_solution_2d<T, I>& solution, 
+void save_solution(const solver_2d::thermal::heat_equation_solution_2d<T, I>& solution, 
                    const config::save_data& save,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0) // Only the master process saves data
@@ -29,19 +29,19 @@ void save_solution(const heat_equation_solution_2d<T, I>& solution,
 }
 
 template<std::floating_point T, std::signed_integral I>
-heat_equation_solution_2d<T> solve_thermal_2d_problem(
+solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-    const parameters_2d<T>& parameters,
-    const thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+    const solver_2d::thermal::parameters_2d<T>& parameters,
+    const solver_2d::thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data_2d<T>& auxiliary) {
-    const stationary_equation_parameters_2d<T> auxiliary_data {
+    const solver_2d::thermal::stationary_equation_parameters_2d<T> auxiliary_data {
         .right_part = [value = std::get<spatial_dependency<T, 2>>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); },
         .initial_distribution = [value = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return value; },
         .tolerance = std::is_same_v<T, float> ? 1e-5 : 1e-10,
         .max_iterations = 40,
         .energy = auxiliary.energy
     };
-    auto solution = nonlocal::thermal::stationary_heat_equation_solver_2d<I>( 
+    auto solution = solver_2d::thermal::stationary_heat_equation_solver_2d<I>( 
         mesh, parameters, boundaries_conditions, auxiliary_data
     );
     solution.calc_flux();
@@ -51,16 +51,16 @@ heat_equation_solution_2d<T> solve_thermal_2d_problem(
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-    const parameters_2d<T>& parameters,
-    const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+    const solver_2d::thermal::parameters_2d<T>& parameters,
+    const solver_2d::thermal::thermal_boundaries_conditions_2d<T>& boundaries_conditions,
     const config::thermal_auxiliary_data_2d<T>& auxiliary,
     const config::time_data<T>& time,
     const config::save_data& save) {
-    nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
+    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
     {
-        nonlocal::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
+        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
         solution.calc_flux();
         save_solution(solution, save, 0u);
     }
@@ -68,7 +68,7 @@ void solve_thermal_2d_problem(
         solver.calc_step(boundaries_conditions, 
         [value = std::get<spatial_dependency<T, 2>>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); });
         if (step % time.save_frequency == 0) {
-            nonlocal::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
+            solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
             solution.calc_flux();
             save_solution(solution, save, step);
         }

@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<class T, class I>
 class matrix_separator_base {

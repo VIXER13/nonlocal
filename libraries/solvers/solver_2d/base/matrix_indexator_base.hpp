@@ -7,7 +7,7 @@
 #include <array>
 #include <vector>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<size_t DoF>
 class matrix_indexator_base : public mesh::indexator_base {

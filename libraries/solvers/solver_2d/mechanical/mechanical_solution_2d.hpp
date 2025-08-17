@@ -5,7 +5,7 @@
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <solvers/solver_2d/base/solution_2d.hpp>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I = uint32_t>
 class mechanical_solution_2d : public solution_2d<T, I> {

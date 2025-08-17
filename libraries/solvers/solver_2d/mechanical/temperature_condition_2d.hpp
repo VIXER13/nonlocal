@@ -4,7 +4,7 @@
 
 #include <Eigen/Dense>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I>
 class _temperature_condition final {

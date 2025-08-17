@@ -5,7 +5,7 @@
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <solvers/solver_2d/base/solution_2d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<std::floating_point T, std::integral I = uint32_t>
 class heat_equation_solution_2d : public solution_2d<T, I> {

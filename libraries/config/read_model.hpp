@@ -79,7 +79,7 @@ model_parameters<2u, T> read_model_2d(const nlohmann::json& config, const std::s
         throw std::domain_error{"Error in model parameters \"" + path + "\". "
                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0."};
     return {
-        .influence = influence::polynomial_2d<T, 2u, 1u>{nonlocal_radius},
+        .influence = solver_2d::influence::polynomial_2d<T, 2u, 1u>{nonlocal_radius},
         .local_weight = config["local_weight"].get<T>()
     };
 }

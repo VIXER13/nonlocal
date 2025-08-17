@@ -2,7 +2,7 @@
 
 #include <metamath/metamath.hpp>
 
-namespace nonlocal::influence {
+namespace nonlocal::solver_2d::influence {
 
 template<std::floating_point T>
 class influence_2d_base {

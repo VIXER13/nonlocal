@@ -12,20 +12,20 @@ namespace nonlocal::config {
 
 class _mechanical_boundary_conditions final {
     template<std::floating_point T>
-    static std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path);
+    static std::unique_ptr<solver_2d::mechanical::mechanical_boundary_condition_2d<T>> read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
-    static mechanical::mechanical_boundary_conditions_2d<T> read_mechanical_boundary_conditions_2d(const nlohmann::json& config, const std::string& path);
+    static solver_2d::mechanical::mechanical_boundary_conditions_2d<T> read_mechanical_boundary_conditions_2d(const nlohmann::json& config, const std::string& path);
 
     explicit _mechanical_boundary_conditions() noexcept = default;
 
 public:
     template<std::floating_point T>
-    friend mechanical::mechanical_boundaries_conditions_2d<T> read_mechanical_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path);
+    friend solver_2d::mechanical::mechanical_boundaries_conditions_2d<T> read_mechanical_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path);
 };
 
 template<std::floating_point T>
-std::unique_ptr<mechanical::mechanical_boundary_condition_2d<T>> 
+std::unique_ptr<solver_2d::mechanical::mechanical_boundary_condition_2d<T>> 
 _mechanical_boundary_conditions::read_mechanical_boundary_condition_2d(const nlohmann::json& config, const std::string& path) {
     const bool has_pressure = config.contains("pressure");
     const bool has_displacement = config.contains("displacement");
@@ -34,17 +34,17 @@ _mechanical_boundary_conditions::read_mechanical_boundary_condition_2d(const nlo
                                 "\" must contain only \"displacement\" or \"pressure\" field with a numerical value in it."};
     const std::string path_with_access = append_access_sign(path);
     if (has_pressure)
-        return std::make_unique<mechanical::pressure_2d<T>>(read_coefficient<T, 2u>(config["pressure"], path_with_access + "pressure"));
-    return std::make_unique<mechanical::displacement_2d<T>>(read_coefficient<T, 2u>(config["displacement"], path_with_access + "displacement"));
+        return std::make_unique<solver_2d::mechanical::pressure_2d<T>>(read_coefficient<T, 2u>(config["pressure"], path_with_access + "pressure"));
+    return std::make_unique<solver_2d::mechanical::displacement_2d<T>>(read_coefficient<T, 2u>(config["displacement"], path_with_access + "displacement"));
 }
 
 template<std::floating_point T>
-mechanical::mechanical_boundary_conditions_2d<T> 
+solver_2d::mechanical::mechanical_boundary_conditions_2d<T> 
 _mechanical_boundary_conditions::read_mechanical_boundary_conditions_2d(const nlohmann::json& config, const std::string& path) {
     static constexpr size_t Dimension = 2u;
     if (!config.is_array() || config.size() != Dimension)
         throw std::domain_error{"The dimension of the boundary condition \"" + path + "\" does not correspond to the dimension of the problem"};
-    mechanical::mechanical_boundary_conditions_2d<T> conditions;
+    solver_2d::mechanical::mechanical_boundary_conditions_2d<T> conditions;
     for(const size_t i : std::ranges::iota_view{0u, Dimension}) {
         const std::string path_with_access = append_access_sign(path, i);
         if (config[i].is_null())
@@ -56,9 +56,9 @@ _mechanical_boundary_conditions::read_mechanical_boundary_conditions_2d(const nl
 }
 
 template<std::floating_point T>
-mechanical::mechanical_boundaries_conditions_2d<T> read_mechanical_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::mechanical::mechanical_boundaries_conditions_2d<T> read_mechanical_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
-    mechanical::mechanical_boundaries_conditions_2d<T> boundaries_conditions;
+    solver_2d::mechanical::mechanical_boundaries_conditions_2d<T> boundaries_conditions;
     for(const auto& [name, conditions] : config.items())
         boundaries_conditions[name] = _mechanical_boundary_conditions::read_mechanical_boundary_conditions_2d<T>(conditions, path_with_access + name);
     return boundaries_conditions;

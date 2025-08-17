@@ -10,7 +10,7 @@
 #include <variant>
 #include <iostream>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 enum class assemble_part : uint8_t {
     LOCAL,

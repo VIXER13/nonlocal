@@ -11,7 +11,7 @@
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T, class I, class Matrix_Index>
 class nonstationary_heat_equation_solver_2d final {

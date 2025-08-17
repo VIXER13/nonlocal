@@ -7,7 +7,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<class T, physics_t Physics>
 class boundary_condition_2d {

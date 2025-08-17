@@ -4,7 +4,7 @@
 
 #include <functional>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T>
 class temperature_2d final : public first_kind_2d<T, physics_t::THERMAL> {

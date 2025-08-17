@@ -9,7 +9,7 @@ namespace {
 
 using namespace boost::ut;
 using namespace nonlocal;
-using namespace nonlocal::thermal;
+using namespace nonlocal::solver_2d::thermal;
 using namespace metamath::finite_element;
 
 template<std::floating_point T, std::signed_integral I>
@@ -60,12 +60,8 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
     std::stringstream stream{square_1x1_16el_uniform_mesh_su2_data};
     const auto mesh = unit_tests::init_2d_mesh<T, I>(stream, mesh::mesh_format::SU2);
     // Material and model parameters
-    thermal::parameters_2d<T> parameters;
+    parameters_2d<T> parameters;
     parameters["Layer1"] = {
-        .model = {
-            .influence = influence::polynomial_2d<T, 2u, 1u>{1.0},
-            .local_weight = 1.0
-        },
         .physical = {
             .conductivity = anisotropic_conductivity_t<T> {lambda, 0.0, 0.0, lambda},
             .capacity = T{1},
@@ -103,13 +99,13 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
         const auto right_temperature  = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({1.0, x[1]}); };
         const auto top_temperature    = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({x[0], 1.0}); };
         const auto bottom_temperature = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({x[0], 0.0}); };
-        thermal::thermal_boundaries_conditions_2d<T> boundaries_conditions;
-        boundaries_conditions["Left"  ] = std::make_unique<thermal::temperature_2d<T>>(left_temperature);
-        boundaries_conditions["Right" ] = std::make_unique<thermal::temperature_2d<T>>(right_temperature);
-        boundaries_conditions["Top"   ] = std::make_unique<thermal::temperature_2d<T>>(top_temperature);
-        boundaries_conditions["Bottom"] = std::make_unique<thermal::temperature_2d<T>>(bottom_temperature);
+        thermal_boundaries_conditions_2d<T> boundaries_conditions;
+        boundaries_conditions["Left"  ] = std::make_unique<temperature_2d<T>>(left_temperature);
+        boundaries_conditions["Right" ] = std::make_unique<temperature_2d<T>>(right_temperature);
+        boundaries_conditions["Top"   ] = std::make_unique<temperature_2d<T>>(top_temperature);
+        boundaries_conditions["Bottom"] = std::make_unique<temperature_2d<T>>(bottom_temperature);
         // 2D stationary solution
-        const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
+        const auto num_sol = stationary_heat_equation_solver_2d<I, T, I>( 
             mesh, parameters, boundaries_conditions, auxiliary_data
         );
         check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);

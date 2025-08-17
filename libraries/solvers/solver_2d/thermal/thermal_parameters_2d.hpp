@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <variant>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<std::floating_point T>
 using isotropic_conductivity_t = coefficient_t<T, 2>;

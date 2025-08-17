@@ -4,7 +4,7 @@
 
 #include <functional>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T>
 class displacement_2d final : public first_kind_2d<T, physics_t::MECHANICAL> {

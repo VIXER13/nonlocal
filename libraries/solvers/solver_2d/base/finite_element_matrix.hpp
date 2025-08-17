@@ -4,7 +4,7 @@
 
 #include <array>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 enum class matrix_part : size_t {
     INNER,

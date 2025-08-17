@@ -4,7 +4,7 @@
 #include <constants/nonlocal_constants.hpp>
 #include <solvers/base/equation_parameters.hpp>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<class T, class I>
 class solution_2d {

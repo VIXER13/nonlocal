@@ -4,7 +4,7 @@
 
 #include <mesh/mesh_2d/mesh_2d.hpp>
 
-namespace nonlocal::utils {
+namespace nonlocal::solver_2d::utils {
 
 template<template<class, auto...> class Condition, auto... Args, class T, class I, physics_t Physics, class Callback>
 void run_by_boundary(const mesh::mesh_container_2d<T, I>& mesh, const std::string& bound_name,

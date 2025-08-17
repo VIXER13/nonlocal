@@ -24,28 +24,28 @@ class _mechanical_parameters_2d final {
                                                    const std::optional<std::bitset<2>> is_null_optional);
                                                    
     template<std::floating_point T>
-    static void calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
+    static void calculate_elastic_parameters(solver_2d::mechanical::parameter_2d<T>& parameters,
                                              const std::bitset<2> is_null_youngs_modulus,
                                              const std::bitset<2> is_null_poissons_ratio) noexcept;
 
     template<std::floating_point T>
-    static bool check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) noexcept;
+    static bool check_elasticity_parameters(const solver_2d::mechanical::parameter_2d<T>& parameters) noexcept;
 
     template<std::floating_point T>
-    static mechanical::parameter_2d<T> read_elastic_parameters(
+    static solver_2d::mechanical::parameter_2d<T> read_elastic_parameters(
         const nlohmann::json& config,
         const std::string& path_with_access,
         const std::optional<std::bitset<2>> is_null_youngs_modulus,
         const std::optional<std::bitset<2>> is_null_poissons_ratio);
 
     template<std::floating_point T>
-    static mechanical::parameter_2d<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path);
+    static solver_2d::mechanical::parameter_2d<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path);
 
     explicit _mechanical_parameters_2d() noexcept = default;
 
 public:
     template<std::floating_point T>
-    friend mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path);
+    friend solver_2d::mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path);
 };
 
 template<std::floating_point T>
@@ -63,7 +63,7 @@ std::array<T, 2> _mechanical_parameters_2d::read_elastic_parameter(const nlohman
 }
 
 template<std::floating_point T>
-void _mechanical_parameters_2d::calculate_elastic_parameters(mechanical::parameter_2d<T>& parameters,
+void _mechanical_parameters_2d::calculate_elastic_parameters(solver_2d::mechanical::parameter_2d<T>& parameters,
                                                              const std::bitset<2> is_null_youngs_modulus,
                                                              const std::bitset<2> is_null_poissons_ratio) noexcept {
     // youngs_modulus[1] * poissons_ratio[0] == Ey * nuxy == Ex * nuyx == youngs_modulus[0] * poissons_ratio[1]
@@ -84,7 +84,7 @@ void _mechanical_parameters_2d::calculate_elastic_parameters(mechanical::paramet
 }
 
 template<std::floating_point T>
-bool _mechanical_parameters_2d::check_elasticity_parameters(const mechanical::parameter_2d<T>& parameters) noexcept {
+bool _mechanical_parameters_2d::check_elasticity_parameters(const solver_2d::mechanical::parameter_2d<T>& parameters) noexcept {
     for(const size_t i : std::ranges::iota_view{0u, 2u}) {
         if (std::isinf(parameters.poissons_ratio[i]) || std::isinf(parameters.youngs_modulus[i]))
             return false;
@@ -100,12 +100,12 @@ bool _mechanical_parameters_2d::check_elasticity_parameters(const mechanical::pa
 }
 
 template<std::floating_point T>
-mechanical::parameter_2d<T> _mechanical_parameters_2d::read_elastic_parameters(
+solver_2d::mechanical::parameter_2d<T> _mechanical_parameters_2d::read_elastic_parameters(
     const nlohmann::json& config,
     const std::string& path_with_access,
     const std::optional<std::bitset<2>> is_null_youngs_modulus,
     const std::optional<std::bitset<2>> is_null_poissons_ratio) {
-    mechanical::parameter_2d<T> parameters;
+    solver_2d::mechanical::parameter_2d<T> parameters;
     parameters.thermal_expansion = config.value("thermal_expansion", T{0});
     parameters.youngs_modulus = read_elastic_parameter<T>(config["youngs_modulus"], is_null_youngs_modulus);
     parameters.poissons_ratio = read_elastic_parameter<T>(config["poissons_ratio"], is_null_poissons_ratio);
@@ -118,14 +118,14 @@ mechanical::parameter_2d<T> _mechanical_parameters_2d::read_elastic_parameters(
 }
 
 template<std::floating_point T>
-mechanical::parameter_2d<T> _mechanical_parameters_2d::read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::mechanical::parameter_2d<T> _mechanical_parameters_2d::read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, { "youngs_modulus", "poissons_ratio" }, path);
     check_optional_fields(config, { "thermal_expansion" }, path);
     const auto is_null_youngs_modulus = read_null(config["youngs_modulus"], path_with_access + "youngs_modulus");
     const auto is_null_poissons_ratio = read_null(config["poissons_ratio"], path_with_access + "poissons_ratio");
     check_null_combinations(is_null_youngs_modulus, is_null_poissons_ratio, path);
-    const mechanical::parameter_2d<T> parameters = read_elastic_parameters<T>(config, path_with_access, is_null_youngs_modulus, is_null_poissons_ratio);
+    const solver_2d::mechanical::parameter_2d<T> parameters = read_elastic_parameters<T>(config, path_with_access, is_null_youngs_modulus, is_null_poissons_ratio);
     if (!check_elasticity_parameters(parameters))
         throw std::domain_error{"Error in specifying parameters for material \"" + path + "\". "
                                 "youngs_modulus must be greater than 0, "
@@ -135,11 +135,11 @@ mechanical::parameter_2d<T> _mechanical_parameters_2d::read_mechanical_coefficie
 }
 
 template<std::floating_point T>
-mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::mechanical::mechanical_parameters_2d<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path) {
     if (!config.is_object())
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an object."};
     const std::string path_with_access = append_access_sign(path);
-    mechanical::mechanical_parameters_2d<T> parameters;
+    solver_2d::mechanical::mechanical_parameters_2d<T> parameters;
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_access_to_material = append_access_sign(path_with_access + name);
         const std::string model_field = get_model_field(material, path_with_access, "mechanical");

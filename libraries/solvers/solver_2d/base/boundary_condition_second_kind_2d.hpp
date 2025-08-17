@@ -7,7 +7,7 @@
 
 #include <Eigen/Dense>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<class T, class I, physics_t Physics, size_t DoF>
 void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,

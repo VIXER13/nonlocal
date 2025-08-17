@@ -5,7 +5,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<size_t DoF, class T, class I, class Functor>
 void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,

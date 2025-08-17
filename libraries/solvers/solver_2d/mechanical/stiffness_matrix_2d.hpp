@@ -4,7 +4,7 @@
 
 #include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I, class J>
 class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
@@ -128,8 +128,8 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
             _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
         _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().nonZeros() - 1] = 2 * _base::mesh().container().nodes_count();
     }
-    utils::sort_indices(_base::matrix().inner());
-    utils::sort_indices(_base::matrix().bound());
+    nonlocal::utils::sort_indices(_base::matrix().inner());
+    nonlocal::utils::sort_indices(_base::matrix().bound());
     logger::info() << "Matrix portrait is formed" << std::endl;
 }
 
