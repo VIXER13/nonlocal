@@ -7,7 +7,7 @@
 #include <array>
 #include <unordered_map>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T, class I>
 struct finite_element_matrix_1d final {

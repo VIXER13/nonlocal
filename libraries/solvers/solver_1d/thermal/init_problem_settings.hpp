@@ -5,7 +5,7 @@
 
 #include <solvers/solver_1d/base/problem_settings.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 problem_settings init_problem_settings(const parameters_1d<T>& parameters,

@@ -4,7 +4,7 @@
 
 #include <ranges>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T, physics_t Physics, class Vector>
 void boundary_condition_second_kind_1d(Vector& f, 

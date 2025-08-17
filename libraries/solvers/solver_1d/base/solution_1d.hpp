@@ -3,7 +3,7 @@
 #include <mesh/mesh_1d/mesh_1d.hpp>
 #include <solvers/base/equation_parameters.hpp>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T>
 class solution_1d {

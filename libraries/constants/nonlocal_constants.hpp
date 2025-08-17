@@ -44,11 +44,9 @@ enum class theory_t : bool {
 };
 
 template<std::floating_point T>
-inline constexpr T MAX_NONLOCAL_WEIGHT = T{0.999};
-
-template<std::floating_point T>
 constexpr theory_t theory_type(const T local_weight) noexcept {
-    return local_weight < MAX_NONLOCAL_WEIGHT<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
+    constexpr T Threshold = T{0.999};
+    return local_weight < Threshold ? theory_t::NONLOCAL : theory_t::LOCAL;
 }
 
 template<std::floating_point T>
@@ -56,14 +54,10 @@ constexpr T nonlocal_weight(const T local_weight) noexcept {
     return T{1} - local_weight;
 }
 
-namespace thermal {
-
 template<std::floating_point T>
-inline constexpr T STEFAN_BOLTZMANN_CONSTANT = T{5.67036713e-8};
+inline constexpr T Stefan_Boltzmann_Constant = T{5.67036713e-8};
 
 template<std::floating_point T>
 inline constexpr T NEUMANN_PROBLEM_ERROR_THRESHOLD = std::is_same_v<T, float> ? T{1e-5} : T{1e-10};
-
-}
 
 }

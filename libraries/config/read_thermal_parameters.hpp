@@ -22,7 +22,7 @@ class _read_thermal_parameters final {
     static void check_parameters(const thermal::conductivity_t<T>& conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access);
 
     template<std::floating_point T>
-    static thermal::parameter_1d<T> read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path);
+    static solver_1d::thermal::parameter_1d<T> read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     static thermal::conductivity_t<T> read_conductivity_2d(const nlohmann::json& config, const std::string& path);
@@ -33,7 +33,7 @@ class _read_thermal_parameters final {
 
 public:
     template<std::floating_point T>
-    friend thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& config, const std::string& path);
+    friend solver_1d::thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     friend thermal::parameters_2d<T> read_thermal_parameters_2d(const nlohmann::json& config, const std::string& path);
@@ -94,7 +94,7 @@ void _read_thermal_parameters::check_parameters(
 }
 
 template<std::floating_point T>
-thermal::parameter_1d<T> _read_thermal_parameters::read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path) {
+solver_1d::thermal::parameter_1d<T> _read_thermal_parameters::read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, {"conductivity"}, path_with_access);
     check_optional_fields(config, {"capacity", "density", "relaxation_time"}, path_with_access);
@@ -138,11 +138,11 @@ thermal::parameter_2d<T> _read_thermal_parameters::read_thermal_coefficient_2d(c
 }
 
 template<std::floating_point T>
-thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& config, const std::string& path) {
+solver_1d::thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& config, const std::string& path) {
     if (!config.is_array())
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an nonempty array."};
 
-    thermal::parameters_1d<T> parameters(config.size());
+    solver_1d::thermal::parameters_1d<T> parameters(config.size());
     for(const size_t i : std::ranges::iota_view{0u, parameters.capacity()}) {
         const nlohmann::json& config_material = config[i];
         const std::string path_with_access = append_access_sign(append_access_sign(path, i));

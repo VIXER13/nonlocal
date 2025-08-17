@@ -5,7 +5,7 @@
 #include <array>
 #include <memory>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T, physics_t Physics>
 class boundary_condition_1d {

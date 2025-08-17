@@ -8,7 +8,7 @@
 
 #include <optional>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T, class I>
 class thermal_conductivity_assembler_1d final : public assembler_base_1d<T, I> {

@@ -8,7 +8,7 @@
 #include <array>
 #include <vector>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 // Supported only upper part
 template<class T, class I>

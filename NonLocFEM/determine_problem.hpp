@@ -61,7 +61,7 @@ void problems_1d(const nlohmann::json& config, const config::save_data& save, co
     config::check_required_fields(config, {"boundaries", "materials"});
     config::check_optional_fields(config, {"mesh", "auxiliary"});
     if (task.problem == config::problem_t::Thermal)
-        thermal::solve_thermal_1d_problem<T, I>(config, save, task.time_dependency);
+        solve_thermal_1d_problem<T, I>(config, save, task.time_dependency);
     else throw std::domain_error{"Unsupported task. In the one-dimensional case, the following problems are available: \"thermal\""};
 }
 

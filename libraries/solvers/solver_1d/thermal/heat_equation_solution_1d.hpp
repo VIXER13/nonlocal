@@ -3,7 +3,7 @@
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/solver_1d/base/solution_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 class heat_equation_solution_1d : public solution_1d<T> {

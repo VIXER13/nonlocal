@@ -2,7 +2,7 @@
 
 #include <mesh/mesh_1d/mesh_1d.hpp>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T, class Vector, class Right_Part>
 void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_Part& right_part) {

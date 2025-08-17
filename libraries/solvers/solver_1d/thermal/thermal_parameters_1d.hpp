@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<std::floating_point T>
 struct parameter_1d final {

@@ -4,7 +4,7 @@
 #include <Eigen/Sparse>
 #include <ranges>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T, class I>
 void convection_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,

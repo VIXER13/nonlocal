@@ -16,7 +16,7 @@
         2)  Param. _m (pulse heating intensity) can be changed only in the class;
         3)  Param. _relaxation_time can be changed only in the class
 */
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 template<class T, class I>
 class nonstationary_relax_time_heat_equation_solver_1d final {
     heat_capacity_matrix_1d<T, I> _capacity;                        

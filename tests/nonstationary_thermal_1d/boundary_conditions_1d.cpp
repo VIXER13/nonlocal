@@ -9,7 +9,7 @@ namespace {
 
 using namespace boost::ut;
 using namespace nonlocal;
-using namespace nonlocal::thermal;
+using namespace nonlocal::solver_1d::thermal;
 
 template<class T>
 using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, std::size_t(1)>;
@@ -122,10 +122,6 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
         const std::vector<mesh::segment_data<T>> segments = {{ .length = T(2.0), .search_radius = T(0.0), .elements = I(100) }};
 
         parameters_1d<T> parameters = {{
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{T{0}},
-                .local_weight = T{1}
-            },
             .physical = {
                 .conductivity = T{1}, 
                 .capacity = T{1},
@@ -160,10 +156,6 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
 
         parameters_1d<T> parameters(segments.size());
         parameters[0] = {
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
-                .local_weight = T(1.0)
-            },
             .physical = {
                 .conductivity = T{1}, 
                 .capacity = T{1},
@@ -202,11 +194,7 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
 
         parameters_1d<T> parameters(segments.size());
         // Parameters of carbon steel
-        parameters[0] = { 
-            .model = { 
-                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
-                .local_weight = T(1.0)
-            },
+        parameters[0] = {
             .physical = {
                 .conductivity = T{50}, 
                 .capacity = T{460},
@@ -253,10 +241,6 @@ const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
 
         parameters_1d<T> parameters(segments.size());
         parameters[0] = {
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
-                .local_weight = T(1.0)
-            },
             .physical = {
                 .conductivity = lambda,
                 .capacity = cap,

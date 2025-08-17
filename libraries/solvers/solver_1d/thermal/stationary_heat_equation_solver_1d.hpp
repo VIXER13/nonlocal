@@ -12,7 +12,7 @@
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 struct stationary_equation_parameters_1d final {

@@ -12,7 +12,7 @@
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T, class I>
 class nonstationary_heat_equation_solver_1d final {
@@ -39,7 +39,7 @@ public:
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
 
     template<class Init_Dist>
-    void compute(const nonlocal::thermal::parameters_1d<T>& parameters,
+    void compute(const parameters_1d<T>& parameters,
                  const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                  const Init_Dist& init_dist);
 
@@ -90,7 +90,7 @@ const std::shared_ptr<mesh::mesh_1d<T>>& nonstationary_heat_equation_solver_1d<T
 
 template<class T, class I>
 template<class Init_Dist>
-void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::thermal::parameters_1d<T>& parameters,
+void nonstationary_heat_equation_solver_1d<T, I>::compute(const parameters_1d<T>& parameters,
                                                           const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                           const Init_Dist& init_dist) {
     static constexpr bool Stationary_Problem = false;

@@ -41,7 +41,7 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
     // T(x, 0) = f(x) * g(0), T(x, Ly) = f(x)  * g(Ly)
     // Radiation BC
     // q*n|x=Lx = er * sigma * T^4
-    constexpr T sigma = STEFAN_BOLTZMANN_CONSTANT<T>;
+    constexpr T sigma = Stefan_Boltzmann_Constant<T>;
     constexpr T lambda = 10.;
     constexpr T emissivity = 0.7;
     const T alpha = mult * emissivity * sigma / lambda;

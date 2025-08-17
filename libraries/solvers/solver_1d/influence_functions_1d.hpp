@@ -4,7 +4,7 @@
 
 #include <cmath>
 
-namespace nonlocal::influence {
+namespace nonlocal::solver_1d::influence {
 
 template<class T>
 class constant_1d final {

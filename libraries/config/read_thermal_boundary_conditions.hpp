@@ -31,7 +31,7 @@ class _read_thermal_boundary_conditions final {
     static void check_parameters(const T heat_transfer, const T emissivity, const std::string& path_with_access);
 
     template<std::floating_point T>
-    static std::unique_ptr<thermal::thermal_boundary_condition_1d<T>> read_thermal_boundary_condition_1d(const nlohmann::json& config, const std::string& path);
+    static std::unique_ptr<solver_1d::thermal::thermal_boundary_condition_1d<T>> read_thermal_boundary_condition_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     static thermal::thermal_boundary_condition_2d<T> read_thermal_boundary_condition_2d(const nlohmann::json& config, const std::string& path);
@@ -40,7 +40,7 @@ class _read_thermal_boundary_conditions final {
 
 public:
     template<std::floating_point T>
-    friend thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundaries_conditions_1d(const nlohmann::json& config, const std::string& path);
+    friend solver_1d::thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundaries_conditions_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     friend thermal::thermal_boundaries_conditions_2d<T> read_thermal_boundaries_conditions_2d(const nlohmann::json& config, const std::string& path);
@@ -55,25 +55,26 @@ void _read_thermal_boundary_conditions::check_parameters(const T heat_transfer, 
 }
 
 template<std::floating_point T>
-std::unique_ptr<thermal::thermal_boundary_condition_1d<T>> 
+std::unique_ptr<solver_1d::thermal::thermal_boundary_condition_1d<T>> 
 _read_thermal_boundary_conditions::read_thermal_boundary_condition_1d(const nlohmann::json& config, const std::string& path) {
+    using namespace solver_1d::thermal;
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, {"kind"}, path_with_access);
     switch (config["kind"].get<thermal_boundary_condition_t>()) {
     case thermal_boundary_condition_t::Temperature:
         check_required_fields(config, { "temperature" }, path_with_access);
-        return std::make_unique<thermal::temperature_1d<T>>(config["temperature"].get<T>());
+        return std::make_unique<temperature_1d<T>>(config["temperature"].get<T>());
 
     case thermal_boundary_condition_t::Flux:
         check_required_fields(config, { "flux" }, path_with_access);
-        return std::make_unique<thermal::flux_1d<T>>(config["flux"].get<T>());
+        return std::make_unique<flux_1d<T>>(config["flux"].get<T>());
 
     case thermal_boundary_condition_t::Convection: {
         check_required_fields(config, { "temperature", "heat_transfer" }, path_with_access);
         const T heat_transfer = config["heat_transfer"].get<T>();
         static constexpr T emissivity = T{0};
         check_parameters(heat_transfer, emissivity, path_with_access);
-        return std::make_unique<thermal::convection_1d<T>>(config["temperature"].get<T>(), heat_transfer);
+        return std::make_unique<convection_1d<T>>(config["temperature"].get<T>(), heat_transfer);
     }
 
     case thermal_boundary_condition_t::Radiation: {
@@ -81,7 +82,7 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_1d(const nloh
         const T emissivity = config["emissivity"].get<T>();
         static constexpr T heat_transfer = T{0};
         check_parameters(heat_transfer, emissivity, path_with_access);
-        return std::make_unique<thermal::radiation_1d<T>>(emissivity);
+        return std::make_unique<radiation_1d<T>>(emissivity);
     }
 
     case thermal_boundary_condition_t::Combined: {
@@ -94,7 +95,7 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_1d(const nloh
         const T heat_transfer = config.value("heat_transfer", T{0});
         const T emissivity = config.value("emissivity", T{0});
         check_parameters(heat_transfer, emissivity, path_with_access);
-        return std::make_unique<thermal::combined_flux_1d<T>>(
+        return std::make_unique<combined_flux_1d<T>>(
             config.value("flux", T{0}),
             heat_transfer, config.value("temperature", T{0}),
             emissivity);
@@ -153,7 +154,7 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_2d(const nloh
 }
 
 template<std::floating_point T>
-thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundaries_conditions_1d(const nlohmann::json& config, const std::string& path) {
+solver_1d::thermal::thermal_boundaries_conditions_1d<T> read_thermal_boundaries_conditions_1d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, {"left", "right"}, path_with_access);
     using _base = _read_thermal_boundary_conditions;

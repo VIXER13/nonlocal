@@ -3,13 +3,13 @@
 #include <solvers/solver_1d/base/assebmler_base.hpp>
 #include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T, class I>
 class heat_capacity_assembler_1d : public assembler_base_1d<T, I> {
     using _base = assembler_base_1d<T, I>;
 
-    static std::vector<T> calc_factors(const nonlocal::thermal::parameters_1d<T>& parameters);
+    static std::vector<T> calc_factors(const parameters_1d<T>& parameters);
 
 protected:
     T integrate(const size_t e, const size_t i, const size_t j) const;
@@ -18,12 +18,11 @@ public:
     explicit heat_capacity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
     ~heat_capacity_assembler_1d() override = default;
 
-    void calc_matrix(const nonlocal::thermal::parameters_1d<T>& parameters,
-                     const std::array<bool, 2> is_first_kind);
+    void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind);
 };
 
 template<class T, class I>
-std::vector<T> heat_capacity_assembler_1d<T, I>::calc_factors(const nonlocal::thermal::parameters_1d<T>& parameters) {
+std::vector<T> heat_capacity_assembler_1d<T, I>::calc_factors(const parameters_1d<T>& parameters) {
     std::vector<T> factors(parameters.size());
     for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
         factors[i] = parameters[i].physical.capacity * parameters[i].physical.density;
@@ -44,8 +43,7 @@ T heat_capacity_assembler_1d<T, I>::integrate(const size_t e, const size_t i, co
 }
 
 template<class T, class I>
-void heat_capacity_assembler_1d<T, I>::calc_matrix(const nonlocal::thermal::parameters_1d<T>& parameters,
-                                                   const std::array<bool, 2> is_first_kind) {
+void heat_capacity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind) {
     if (parameters.size() != _base::mesh().segments_count())
         throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
     const problem_settings settings = {

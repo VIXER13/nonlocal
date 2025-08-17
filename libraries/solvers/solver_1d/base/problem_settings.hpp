@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <vector>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 struct problem_settings final {
     std::vector<theory_t> theories;

@@ -23,8 +23,8 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * power<3>(element.approximate_in_qnode(q, temperature_prev)) *
                         el.qN(i, q) * el.qN(j, q) * mesh::jacobian(element.jacobi_matrix(q));
-        static constexpr T STEFAN_BOLTZMANN_CONSTANT_X4 = 4 * STEFAN_BOLTZMANN_CONSTANT<T>;
-        return STEFAN_BOLTZMANN_CONSTANT_X4 * condition.emissivity() * integral;
+        static constexpr T Stefan_Boltzmann_Constant_X4 = 4 * Stefan_Boltzmann_Constant<T>;
+        return Stefan_Boltzmann_Constant_X4 * condition.emissivity() * integral;
     };
 
     const auto integrate_vector = [&temperature_prev](const radiation_2d<T>& condition, const auto& element, const size_t i) {
@@ -35,8 +35,8 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * el.qN(i, q) * power<4>(element.approximate_in_qnode(q, temperature_prev)) *
                         mesh::jacobian(element.jacobi_matrix(q));
-        static constexpr T STEFAN_BOLTZMANN_CONSTANT_X3 = 3 * STEFAN_BOLTZMANN_CONSTANT<T>;
-        return STEFAN_BOLTZMANN_CONSTANT_X3 * condition.emissivity() * integral;
+        static constexpr T Stefan_Boltzmann_Constant_X3 = 3 * Stefan_Boltzmann_Constant<T>;
+        return Stefan_Boltzmann_Constant_X3 * condition.emissivity() * integral;
     };
 
     utils::run_by_boundaries<radiation_2d>(mesh.container(), boundaries_conditions,
@@ -68,8 +68,8 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * power<3>(element.approximate_in_qnode(q, temperature_prev)) *
                         el.qN(i, q) * el.qN(j, q) * mesh::jacobian(element.jacobi_matrix(q));
-        static constexpr T STEFAN_BOLTZMANN_CONSTANT_X4 = 4 * STEFAN_BOLTZMANN_CONSTANT<T>;
-        return STEFAN_BOLTZMANN_CONSTANT_X4 * condition.emissivity() * integral;
+        static constexpr T Stefan_Boltzmann_Constant_X4 = 4 * Stefan_Boltzmann_Constant<T>;
+        return Stefan_Boltzmann_Constant_X4 * condition.emissivity() * integral;
     };
 
     const auto integrate_vector = [&temperature_prev](const radiation_2d<T>& condition, const auto& element, const size_t i) {
@@ -80,7 +80,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * el.qN(i, q) * power<4>(element.approximate_in_qnode(q, temperature_prev)) *
                         mesh::jacobian(element.jacobi_matrix(q));
-        return STEFAN_BOLTZMANN_CONSTANT<T> * condition.emissivity() * integral;
+        return Stefan_Boltzmann_Constant<T> * condition.emissivity() * integral;
     };
 
     utils::run_by_boundaries<radiation_2d>(mesh.container(), boundaries_conditions,

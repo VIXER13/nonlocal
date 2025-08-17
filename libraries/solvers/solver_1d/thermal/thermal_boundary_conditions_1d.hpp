@@ -3,7 +3,7 @@
 #include <metamath/metamath.hpp>
 #include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 class temperature_1d final : public first_kind_1d<T, physics_t::THERMAL>{

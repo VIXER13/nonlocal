@@ -8,7 +8,7 @@ namespace {
 
 using namespace boost::ut;
 using namespace nonlocal;
-using namespace nonlocal::thermal;
+using namespace nonlocal::solver_1d::thermal;
 
 template<class T>
 using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, std::size_t(1)>;
@@ -46,18 +46,12 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         constexpr T left_temperature = ref_sol(0.0);
         constexpr T right_temperature = ref_sol(1.0);
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique<thermal::temperature_1d<T>>(left_temperature),
-            std::make_unique<thermal::temperature_1d<T>>(right_temperature)
+            std::make_unique<temperature_1d<T>>(left_temperature),
+            std::make_unique<temperature_1d<T>>(right_temperature)
         };
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(10) }});
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = {
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
-                .local_weight = T(1.0)
-            },
-            .physical = { .conductivity = T{1} }
-        };
+        parameters[0] = { .physical = { .conductivity = T{1} } };
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
             .right_part = [](const T x) constexpr noexcept {  return -4. * std::pow(-3. * (x - 2.), -7./3.); },
@@ -77,7 +71,7 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         // qv(x) = -4 * lambda * alpha * alpha * (-3 * alpha * (x - 1.01))^(-7/3)
         // T|x=0 = T_ref(0), q*n|x=L = er * sigma * T^4,
         // Exact solution : T_ref(x) = (-3 * alpha * (x - 1.01))^(-1/3)
-        constexpr T sigma = STEFAN_BOLTZMANN_CONSTANT<T>;
+        constexpr T sigma = Stefan_Boltzmann_Constant<T>;
         constexpr T lambda = 10.;
         constexpr T emissivity = 0.7;
         constexpr T alpha = emissivity * sigma / lambda;
@@ -86,18 +80,12 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         };
         constexpr T left_temperature = ref_sol(0.0);
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique<thermal::temperature_1d<T>>(left_temperature),
-            std::make_unique<thermal::radiation_1d<T>>(emissivity)
+            std::make_unique<temperature_1d<T>>(left_temperature),
+            std::make_unique<radiation_1d<T>>(emissivity)
         };
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(1000) }});
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = {
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
-                .local_weight = T(1.0)
-            },
-            .physical = { .conductivity = lambda }
-        };
+        parameters[0] = { .physical = { .conductivity = lambda } };
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
             .right_part = [&](const T x) constexpr noexcept {  return -4. * lambda * alpha * alpha * std::pow(-3. * alpha * (x - 1.01), -7./3.); },
@@ -117,7 +105,7 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         // qv(x) = -4 * lambda * alpha * alpha * (3 * alpha * (x - 1.01))^(-7/3)
         // q*n|x=0 = = er * sigma * T^4, T|x=L = T_ref(L),
         // Exact solution : T_ref(x) = (3 * alpha * (x - 1.01))^(-1/3)
-        constexpr T sigma = STEFAN_BOLTZMANN_CONSTANT<T>;
+        constexpr T sigma = Stefan_Boltzmann_Constant<T>;
         constexpr T lambda = 10.;
         constexpr T emissivity = 0.7;
         constexpr T alpha = emissivity * sigma / lambda;
@@ -126,18 +114,12 @@ const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
         };
         constexpr T right_temperature = ref_sol(1.0);
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique<thermal::radiation_1d<T>>(emissivity),
-            std::make_unique<thermal::temperature_1d<T>>(right_temperature)
+            std::make_unique<radiation_1d<T>>(emissivity),
+            std::make_unique<temperature_1d<T>>(right_temperature)
         };
         const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(1000) }});
         parameters_1d<T> parameters(segments.size());
-        parameters[0] = {
-            .model = {
-                .influence = influence::polynomial_1d<T, 1, 1>{T(0.0)},
-                .local_weight = T(1.0)
-            },
-            .physical = { .conductivity = lambda }
-        };
+        parameters[0] = { .physical = { .conductivity = lambda } };
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
             .right_part = [&](const T x) constexpr noexcept {  return -4. * lambda * alpha * alpha * std::pow(3. * alpha * (x + 1.01), -7./3.); },

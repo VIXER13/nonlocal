@@ -8,7 +8,7 @@
 #include <parallel/OMP_utils.hpp>
 #include <solvers/base/utils.hpp>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T, class I>
 class assembler_base_1d {
