@@ -3,6 +3,7 @@
 #include "thermal_parameters_1d.hpp"
 
 #include <solvers/base/equation_parameters.hpp>
+#include <solvers/solver_1d/base/problem_settings.hpp>
 #include <solvers/solver_1d/base/assebmler_base.hpp>
 
 #include <optional>
@@ -29,8 +30,7 @@ public:
                                                const std::optional<utils::nodes_sequence>& nodes_to_assemble = std::nullopt);
     ~thermal_conductivity_assembler_1d() override = default;
 
-    void calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind,
-                     const bool is_neumann = false, const bool is_symmetric = true,
+    void calc_matrix(const parameters_1d<T>& parameters, const problem_settings& settings,
                      const std::optional<std::vector<T>>& solution = std::nullopt);
 };
 
@@ -101,22 +101,23 @@ void thermal_conductivity_assembler_1d<T, I>::integral_condition() {
 }
 
 template<class T, class I>
-void thermal_conductivity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind,
-                                                       const bool is_neumann, const bool is_symmetric,
-                                                       const std::optional<std::vector<T>>& solution) {
+void thermal_conductivity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const problem_settings& settings,
+                                                          const std::optional<std::vector<T>>& solution) {
     if (parameters.size() != _base::mesh().segments_count())
        throw std::domain_error{"The number of segments and the number of material parameters do not match."};
-    if (is_neumann)
+    if (settings.is_neumann)
         integral_condition();
-    if (!is_symmetric)
+    if (!settings.is_symmetric())
         _base::matrix().inner = Eigen::SparseMatrix<T, Eigen::RowMajor, I>(_base::matrix().inner.template selfadjointView<Eigen::Upper>());
+    if (solution)
+        _solution = *solution;
 
-    _base::template calc_matrix(theories_types(parameters), is_first_kind, is_symmetric,
-        [this, &parameters, &solution](const size_t segment, const size_t e, const size_t i, const size_t j) {
+    _base::template calc_matrix(settings,
+        [this, &parameters](const size_t segment, const size_t e, const size_t i, const size_t j) {
             const auto& [model, physic] = parameters[segment];
             return model.local_weight * integrate_local(physic.conductivity, e, i, j);
         },
-        [this, &parameters, &solution](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+        [this, &parameters](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             const auto& [model, physic] = parameters[segment];
             return nonlocal_weight(model.local_weight) * integrate_nonlocal(physic.conductivity, model.influence, eL, eNL, iL, jNL);
         }

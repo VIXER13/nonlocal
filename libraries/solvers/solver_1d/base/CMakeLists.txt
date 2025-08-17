@@ -9,6 +9,7 @@ target_sources(finite_element_solver_1d_base_lib INTERFACE
     boundary_condition_second_kind_1d.hpp
     boundary_conditions_1d.hpp
     finite_element_matrix.hpp
+    problem_settings.hpp
     right_part_1d.hpp
     solution_1d.hpp
 )

@@ -1,9 +1,11 @@
 #pragma once
 
 #include "finite_element_matrix.hpp"
+#include "problem_settings.hpp"
 
 #include <logger/logger.hpp>
 #include <mesh/mesh_1d/mesh_1d.hpp>
+#include <parallel/OMP_utils.hpp>
 #include <solvers/base/utils.hpp>
 
 namespace nonlocal {
@@ -25,8 +27,8 @@ protected:
     template<theory_t Theory, class Callback>
     void mesh_run(const size_t segment, const Callback& callback) const;
     template<class Integrate_Loc, class Integrate_Nonloc = decltype(Empty_Function)>
-    void calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_symmetric,
-                     const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc = Empty_Function);
+    void calc_matrix(const problem_settings& settings, const Integrate_Loc& integrate_loc,
+                     const Integrate_Nonloc& integrate_nonloc = Empty_Function);
 
 public:
     virtual ~assembler_base_1d() = default;
@@ -71,11 +73,10 @@ std::vector<size_t> assembler_base_1d<T, I>::get_subsequence(const size_t segmen
     std::vector<size_t> subsequence;
     const auto segment_nodes = mesh().nodes(segment);
     subsequence.reserve(segment_nodes.size());
-    static constexpr int Threads = 1;
     utils::iterate(_nodes_to_assemble, [&subsequence, &segment_nodes](const size_t row) {
         if (row >= segment_nodes.front() && row <= segment_nodes.back())
             subsequence.push_back(row);
-    }, Threads);
+    });
     subsequence.shrink_to_fit();
     return subsequence;
 }
@@ -104,13 +105,14 @@ void assembler_base_1d<T, I>::mesh_run(const size_t segment, const Callback& cal
                         for(const size_t jNL : mesh().element().nodes())
                             callback(eL, eNL, iL, jNL);
             }   
-    });
+    }, parallel::threads_count());
 }
 
 template<class T, class I>
 template<class Integrate_Loc, class Integrate_Nonloc>
-void assembler_base_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories, const std::array<bool, 2> is_first_kind, const bool is_symmetric,
-                                          const Integrate_Loc& integrate_loc, const Integrate_Nonloc& integrate_nonloc) {
+void assembler_base_1d<T, I>::calc_matrix(const problem_settings& settings,
+                                          const Integrate_Loc& integrate_loc, 
+                                          const Integrate_Nonloc& integrate_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col, const T integral) {
         if (col == row)
             matrix().inner.coeffRef(row, col) = T{1};
@@ -118,13 +120,13 @@ void assembler_base_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories,
             it->second += integral;
     };
 
-    const auto assemble = [this, is_first_kind, is_symmetric, &assemble_bound, last_node = mesh().nodes_count() - 1]
+    const auto assemble = [this, &settings, &assemble_bound, is_symmetric = settings.is_symmetric(), last_node = mesh().nodes_count() - 1]
                           <class Integrate, class... Model_Args>
                           (const size_t row, const size_t col, const Integrate& integrate, const Model_Args&... args) {
-        if (is_first_kind.front() && (row == 0 || col == 0)) {
+        if (settings.is_first_kind.front() && (row == 0 || col == 0)) {
             if (row == 0)
                 assemble_bound(matrix().bound.front(), row, col, integrate(args...));
-        } else if (is_first_kind.back() && (row == last_node || col == last_node)) {
+        } else if (settings.is_first_kind.back() && (row == last_node || col == last_node)) {
             if (row == last_node)
                 assemble_bound(matrix().bound.back(), row, col, integrate(args...));
         } else if (!is_symmetric || row <= col)
@@ -132,7 +134,7 @@ void assembler_base_1d<T, I>::calc_matrix(const std::vector<theory_t>& theories,
     };
 
     for(const size_t segment : mesh().segments())
-        switch (theories[segment]) {
+        switch (settings.theories[segment]) {
             case theory_t::NONLOCAL:
                 mesh_run<theory_t::NONLOCAL>(segment,
                     [this, &assemble, &integrate_nonloc, segment](const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {

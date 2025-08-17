@@ -1,7 +1,5 @@
 #pragma once
 
-#include <parallel/OMP_utils.hpp>
-
 #include <Eigen/Sparse>
 
 #include <algorithm>
@@ -17,7 +15,7 @@ using nodes_sequence = std::variant<
 >;
 
 template<class Callback>
-void iterate(const nodes_sequence& sequence, Callback&& callback, const int threads = parallel::threads_count()) {
+void iterate(const nodes_sequence& sequence, Callback&& callback, const int threads = 1) {
     std::visit([&callback, threads](const auto& sequence) {
 #pragma omp parallel for firstprivate(callback) num_threads(threads)
         for(size_t i = 0; i < sequence.size(); ++i)

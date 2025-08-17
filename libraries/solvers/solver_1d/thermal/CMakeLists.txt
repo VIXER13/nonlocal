@@ -7,6 +7,7 @@ target_sources(
     thermal_parameters_1d.hpp
     thermal_conductivity_assembler.hpp
     heat_capacity_assembler.hpp
+    init_problem_settings.hpp
     convection_condition_1d.hpp
     stationary_heat_equation_solver_1d.hpp
     nonstationary_heat_equation_solver_1d.hpp

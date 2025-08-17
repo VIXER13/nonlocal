@@ -5,6 +5,7 @@
 #include "convection_condition_1d.hpp"
 #include "radiation_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
+#include "init_problem_settings.hpp"
 
 #include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
@@ -21,9 +22,9 @@ class nonstationary_heat_equation_solver_1d final {
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
-    const T _time_step = T{1};
     std::array<T, 2> _capacity_initial_values = {T(0), T(0)};
     std::array<T, 2> _conductivity_initial_values = {T(0), T(0)};
+    const T _time_step = T{1};
 
     static std::array<T, 2> get_init_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
     static void reset_to_init_values(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
@@ -92,26 +93,27 @@ template<class Init_Dist>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const nonlocal::thermal::parameters_1d<T>& parameters,
                                                           const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                           const Init_Dist& init_dist) {
-    const std::array<bool, 2> is_first_kind = {
-        bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.front().get())),
-        bool(dynamic_cast<const temperature_1d<T>*>(boundaries_conditions.back ().get()))
-    };
-    init_matrix_portrait(_capacity.inner, mesh(), std::vector<theory_t>(parameters.size(), theory_t::LOCAL), is_first_kind);
-    init_matrix_portrait(_conductivity.inner, mesh(), theories_types(parameters), is_first_kind);
-    heat_capacity_assembler_1d<T, I> capacity_assembler{_capacity, _mesh};
+    static constexpr bool Stationary_Problem = false;
+    problem_settings settings = init_problem_settings(parameters, boundaries_conditions, Stationary_Problem);
+
+    init_matrix_portrait(_conductivity.inner, mesh(), settings);
     thermal_conductivity_assembler_1d<T, I> conductivity_assembler{_conductivity, _mesh};
-    _capacity.set_zero();
-    capacity_assembler.calc_matrix(parameters, is_first_kind);
     _conductivity.set_zero();
-    conductivity_assembler.calc_matrix(parameters, is_first_kind);
+    conductivity_assembler.calc_matrix(parameters, settings);
     convection_condition_1d(_conductivity.inner, boundaries_conditions);
+
+    settings.theories = std::vector<theory_t>(parameters.size(), theory_t::LOCAL);
+    init_matrix_portrait(_capacity.inner, mesh(), settings);
+    _capacity.set_zero();
+    heat_capacity_assembler_1d<T, I> capacity_assembler{_capacity, _mesh};
+    capacity_assembler.calc_matrix(parameters, settings.is_first_kind);
 
     auto& conductivity = _conductivity.inner;
     conductivity *= time_step();
     conductivity += _capacity.inner;
     reset_to_init_values(conductivity, {
-        is_first_kind.front() ? T{1} : conductivity.coeffRef(0, 0),
-        is_first_kind.back()  ? T{1} : conductivity.coeffRef(conductivity.rows() - 1, conductivity.cols() - 1)
+        settings.is_first_kind.front() ? T{1} : conductivity.coeffRef(0, 0),
+        settings.is_first_kind.back()  ? T{1} : conductivity.coeffRef(conductivity.rows() - 1, conductivity.cols() - 1)
     });
     
     for(std::unordered_map<size_t, T>& matrix_part : _conductivity.bound)
