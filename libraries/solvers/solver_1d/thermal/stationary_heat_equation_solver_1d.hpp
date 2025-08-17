@@ -44,8 +44,8 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                                                                 const parameters_1d<T>& parameters,
                                                                 const thermal_boundaries_conditions_1d<T>& boundaries_conditions,  
                                                                 const stationary_equation_parameters_1d<T>& additional_parameters) {
-    static constexpr bool Stationary_Problem = true;
-    const auto settings = init_problem_settings(parameters, boundaries_conditions, Stationary_Problem);
+    static constexpr bool Is_Stationary = true;
+    const auto settings = init_problem_settings(parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, settings.is_neumann);
@@ -91,7 +91,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                     residual = conductivity.inner.template selfadjointView<Eigen::Upper>() * temperature_prev - right_part;
                 else
                     residual = conductivity.inner * temperature_prev - right_part;
-                radiation_condition_1d(conductivity.inner, residual, boundaries_conditions, temperature_prev);
+                radiation_condition_1d<Is_Stationary>(conductivity.inner, residual, boundaries_conditions, temperature_prev);
             }
 
             if (settings.is_symmetric()) {

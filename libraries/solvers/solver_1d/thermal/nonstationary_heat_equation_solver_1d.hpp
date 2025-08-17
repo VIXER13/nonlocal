@@ -16,6 +16,8 @@ namespace nonlocal::solver_1d::thermal {
 
 template<class T, class I>
 class nonstationary_heat_equation_solver_1d final {
+    static constexpr bool Is_Stationary = false;
+
     std::shared_ptr<mesh::mesh_1d<T>> _mesh;
     finite_element_matrix_1d<T, I> _capacity;
     finite_element_matrix_1d<T, I> _conductivity;
@@ -26,8 +28,8 @@ class nonstationary_heat_equation_solver_1d final {
     std::array<T, 2> _conductivity_initial_values = {T(0), T(0)};
     const T _time_step = T{1};
 
-    static std::array<T, 2> get_init_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
-    static void reset_to_init_values(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
+    static std::array<T, 2> get_initial_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
+    static void reset_initial_values(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                                      const std::array<T, 2>& values);
  
 public:
@@ -38,14 +40,12 @@ public:
     const mesh::mesh_1d<T>& mesh() const;
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
 
-    template<class Init_Dist>
     void compute(const parameters_1d<T>& parameters,
                  const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                 const Init_Dist& init_dist);
+                 const std::optional<std::function<T(const T)>>& initial_temperature = std::nullopt);
 
-    template<class Right_Part>
     void calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                   const Right_Part& right_part);
+                   const std::optional<std::function<T(const T)>>& right_part = std::nullopt);
 };
 
 template<class T, class I>
@@ -57,12 +57,12 @@ nonstationary_heat_equation_solver_1d<T, I>::nonstationary_heat_equation_solver_
     , _time_step{time_step} {}
 
 template<class T, class I>
-std::array<T, 2> nonstationary_heat_equation_solver_1d<T, I>::get_init_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix) {
+std::array<T, 2> nonstationary_heat_equation_solver_1d<T, I>::get_initial_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix) {
     return {matrix.coeff(0, 0), matrix.coeff(matrix.rows() - 1, matrix.cols() - 1)};
 }
 
 template<class T, class I>
-void nonstationary_heat_equation_solver_1d<T, I>::reset_to_init_values(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
+void nonstationary_heat_equation_solver_1d<T, I>::reset_initial_values(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                                                                        const std::array<T, 2>& values) {
     matrix.coeffRef(0, 0) = values.front();
     matrix.coeffRef(matrix.rows() - 1, matrix.cols() - 1) = values.back();
@@ -89,12 +89,10 @@ const std::shared_ptr<mesh::mesh_1d<T>>& nonstationary_heat_equation_solver_1d<T
 }
 
 template<class T, class I>
-template<class Init_Dist>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const parameters_1d<T>& parameters,
                                                           const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                                                          const Init_Dist& init_dist) {
-    static constexpr bool Stationary_Problem = false;
-    problem_settings settings = init_problem_settings(parameters, boundaries_conditions, Stationary_Problem);
+                                                          const std::optional<std::function<T(const T)>>& initial_temperature) {
+    problem_settings settings = init_problem_settings(parameters, boundaries_conditions, Is_Stationary);
 
     init_matrix_portrait(_conductivity.inner, mesh(), settings);
     thermal_conductivity_assembler_1d<T, I> conductivity_assembler{_conductivity, _mesh};
@@ -107,43 +105,41 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const parameters_1d<T>
     _capacity.set_zero();
     heat_capacity_assembler_1d<T, I> capacity_assembler{_capacity, _mesh};
     capacity_assembler.calc_matrix(parameters, settings.is_first_kind);
+    _capacity_initial_values = get_initial_values(_capacity.inner);
 
-    auto& conductivity = _conductivity.inner;
-    conductivity *= time_step();
-    conductivity += _capacity.inner;
-    reset_to_init_values(conductivity, {
-        settings.is_first_kind.front() ? T{1} : conductivity.coeffRef(0, 0),
-        settings.is_first_kind.back()  ? T{1} : conductivity.coeffRef(conductivity.rows() - 1, conductivity.cols() - 1)
+    _conductivity.inner *= time_step();
+    _conductivity.inner += _capacity.inner;
+    _conductivity_initial_values = get_initial_values(_conductivity.inner);
+    reset_initial_values(_conductivity.inner, {
+        settings.is_first_kind.front() ? T{1} : _conductivity_initial_values.front(),
+        settings.is_first_kind.back()  ? T{1} : _conductivity_initial_values.back()
     });
+    _conductivity_initial_values = get_initial_values(_conductivity.inner);
     
     for(std::unordered_map<size_t, T>& matrix_part : _conductivity.bound)
         for(auto& val : matrix_part | std::views::values)
             val *= time_step();
 
-    _conductivity_initial_values = get_init_values(_conductivity.inner);
-    _capacity_initial_values = get_init_values(_capacity.inner);
-
-    if constexpr (!std::is_same_v<Init_Dist, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
+    if (initial_temperature)
         for(const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
-            _temperature_curr[i] = init_dist(mesh().node_coord(i));
+            _temperature_curr[i] = (*initial_temperature)(mesh().node_coord(i));
 }
 
 template<class T, class I>
-template<class Right_Part>
 void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                                                            const Right_Part& right_part) {
+                                                            const std::optional<std::function<T(const T)>>& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
-    reset_to_init_values(_conductivity.inner, _conductivity_initial_values);
-    reset_to_init_values(_capacity.inner, _capacity_initial_values);
+    reset_initial_values(_conductivity.inner, _conductivity_initial_values);
+    reset_initial_values(_capacity.inner, _capacity_initial_values);
 
     boundary_condition_second_kind_1d<T>(_right_part, boundaries_conditions);
-    if constexpr (!std::is_same_v<Right_Part, std::remove_cvref_t<decltype(EMPTY_FUNCTION)>>)
-        integrate_right_part(_right_part, mesh(), right_part);
+    if (right_part)
+        integrate_right_part(_right_part, mesh(), *right_part);
     _right_part *= time_step();
     _right_part += _capacity.inner.template selfadjointView<Eigen::Upper>() * _temperature_prev;
     
-    radiation_condition_1d(_conductivity.inner, _right_part, boundaries_conditions, _temperature_prev, time_step());
+    radiation_condition_1d<Is_Stationary>(_conductivity.inner, _right_part, boundaries_conditions, _temperature_prev, time_step());
     boundary_condition_first_kind_1d(_right_part, _conductivity.bound, boundaries_conditions);
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{_conductivity.inner};

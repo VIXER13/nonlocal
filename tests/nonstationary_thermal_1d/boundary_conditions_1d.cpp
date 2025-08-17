@@ -57,7 +57,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
         };
-        solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION);  
+        solver.compute(parameters, boundaries_conditions);  
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
@@ -92,7 +92,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
         };
-        solver.compute(parameters, boundaries_conditions, EMPTY_FUNCTION);  
+        solver.compute(parameters, boundaries_conditions);  
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
