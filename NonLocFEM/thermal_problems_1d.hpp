@@ -44,9 +44,8 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
     } else {
         config::check_required_fields(config, {"time"});
         const config::time_data<T> time{config["time"], "time"};
-        //nonstationary_relax_time_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-        solver_1d::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
-        solver.compute(parameters, boundaries_conditions,
+        solver_1d::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
+        solver.compute(boundaries_conditions,
             [init_dist = auxiliary.initial_distribution](const T x) constexpr noexcept { return init_dist; });
         {   // Step 0
             solver_1d::thermal::heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};

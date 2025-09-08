@@ -41,14 +41,14 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
                                             const std::function<T(T)>& left_bc, const std::function<T(T)>& right_bc,
                                             std::function<T(T, T)> ref_sol, T eps = T{1e-8}, bool internal_iters_check = false)  {
 
-    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
 
     {   // Step initial
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
             std::make_unique<Left_bc_type<T>>(left_bc(T(0))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
         };
-        solver.compute(parameters, boundaries_conditions, init_dist);
+        solver.compute(boundaries_conditions, init_dist);
     }
 
     for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
@@ -57,7 +57,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
         };
-        solver.compute(parameters, boundaries_conditions);  
+        solver.compute(boundaries_conditions);  
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
@@ -73,7 +73,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
                                             const std::function<T(T)>& left_bc, const std::function<T(T)>& right_bc,
                                             bool internal_iters_check = false)  {
 
-    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, time.time_step};
+    nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
     std::vector<T> energy;
 
     {   // Step initial
@@ -81,7 +81,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(0))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
         };
-        solver.compute(parameters, boundaries_conditions, init_dist);
+        solver.compute(boundaries_conditions, init_dist);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
         energy.push_back(nonlocal::mesh::utils::integrate(*mesh, solution.temperature()));
     }
@@ -92,7 +92,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(time_layer))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(time_layer)))
         };
-        solver.compute(parameters, boundaries_conditions);  
+        solver.compute(boundaries_conditions);  
         const auto rp = [&right_part, &time_layer](const T x) { return right_part(time_layer, x); };
         solver.calc_step(boundaries_conditions, rp);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
