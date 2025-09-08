@@ -48,7 +48,8 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(0))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
         };
-        solver.compute(boundaries_conditions, init_dist);
+        solver.initialize_temperature(init_dist);
+        solver.compute(boundaries_conditions);
     }
 
     for(const I step : std::ranges::iota_view{1u, time.steps_count + 1}) {
@@ -81,7 +82,8 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
             std::make_unique<Left_bc_type<T>>(left_bc(T(0))),
             std::make_unique<Right_bc_type<T>>(right_bc(T(0)))
         };
-        solver.compute(boundaries_conditions, init_dist);
+        solver.initialize_temperature(init_dist);
+        solver.compute(boundaries_conditions);
         heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature()};
         energy.push_back(nonlocal::mesh::utils::integrate(*mesh, solution.temperature()));
     }

@@ -14,6 +14,13 @@
 
 namespace nonlocal::solver_1d::thermal {
 
+template<class T>
+using temperature_function = std::variant<
+    std::function<T(const T)>,
+    std::vector<T>,
+    Eigen::Matrix<T, Eigen::Dynamic, 1>
+>;
+
 template<class T, class I>
 class nonstationary_heat_equation_solver_1d final {
     static constexpr bool Is_Stationary = false;
@@ -54,8 +61,9 @@ public:
     const mesh::mesh_1d<T>& mesh() const;
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh_ptr() const noexcept;
 
-    void compute(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                 const std::optional<std::function<T(const T)>>& initial_temperature = std::nullopt);
+    void initialize_temperature(const temperature_function<T>& temperature);
+
+    void compute(const thermal_boundaries_conditions_1d<T>& boundaries_conditions);
 
     void calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                    const std::optional<std::function<T(const T)>>& right_part = std::nullopt);
@@ -120,8 +128,23 @@ const std::shared_ptr<mesh::mesh_1d<T>>& nonstationary_heat_equation_solver_1d<T
 }
 
 template<class T, class I>
-void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
-                                                          const std::optional<std::function<T(const T)>>& initial_temperature) {
+void nonstationary_heat_equation_solver_1d<T, I>::initialize_temperature(const temperature_function<T>& temperature) {
+    std::visit(metamath::visitor{
+        [this](const std::function<T(const T)>& temperature) {
+            for(const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
+                _temperature_curr[i] = temperature(mesh().node_coord(i));
+        },
+        [this](const auto& temperature) {
+            if (temperature.size() != mesh().nodes_count())
+                throw std::domain_error{"The initialization vector size does not match the number of nodes in the mesh."};
+            for (const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
+                _temperature_curr[i] = temperature[i];
+        }
+    }, temperature);
+}
+
+template<class T, class I>
+void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundaries_conditions_1d<T>& boundaries_conditions) {
     problem_settings settings = init_problem_settings(_parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
 
@@ -151,10 +174,6 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundari
     for(std::unordered_map<size_t, T>& matrix_part : _conductivity.bound)
         for(auto& val : matrix_part | std::views::values)
             val *= time_step();
-
-    if (initial_temperature)
-        for(const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
-            _temperature_curr[i] = (*initial_temperature)(mesh().node_coord(i));
 
     // Initialize relaxation matrices
     settings.is_first_kind = {false, false};
