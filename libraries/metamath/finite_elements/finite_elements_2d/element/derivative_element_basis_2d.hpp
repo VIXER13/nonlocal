@@ -18,7 +18,7 @@ protected:
 
     static_assert(std::tuple_size_v<decltype(basis)> == nodes.size(), "The number of functions and nodes does not match.");
 
-    static inline const std::array<std::function<T(const std::array<T, Parameters_Count>&)>, nodes.size()>
+    const std::array<std::function<T(const std::array<T, Parameters_Count>&)>, nodes.size()>
         N    = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(basis)),
         Nxi  = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(symbolic::derivative<x>(basis))),
         Neta = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(symbolic::derivative<y>(basis)));
