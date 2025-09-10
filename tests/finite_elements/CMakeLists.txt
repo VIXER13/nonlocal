@@ -8,10 +8,6 @@ if (NOT DEFINED NO_CONAN)
 endif()
 
 add_library(finite_elements_test_lib OBJECT
-    init_lagrangian_elements_1d.cpp
-    init_lagrangian_elements_2d.cpp
-    init_triangle_elements_2d.cpp
-    init_serendipity_elements_2d.cpp
     quadratures_test.cpp
     element_1d_test.cpp
     element_2d_test.cpp

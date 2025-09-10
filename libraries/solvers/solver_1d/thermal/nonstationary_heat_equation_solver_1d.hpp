@@ -42,8 +42,9 @@ class nonstationary_heat_equation_solver_1d final {
     std::array<finite_element_matrix_1d<T, I>, 2> _relaxation_matrix;
     // The vector accumulating the relaxation term on the right part. 
     // The structure is similar, the first half is the values ​​obtained from even segments, the second from odd segments.
-    std::array<Eigen::Matrix<T, Eigen::Dynamic, 1>, 2> _relaxation; 
+    std::array<Eigen::Matrix<T, Eigen::Dynamic, 1>, 2> _relaxation;
 
+    static coefficient_t<T, 1u> update_conductivity(const coefficient_t<T, 1u>& conductivity, const T relaxation_factor);
     static std::array<T, 2> get_initial_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
     static void reset_initial_values(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                                      const std::array<T, 2>& values);
@@ -84,11 +85,24 @@ nonstationary_heat_equation_solver_1d<T, I>::nonstationary_heat_equation_solver_
             if (phys.relaxation_time > T{0}) {
                 if (const size_t parity = segment % 2; _relaxation[parity].size() == 0)
                     _relaxation[parity] = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count());
-                if (std::holds_alternative<T>(phys.conductivity))
-                    std::get<T>(phys.conductivity) *= T{1} - std::exp(-time_step / phys.relaxation_time);
+                const T relaxation_factor = T{1} - std::exp(-time_step / phys.relaxation_time);
+                phys.conductivity = update_conductivity(phys.conductivity, relaxation_factor);
             }
         }
     }
+
+template<class T, class I>
+coefficient_t<T, 1u> nonstationary_heat_equation_solver_1d<T, I>::update_conductivity(const coefficient_t<T, 1u>& conductivity, const T relaxation_factor) {
+    return std::visit(metamath::visitor{
+        [relaxation_factor](const T value) -> coefficient_t<T, 1u> { return relaxation_factor * value; },
+        [relaxation_factor](const spatial_dependency<T, 1u>& value) -> coefficient_t<T, 1u> { 
+            return [value, relaxation_factor](const point<T, 1u>& x) { return relaxation_factor * value(x); };
+        },
+        [relaxation_factor](const solution_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
+            return [value, relaxation_factor](const point<T, 1u>& x, const T temperature) { return relaxation_factor * value(x, temperature); };
+        }
+    }, conductivity);
+}
 
 template<class T, class I>
 std::array<T, 2> nonstationary_heat_equation_solver_1d<T, I>::get_initial_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix) {
@@ -183,12 +197,9 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundari
         bool need_initialization = false;
         for(const size_t segment : mesh().segments()) {
             auto& phys = parameters[segment].physical;
-            if (std::holds_alternative<T>(phys.conductivity)) {
-                std::get<T>(phys.conductivity) *= phys.relaxation_time > T{0} && parity == segment % 2 ? 
-                                                  std::exp(time() / phys.relaxation_time) : T{0};
-                if (std::get<T>(phys.conductivity) != T{0})
-                    need_initialization = true;
-            }
+            const T relaxation_factor = phys.relaxation_time > T{0} && parity == segment % 2 ? std::exp(time() / phys.relaxation_time) : T{0};
+            need_initialization = need_initialization || relaxation_factor != T{0};
+            phys.conductivity = update_conductivity(phys.conductivity, relaxation_factor);
         }
         if (need_initialization) {
             init_matrix_portrait(_relaxation_matrix[parity].inner, mesh(), settings);
@@ -221,7 +232,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::accumulate_relaxation_vector()
 template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::add_relaxation_vector() {
     for(const size_t segment : mesh().segments())
-    if (auto& phys = _parameters[segment].physical; phys.relaxation_time > T{0}) {
+        if (auto& phys = _parameters[segment].physical; phys.relaxation_time > T{0}) {
             const size_t parity = segment % 2;
             const T value = std::exp(-time() / phys.relaxation_time );
             for(const size_t node : mesh().nodes(segment))
