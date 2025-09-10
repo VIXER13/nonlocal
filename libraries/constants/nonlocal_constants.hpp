@@ -44,9 +44,11 @@ enum class theory_t : bool {
 };
 
 template<std::floating_point T>
+constexpr T Nonlocal_Threshold = T{0.999};
+
+template<std::floating_point T>
 constexpr theory_t theory_type(const T local_weight) noexcept {
-    constexpr T Threshold = T{0.999};
-    return local_weight < Threshold ? theory_t::NONLOCAL : theory_t::LOCAL;
+    return local_weight < Nonlocal_Threshold<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
 }
 
 template<std::floating_point T>

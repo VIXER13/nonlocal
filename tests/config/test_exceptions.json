@@ -17,13 +17,25 @@
         "local_weight": 1.001,
         "nonlocal_radius": 1
     },
+    "model_1d_nonlocal_radius_is_zero_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": 0
+    },
     "model_1d_nonlocal_radius_is_negative_fail": {
         "local_weight": 0.75,
         "nonlocal_radius": -1
     },
-    "model_1d_ok" : {
+    "model_1d_nonlocal_ok" : {
         "local_weight": 0.5,
         "nonlocal_radius": 1
+    },
+    "model_1d_local_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": 0
+    },
+    "model_1d_local_ignore_radius_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": -1.0
     },
 
     "model_2d_local_weight_is_missed_fail": {
@@ -52,17 +64,29 @@
         "local_weight": 0.75,
         "nonlocal_radius": -1
     },
+    "model_2d_nonlocal_one_of_the_radius_is_zero_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": [1, 0]
+    },
     "model_2d_nonlocal_one_of_the_radius_is_negative_fail": {
         "local_weight": 0.75,
         "nonlocal_radius": [-1, 2]
     },
-    "model_2d_ok" : {
+    "model_2d_nonlocal_ok" : {
         "local_weight": 0.5,
         "nonlocal_radius": 1
     },
-    "model_2d_two_radii_ok" : {
+    "model_2d_nonlocal_two_radii_ok" : {
         "local_weight": 0.5,
         "nonlocal_radius": [1, 2]
+    },
+    "model_2d_local_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": 0
+    },
+    "model_2d_local_ignore_radius_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": [-1, 2]
     },
 
     "thermal_parameters_1d_not_array_fail": {},

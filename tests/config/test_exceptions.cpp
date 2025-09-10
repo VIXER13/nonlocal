@@ -33,8 +33,11 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_model_1d<T>, config, "model_1d_local_weight_is_negative_fail");
         expect_throws(read_model_1d<T>, config, "model_1d_local_weight_is_zero_fail");
         expect_throws(read_model_1d<T>, config, "model_1d_local_weight_greater_1_fail");
+        expect_throws(read_model_1d<T>, config, "model_1d_nonlocal_radius_is_zero_fail");
         expect_throws(read_model_1d<T>, config, "model_1d_nonlocal_radius_is_negative_fail");
-        expect_nothrows(read_model_1d<T>, config, "model_1d_ok");
+        expect_nothrows(read_model_1d<T>, config, "model_1d_nonlocal_ok");
+        expect_nothrows(read_model_1d<T>, config, "model_1d_local_ok");
+        expect_nothrows(read_model_1d<T>, config, "model_1d_local_ignore_radius_ok");
     };
 
     "read_model_2d"_test = [&config] {
@@ -45,9 +48,12 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_model_2d<T>, config, "model_2d_local_weight_is_zero_fail");
         expect_throws(read_model_2d<T>, config, "model_2d_local_weight_greater_1_fail");
         expect_throws(read_model_2d<T>, config, "model_2d_nonlocal_radius_is_negative_fail");
+        expect_throws(read_model_2d<T>, config, "model_2d_nonlocal_one_of_the_radius_is_zero_fail");
         expect_throws(read_model_2d<T>, config, "model_2d_nonlocal_one_of_the_radius_is_negative_fail");
-        expect_nothrows(read_model_2d<T>, config, "model_2d_ok");
-        expect_nothrows(read_model_2d<T>, config, "model_2d_two_radii_ok");
+        expect_nothrows(read_model_2d<T>, config, "model_2d_nonlocal_ok");
+        expect_nothrows(read_model_2d<T>, config, "model_2d_nonlocal_two_radii_ok");
+        expect_nothrows(read_model_2d<T>, config, "model_2d_local_ok");
+        expect_nothrows(read_model_2d<T>, config, "model_2d_local_ignore_radius_ok");
     };
 
     "thermal_parameters_1d"_test = [&config] {

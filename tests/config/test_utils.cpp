@@ -7,11 +7,11 @@
 
 namespace {
 
-using namespace boost::ut;
-using namespace nonlocal::config;
-
-const suite<"config_utils"> _ = [] {
+const boost::ut::suite<"config_utils"> _ = [] {
+    using namespace boost::ut;
     using namespace std::literals;
+    using namespace nonlocal::config;
+
     "append_access_sign"_test = []{
         expect(eq(append_access_sign(""), ""s));
         expect(eq(append_access_sign("", 0), "[0]"s));
@@ -32,6 +32,7 @@ const suite<"config_utils"> _ = [] {
         expect(eq(get_model_field(config["model_with_prefix"], "", "some_prefix"), "some_prefix_model"s));
         expect(eq(get_model_field(config["model_without_prefix"], "", "some_prefix"), "model"s));
         expect(eq(get_model_field(config["model_with_and_without_prefix"], "", ""), "model"s));
+        expect(eq(get_model_field(config["model_with_and_without_prefix"], "", "some_prefix"), "some_prefix_model"s));
         expect(eq(get_model_field(config["no_model"], "", "some_prefix"), ""s));
         expect(eq(get_model_field(config["no_model"], "", ""), ""s));
     };
