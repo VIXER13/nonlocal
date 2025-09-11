@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_VTK_ELEMENTS_SET_2D_HPP
-#define NONLOCAL_VTK_ELEMENTS_SET_2D_HPP
+#pragma once
 
 #include "elements_set.hpp"
 
@@ -79,5 +78,3 @@ public:
 };
 
 }
-
-#endif

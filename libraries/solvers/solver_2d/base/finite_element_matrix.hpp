@@ -1,11 +1,10 @@
-#ifndef NONLOCAL_MESH_RUNNER_TYPES_HPP
-#define NONLOCAL_MESH_RUNNER_TYPES_HPP
+#pragma once
 
 #include <Eigen/Sparse>
 
 #include <array>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 enum class matrix_part : size_t {
     INNER,
@@ -33,5 +32,3 @@ public:
 };
 
 }
-
-#endif

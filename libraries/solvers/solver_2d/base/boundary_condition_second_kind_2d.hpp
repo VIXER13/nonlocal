@@ -1,14 +1,13 @@
-#ifndef NONLOCAL_BOUNDARY_CONDITION_SECOND_KIND_2D_HPP
-#define NONLOCAL_BOUNDARY_CONDITION_SECOND_KIND_2D_HPP
+#pragma once
 
 #include "boundary_conditions_2d.hpp"
 #include "solvers_utils.hpp"
 
-#include "mesh_2d.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 #include <Eigen/Dense>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<class T, class I, physics_t Physics, size_t DoF>
 void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
@@ -34,5 +33,3 @@ void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 }
 
 }
-
-#endif

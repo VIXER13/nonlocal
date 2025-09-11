@@ -1,10 +1,10 @@
-#ifndef NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
-#define NONLOCAL_TEMPERATURE_CONDITION_2D_HPP
+#pragma once
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+
 #include <Eigen/Dense>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I>
 class _temperature_condition final {
@@ -17,7 +17,7 @@ class _temperature_condition final {
         std::vector<T> temperature_in_qnodes = nonlocal::mesh::utils::nodes_to_qnodes(mesh, parameters.delta_temperature);
         for(const std::string& group : mesh.container().groups_2d()) {
             const auto& parameter = parameters.materials.at(group).physical;
-            const T factor = parameter.thermal_expansion * parameter.E(parameters.plane) / (T{1} - parameter.nu(parameters.plane));
+            const T factor = parameter.thermal_expansion * parameter.E(parameters.plane, 0) / (T{1} - parameter.nu(parameters.plane, 0));
             for(const size_t e : mesh.container().elements(group))
                 for(const size_t qshift : mesh.quad_shifts_count(e))
                     temperature_in_qnodes[qshift] *= factor;
@@ -52,8 +52,7 @@ class _temperature_condition final {
             size_t qshiftNL = _mesh.quad_shift(eNL);
             const std::array<T, 2>& qcoordL = _mesh.quad_coord(eL, qL);
             for(const size_t qNL : elNL.qnodes()) {
-                const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) *
-                                 mesh::jacobian(_mesh.jacobi_matrix(qshiftNL));
+                const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) * _mesh.jacobian(qshiftNL);
                 inner_integral += weight * _temperature_strains[qshiftNL++];
             }
             integral += elL.weight(qL) * inner_integral * _mesh.derivatives(eL, iL, qL);
@@ -97,5 +96,3 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
 }
 
 }
-
-#endif

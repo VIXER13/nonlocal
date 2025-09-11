@@ -1,11 +1,10 @@
-#ifndef NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
-#define NONLOCAL_INFLUENCE_FUNCTIONS_1D_HPP
+#pragma once
 
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
 
 #include <cmath>
 
-namespace nonlocal::influence {
+namespace nonlocal::solver_1d::influence {
 
 template<class T>
 class constant_1d final {
@@ -75,5 +74,3 @@ public:
 };
 
 }
-
-#endif

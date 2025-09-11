@@ -1,14 +1,13 @@
-#ifndef NONLOCAL_MATRIX_INDEXATOR_BASE_HPP
-#define NONLOCAL_MATRIX_INDEXATOR_BASE_HPP
+#pragma once
 
 #include "finite_element_matrix.hpp"
 
-#include "indexator_base.hpp"
+#include <mesh/mesh_2d/indexator_base.hpp>
 
 #include <array>
 #include <vector>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<size_t DoF>
 class matrix_indexator_base : public mesh::indexator_base {
@@ -62,5 +61,3 @@ void matrix_indexator_base<DoF>::reset(const size_t node) {
 }
 
 }
-
-#endif

@@ -1,33 +1,36 @@
-#ifndef NONLOCAL_MECHANICAL_PARAMETERS_2D_HPP
-#define NONLOCAL_MECHANICAL_PARAMETERS_2D_HPP
+#pragma once
 
-#include "../../equation_parameters.hpp"
+#include <solvers/base/equation_parameters.hpp>
 
 #include <array>
 #include <string>
 #include <unordered_map>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 enum class plane_t : bool {
     STRESS,
     STRAIN
-};
+}; 
 
 // arr[0] arr[1]   0
 // arr[1] arr[0]   0
 //   0      0    arr[2]
 template<class T>
-using hooke_matrix = std::array<T, 3>;
+using hooke_matrix = std::array<T, 4>;
 
 template<class T>
 struct parameter_2d final {
-    T youngs_modulus = 210;
-    T poissons_ratio = 0.3;
+    std::array<T, 2> youngs_modulus = {210, 210};
+    std::array<T, 2> poissons_ratio = {0.3, 0.3};
+    T shear_modulus = 80;
     T thermal_expansion = 13e-6;
 
-    constexpr T E(const plane_t plane) const noexcept;
-    constexpr T nu(const plane_t plane) const noexcept;
+    material_t material = material_t::ISOTROPIC;
+
+    constexpr T E(const plane_t plane, const std::size_t i) const noexcept;
+    constexpr T nu(const plane_t plane, const std::size_t i) const noexcept;
+    constexpr T G() const noexcept;
     constexpr hooke_matrix<T> hooke(const plane_t plane) const noexcept;
 };
 
@@ -42,24 +45,31 @@ struct mechanical_parameters_2d final {
 };
 
 template<class T>
-constexpr T parameter_2d<T>::E(const plane_t plane) const noexcept {
-    return plane == plane_t::STRESS ? youngs_modulus : youngs_modulus / (T{1} - poissons_ratio * poissons_ratio);
+constexpr T parameter_2d<T>::E(const plane_t plane, const std::size_t i) const noexcept {
+    return plane == plane_t::STRESS ? youngs_modulus[i] : youngs_modulus[i] / (T{1} - poissons_ratio[i] * poissons_ratio[i]);
 }
 
 template<class T>
-constexpr T parameter_2d<T>::nu(const plane_t plane) const noexcept {
-    return plane == plane_t::STRESS ? poissons_ratio : poissons_ratio / (T{1} - poissons_ratio);
+constexpr T parameter_2d<T>::nu(const plane_t plane, const std::size_t i) const noexcept {
+    return plane == plane_t::STRESS ? poissons_ratio[i] : poissons_ratio[i] / (T{1} - poissons_ratio[i]);
+}
+
+template<class T>
+constexpr T parameter_2d<T>::G() const noexcept {
+    return shear_modulus;
 }
 
 template<class T>
 constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noexcept {
-    const T E = this->E(plane);
-    const T nu = this->nu(plane);
-    return {     E / (T{1} - nu*nu),
-            nu * E / (T{1} - nu*nu),
-        T{0.5} * E / (T{1} + nu) };
+    const T Ex = this->E(plane, 0);
+    const T Ey = this->E(plane, 1);
+    const T nuxy = this->nu(plane, 0);
+    const T nuyx = this->nu(plane, 1);
+    const T Gxy = material == material_t::ISOTROPIC ? T{0.5} * Ex / (1 + nuxy) : this->G();
+    const T div = T{1} / (T{1} - nuxy*nuyx);
+    // Ey * nuxy = Ex * nuyx
+    return { Ex * div, Ex * nuyx * div,
+             Ey * div, Gxy};
 }
 
 }
-
-#endif

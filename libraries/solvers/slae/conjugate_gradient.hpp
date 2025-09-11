@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SLAE_CONJUGATE_GRADIENT_HPP
-#define NONLOCAL_SLAE_CONJUGATE_GRADIENT_HPP
+#pragma once
 
 #include "independent_symmetric_matrix_vector_product.hpp"
 #include "unrelated_symmetric_matrix_vector_product.hpp"
@@ -50,7 +49,7 @@ template<class T, class I, product_strategy Strategy>
 Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Strategy>::solve(
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
     const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0) const {
-    logger::get().log() << "Conjugate gradient slae solver started" << std::endl;
+    logger::info() << "Conjugate gradient slae solver started" << std::endl;
     Eigen::Matrix<T, Eigen::Dynamic, 1> z = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(matrix().cols()); // It used as the right part in preparation calculation before iteration process
     parallel::reduce_vector(z, b);
     Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(z.size()));
@@ -74,11 +73,9 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> conjugate_gradient<T, I, Strategy>::solve(
         ++_iterations;
         _residual = std::sqrt(r_squared_norm) / b_norm;
     }
-    logger::get().log() << "iterations = " << _iterations << '\n'
-                        << "residual = "   << _residual << std::endl;
+    logger::info() << "iterations = " << _iterations << '\n'
+                   << "residual = "   << _residual << std::endl;
     return x;
 }
 
 }
-
-#endif

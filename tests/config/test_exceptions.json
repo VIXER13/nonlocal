@@ -1,0 +1,380 @@
+{
+    "model_1d_local_weight_is_missed_fail": {
+        "nonlocal_radius": 1
+    },
+    "model_1d_nonlocal_radius_is_missed_fail": {
+        "local_weight": 1
+    },
+    "model_1d_local_weight_is_negative_fail": {
+        "local_weight": -0.001,
+        "nonlocal_radius": 1
+    },
+    "model_1d_local_weight_is_zero_fail": {
+        "local_weight": 0,
+        "nonlocal_radius": 1
+    },
+    "model_1d_local_weight_greater_1_fail": {
+        "local_weight": 1.001,
+        "nonlocal_radius": 1
+    },
+    "model_1d_nonlocal_radius_is_zero_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": 0
+    },
+    "model_1d_nonlocal_radius_is_negative_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": -1
+    },
+    "model_1d_nonlocal_ok" : {
+        "local_weight": 0.5,
+        "nonlocal_radius": 1
+    },
+    "model_1d_local_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": 0
+    },
+    "model_1d_local_ignore_radius_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": -1.0
+    },
+
+    "model_2d_local_weight_is_missed_fail": {
+        "nonlocal_radius": 1
+    },
+    "model_2d_nonlocal_radius_is_missed_fail": {
+        "local_weight": 1
+    },
+    "model_2d_nonlocal_radius_wrong_dimension_fail": {
+        "local_weight": 1,
+        "nonlocal_radius": [1, 2, 3]
+    },
+    "model_2d_local_weight_is_negative_fail": {
+        "local_weight": -0.001,
+        "nonlocal_radius": 1
+    },
+    "model_2d_local_weight_is_zero_fail": {
+        "local_weight": 0,
+        "nonlocal_radius": 1
+    },
+    "model_2d_local_weight_greater_1_fail": {
+        "local_weight": 1.001,
+        "nonlocal_radius": 1
+    },
+    "model_2d_nonlocal_radius_is_negative_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": -1
+    },
+    "model_2d_nonlocal_one_of_the_radius_is_zero_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": [1, 0]
+    },
+    "model_2d_nonlocal_one_of_the_radius_is_negative_fail": {
+        "local_weight": 0.75,
+        "nonlocal_radius": [-1, 2]
+    },
+    "model_2d_nonlocal_ok" : {
+        "local_weight": 0.5,
+        "nonlocal_radius": 1
+    },
+    "model_2d_nonlocal_two_radii_ok" : {
+        "local_weight": 0.5,
+        "nonlocal_radius": [1, 2]
+    },
+    "model_2d_local_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": 0
+    },
+    "model_2d_local_ignore_radius_ok" : {
+        "local_weight": 1.0,
+        "nonlocal_radius": [-1, 2]
+    },
+
+    "thermal_parameters_1d_not_array_fail": {},
+    "thermal_parameters_1d_missed_physical_fail": [
+        {
+            "model": {
+                "nonlocal_radius": 0.1,
+                "local_weight": 0.5
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_conductivity_fail": [
+        {
+            "physical": {
+                "capacity": 1,
+                "density": 1,
+                "relaxation_time": 0
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_negative_conductivity_fail": [
+        { "physical": { "conductivity": -0.01 } }
+    ],
+    "thermal_parameters_1d_missed_negative_capacity_fail": [
+        { 
+            "physical": { 
+                "conductivity": 1,
+                "capacity": -0.01
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_negative_density_fail": [
+        { 
+            "physical": { 
+                "conductivity": 1,
+                "density": -0.01
+            }
+        }
+    ],
+    "thermal_parameters_1d_missed_negative_relaxation_time_fail": [
+        { 
+            "physical": { 
+                "conductivity": 1,
+                "relaxation_time": -0.01
+            }
+        }
+    ],
+    "thermal_parameters_1d_ok": [
+        { "physical": { "conductivity": 1 } }
+    ],
+    "thermal_parameters_1d_full_ok": [
+        { 
+            "physical": {
+                "conductivity": 1,
+                "capacity": 2,
+                "density": 3,
+                "relaxation_time": 4
+            } 
+        }
+    ],
+
+    "thermal_boundaries_conditions_empty_fail": {},
+    "thermal_boundaries_conditions_missed_left_fail": {
+        "right": {
+            "kind": "temperature",
+            "temperature": 1
+        }
+    },
+    "thermal_boundaries_conditions_missed_right_fail": {
+        "left": {
+            "kind": "temperature",
+            "temperature": 1
+        }
+    },
+    "thermal_boundaries_conditions_missed_kind_fail": {
+        "left": { "temperature": 2 },
+        "right": { 
+            "kind": "temperature",
+            "temperature": 1
+        }
+    },
+    "thermal_boundaries_conditions_missed_temperature_fail": {
+        "left": { "kind": "temperature" },
+        "right": { 
+            "kind": "temperature",
+            "temperature": 1
+        }
+    },
+    "thermal_boundaries_conditions_missed_flux_fail": {
+        "left": { "kind": "flux" },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_third_kind_missed_temperature_fail": {
+        "left": { 
+            "kind": "convection",
+            "heat_transfer": 1
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_third_kind_missed_heat_transfer_fail": {
+        "left": { 
+            "kind": "convection",
+            "temperature": 1
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_third_kind_negative_heat_transfer_fail": {
+        "left": { 
+            "kind": "convection",
+            "heat_transfer": -0.01,
+            "temperature": 1
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_missed_emissivity_fail": {
+        "left": { 
+            "kind": "radiation"
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_negative_emissivity_fail": {
+        "left": { 
+            "kind": "radiation",
+            "emissivity": -0.01
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_emissivity_greater_than_1_fail": {
+        "left": { 
+            "kind": "radiation",
+            "emissivity": 1.01
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_combined_missed_temperature_fail": {
+        "left": { 
+            "kind": "combined",
+            "heat_transfer": 1
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_combined_negative_heat_transfer_fail": {
+        "left": { 
+            "kind": "combined",
+            "heat_transfer": -0.01,
+            "temperature": 1
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_combined_negative_emissivity_fail": {
+        "left": { 
+            "kind": "combined",
+            "emissivity": -0.01
+        },
+        "right": { 
+            "kind": "flux",
+            "flux": 1
+        }
+    },
+    "thermal_boundaries_conditions_temperature_and_flux_ok": {
+        "left": {
+            "kind": "temperature",
+            "temperature": 1
+        },
+        "right": {
+            "kind": "flux",
+            "flux": 2
+        }
+    },
+    "thermal_boundaries_conditions_convenction_and_radiation_ok": {
+        "left": {
+            "kind": "convection",
+            "temperature": 1,
+            "heat_transfer": 2
+        },
+        "right": {
+            "kind": "radiation",
+            "emissivity": 0.5
+        }
+    },
+    "thermal_boundaries_conditions_combined_ok": {
+        "left": {
+            "kind": "combined",
+            "temperature": 1,
+            "heat_transfer": 2,
+            "emissivity": 0.3
+        },
+        "right": {
+            "kind": "combined",
+            "temperature": 1,
+            "heat_transfer": 2,
+            "flux": 3
+        }
+    },
+
+    "mechanical_boundaries_conditions_2d_empty_ok": {},
+    "mechanical_boundaries_conditions_2d_empty_condition_fail": {
+        "condition": {}
+    },
+    "mechanical_boundaries_conditions_2d_wrong_dimension_1_fail": {
+        "condition": [
+            { "pressure" : 1 }
+        ]
+    },
+    "mechanical_boundaries_conditions_2d_wrong_dimension_3_fail": {
+        "condition": [
+            { "pressure" : 1 },
+            { "pressure" : 2 },
+            { "displacement" : 3 }
+        ]
+    },
+    "mechanical_boundaries_conditions_2d_ok": {
+        "first": [
+            { "pressure" : 1 },
+            { "displacement" : 2 }
+        ],
+        "second": [
+            null,
+            { "pressure" : 1 }
+        ],
+        "third": [
+            null,
+            null
+        ]
+    },
+
+    "read_mesh_1d_missed_materials_fail": {},
+    "read_mesh_1d_materials_not_array_fail": {
+        "materials": null
+    },
+    "read_mesh_1d_missed_elements_count_fail": {
+        "materials": [ { "length": 1 } ]
+    },
+    "read_mesh_1d_missed_length_fail": {
+        "materials": [ { "elements_count": 10 } ]
+    },
+    "read_mesh_1d_ok": {
+        "materials": [
+            {
+                "elements_count": 10,
+                "length": 1
+            },
+            {
+                "elements_count": 20,
+                "length": 2,
+                "model": {}
+            },
+            {
+                "elements_count": 30,
+                "length": 3,
+                "model": {
+                    "search_radius": 0.5
+                }
+            },
+            {
+                "elements_count": 40,
+                "length": 4,
+                "model": {
+                    "nonlocal_radius": 0.5
+                }
+            }
+        ]
+    }
+}

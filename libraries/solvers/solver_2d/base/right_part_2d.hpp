@@ -1,12 +1,11 @@
-#ifndef NONLOCAL_RIGHT_PART_2D_HPP
-#define NONLOCAL_RIGHT_PART_2D_HPP
+#pragma once
 
-#include "mesh_2d.hpp"
+#include <mesh/mesh_2d/mesh_2d.hpp>
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
-namespace nonlocal {
+namespace nonlocal::solver_2d {
 
 template<size_t DoF, class T, class I, class Functor>
 void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
@@ -17,7 +16,7 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
         const auto& el = mesh.container().element_2d(e);
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
             using namespace metamath::functions;
-            integral += el.weight(q) * el.qN(i, q) * mesh::jacobian(mesh.jacobi_matrix(e, q)) * functor(mesh.quad_coord(e, q));
+            integral += el.weight(q) * el.qN(i, q) * mesh.jacobian(e, q) * functor(mesh.quad_coord(e, q));
         }
         return integral;
     };
@@ -36,5 +35,3 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
 }
 
 }
-
-#endif

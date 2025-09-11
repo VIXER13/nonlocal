@@ -1,12 +1,11 @@
-#ifndef NONLOCAL_BOUNDARY_CONDITION_FIRST_KIND_1D_HPP
-#define NONLOCAL_BOUNDARY_CONDITION_FIRST_KIND_1D_HPP
+#pragma once
 
-#include "boundary_conditions_1d.hpp"
+#include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
 
 #include <ranges>
 #include <unordered_map>
 
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T, physics_t Physics, class Vector>
 void boundary_condition_first_kind_1d(Vector& f,
@@ -31,5 +30,3 @@ void boundary_condition_first_kind_1d(Vector& f,
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_SLAE_INDEPENDENT_SYMMETRIC_MATRIX_VECTOR_PRODUCT_HPP
-#define NONLOCAL_SLAE_INDEPENDENT_SYMMETRIC_MATRIX_VECTOR_PRODUCT_HPP
+#pragma once
 
 #include "iterative_solver_base.hpp"
 
@@ -92,5 +91,3 @@ void independent_symmetric_matrix_vector_product<T, I>::set_threads_count(const 
 }
 
 }
-
-#endif

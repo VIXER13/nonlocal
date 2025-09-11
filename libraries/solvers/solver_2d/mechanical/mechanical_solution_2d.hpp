@@ -1,17 +1,18 @@
 #pragma once
 
-#include "solution_2d.hpp"
 #include "mechanical_parameters_2d.hpp"
 
-#include "mesh_2d_utils.hpp"
+#include <mesh/mesh_2d/mesh_2d_utils.hpp>
+#include <solvers/solver_2d/base/solution_2d.hpp>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I = uint32_t>
 class mechanical_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
     enum : size_t { _11, _22, _12 };
+    enum : size_t { c_11, c_12, c_22, c_33 };
 
     std::array<std::vector<T>, 2> _displacement;
     std::array<std::vector<T>, 3> _strain, _stress;
@@ -162,7 +163,7 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_strain(const size_t
         const size_t qshiftNL = _base::mesh().quad_shift(eNL);
         for(const size_t qNL : elNL.qnodes()) {
             const size_t qshift = qshiftNL + qNL;
-            const T influence_weight = elNL.weight(qNL) * mesh::jacobian(_base::mesh().jacobi_matrix(qshift)) *
+            const T influence_weight = elNL.weight(qNL) * _base::mesh().jacobian(qshift) *
                                        influence(_base::mesh().quad_coord(qshift));
             for(const size_t i : std::ranges::iota_view{0u, nonlocal_stress.size()})
                 nonlocal_stress[i] += influence_weight * strains[i][qshift];
@@ -173,9 +174,9 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_strain(const size_t
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::add_stress(const hooke_matrix<T>& hooke, const std::array<T, 3>& strain, const size_t qshift) {
-    _stress[_11][qshift] += hooke[_11] * strain[_11] + hooke[_22] * strain[_22];
-    _stress[_22][qshift] += hooke[_22] * strain[_11] + hooke[_11] * strain[_22];
-    _stress[_12][qshift] += hooke[_12] * strain[_12];
+    _stress[_11][qshift] += hooke[c_11] * strain[_11] + hooke[c_12] * strain[_22];
+    _stress[_22][qshift] += hooke[c_12] * strain[_11] + hooke[c_22] * strain[_22];
+    _stress[_12][qshift] += 2 * hooke[c_33] * strain[_12];
 }
 
 template<class T, class I>

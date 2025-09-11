@@ -1,5 +1,4 @@
-#ifndef METAMATH_OPTIONAL_INTEGER_HPP
-#define METAMATH_OPTIONAL_INTEGER_HPP
+#pragma once
 
 #include <concepts>
 #include <cstdint>
@@ -48,5 +47,3 @@ public:
 };
 
 }
-
-#endif

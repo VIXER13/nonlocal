@@ -1,10 +1,8 @@
-#ifndef NONLOCAL_INFLUENCE_FUNCTIONS_2D_HPP
-#define NONLOCAL_INFLUENCE_FUNCTIONS_2D_HPP
+#pragma once
 
-#include "metamath.hpp"
-#include "logger.hpp"
+#include <metamath/metamath.hpp>
 
-namespace nonlocal::influence {
+namespace nonlocal::solver_2d::influence {
 
 template<std::floating_point T>
 class influence_2d_base {
@@ -213,5 +211,3 @@ template<class T>
 using normal_distribution_2d = exponential_2d<T, 2, 2>;
 
 }
-
-#endif

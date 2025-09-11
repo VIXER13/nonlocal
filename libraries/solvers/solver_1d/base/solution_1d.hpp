@@ -1,11 +1,9 @@
-#ifndef NONLOCAL_SOLUTION_1D_HPP
-#define NONLOCAL_SOLUTION_1D_HPP
+#pragma once
 
-#include "../equation_parameters.hpp"
+#include <mesh/mesh_1d/mesh_1d.hpp>
+#include <solvers/base/equation_parameters.hpp>
 
-#include "mesh_1d.hpp"
-
-namespace nonlocal {
+namespace nonlocal::solver_1d {
 
 template<class T>
 class solution_1d {
@@ -46,5 +44,3 @@ const model_parameters<1, T>& solution_1d<T>::model(const size_t segment) const 
 }
 
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_INDEXATOR_BASE_HPP
-#define NONLOCAL_INDEXATOR_BASE_HPP
+#pragma once
 
 namespace nonlocal::mesh {
 
@@ -20,5 +19,3 @@ public:
 };
 
 }
-
-#endif

@@ -1,10 +1,10 @@
-#ifndef NONLOCAL_STIFFNESS_MATRIX_2D_HPP
-#define NONLOCAL_STIFFNESS_MATRIX_2D_HPP
+#pragma once
 
-#include "matrix_assembler_2d.hpp"
 #include "mechanical_parameters_2d.hpp"
 
-namespace nonlocal::mechanical {
+#include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
+
+namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I, class J>
 class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
@@ -61,10 +61,10 @@ template<class T, class I, class J>
 metamath::types::square_matrix<T, 2> stiffness_matrix<T, I, J>::calc_block(
     const hooke_matrix<T>& hooke, const metamath::types::square_matrix<T, 2>& integral) noexcept {
     return {
-        hooke[0] * integral[X][X] + hooke[2] * integral[Y][Y],
-        hooke[1] * integral[X][Y] + hooke[2] * integral[Y][X],
-        hooke[1] * integral[Y][X] + hooke[2] * integral[X][Y],
-        hooke[0] * integral[Y][Y] + hooke[2] * integral[X][X],
+        hooke[0] * integral[X][X] + hooke[3] * integral[Y][Y],
+        hooke[1] * integral[X][Y] + hooke[3] * integral[Y][X],
+        hooke[1] * integral[Y][X] + hooke[3] * integral[X][Y],
+        hooke[2] * integral[Y][Y] + hooke[3] * integral[X][X],
     };
 }
 
@@ -82,7 +82,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_loc(
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
         using namespace metamath::functions;
-        const T weight = el.weight(q) / mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        const T weight = el.weight(q) / _base::mesh().jacobian(e, q);
         add_to_integral(integral, weight * _base::mesh().derivatives(e, i, q), _base::mesh().derivatives(e, j, q));
     }
     return calc_block(hooke, integral);
@@ -128,9 +128,9 @@ void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<
             _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
         _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().nonZeros() - 1] = 2 * _base::mesh().container().nodes_count();
     }
-    utils::sort_indices(_base::matrix().inner());
-    utils::sort_indices(_base::matrix().bound());
-    logger::get().log() << "Matrix portrait is formed" << std::endl;
+    nonlocal::utils::sort_indices(_base::matrix().inner());
+    nonlocal::utils::sort_indices(_base::matrix().bound());
+    logger::info() << "Matrix portrait is formed" << std::endl;
 }
 
 template<class T, class I, class J>
@@ -138,7 +138,7 @@ T stiffness_matrix<T, I, J>::integrate_basic(const size_t e, const size_t i) con
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
-        integral += el.weight(q) * el.qN(i, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        integral += el.weight(q) * el.qN(i, q) * _base::mesh().jacobian(e, q);
     return integral;
 }
 
@@ -155,7 +155,7 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part) {
-    logger::get().log() << "Stiffness matrix assembly started" << std::endl;
+    logger::info() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
                                                                theories_types(parameters);
@@ -173,9 +173,7 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
             return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
         }
     );
-    logger::get().log() << "Stiffness matrix assembly finished" << std::endl;
+    logger::info() << "Stiffness matrix assembly finished" << std::endl;
 }
 
 }
-
-#endif

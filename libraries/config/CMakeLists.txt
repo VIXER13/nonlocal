@@ -10,16 +10,17 @@ endif()
 link_libraries(${JSONCPP_LIBRARIES})
 add_library(config_lib STATIC 
     config_utils.cpp
-    task_data.cpp
+    read_mechanical_parameters.cpp
+    read_mesh.cpp
+    read_model.cpp
     save_data.cpp
-    mesh_data.cpp
-    materials_data.cpp
+    task_data.cpp
 )
 target_include_directories(config_lib PUBLIC 
-    "." 
+    ${LIBRARIES_DIR}
     ${INCLUDES}
 )
 target_link_libraries(config_lib 
-    logger_lib
-    nonlocal_constants_lib
+    logger_lib 
+    math_expression_lib
 )

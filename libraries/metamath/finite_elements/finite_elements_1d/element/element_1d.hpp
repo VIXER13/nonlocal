@@ -1,13 +1,10 @@
-#ifndef FINITE_ELEMENT_1D_HPP
-#define FINITE_ELEMENT_1D_HPP
+#pragma once
 
 #include "element_1d_base.hpp"
 #include "derivative_element_basis_1d.hpp"
 
 #include <functional>
 #include <tuple>
-
-#include <iostream>
 
 namespace metamath::finite_element {
 
@@ -32,5 +29,3 @@ public:
 };
 
 }
-
-#endif

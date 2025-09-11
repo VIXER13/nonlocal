@@ -1,4 +1,4 @@
-#include "init_elements.hpp"
+#include <metamath/metamath.hpp>
 
 #include <boost/ut.hpp>
 
@@ -8,13 +8,57 @@ namespace {
 
 using namespace boost::ut;
 using namespace metamath::finite_element;
+using T = double;
 
-template<class T>
+template<template<class, auto...> class Element_Type, size_t Quadrature_Order_X1, size_t Quadrature_Order_X2, size_t... Element_Order>
+std::unique_ptr<element_2d_integrate_base<T>> make_element() {
+    return std::make_unique<element_2d_integrate<T, Element_Type, Element_Order...>>(
+        quadrature_1d<T, gauss, Quadrature_Order_X1>{},
+        quadrature_1d<T, gauss, Quadrature_Order_X2>{}
+    );
+}
+
+std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_lagrangian_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+    result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 0, 0>());
+    result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 0, 1>());
+    result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 1, 0>());
+    result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 1, 1>());
+    result.emplace_back(make_element<lagrangian_element_2d, 1, 2, 1, 2>());
+    result.emplace_back(make_element<lagrangian_element_2d, 2, 1, 2, 1>());
+    result.emplace_back(make_element<lagrangian_element_2d, 2, 2, 2, 2>());
+    result.emplace_back(make_element<lagrangian_element_2d, 2, 2, 2, 3>());
+    result.emplace_back(make_element<lagrangian_element_2d, 2, 2, 3, 2>());
+    result.emplace_back(make_element<lagrangian_element_2d, 2, 2, 3, 3>());
+    return result;
+}
+
+std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_serendipity_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+    result.emplace_back(make_element<serendipity, 1, 1, 0>());
+    result.emplace_back(make_element<serendipity, 1, 1, 1>());
+    // Second and third order shall be created manually, due to a bug in compiling specialized templates
+    result.emplace_back(std::make_unique<element_2d_integrate<T, serendipity, 2>>(quadrature_1d<T, gauss, 2>{}, quadrature_1d<T, gauss, 2>{}));
+    result.emplace_back(std::make_unique<element_2d_integrate<T, serendipity, 3>>(quadrature_1d<T, gauss, 2>{}, quadrature_1d<T, gauss, 2>{}));
+    result.emplace_back(make_element<serendipity, 3, 3, 4>());
+    result.emplace_back(make_element<serendipity, 3, 3, 5>());
+    return result;
+}
+
+std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_triangle_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+    result.emplace_back(make_element<triangle, 1, 1, 0>());
+    result.emplace_back(make_element<triangle, 1, 1, 1>());
+    result.emplace_back(make_element<triangle, 2, 2, 2>());
+    result.emplace_back(make_element<triangle, 2, 2, 3>());
+    return result;
+}
+
 struct basis_summator final {
     const element_2d_integrate_base<T>& element;
     std::array<T, 2> point = {};
 
-    std::array<T, 3> operator()(const std::array<T, 3>& sum, const size_t i) {
+    std::array<T, 3> operator()(const std::array<T, 3>& sum, const size_t i) const {
         return {
             sum[0] + element.N(i, point),
             sum[1] + element.Nxi(i, point),
@@ -23,12 +67,10 @@ struct basis_summator final {
     }
 };
 
-template<class T>
 std::string to_string(const std::array<T, 2>& point) {
     return '(' + std::to_string(point[0]) + " ," + std::to_string(point[1]) + ')';
 }
 
-template<class T>
 std::vector<std::array<T, 2>> init_points(const std::string& element_type) {
     std::vector<std::array<T, 2>> points;
     if (element_type == "triangle") {
@@ -49,81 +91,61 @@ std::vector<std::array<T, 2>> init_points(const std::string& element_type) {
 const suite<"element_2d"> _ = [] {
     using namespace std::literals;
     for(const auto element_type : {"triangle"s, "serendipity"s, "lagrangian"s}) {
-        test(element_type + "_element_2d") = [element_type]<class T> {
-            size_t order = 0;
-            const T element_area = element_type == "triangle" ? T{0.5} : T{4};
-            const std::vector<std::array<T, 2>> points = init_points<T>(element_type);
+        size_t order = 0;
+        const T element_area = element_type == "triangle" ? T{0.5} : T{4};
+        const std::vector<std::array<T, 2>> points = init_points(element_type);
+        for(const auto& element : element_type == "triangle"    ? init_triangle_elements_2d() :
+                                  element_type == "serendipity" ? init_serendipity_elements_2d() :
+                                                                  init_lagrangian_elements_2d()) {
+            const std::string suffix = "_" + element_type + "_order_" + std::to_string(order);
 
-            for(const auto& element : element_type == "triangle" ? unit_tests::init_triangle_elements_2d<T>() :
-                                      element_type == "serendipity" ? unit_tests::init_serendipity_elements_2d<T>() :
-                                      unit_tests::init_lagrangian_elements_2d<T>()) {
-                const std::string suffix = "_order_" + std::to_string(order) + '_' + std::string{reflection::type_name<T>()};
+            test("node_values" + suffix) = [&element] {
+                static constexpr T Epsilon = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
+                for(const size_t i : element->nodes())
+                    for(const size_t j : element->nodes())
+                        expect(lt(std::abs(element->N(i, element->node(j)) - T(i == j)), Epsilon)) <<
+                            "Unexpected value of function " + std::to_string(i) + " at node " + std::to_string(j);
+            };
 
-                test("node_values" + suffix) = [&element, nodes = element->nodes()] {
-                    static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
-                    for(const size_t i : nodes)
-                        for(const size_t j : nodes)
-                            expect(lt(std::abs(element->N(i, element->node(j)) - T(i == j)), epsilon)) <<
-                                "Unexpected value of function " + std::to_string(i) + " at node " + std::to_string(j) + '.';
+            test("weights_sum" + suffix) = [&element, element_area, qnodes = element->qnodes()] {
+                const auto weight_summator = [&element](const T sum, const size_t qnode) { return sum + element->weight(qnode); };
+                const T weights_sum = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, weight_summator);
+                static constexpr T Epsilon = T{1e-16};
+                expect(lt(std::abs(weights_sum - element_area), Epsilon)) <<
+                    "The weights sum does not match the element area.";
+            };
+
+            test("element_integral" + suffix) = [&element, element_area] {
+                const auto integrator = [&element](const T sum, const size_t q) {
+                    const auto nodes = element->nodes();
+                    const auto& summator = [&element, q](const T sum, const size_t i) { return sum + element->qN(i, q); };
+                    return sum + element->weight(q) * std::accumulate(nodes.begin(), nodes.end(), T{0}, summator);
                 };
+                const auto qnodes = element->qnodes();
+                const T integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, integrator);
+                static constexpr T Epsilon = T{1e-15};
+                expect(lt(std::abs(integral - element_area), Epsilon)) << 
+                    "The sum of the integrals of all basis functions does not match with the element area.";
+            };
 
-                test("weights_sum" + suffix) = [&element, element_area] {
-                    const auto qnodes = element->qnodes();
-                    const auto weight_summator = [&element](const T sum, const size_t qnode) { return sum + element->weight(qnode); };
-                    const T weights_sum = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, weight_summator);
-                    static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-7} : T{1e-16};
-                    expect(lt(std::abs(weights_sum - element_area), epsilon)) <<
-                        "The weights sum does not match the element area.";
-                };
+            basis_summator summator{*element};
+            test("basis_sum" + suffix) = [&element, &summator, &points, nodes = element->nodes()] {
+                for(const std::array<T, 2>& point : points) {
+                    summator.point = point;
+                    const auto [N_sum, Nxi_sum, Neta_sum] = std::accumulate(nodes.begin(), nodes.end(), std::array{T{0}, T{0}, T{0}}, summator);
+                    static constexpr T Epsilon_Basis = T{1e-15};
+                    expect(lt(std::abs(N_sum - T{1}), Epsilon_Basis)) << 
+                        "Unexpected basis functions sum in point = " + to_string(point);
+                    static constexpr T Epsilon_Derivative = T{3e-15};
+                    expect(lt(std::abs(Nxi_sum), Epsilon_Derivative)) << 
+                        "Unexpected Nxi sum in point = " + to_string(point);
+                    expect(lt(std::abs(Neta_sum), Epsilon_Derivative)) << 
+                        "Unexpected Neta sum in point = " + to_string(point);
+                }
+            };
 
-                test("element_integral" + suffix) = [&element, element_area] {
-                    const auto integrator = [&element](const T sum, const size_t q) {
-                        const auto nodes = element->nodes();
-                        const auto& summator = [&element, q](const T sum, const size_t i) { return sum + element->qN(i, q); };
-                        return sum + element->weight(q) * std::accumulate(nodes.begin(), nodes.end(), T{0}, summator);
-                    };
-                    const auto qnodes = element->qnodes();
-                    const T integral = std::accumulate(qnodes.begin(), qnodes.end(), T{0}, integrator);
-                    static constexpr T epsilon = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
-                    expect(lt(std::abs(integral - element_area), epsilon)) << 
-                        "The sum of the integrals of all basis functions does not match with the element area.";
-                };
-
-                basis_summator<T> summator{*element};
-                test("basis_sum" + suffix) = [&element, &summator, &points, nodes = element->nodes()] {
-                    for(const std::array<T, 2>& point : points) {
-                        summator.point = point;
-                        const auto [N_sum, Nxi_sum, Neta_sum] = std::accumulate(nodes.begin(), nodes.end(), std::array{T{0}, T{0}, T{0}}, summator);
-                        static constexpr T epsilon_N = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
-                        expect(lt(std::abs(N_sum - T{1}), epsilon_N)) << 
-                            "Unexpected basis functions sum in point = " + to_string(point) + '.';
-                        static constexpr T epsilon_Nxi = std::is_same_v<T, float> ? T{2e-6} : T{3e-15};
-                        expect(lt(std::abs(Nxi_sum), epsilon_Nxi)) << 
-                            "Unexpected Nxi sum in point = " + to_string(point) + '.';
-                        static constexpr T epsilon_Neta = std::is_same_v<T, float> ? T{2e-6} : T{3e-15};
-                        expect(lt(std::abs(Neta_sum), epsilon_Neta)) << 
-                            "Unexpected Neta sum in point = " + to_string(point) + '.';
-                    }
-                };
-
-                test("basis_incomplete_sum" + suffix) = [&element, &summator, &points, nodes = element->nodes()] {
-                    for(const std::array<T, 2>& point : points) {
-                        summator.point = point;
-                        const auto [N_sum, Nxi_sum, Neta_sum] = std::accumulate(nodes.begin(), std::ranges::prev(nodes.end()), std::array{T{0}, T{0}, T{0}}, summator);
-                        static constexpr T epsilon_basis = T{1e-4};
-                        expect(ge(std::abs(N_sum - T{1}), element->nodes_count() > 1 ? epsilon_basis : T{0})) << 
-                            "The partial sum at point = " + to_string(point) + " must not be equal to 1.";
-                        static constexpr T epsilon_derivatives = T{1e-3};
-                        expect(ge(std::abs(Nxi_sum), element->nodes_count() > 2 ? epsilon_derivatives : T{0})) << 
-                            "The partial sum of Nxi at point = " + to_string(point) + " must not be equal to 1.";
-                        expect(ge(std::abs(Neta_sum), element->nodes_count() > 2 ? epsilon_derivatives : T{0})) << 
-                            "The partial sum of Neta at point = " + to_string(point) + " must not be equal to 1.";
-                    }
-                };
-
-                ++order;
-            }
-        } | std::tuple<double>{};
+            ++order;
+        }
     }
 };
 

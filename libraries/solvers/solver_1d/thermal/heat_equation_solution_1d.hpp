@@ -1,18 +1,19 @@
-#ifndef NONLOCAL_HEAT_EQUATION_SOLUTION_1D_HPP
-#define NONLOCAL_HEAT_EQUATION_SOLUTION_1D_HPP
+#pragma once
 
-#include "solution_1d.hpp"
-#include "mesh_1d_utils.hpp"
+#include <mesh/mesh_1d/mesh_1d_utils.hpp>
+#include <solvers/solver_1d/base/solution_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 class heat_equation_solution_1d : public solution_1d<T> {
     using _base = solution_1d<T>;
 
     const std::vector<T> _temperature;
-    const std::vector<parameter_1d_sptr<T>> _parameters;
+    const std::vector<parameter_1d<T>> _parameters;
     std::vector<T> _flux;
+
+    T evaluate(const coefficient_t<T, 1>& conductivity, const std::vector<T>& solution, const size_t e, const size_t q) const;
 
     void calc_local_flux();
     void calc_nonlocal_flux();
@@ -28,7 +29,7 @@ public:
 
     const std::vector<T>& temperature() const noexcept;
     const std::vector<T>& flux() const;
-    const parameter_1d_sptr<T>& parameter(const size_t segment) const noexcept;
+    const parameter_1d<T>& parameter(const size_t segment) const noexcept;
 
     bool is_flux_calculated() const noexcept;
     const std::vector<T>& calc_flux();
@@ -55,7 +56,7 @@ const std::vector<T>& heat_equation_solution_1d<T>::flux() const {
 }
 
 template<class T>
-const parameter_1d_sptr<T>& heat_equation_solution_1d<T>::parameter(const size_t segment) const noexcept {
+const parameter_1d<T>& heat_equation_solution_1d<T>::parameter(const size_t segment) const noexcept {
     return _parameters[segment];
 }
 
@@ -65,30 +66,32 @@ bool heat_equation_solution_1d<T>::is_flux_calculated() const noexcept {
 }
 
 template<class T>
+T heat_equation_solution_1d<T>::evaluate(const coefficient_t<T, 1>& conductivity, const std::vector<T>& solution, const size_t e, const size_t q) const {
+    return std::visit(metamath::visitor{
+        [](const T value) noexcept { return value; },
+        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
+        [this, &solution, e, q](const solution_dependency<T, 1u>& value) { 
+            const size_t qshift = _base::mesh().qnode_number(e, q);
+            return value(_base::mesh().qnode_coord(e, q), solution[qshift]); 
+        }
+    }, conductivity);
+}
+
+template<class T>
 void heat_equation_solution_1d<T>::calc_local_flux() {
     const auto& el = mesh().element();
     _flux = mesh::utils::gradient_in_qnodes(mesh(), temperature());
     const bool is_any_nonlinear = 
         std::any_of(_parameters.begin(), _parameters.end(), [](const auto& parameter) constexpr noexcept {
-            return parameter->type == coefficients_t::SOLUTION_DEPENDENT;
+            return std::holds_alternative<solution_dependency<T, 1>>(parameter.conductivity);
         });
     const auto temperature_in_qnodes = is_any_nonlinear ? mesh::utils::from_nodes_to_qnodes(mesh(), temperature()) : std::vector<T>{};
     for(const size_t segment : mesh().segments()) {
-        const auto& param = *parameter(segment);
+        const auto& param = parameter(segment);
         for(const size_t e : mesh().elements(segment)) {
             size_t qshift = e * el.qnodes_count();
-            for(const size_t q : el.qnodes()) {
-                using enum coefficients_t;
-                const T conductivity =
-                    param.type == CONSTANTS ?
-                    parameter_cast<CONSTANTS>(param).conductivity :
-                    param.type == SPACE_DEPENDENT ?
-                    parameter_cast<SPACE_DEPENDENT>(param).conductivity(mesh().qnode_coord(e, q)) :
-                    param.type == SOLUTION_DEPENDENT ?
-                    parameter_cast<SOLUTION_DEPENDENT>(param).conductivity(mesh().qnode_coord(e, q), temperature_in_qnodes[qshift]) :
-                    throw std::domain_error{"Unknown parameter type"};
-                _flux[qshift++] *= -conductivity;
-            }
+            for(const size_t q : el.qnodes())
+                _flux[qshift++] *= -evaluate(parameter(segment).conductivity, temperature_in_qnodes, e, q);
         }
     }
 }
@@ -141,5 +144,3 @@ const std::vector<T>& heat_equation_solution_1d<T>::calc_relaxation_flux(
 }
 
 }
-
-#endif

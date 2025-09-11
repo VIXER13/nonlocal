@@ -1,11 +1,9 @@
-#ifndef SYMBOLIC_POWER_EXPRESSION_HPP
-#define SYMBOLIC_POWER_EXPRESSION_HPP
+#pragma once
 
-#include "functions/power.hpp"
-
-#include "integral_constant.hpp"
-#include "multiplies.hpp"
-#include "unary_expression.hpp"
+#include <metamath/functions/power.hpp>
+#include <metamath/symbolic/base/integral_constant.hpp>
+#include <metamath/symbolic/base/multiplies.hpp>
+#include <metamath/symbolic/base/unary_expression.hpp>
 
 #include <type_traits>
 
@@ -51,5 +49,3 @@ constexpr auto simplify(const power_expression<power_expression<E, M>, N>& e) {
 }
 
 }
-
-#endif

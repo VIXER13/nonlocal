@@ -1,20 +1,19 @@
-#ifndef NONLOCAL_EQUILIBRIUM_EQUATION_2D_HPP
-#define NONLOCAL_EQUILIBRIUM_EQUATION_2D_HPP
+#pragma once
 
-#include "solvers_utils.hpp"
 #include "stiffness_matrix_2d.hpp"
 #include "mechanical_boundary_conditions_2d.hpp"
-#include "boundary_condition_first_kind_2d.hpp"
-#include "boundary_condition_second_kind_2d.hpp"
-#include "right_part_2d.hpp"
 #include "mechanical_solution_2d.hpp"
 #include "temperature_condition_2d.hpp"
 
-#include "conjugate_gradient.hpp"
+#include <solvers/base/utils.hpp>
+#include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
+#include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
+#include <solvers/solver_2d/base/right_part_2d.hpp>
 
 #include <chrono>
 
-namespace nonlocal::mechanical {
+namespace nonlocal::solver_2d::mechanical {
 
 template<class Matrix_Index, class T, class I, class Right_Part>
 mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
@@ -36,13 +35,11 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     );
     if (solver.preconditioner().computation_info() != Eigen::Success) {
         solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
-        logger::get().log(logger::log_level::WARNING) << "The ILLT preconditioner could not be calculated, "
-                                                      << "the preconditioner was switched to Identity." << std::endl;
+        logger::warning() << "The ILLT preconditioner could not be calculated, "
+                          << "the preconditioner was switched to Identity." << std::endl;
     }
     const auto displacement = solver.solve(f);
     return mechanical_solution_2d<T, I>{mesh, parameters, displacement};
 }
 
 }
-
-#endif

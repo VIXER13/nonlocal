@@ -1,5 +1,4 @@
-#ifndef PARALLEL_UTILS_UNRELATED_ROWS_HPP
-#define PARALLEL_UTILS_UNRELATED_ROWS_HPP
+#pragma once
 
 #include <Eigen/Sparse>
 
@@ -83,5 +82,3 @@ void unrelated_rows<I>::clear() noexcept {
 }
 
 }
-
-#endif

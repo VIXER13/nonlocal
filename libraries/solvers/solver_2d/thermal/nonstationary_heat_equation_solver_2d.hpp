@@ -1,18 +1,17 @@
-#ifndef NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
-#define NONSTATIONARY_HEAT_EQUATION_SOLVER_2D_HPP
+#pragma once
 
-#include "thermal_conductivity_matrix_2d.hpp"
+#include "conductivity_matrix_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
-#include "right_part_2d.hpp"
-#include "boundary_condition_first_kind_2d.hpp"
-#include "boundary_condition_second_kind_2d.hpp"
 #include "convection_condition_2d.hpp"
 #include "radiation_condition_2d.hpp"
 #include "thermal_parameters_2d.hpp"
 
-#include "conjugate_gradient.hpp"
+#include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
+#include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
+#include <solvers/solver_2d/base/right_part_2d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T, class I, class Matrix_Index>
 class nonstationary_heat_equation_solver_2d final {
@@ -20,8 +19,7 @@ class nonstationary_heat_equation_solver_2d final {
 
     std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     heat_capacity_matrix_2d<T, I, Matrix_Index> _capacity;
-    thermal_conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
-    Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index> _conductivity_initial_matrix_inner;
+    conductivity_matrix_2d<T, I, Matrix_Index> _conductivity;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
@@ -78,7 +76,6 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const pa
     first_kind_filler(_conductivity.mesh().process_nodes(), is_inner, [&matrix = _conductivity.matrix().inner()](const size_t row) {
         matrix.valuePtr()[matrix.outerIndexPtr()[row]] = T{1};
     });
-    _conductivity_initial_matrix_inner = _conductivity.matrix().inner();
 
     for(const size_t node : _conductivity.mesh().container().nodes())
         _temperature_curr[node] = init_dist(_conductivity.mesh().container().node_coord(node));
@@ -92,7 +89,6 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
                                                                           const Right_Part& right_part) {
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
-    //_conductivity.matrix().inner() = _conductivity_initial_matrix_inner;
     radiation_condition_2d(_conductivity.matrix().inner(), _right_part, _conductivity.mesh(), boundaries_conditions, 
                            _temperature_prev, time_step());
 
@@ -106,5 +102,3 @@ void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::calc_step(const 
 }
 
 }
-
-#endif

@@ -9,9 +9,10 @@ endif()
 
 add_library(nonstationary_thermal_1d_lib OBJECT 
     boundary_conditions_1d.cpp
+    flux_relaxation.cpp
 )
 target_include_directories(nonstationary_thermal_1d_lib PUBLIC
-    "."
+    ${LIBRARIES_DIR}
     ${INCLUDES}
 )
 

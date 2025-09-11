@@ -1,9 +1,8 @@
-#ifndef NONLOCAL_HEAT_CAPACITY_MATRIX_2D_HPP
-#define NONLOCAL_HEAT_CAPACITY_MATRIX_2D_HPP
+#pragma once
 
-#include "matrix_assembler_2d.hpp"
+#include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_2d::thermal {
 
 template<class T, class I, class J>
 class heat_capacity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {
@@ -33,7 +32,7 @@ T heat_capacity_matrix_2d<T, I, J>::integrate_basic_pair(const size_t e, const s
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
-        integral += el.weight(q) * el.qN(i, q) * el.qN(j, q) * mesh::jacobian(_base::mesh().jacobi_matrix(e, q));
+        integral += el.weight(q) * el.qN(i, q) * el.qN(j, q) * _base::mesh().jacobian(e, q);
     return integral;
 }
 
@@ -55,12 +54,10 @@ void heat_capacity_matrix_2d<T, I, J>::calc_matrix(const parameters_2d<T>& param
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& parameter = parameters.at(group).physical;
-            return parameter->density * parameter->capacity * integrate_basic_pair(e, i, j); 
+            return parameter.density * parameter.capacity * integrate_basic_pair(e, i, j); 
         },
         [](const std::string&, const size_t, const size_t, const size_t, const size_t) constexpr noexcept { return T{0}; }
     );
 }
 
 }
-
-#endif

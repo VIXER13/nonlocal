@@ -1,5 +1,4 @@
-#ifndef NONLOCAL_MESH_2D_HPP
-#define NONLOCAL_MESH_2D_HPP
+#pragma once
 
 #include "mesh_container_2d_utils.hpp"
 
@@ -18,11 +17,6 @@ constexpr T jacobian(const std::array<T, 2>& J) noexcept {
     return std::sqrt(J[X] * J[X] + J[Y] * J[Y]);
 }
 
-template<class T>
-constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
-    return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
-}
-
 template<class T, class I = uint32_t>
 class mesh_2d final {
     mesh_container_2d<T, I> _mesh;
@@ -32,7 +26,7 @@ class mesh_2d final {
 
     std::vector<I> _quad_shifts;
     std::vector<std::array<T, 2>> _quad_coords;
-    std::vector<metamath::types::square_matrix<T, 2>> _jacobi_matrices;
+    std::vector<T> _jacobians;
 
     std::vector<I> _quad_node_shift;
     std::vector<std::array<T, 2>> _derivatives;
@@ -42,10 +36,14 @@ class mesh_2d final {
     std::unordered_map<std::string, T> _radii;
     std::vector<std::vector<I>> _elements_neighbors;
 
+    void init();
+
     T area(const std::ranges::iota_view<size_t, size_t> elements) const;
 
 public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
+    template<class Stream>
+    explicit mesh_2d(Stream& stream, const mesh_format format);
 
     const mesh_container_2d<T, I>& container() const;
     
@@ -56,8 +54,8 @@ public:
     std::ranges::iota_view<size_t, size_t> quad_shifts_count(const size_t e) const;
     const std::array<T, 2>& quad_coord(const size_t qshift) const;
     const std::array<T, 2>& quad_coord(const size_t e, const size_t q) const;
-    const metamath::types::square_matrix<T, 2>& jacobi_matrix(const size_t qshift) const;
-    const metamath::types::square_matrix<T, 2>& jacobi_matrix(const size_t e, const size_t q) const;
+    T jacobian(const size_t qshift) const;
+    T jacobian(const size_t e, const size_t q) const;
 
     size_t quad_node_shift(const size_t e, const size_t i) const;
     const std::array<T, 2>& derivatives(const size_t qshift) const;
@@ -87,16 +85,30 @@ public:
 
 template<class T, class I>
 mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh)
-    : _mesh{path_to_mesh}
-    , _node_elements{utils::node_elements_2d(container())}
-    , _global_to_local{utils::global_to_local(container())}
-    , _quad_shifts{utils::elements_quadrature_shifts_2d(container())}
-    , _quad_coords{utils::approx_all_quad_nodes(container(), _quad_shifts)}
-    , _jacobi_matrices{utils::approx_all_jacobi_matrices(container(), _quad_shifts)}
-    , _quad_node_shift{utils::element_node_shits_quadrature_shifts_2d(container())}
-    , _derivatives{utils::derivatives_in_quad(container(), _quad_shifts, _quad_node_shift, _jacobi_matrices)}
-    , _MPI_ranges{container().nodes_count()}
-    , _elements_neighbors(container().elements_2d_count()) {}
+    : _mesh{path_to_mesh} {
+        init();
+    }
+
+template<class T, class I>
+template<class Stream>
+mesh_2d<T, I>::mesh_2d(Stream& stream, const mesh_format format)
+    : _mesh{stream, format} {
+        init();
+    }
+
+template<class T, class I>
+void mesh_2d<T, I>::init() {
+    _node_elements = utils::node_elements_2d(container());
+    _global_to_local = utils::global_to_local(container());
+    _quad_shifts = utils::elements_quadrature_shifts_2d(container());
+    _quad_coords = utils::approx_all_quad_nodes(container(), _quad_shifts);
+    const auto jacobi_matrices = utils::approx_all_jacobi_matrices(container(), _quad_shifts);
+    _jacobians = utils::calculate_jacobians(jacobi_matrices);
+    _quad_node_shift = utils::element_node_shits_quadrature_shifts_2d(container());
+    _derivatives = utils::derivatives_in_quad(container(), _quad_shifts, _quad_node_shift, jacobi_matrices);
+    _MPI_ranges = parallel::MPI_ranges{container().nodes_count()};
+    _elements_neighbors.resize(container().elements_2d_count());
+}
 
 template<class T, class I>
 const mesh_container_2d<T, I>& mesh_2d<T, I>::container() const {
@@ -134,13 +146,13 @@ const std::array<T, 2>& mesh_2d<T, I>::quad_coord(const size_t e, const size_t q
 }
 
 template<class T, class I>
-const metamath::types::square_matrix<T, 2>& mesh_2d<T, I>::jacobi_matrix(const size_t qshift) const {
-    return _jacobi_matrices[qshift];
+T mesh_2d<T, I>::jacobian(const size_t qshift) const {
+    return _jacobians[qshift];
 }
 
 template<class T, class I>
-const metamath::types::square_matrix<T, 2>& mesh_2d<T, I>::jacobi_matrix(const size_t e, const size_t q) const {
-    return jacobi_matrix(quad_shift(e) + q);
+T mesh_2d<T, I>::jacobian(const size_t e, const size_t q) const {
+    return jacobian(quad_shift(e) + q);
 }
 
 template<class T, class I>
@@ -217,7 +229,7 @@ T mesh_2d<T, I>::area(const size_t e) const {
     T area = T{0};
     const auto& el = container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-        const T factor = el.weight(q) * jacobian(jacobi_matrix(e, q));
+        const T factor = el.weight(q) * jacobian(e, q);
         for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
             area += factor * el.qN(i, q);
     }
@@ -263,8 +275,8 @@ void mesh_2d<T, I>::clear() {
     _quad_shifts.shrink_to_fit();
     _quad_coords.clear();
     _quad_coords.shrink_to_fit();
-    _jacobi_matrices.clear();
-    _jacobi_matrices.shrink_to_fit();
+    _jacobians.clear();
+    _jacobians.shrink_to_fit();
     _quad_node_shift.clear();
     _quad_node_shift.shrink_to_fit();
     _derivatives.clear();
@@ -275,5 +287,3 @@ void mesh_2d<T, I>::clear() {
 }
 
 }
-
-#endif

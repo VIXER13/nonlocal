@@ -1,9 +1,8 @@
-#ifndef FINITE_ELEMENT_DERIVATIVE_BASIS_2D_HPP
-#define FINITE_ELEMENT_DERIVATIVE_BASIS_2D_HPP
+#pragma once
 
-#include "derivative.hpp"
-#include "to_function.hpp"
-#include "simplify.hpp"
+#include <metamath/symbolic/utils/derivative.hpp>
+#include <metamath/symbolic/utils/to_function.hpp>
+#include <metamath/symbolic/utils/simplify.hpp>
 
 namespace metamath::finite_element {
 
@@ -19,7 +18,7 @@ protected:
 
     static_assert(std::tuple_size_v<decltype(basis)> == nodes.size(), "The number of functions and nodes does not match.");
 
-    static inline const std::array<std::function<T(const std::array<T, Parameters_Count>&)>, nodes.size()>
+    const std::array<std::function<T(const std::array<T, Parameters_Count>&)>, nodes.size()>
         N    = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(basis)),
         Nxi  = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(symbolic::derivative<x>(basis))),
         Neta = symbolic::to_function<T, Parameters_Count>(symbolic::simplify(symbolic::derivative<y>(basis)));
@@ -29,5 +28,3 @@ protected:
 };
 
 }
-
-#endif

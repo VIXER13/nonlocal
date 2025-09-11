@@ -1,10 +1,9 @@
-#ifndef NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
-#define NONLOCAL_THERMAL_BOUNDARY_CONDITION_1D_HPP
+#pragma once
 
-#include "boundary_conditions_1d.hpp"
-#include "metamath.hpp"
+#include <metamath/metamath.hpp>
+#include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
 
-namespace nonlocal::thermal {
+namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 class temperature_1d final : public first_kind_1d<T, physics_t::THERMAL>{
@@ -97,5 +96,3 @@ template<class T>
 using thermal_boundaries_conditions_1d = boundaries_conditions_1d<T, physics_t::THERMAL>;
 
 }
-
-#endif
