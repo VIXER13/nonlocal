@@ -7,6 +7,14 @@
 
 namespace nonlocal::mesh::utils {
 
+template<std::floating_point T>
+std::vector<T> discrete(const mesh::mesh_1d<T>& mesh, const std::function<T(const T)>& function) {
+    std::vector<T> x(mesh.nodes_count());
+    for(const size_t node : mesh.nodes())
+        x[node] = function(mesh.node_coord(node));
+    return x;
+}
+
 template<class T, class Vector>
 T integrate(const mesh::mesh_1d<T>& mesh, const Vector& x) {
     if (mesh.nodes_count() != x.size())

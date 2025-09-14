@@ -23,6 +23,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * power<3>(element.approximate_in_qnode(q, temperature_prev)) *
                         el.qN(i, q) * el.qN(j, q) * mesh::jacobian(element.jacobi_matrix(q));
+        using namespace metamath::constants;
         static constexpr T Stefan_Boltzmann_Constant_X4 = 4 * Stefan_Boltzmann_Constant<T>;
         return Stefan_Boltzmann_Constant_X4 * condition.emissivity() * integral;
     };
@@ -35,6 +36,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * el.qN(i, q) * power<4>(element.approximate_in_qnode(q, temperature_prev)) *
                         mesh::jacobian(element.jacobi_matrix(q));
+        using namespace metamath::constants;
         static constexpr T Stefan_Boltzmann_Constant_X3 = 3 * Stefan_Boltzmann_Constant<T>;
         return Stefan_Boltzmann_Constant_X3 * condition.emissivity() * integral;
     };
@@ -68,6 +70,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * power<3>(element.approximate_in_qnode(q, temperature_prev)) *
                         el.qN(i, q) * el.qN(j, q) * mesh::jacobian(element.jacobi_matrix(q));
+        using namespace metamath::constants;
         static constexpr T Stefan_Boltzmann_Constant_X4 = 4 * Stefan_Boltzmann_Constant<T>;
         return Stefan_Boltzmann_Constant_X4 * condition.emissivity() * integral;
     };
@@ -80,6 +83,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
             integral += el.weight(q) * el.qN(i, q) * power<4>(element.approximate_in_qnode(q, temperature_prev)) *
                         mesh::jacobian(element.jacobi_matrix(q));
+        using namespace metamath::constants;
         return Stefan_Boltzmann_Constant<T> * condition.emissivity() * integral;
     };
 

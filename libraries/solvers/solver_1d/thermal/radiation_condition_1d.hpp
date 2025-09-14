@@ -17,6 +17,7 @@ void radiation_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
         const size_t index = indices[b];
         if (const auto* const condition = dynamic_cast<const radiation_1d<T>*>(boundaries_conditions[b].get())) {
             const T value = time_step * condition->emissivity() * metamath::functions::power<3>(temperature_prev[index]);
+            using namespace metamath::constants;
             if constexpr (Is_Stationary) {
                 matrix.coeffRef(index, index) -= T{4} * Stefan_Boltzmann_Constant<T> * value;
                 // In a stationary calculation, the right-hand side refers to the residual

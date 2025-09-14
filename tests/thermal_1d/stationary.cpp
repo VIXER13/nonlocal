@@ -1,4 +1,7 @@
+#include "utils.hpp"
+
 #include <metamath/metamath.hpp>
+#include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_1d/thermal/stationary_heat_equation_solver_1d.hpp>
 
@@ -8,7 +11,10 @@ namespace {
 
 using namespace boost::ut;
 using namespace nonlocal;
+using namespace nonlocal::mesh;
+using namespace nonlocal::unit_tests;
 using namespace nonlocal::solver_1d::thermal;
+using namespace metamath::constants;
 
 template<class T>
 using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, std::size_t(1)>;
@@ -29,39 +35,37 @@ void check_solution(const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const heat_eq
     expect(lt(err / ref_norm, eps));
 }
 
-const suite<"thermal_stationary_boundary_conditions_1d"> _ = [] {
-
+const suite<"thermal_stationary_1d"> _ = [] {
     using T = double;
     using I = int64_t;
 
-    "const_temperature_temperature"_test = [] {
+    "temperature_temperature"_test = [] {
         // Temperature boundary condition
         // d/dx(k dT/dx) + qv = 0
         // qv(x) = -4 * er * sigma * (-3(x - 2))^(-7/3)
         // T|x=0 = 6^(-1/3), T|x=1 = 3^(-1/3),
         // Exact solution : T(x) = (-3(x - 2))^(-1/3)
-        constexpr auto ref_sol = [](T x) constexpr noexcept -> T {
-            return std::pow(-3. * (x - 2.), -1./3.);
-        };
-        constexpr T left_temperature = ref_sol(0.0);
-        constexpr T right_temperature = ref_sol(1.0);
+        static constexpr auto Expected_Solution = [](const T x) { return 1. / std::cbrt(6. - 3. * x); };
+        const parameters_1d<T> parameters = {{ .physical = { .conductivity = T{1} } }};
         const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique<temperature_1d<T>>(left_temperature),
-            std::make_unique<temperature_1d<T>>(right_temperature)
+            std::make_unique<temperature_1d<T>>(Expected_Solution(0.)),
+            std::make_unique<temperature_1d<T>>(Expected_Solution(1.))
         };
-        const std::vector<mesh::segment_data<T>> segments({{ .length = T(1.0), .search_radius = T(0.0), .elements = I(10) }});
-        parameters_1d<T> parameters(segments.size());
-        parameters[0] = { .physical = { .conductivity = T{1} } };
-        const auto mesh = std::make_shared<mesh::mesh_1d<T>>(std::make_unique<element_1d<T>>(quadrature<T>()), segments);
         const stationary_equation_parameters_1d<T> additional_parameters {
-            .right_part = [](const T x) constexpr noexcept {  return -4. * std::pow(-3. * (x - 2.), -7./3.); },
-            .initial_distribution = [](const T x) constexpr noexcept { return 0.0; },
-            .tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15,
-            .max_iterations = 200,
-            .energy = T{0}
+            .right_part = [](const T x) {  return -4. / (9 * metamath::functions::power<2>(2 - x) * std::cbrt(6. - 3. * x)); },
         };
-        const auto num_sol = stationary_heat_equation_solver_1d<T, I>(mesh, parameters, boundaries_conditions, additional_parameters);
-        check_solution<T>(mesh, num_sol, ref_sol, 1e-8);
+
+        T prev_error = std::numeric_limits<T>::max();
+        for(const size_t elements : {10, 20, 40}) {
+            const auto mesh = std::make_shared<mesh_1d<T>>(
+                std::make_unique<element_1d<T>>(quadrature<T>{}),
+                std::vector<segment_data<T>>{{ .length = T{1}, .elements = elements }});
+            const auto solution = stationary_heat_equation_solver_1d<T, I>(mesh, parameters, boundaries_conditions, additional_parameters);
+            const auto expected_solution_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Solution);
+            const T error = max_error(solution.temperature(), expected_solution_discrete) / max_norm(expected_solution_discrete);
+            expect(lt(error, prev_error));
+            prev_error = error;
+        }
     };
 
     "const_temperature_radiation"_test = [] {

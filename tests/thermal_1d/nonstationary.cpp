@@ -105,7 +105,7 @@ void solve_nonstationary_thermal_1d_problem(const std::shared_ptr<mesh::mesh_1d<
     }
 }
 
-const suite<"thermal_nonstationary_boundary_conditions_1d"> _ = [] {
+const suite<"thermal_nonstationary_1d"> _ = [] {
 
     using T = double;
     using I = int64_t;

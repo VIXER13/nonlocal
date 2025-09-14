@@ -11,6 +11,7 @@ using namespace boost::ut;
 using namespace nonlocal;
 using namespace nonlocal::solver_2d::thermal;
 using namespace metamath::finite_element;
+using namespace metamath::constants;
 
 template<std::floating_point T, std::signed_integral I>
 void check_solution(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const heat_equation_solution_2d<T, I>& solution,

@@ -57,9 +57,6 @@ constexpr T nonlocal_weight(const T local_weight) noexcept {
 }
 
 template<std::floating_point T>
-inline constexpr T Stefan_Boltzmann_Constant = T{5.67036713e-8};
-
-template<std::floating_point T>
 inline constexpr T NEUMANN_PROBLEM_ERROR_THRESHOLD = std::is_same_v<T, float> ? T{1e-5} : T{1e-10};
 
 }
