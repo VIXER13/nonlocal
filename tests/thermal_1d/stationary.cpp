@@ -39,34 +39,69 @@ const suite<"thermal_stationary_1d"> _ = [] {
     using T = double;
     using I = int64_t;
 
-    "temperature_temperature"_test = [] {
-        // Temperature boundary condition
-        // d/dx(k dT/dx) + qv = 0
-        // qv(x) = -4 * er * sigma * (-3(x - 2))^(-7/3)
-        // T|x=0 = 6^(-1/3), T|x=1 = 3^(-1/3),
-        // Exact solution : T(x) = (-3(x - 2))^(-1/3)
-        static constexpr auto Expected_Solution = [](const T x) { return 1. / std::cbrt(6. - 3. * x); };
-        const parameters_1d<T> parameters = {{ .physical = { .conductivity = T{1} } }};
-        const thermal_boundaries_conditions_1d<T> boundaries_conditions = {
-            std::make_unique<temperature_1d<T>>(Expected_Solution(0.)),
-            std::make_unique<temperature_1d<T>>(Expected_Solution(1.))
-        };
-        const stationary_equation_parameters_1d<T> additional_parameters {
-            .right_part = [](const T x) {  return -4. / (9 * metamath::functions::power<2>(2 - x) * std::cbrt(6. - 3. * x)); },
-        };
-
-        T prev_error = std::numeric_limits<T>::max();
-        for(const size_t elements : {10, 20, 40}) {
-            const auto mesh = std::make_shared<mesh_1d<T>>(
-                std::make_unique<element_1d<T>>(quadrature<T>{}),
-                std::vector<segment_data<T>>{{ .length = T{1}, .elements = elements }});
-            const auto solution = stationary_heat_equation_solver_1d<T, I>(mesh, parameters, boundaries_conditions, additional_parameters);
-            const auto expected_solution_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Solution);
-            const T error = max_error(solution.temperature(), expected_solution_discrete) / max_norm(expected_solution_discrete);
-            expect(lt(error, prev_error));
-            prev_error = error;
-        }
+    static constexpr T Length = T{1};
+    static constexpr auto Expected_Temperature = [](const T x) { return 1. / std::cbrt(6. - 3. * x); };
+    static constexpr auto Expected_Flux = [](const T x) { return -1. / ((6. - 3. * x) * std::cbrt(6. - 3. * x)); };
+    const parameters_1d<T> parameters = {{ .physical = { .conductivity = T{1} } }};
+    const stationary_equation_parameters_1d<T> additional_parameters {
+        .right_part = [](const T x) {  return -4. / (9 * metamath::functions::power<2>(2 - x) * std::cbrt(6. - 3. * x)); },
     };
+    std::unordered_map<std::string, thermal_boundaries_conditions_1d<T>> boundaries_conditions;
+    boundaries_conditions["temperature_temperature"] = {
+        std::make_unique<temperature_1d<T>>(Expected_Temperature(0.)),
+        std::make_unique<temperature_1d<T>>(Expected_Temperature(Length))
+    };
+    boundaries_conditions["flux_temperature"] = {
+        std::make_unique<flux_1d<T>>(Expected_Flux(0)),
+        std::make_unique<temperature_1d<T>>(Expected_Temperature(Length))
+    };
+    boundaries_conditions["temperature_flux"] = {
+        std::make_unique<temperature_1d<T>>(Expected_Temperature(0.)),
+        std::make_unique<flux_1d<T>>(-Expected_Flux(Length))
+    };
+    static constexpr T Left_Heat_Transfer = T{2};
+    boundaries_conditions["convection_temperature"] = {
+        std::make_unique<convection_1d<T>>(Left_Heat_Transfer, Expected_Flux(0.) / Left_Heat_Transfer + Expected_Temperature(0.)),
+        std::make_unique<temperature_1d<T>>(Expected_Temperature(Length))
+    };
+    static constexpr T Right_Heat_Transfer = T{3};
+    boundaries_conditions["temperature_convection"] = {
+        std::make_unique<temperature_1d<T>>(Expected_Temperature(0.)),
+        std::make_unique<convection_1d<T>>(Right_Heat_Transfer, -Expected_Flux(Length) / Right_Heat_Transfer + Expected_Temperature(Length))
+    };
+    boundaries_conditions["convection_convection"] = {
+        std::make_unique<convection_1d<T>>(Left_Heat_Transfer, Expected_Flux(0.) / Left_Heat_Transfer + Expected_Temperature(0.)),
+        std::make_unique<convection_1d<T>>(Right_Heat_Transfer, -Expected_Flux(Length) / Right_Heat_Transfer + Expected_Temperature(Length))
+    };
+    boundaries_conditions["convection_flux"] = {
+        std::make_unique<convection_1d<T>>(Left_Heat_Transfer, Expected_Flux(0.) / Left_Heat_Transfer + Expected_Temperature(0.)),
+        std::make_unique<flux_1d<T>>(-Expected_Flux(Length))
+    };
+    boundaries_conditions["flux_convection"] = {
+        std::make_unique<flux_1d<T>>(Expected_Flux(0)),
+        std::make_unique<convection_1d<T>>(Right_Heat_Transfer, -Expected_Flux(Length) / Right_Heat_Transfer + Expected_Temperature(Length))
+    };
+    for(const auto& [test_name, conditions] : boundaries_conditions) {
+        test(test_name) = [&parameters, &conditions, &additional_parameters] {
+            T prev_temperature_error = std::numeric_limits<T>::max();
+            T prev_flux_error = std::numeric_limits<T>::max();
+            for(const size_t elements : {10, 20, 40}) {
+                const auto mesh = std::make_shared<mesh_1d<T>>(
+                    std::make_unique<element_1d<T>>(quadrature<T>{}),
+                    std::vector<segment_data<T>>{{ .length = Length, .elements = elements }});
+                auto solution = stationary_heat_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
+                solution.calc_flux();
+                const auto expected_temperature_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Temperature);
+                const auto expected_flux_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Flux);
+                const T temperature_error = max_error(solution.temperature(), expected_temperature_discrete) / max_norm(expected_temperature_discrete);
+                const T flux_error = max_error(solution.flux(), expected_flux_discrete) / max_norm(expected_flux_discrete);
+                expect(lt(temperature_error, prev_temperature_error));
+                expect(lt(flux_error, prev_flux_error));
+                prev_temperature_error = temperature_error;
+                prev_flux_error = flux_error;
+            }
+        };
+    }
 
     "const_temperature_radiation"_test = [] {
         // Radiation boundary condition
