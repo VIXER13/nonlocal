@@ -11,20 +11,21 @@
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
-#include <chrono>
+#include <optional>
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<class Matrix_Index, class T, class I, class Right_Part>
+template<class Matrix_Index, class T, class I>
 mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                                               const mechanical_parameters_2d<T>& parameters,
                                                               const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
-                                                              const Right_Part& right_part) {
+                                                              const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt) {
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
     stiffness.compute(parameters.materials, parameters.plane, utils::inner_nodes(mesh->container(), boundaries_conditions));
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix().inner().cols());
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
-    integrate_right_part<2>(f, *mesh, right_part);
+    if (right_part)
+        integrate_right_part<2>(f, *mesh, *right_part);
     temperature_condition(f, *mesh, parameters);
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
     local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});

@@ -24,8 +24,9 @@ target_link_libraries(unit_tests
     parallel_test_lib
     config_test_lib
 	thermal_1d_test_lib
-    thermal_2d_test_lib
     solvers_2d_test_lib
+    thermal_2d_test_lib
+    mechanical_2d_test_lib
     stationary_thermal_2d_lib
 )
 

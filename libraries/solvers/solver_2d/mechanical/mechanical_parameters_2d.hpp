@@ -63,12 +63,12 @@ template<class T>
 constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noexcept {
     const T Ex = this->E(plane, 0);
     const T Ey = this->E(plane, 1);
-    const T nuxy = this->nu(plane, 0);
-    const T nuyx = this->nu(plane, 1);
-    const T Gxy = material == material_t::ISOTROPIC ? T{0.5} * Ex / (1 + nuxy) : this->G();
-    const T div = T{1} / (T{1} - nuxy*nuyx);
-    // Ey * nuxy = Ex * nuyx
-    return { Ex * div, Ex * nuyx * div,
+    const T nu_xy = this->nu(plane, 0);
+    const T nu_yx = this->nu(plane, 1);
+    const T Gxy = material == material_t::ISOTROPIC ? T{0.5} * Ex / (1 + nu_xy) : this->G();
+    const T div = T{1} / (T{1} - nu_xy*nu_yx);
+    // Ey * nu_xy == Ex * nu_yx
+    return { Ex * div, Ex * nu_yx * div,
              Ey * div, Gxy};
 }
 
