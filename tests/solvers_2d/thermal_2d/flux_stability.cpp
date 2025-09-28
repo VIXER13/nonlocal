@@ -34,29 +34,31 @@ const suite<"flux_stability"> _ = [] {
     solution.calc_flux();
 
     "temperature_on_center_line"_test = [&mesh, &solution] {
-        static constexpr T Temperature_Epsilon = 2e-14;
+        static constexpr T Expected = 0;
+        static constexpr T Epsilon = 2e-14;
         for (const T value : get_values_on_center_line(mesh->container(), solution.temperature()))
-            expect(approx(value, T{0}, Temperature_Epsilon));
+            expect(approx(value, Expected, Epsilon));
     };
 
-    "flux_on_center_line"_test = [&mesh, &solution] {
-        static constexpr T Flux_Epsilon = 2e-14;
+    "flux_x_on_center_line"_test = [&mesh, &solution] {
+        static constexpr T Expected = -1;
+        static constexpr T Epsilon = 2e-14;
         for (const T value : get_values_on_center_line(mesh->container(), solution.flux()[X]))
-            expect(approx(value, T{-1}, Flux_Epsilon));
+            expect(approx(value, Expected, Epsilon));
     };
 
     "temperature_integral"_test = [&mesh, &solution] {
-        static constexpr T Expected_Integral = T{0};
-        static constexpr T Integral_Epsilon = 3.3e-15;
+        static constexpr T Expected = 0;
+        static constexpr T Epsilon = 3.3e-15;
         const T integral = mesh::utils::integrate(*mesh, solution.temperature());
-        expect(approx(integral, Expected_Integral, Integral_Epsilon));
+        expect(approx(integral, Expected, Epsilon));
     };
 
-    "flux_integral"_test = [&mesh, &solution] {
-        static constexpr T Expected_Integral = T{-10};
-        static constexpr T Integral_Epsilon = 2.2e-14;
+    "flux_x_integral"_test = [&mesh, &solution] {
+        static constexpr T Expected = -10;
+        static constexpr T Epsilon = 2.2e-14;
         const T integral = mesh::utils::integrate(*mesh, solution.flux()[X]);
-        expect(approx(integral, Expected_Integral, Integral_Epsilon));
+        expect(approx(integral, Expected, Epsilon));
     };
 };
 

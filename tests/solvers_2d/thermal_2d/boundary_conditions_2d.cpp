@@ -1,9 +1,9 @@
-#include "square_1x1_16el_uniform_mesh_su2.h"
-
-#include "init_2d_mesh.hpp"
+#include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
 
 #include <boost/ut.hpp>
 #include <nlohmann/json.hpp>
+
+#include <embedded_files/square_1x1_16el_uniform_mesh_su2.h>
 
 namespace {
 
@@ -59,7 +59,7 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
     };
     // Computational mesh
     std::stringstream stream{square_1x1_16el_uniform_mesh_su2_data};
-    const auto mesh = unit_tests::init_2d_mesh<T, I>(stream, mesh::mesh_format::SU2);
+    const auto mesh = std::make_shared<nonlocal::mesh::mesh_2d<double, int64_t>>(stream, mesh::mesh_format::SU2);
     // Material and model parameters
     parameters_2d<T> parameters;
     parameters["Layer1"] = {

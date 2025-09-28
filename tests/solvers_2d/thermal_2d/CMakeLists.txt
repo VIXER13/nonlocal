@@ -8,6 +8,7 @@ if (NOT DEFINED NO_CONAN)
 endif()
 
 add_library(thermal_2d_test_lib OBJECT
+    boundary_conditions_2d.cpp
     flux_stability.cpp
 )
 target_include_directories(thermal_2d_test_lib PUBLIC

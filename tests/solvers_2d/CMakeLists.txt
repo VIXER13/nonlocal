@@ -8,6 +8,7 @@ if (NOT DEFINED NO_CONAN)
 endif()
 
 FileEmbedAdd(./meshes/plate_10x1_h0.125.su2)
+FileEmbedAdd(./meshes/square_1x1_16el_uniform_mesh.su2)
 
 add_subdirectory(thermal_2d)
 add_subdirectory(mechanical_2d)
