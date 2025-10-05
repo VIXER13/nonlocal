@@ -1,5 +1,6 @@
 #pragma once
 
+#include <math_expression/math_expression.hpp>
 #include <metamath/metamath.hpp>
 
 namespace nonlocal::solver_2d::influence {
@@ -198,6 +199,60 @@ public:
         using namespace metamath::functions;
         const T distance = metamath::functions::powered_distance(x, y, _base::radius(), _n);
         return _base::norm() * std::exp(_q * std::pow(distance, _p / _n));
+    }
+};
+
+template<class T>
+class custom_2d {
+    formula::math_expression _expression;
+
+public: 
+    explicit custom_2d(const std::string& expression)
+        : _expression{expression} {
+        if (_expression.variables_count() != 4)
+            throw std::domain_error{"The variables number in the influence function shall be 4."};
+    }
+
+    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
+        return _expression({x[0], x[1], y[0], y[1]});
+    }
+};
+
+template<class T>
+class custom_limited_area_2d final : public custom_2d<T> {
+    std::array<T, 2> _radius = {};
+
+public:
+    explicit custom_limited_area_2d(const std::string& expression, const std::array<T, 2> radius)
+        : custom_2d<T>{expression}
+        , _radius{radius} {}
+    
+    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
+        return metamath::functions::distance<2u>(x, y, _radius) < T{1} ? custom_2d<T>::operator()(x, y) : T{0};
+    }
+};
+
+template<class T>
+class polynomial_with_angle_2d final {
+    std::array<T, 2> _radius = {};
+    const T _norm = 0;
+
+public:
+    explicit polynomial_with_angle_2d(const std::array<T, 2>& radius) noexcept 
+        : _radius{radius[0] * radius[0], radius[1] * radius[1]}
+        , _norm{T{2} / (std::numbers::pi_v<T> * radius[0] * radius[1])} {}
+
+    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
+        using metamath::functions::power;
+        const T root = std::sqrt(power<2>(x[0]) + power<2>(x[1]));
+        const T cos = x[0] / root;
+        const T sin = x[1] / root;
+        const T cos2 = power<2>(cos);
+        const T sin2 = power<2>(sin);
+        const T distance = std::abs(power<2>(y[0]) * (cos2 / _radius[0] + sin2 / _radius[1]) +
+                                    power<2>(y[1]) * (cos2 / _radius[1] + sin2 / _radius[0]) +
+                                    y[0] * y[1] * cos * sin * (1 / _radius[0] - 1 / _radius[1]));
+        return distance < T{1} ? _norm * (T{1} - distance) : T{0};
     }
 };
 

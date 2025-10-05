@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config_utils.hpp"
+#include "read_influence.hpp"
 
 #include <constants/nonlocal_constants.hpp>
 #include <solvers/base/equation_parameters.hpp>
@@ -74,7 +75,8 @@ model_parameters<1u, T> read_model_1d(const nlohmann::json& config, const std::s
                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0."};
     _read_model::fix_parameters<1u>(local_weight, nonlocal_radius);
     return {
-        .influence = solver_1d::influence::polynomial_1d<T, 1u, 1u>{nonlocal_radius.front()},
+        .influence = config.contains("influence") ? read_influence_1d(config["influence"], path_with_access + "influence", nonlocal_radius.front()) :
+                                                    solver_1d::influence::polynomial_1d<T, 1u, 1u>{nonlocal_radius.front()},
         .local_weight = local_weight
     };
 }
@@ -90,8 +92,9 @@ model_parameters<2u, T> read_model_2d(const nlohmann::json& config, const std::s
                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0."};
     _read_model::fix_parameters<2u>(local_weight, nonlocal_radius);
     return {
-        .influence = solver_2d::influence::polynomial_2d<T, 2u, 1u>{nonlocal_radius},
-        .local_weight = config["local_weight"].get<T>()
+        .influence = config.contains("influence") ? read_influence_2d(config["influence"], path_with_access + "influence", nonlocal_radius) :
+                                                    solver_2d::influence::polynomial_2d<T, 2u, 1u>{nonlocal_radius},
+        .local_weight = local_weight
     };
 }
 

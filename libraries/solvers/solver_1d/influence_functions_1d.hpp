@@ -1,5 +1,6 @@
 #pragma once
 
+#include <math_expression/math_expression.hpp>
 #include <metamath/metamath.hpp>
 
 #include <cmath>
@@ -70,6 +71,36 @@ public:
     T operator()(const T x, const T y) const noexcept {
         using metamath::functions::power;
         return _norm * std::exp(_disp_mul * power<2>(x - y));
+    }
+};
+
+template<class T>
+class custom_1d {
+    formula::math_expression _expression;
+
+public: 
+    explicit custom_1d(const std::string& expression)
+        : _expression{expression} {
+        if (_expression.variables_count() != 2)
+            throw std::domain_error{"The variables number in the influence function shall be 2."};
+    }
+
+    T operator()(const T x, const T y) const {
+        return _expression({x, y});
+    }
+};
+
+template<class T>
+class custom_limited_area_1d final : public custom_1d<T> {
+    T _r;
+
+public:
+    explicit custom_limited_area_1d(const std::string& expression, const T r)
+        : custom_1d<T>{expression}
+        , _r{r} {}
+    
+    T operator()(const T x, const T y) const {
+        return std::abs(x - y) < _r ? custom_1d<T>::operator()(x, y) : T{0};
     }
 };
 
