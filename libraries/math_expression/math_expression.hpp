@@ -2,20 +2,35 @@
 
 #include "utils.hpp"
 
-#include <unordered_map>
-#include <stack>
-#include <vector>
-#include <span>
-
+#include <algorithm>
 #include <cmath>
+#include <functional>
+#include <numeric>
+#include <span>
+#include <stack>
 #include <stdexcept>
+#include <variant>
+#include <vector>
 
 namespace formula {
 
+template<class T>
 class math_expression {
-private:
-    std::vector<std::string> _polish_notation{};
+    struct variable_index final { size_t index; };
+    using unary_operator = T(*)(const T);
+    using binary_operator = T(*)(const T, const T);
+    using operand = std::variant<T, variable_index, unary_operator, binary_operator>;
+
+    std::vector<operand> _polish_notation;
     std::unordered_map<std::string, std::size_t> _variables;
+
+    static const std::unordered_map<std::string, unary_operator>& unary_operators();
+    static const std::unordered_map<std::string, binary_operator>& binary_operators();
+
+    std::unordered_map<std::size_t, std::string> find_variables_and_operators(const std::string& infix_notation) const;
+    void assemble_polish_notation(const std::string& infix_notation);
+
+    T calc_polish_notation(const std::span<const T> input_variables) const;
 
 public:
     // pre_infix_notation -> |variables : expression|. Example: |x y z t : x * y * z - t / x + sin(x * y * z)|.
@@ -23,154 +38,215 @@ public:
     explicit math_expression(std::string pre_infix_notation);
 
     std::string to_polish() const;
-    std::size_t variables_count() const;
-    std::unordered_map<std::string, std::size_t> get_variables() const;
+    std::size_t variables_count() const noexcept;
+    const std::unordered_map<std::string, std::size_t>& get_variables() const noexcept;
 
-    template <utils::arithmetic T>
-    T operator()(const std::span<const T> input_vars) const {
-        return calc_polish_notation(input_vars);
-    }
-
-    template <utils::arithmetic T>
-    T operator()(const std::initializer_list<T>& input_vars) const {
-        return this->operator()(std::span(input_vars));
-    }
-
-private:
-    enum class operator_index : std::size_t {
-        plus, minus, unary_minus,
-        multiply, divide, power, sqr, sqrt, cbrt,
-        sin, asin, sinh, asinh, cos, acos, cosh, acosh, tan, atan, tanh, atanh,
-        exp, exp2, expm1, log, log10, log2, log1p,
-        abs, sign, ceil, floor, trunc, round,
-        tgamma, lgamma, erf, erfc
-    };
-
-    template<utils::arithmetic T>
-    T execute(const std::unordered_map<std::string, math_expression::operator_index>& ops, 
-              std::stack<T>& calculation_values, const std::string& op) const;
-
-    template <utils::arithmetic T>
-    T calc_polish_notation(const std::span<const T> input_variables) const;
-
-    static const std::unordered_map<std::string, operator_index>& get_arithmetic_operators();
-    std::unordered_map<std::size_t, std::string> find_variables_and_operators(const std::string& infix_notation) const;
-    void assemble_polish_notation(const std::string& infix_notation);
+    T operator()(const std::span<const T> input_vars) const;
+    T operator()(const std::initializer_list<T>& input_vars) const;
 };
 
-template<utils::arithmetic T>
-T math_expression::execute(const std::unordered_map<std::string, math_expression::operator_index>& ops, 
-          std::stack<T>& calculation_values, const std::string& op) const {
-    const auto pop_element = [&calculation_values]() {
-        T elem = T(0);
-        if (!calculation_values.empty()) {
-            elem = calculation_values.top();
-            calculation_values.pop();
-        }
-        return elem;
+template<class T>
+const std::unordered_map<std::string, typename math_expression<T>::unary_operator>& math_expression<T>::unary_operators() {
+    static constexpr auto unary_minus = [](const T value) noexcept { return -value; };
+    static constexpr auto sign        = [](const T value) noexcept { return T((value > 0) - (value < 0)); };
+    static constexpr auto sqr         = [](const T value) noexcept { return value * value; };
+    static const std::unordered_map<std::string, typename math_expression<T>::unary_operator> operators{
+        {"~", unary_minus}, {"sign", sign}, {"abs", std::abs}, {"sqr", sqr}, {"sqrt", std::sqrt}, {"cbrt", std::cbrt},
+        {"sin", std::sin}, {"cos", std::cos}, {"tan", std::tan}, {"asin", std::asin}, {"acos", std::acos}, {"atan", std::atan},
+        {"sinh", std::sinh}, {"cosh", std::cosh}, {"tanh", std::tanh}, {"asinh", std::asinh}, {"acosh", std::acosh}, {"atanh", std::atanh},
+        {"exp", std::exp}, {"exp2", std::exp2}, {"expm1", std::expm1}, {"log", std::log}, {"log2", std::log2}, {"log1p", std::log1p}, {"log10", std::log10},
+        {"erf", std::erf}, {"erfc", std::erfc}, {"tgamma", std::tgamma}, {"lgamma", std::lgamma},
+        {"ceil", std::ceil}, {"trunc", std::trunc}, {"floor", std::floor}, {"round", std::round}
     };
-    const T right = pop_element();
-    switch(ops.at(op))
-    {
-    case operator_index::plus:
-        return pop_element() + right;
-    case operator_index::minus:
-        return pop_element() - right;
-    case operator_index::multiply:
-        return pop_element() * right;
-    case operator_index::divide:
-        return pop_element() / right;
-    case operator_index::power:
-        return std::pow(pop_element(), right);
-    case operator_index::unary_minus:
-        return -right;
-    case operator_index::sin:
-        return std::sin(right);
-    case operator_index::cos:
-        return std::cos(right);
-    case operator_index::tan:
-        return std::tan(right);
-    case operator_index::atan:
-        return std::atan(right);
-    case operator_index::exp:
-        return std::exp(right);
-    case operator_index::abs:
-        return std::abs(right);
-    case operator_index::sign:
-        return (right > 0) - (right < 0);
-    case operator_index::sqr:
-        return right * right;
-    case operator_index::sqrt:
-        return std::sqrt(right);
-    case operator_index::log:
-        return std::log(right);
-    case operator_index::tgamma:
-        return std::tgamma(right);
-    case operator_index::lgamma:
-        return std::lgamma(right);
-    case operator_index::exp2:
-        return std::exp2(right);
-    case operator_index::expm1:
-        return std::expm1(right);
-    case operator_index::log10:
-        return std::log10(right);
-    case operator_index::log2:
-        return std::log2(right);
-    case operator_index::log1p:
-        return std::log1p(right);
-    case operator_index::cbrt:
-        return std::cbrt(right);
-    case operator_index::asin:
-        return std::asin(right);
-    case operator_index::acos:
-        return std::acos(right);
-    case operator_index::sinh:
-        return std::sinh(right);
-    case operator_index::cosh:
-        return std::cosh(right);
-    case operator_index::tanh:
-        return std::tanh(right);
-    case operator_index::asinh:
-        return std::asinh(right);
-    case operator_index::acosh:
-        return std::acosh(right);
-    case operator_index::atanh:
-        return std::atanh(right);
-    case operator_index::erf:
-        return std::erf(right);
-    case operator_index::erfc:
-        return std::erfc(right);
-    case operator_index::ceil:
-        return std::ceil(right);
-    case operator_index::floor:
-        return std::floor(right);
-    case operator_index::trunc:
-        return std::trunc(right);
-    case operator_index::round:
-        return std::round(right);
-    default:
-        throw std::domain_error{"Error. Undefined operator <" + op + ">/."};
+    return operators;
+}
+
+template<class T>
+const std::unordered_map<std::string, typename math_expression<T>::binary_operator>& math_expression<T>::binary_operators() {
+    static constexpr auto plus       = [](const T left, const T right) noexcept { return left + right; };
+    static constexpr auto minus      = [](const T left, const T right) noexcept { return left - right; };
+    static constexpr auto divides    = [](const T left, const T right) noexcept { return left / right; };
+    static constexpr auto multiplies = [](const T left, const T right) noexcept { return left * right; };
+    static const std::unordered_map<std::string, math_expression<T>::binary_operator> operators{
+        {"+", plus}, {"-", minus}, {"*", multiplies}, {"/", divides}, {"^", std::pow}
+    };
+    return operators;
+}
+
+template<class T>
+std::unordered_map<std::size_t, std::string> math_expression<T>::find_variables_and_operators(const std::string& infix_notation) const {
+    const auto& operator_priority = utils::get_operator_priority();
+    const auto& one_symbol_operator = utils::get_one_sym_operators();
+    std::unordered_map<std::size_t, std::string> variables_and_operators_indices;
+
+    const auto check_integrity = [&one_symbol_operator, &infix_notation](std::size_t pos, const std::string& smth) {
+        const std::size_t shift = smth.size() - 1;
+        const bool is_not_boundary_position = ((0 < pos && pos < infix_notation.size() - 1 - shift)
+            && (one_symbol_operator.contains(infix_notation[pos - 1]) && one_symbol_operator.contains(infix_notation[pos + shift + 1]) ));
+        const bool is_boundary_position = (pos == 0 && one_symbol_operator.contains(infix_notation[pos + shift + 1]) ) ||
+            (pos == infix_notation.size() - 1 - shift && one_symbol_operator.contains(infix_notation[pos - 1]) );
+        return is_boundary_position || is_not_boundary_position;
+    };
+
+    const auto push_it = [&infix_notation, &check_integrity, &variables_and_operators_indices](const std::string& smth) {
+        for(std::size_t position = infix_notation.find(smth); position != std::string::npos; position = infix_notation.find(smth, position + smth.size()))
+            if (check_integrity(position, smth))
+                variables_and_operators_indices[position] = smth;
+    };
+
+    for(const auto& [variable, _] : _variables)
+        push_it(variable);
+
+    for(const auto& [op, priority] : operator_priority)
+        if (!one_symbol_operator.contains(op.front()))
+            push_it(op);
+
+    if (variables_and_operators_indices.empty()) 
+        std::cout << "Warning: expression does not depend on the variables." << std::endl;
+    return variables_and_operators_indices;
+}
+
+template<class T>
+void math_expression<T>::assemble_polish_notation(const std::string& infix_notation) {
+    const auto variables_and_operators_indices = find_variables_and_operators(infix_notation);
+    const auto& operator_priority = utils::get_operator_priority();
+    const auto& one_symbol_operator = utils::get_one_sym_operators();
+    std::stack<std::string> operators;
+    std::vector<std::string> polish_notation;
+    for(std::size_t i = 0; i < infix_notation.size(); ++i) {
+        const char symbol = infix_notation[i];
+        if (variables_and_operators_indices.contains(i)) {
+            const auto& smth = variables_and_operators_indices.at(i);
+            if (operator_priority.contains(smth)) {
+                while (!operators.empty() && (operator_priority.at(operators.top()) >= operator_priority.at(smth))) {
+                    polish_notation.push_back(operators.top());
+                    operators.pop();
+                }
+                operators.push(smth);
+            } else if (_variables.contains(smth)) {
+                polish_notation.push_back(smth);
+            } else {
+                throw std::domain_error{"Wrong variables and operators searching. Can not find contained string."};
+            }
+            i += smth.size() - 1;
+        } else if (std::isdigit(symbol) || symbol == '.') {
+            if (i == 0 || (i > 0 && !std::isdigit(infix_notation[i - 1]) && infix_notation[i - 1] != '.')) {
+                polish_notation.emplace_back(std::string{ symbol });
+            } else {
+                polish_notation.back().push_back(symbol);
+            }
+        } else if (symbol == '(') {
+            operators.push(std::string{ symbol });
+        } else if (symbol == ')') {
+            while (!operators.empty() && operators.top() != std::string{ '(' }) {
+                polish_notation.push_back(operators.top());
+                operators.pop();
+            }
+            operators.pop();
+        } else if (one_symbol_operator.contains(symbol) && operator_priority.contains(std::string{symbol})) {
+            std::string op = std::string{ symbol };
+            // for unary minus
+            if (op == std::string{ '-' } && (i == 0 || (i > 1 && operator_priority.contains(std::string{ infix_notation[i - 1] }) )))
+                op = std::string{ '~' };
+
+            while (!operators.empty() && (operator_priority.at(operators.top()) >= operator_priority.at(op))) {
+                polish_notation.push_back(operators.top());
+                operators.pop();
+            }
+            operators.push(op);
+        }
+    }
+    while (!operators.empty()) {
+        polish_notation.push_back(operators.top());
+        operators.pop();
+    }
+
+    const auto& unary = unary_operators();
+    const auto& binary = binary_operators();
+    for(const std::string& smth : polish_notation) {
+        if (utils::is_number(smth))
+            _polish_notation.push_back(utils::get_number<double>(smth));
+        else if (_variables.count(smth))
+            _polish_notation.push_back(variable_index{_variables.at(smth)});
+        else if (binary.count(smth))
+            _polish_notation.push_back(binary.at(smth));
+        else
+            _polish_notation.push_back(unary.at(smth));
     }
 }
 
-template <utils::arithmetic T>
-T math_expression::calc_polish_notation(const std::span<const T> input_variables) const {
-    if (input_variables.size() != _variables.size()) [[unlikely]]
+template<class T>
+T math_expression<T>::calc_polish_notation(const std::span<const T> input_variables) const {
+    if (input_variables.size() != _variables.size())
         throw std::domain_error{"Wrong number of variables."};
-    const auto& arithmetic_operators = get_arithmetic_operators();
+
     std::stack<T> calculation_values;
-    for (const std::string& smth : _polish_notation) {
-        if (utils::is_number(smth)) {
-            calculation_values.push(utils::get_number<T>(smth));
-        }
-        else if (_variables.count(smth) > 0) {
-            calculation_values.push(input_variables[_variables.at(smth)]);
-        }
-        else if (arithmetic_operators.count(smth) > 0) {
-            calculation_values.push(execute<T>(arithmetic_operators, calculation_values, smth));
+    const auto pop_element = [&calculation_values]() {
+        const T value = calculation_values.top();
+        calculation_values.pop();
+        return value;
+    };
+
+    for(const auto& operation : _polish_notation) {
+        if (std::holds_alternative<double>(operation))
+            calculation_values.push(std::get<double>(operation));
+        else if (std::holds_alternative<variable_index>(operation))
+            calculation_values.push(input_variables[std::get<variable_index>(operation).index]);
+        else if (std::holds_alternative<binary_operator>(operation)) {
+            const auto& function = std::get<binary_operator>(operation);
+            const T right = pop_element();
+            const T left = pop_element();
+            calculation_values.push(function(left, right));
+        } else {
+            const auto& function = std::get<unary_operator>(operation);
+            const T value = pop_element();
+            calculation_values.push(function(value));
         }
     }
     return calculation_values.top();
+}
+
+template<class T>
+math_expression<T>::math_expression(std::string pre_infix_notation) {
+    const std::size_t delimiter = pre_infix_notation.find(':');
+    if (delimiter == std::string::npos)
+        throw std::domain_error{"Wrong variables format. Symbol ':' is required after variables initialization."};
+    _variables = utils::get_variables(utils::trim(pre_infix_notation.substr(0, delimiter)));
+    utils::check_variables_admissibility(_variables);
+    std::string infix_notation = pre_infix_notation.substr(delimiter + 1);
+    infix_notation = utils::delete_all(infix_notation, ' ');
+    if (infix_notation.empty())
+        throw std::domain_error{"Wrong expression format. Formula after ':' is required."};
+    utils::parentheses_check(infix_notation);
+    utils::dots_check(infix_notation);
+    assemble_polish_notation(infix_notation);
+}
+
+template<class T>
+std::string math_expression<T>::to_polish() const {
+    //auto concatenate = [](const std::string& a, const std::string& b){ return a + b; };
+    //return std::accumulate(_polish_notation.begin(), _polish_notation.end(), std::string{""}, concatenate);
+    return "";
+}
+
+template<class T>
+std::size_t math_expression<T>::variables_count() const noexcept {
+    return _variables.size();
+}
+
+template<class T>
+const std::unordered_map<std::string,std::size_t>& math_expression<T>::get_variables() const noexcept {
+    return _variables;
+}
+
+template<class T>
+T math_expression<T>::operator()(const std::span<const T> input_vars) const {
+    return calc_polish_notation(input_vars);
+}
+
+template<class T>
+T math_expression<T>::operator()(const std::initializer_list<T>& input_vars) const {
+    return (*this)(std::span(input_vars));
 }
 
 };

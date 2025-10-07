@@ -13,7 +13,7 @@ coefficient_t<T, Dimension> read_coefficient(const nlohmann::json& config, const
     if (config.is_number())
         return config.get<T>();
     if (config.is_string()) {
-        const formula::math_expression parsed_formula{config.get<std::string>()};
+        const formula::math_expression<T> parsed_formula{config.get<std::string>()};
         if constexpr (Dimension == 2) {
             if (parsed_formula.variables_count() == 2)
                 return spatial_dependency<T, Dimension>{

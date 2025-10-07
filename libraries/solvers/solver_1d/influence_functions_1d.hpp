@@ -76,7 +76,7 @@ public:
 
 template<class T>
 class custom_1d {
-    formula::math_expression _expression;
+    formula::math_expression<T> _expression;
 
 public: 
     explicit custom_1d(const std::string& expression)

@@ -1,7 +1,9 @@
 #pragma once
 
-#include <string>
 #include <concepts>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace formula::utils {
 
@@ -14,6 +16,13 @@ std::size_t count_all(const std::string& s, char symb);
 
 bool is_latin_str(const std::string& s);
 bool is_number(const std::string& s);
+
+const std::unordered_map<std::string, std::size_t>& get_operator_priority();
+const std::unordered_set<char>& get_one_sym_operators();
+void check_variables_admissibility(const std::unordered_map<std::string, std::size_t>& variables);
+void parentheses_check(const std::string& infix_notation);
+void dots_check(const std::string& infix_notation);
+std::unordered_map<std::string, std::size_t> get_variables(std::string pre_variables);
 
 template<arithmetic T>
 T get_number(const std::string& number, std::size_t* idx = nullptr, int base = 10) {
