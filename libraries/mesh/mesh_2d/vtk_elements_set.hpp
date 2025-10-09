@@ -46,8 +46,8 @@ class vtk_elements_set final : public elements_set<T> {
     static std::vector<finite_element_2d_sptr<T>> make_default_2d_elements() {
         return { std::make_shared<element_2d_integrate<T, triangle, 1>>(quadrature<T, gauss, 1>{}),
                  std::make_shared<element_2d_integrate<T, triangle, 2>>(quadrature<T, gauss, 2>{}),
-                 //std::make_shared<element_2d_integrate<T, serendipity, 1>>(quadrature<T, gauss, 2>{}),
-                 //std::make_shared<element_2d_integrate<T, serendipity, 2>>(quadrature<T, gauss, 3>{}),
+                 std::make_shared<element_2d_integrate<T, metamath::finite_element::serendipity, 1>>(quadrature<T, gauss, 2>{}),
+                 std::make_shared<element_2d_integrate<T, metamath::finite_element::serendipity, 2>>(quadrature<T, gauss, 3>{}),
                  std::make_shared<element_2d_integrate<T, lagrangian_element_2d, 2, 2>>(quadrature<T, gauss, 3>{}) };
     }
 
