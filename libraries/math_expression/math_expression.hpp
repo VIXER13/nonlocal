@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <numeric>
+#include <iostream>
 #include <span>
 #include <stack>
 #include <stdexcept>
