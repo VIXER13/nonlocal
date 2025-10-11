@@ -21,7 +21,7 @@ public:
                                       const std::vector<bool>& is_inner, const size_t node_shift, const bool is_symmetric);
     ~matrix_index_initializer() noexcept override = default;
 
-    void reset(const size_t node);
+    void reset(const size_t node) override;
 
     void operator()(const std::string&, const size_t e, const size_t i, const size_t j);
     void operator()(const std::string&, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL);

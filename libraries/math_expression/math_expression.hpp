@@ -2,6 +2,8 @@
 
 #include "utils.hpp"
 
+#include <logger/logger.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -23,6 +25,14 @@ class math_expression {
 
     std::vector<operand> _polish_notation;
     std::unordered_map<std::string, std::size_t> _variables;
+
+#ifdef __clang__
+    static inline std::stack<T, std::vector<T>> stack;
+    static T pop_stack(std::stack<T, std::vector<T>>& stack);
+#pragma omp threadprivate(stack)
+#else
+    static T pop_stack(std::stack<T>& stack);
+#endif
 
     static const std::unordered_map<std::string, unary_operator>& unary_operators();
     static const std::unordered_map<std::string, binary_operator>& binary_operators();
@@ -101,8 +111,8 @@ std::unordered_map<std::size_t, std::string> math_expression<T>::find_variables_
         if (!one_symbol_operator.contains(op.front()))
             push_it(op);
 
-    if (variables_and_operators_indices.empty()) 
-        std::cout << "Warning: expression does not depend on the variables." << std::endl;
+    if (variables_and_operators_indices.empty())
+        logger::warning() << "Warning: expression does not depend on the variables." << std::endl;
     return variables_and_operators_indices;
 }
 
@@ -163,6 +173,7 @@ void math_expression<T>::assemble_polish_notation(const std::string& infix_notat
 
     const auto& unary = unary_operators();
     const auto& binary = binary_operators();
+    _polish_notation.reserve(polish_notation.size());
     for(const std::string& smth : polish_notation) {
         if (utils::is_number(smth))
             _polish_notation.push_back(utils::get_number<double>(smth));
@@ -176,34 +187,41 @@ void math_expression<T>::assemble_polish_notation(const std::string& infix_notat
 }
 
 template<class T>
+#ifdef __clang__
+T math_expression<T>::pop_stack(std::stack<T, std::vector<T>>& stack) {
+#else
+T math_expression<T>::pop_stack(std::stack<T>& stack) {
+#endif
+    const T value = stack.top();
+    stack.pop();
+    return value;
+}
+
+template<class T>
 T math_expression<T>::calc_polish_notation(const std::span<const T> input_variables) const {
     if (input_variables.size() != _variables.size())
         throw std::domain_error{"Wrong number of variables."};
 
-    std::stack<T> calculation_values;
-    const auto pop_element = [&calculation_values]() {
-        const T value = calculation_values.top();
-        calculation_values.pop();
-        return value;
-    };
-
+#ifndef __clang__
+    std::stack<T> stack;
+#endif
     for(const auto& operation : _polish_notation) {
         if (std::holds_alternative<double>(operation))
-            calculation_values.push(std::get<double>(operation));
+            stack.push(std::get<double>(operation));
         else if (std::holds_alternative<variable_index>(operation))
-            calculation_values.push(input_variables[std::get<variable_index>(operation).index]);
+            stack.push(input_variables[std::get<variable_index>(operation).index]);
         else if (std::holds_alternative<binary_operator>(operation)) {
             const auto& function = std::get<binary_operator>(operation);
-            const T right = pop_element();
-            const T left = pop_element();
-            calculation_values.push(function(left, right));
+            const T right = pop_stack(stack);
+            const T left = pop_stack(stack);
+            stack.push(function(left, right));
         } else {
             const auto& function = std::get<unary_operator>(operation);
-            const T value = pop_element();
-            calculation_values.push(function(value));
+            const T value = pop_stack(stack);
+            stack.push(function(value));
         }
     }
-    return calculation_values.top();
+    return pop_stack(stack);
 }
 
 template<class T>
@@ -249,4 +267,4 @@ T math_expression<T>::operator()(const std::initializer_list<T>& input_vars) con
     return (*this)(std::span(input_vars));
 }
 
-};
+}

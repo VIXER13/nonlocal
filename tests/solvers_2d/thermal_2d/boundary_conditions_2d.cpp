@@ -47,14 +47,14 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
     constexpr T emissivity = 0.7;
     const T alpha = mult * emissivity * sigma / lambda;
     const T shift = mult * 1.01;
-    const auto f = [&](T x) constexpr noexcept -> T {
+    const auto f = [alpha, shift](T x) constexpr noexcept -> T {
         return std::pow(-3. * alpha * (x - shift), -1./3.);
     };
     constexpr T A = 1., m = 0.5, d = 0.1;
-    const auto g = [&](T y) constexpr noexcept -> T {
+    const auto g = [](T y) constexpr noexcept -> T {
         return A * std::exp( -(y - m) * (y - m) / d );
     };
-    const auto ref_sol = [&](const std::array<T, 2>& x) constexpr noexcept -> T {
+    const auto ref_sol = [f, g](const std::array<T, 2>& x) constexpr noexcept -> T {
         return f(x[0]) * g(x[1]);
     };
     // Computational mesh
@@ -71,7 +71,7 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
         }
     };
     // Auxilary data
-    const auto right_part = [&](const std::array<T, 2>& x) constexpr noexcept -> T { 
+    const auto right_part = [ref_sol, alpha, f](const std::array<T, 2>& x) constexpr noexcept -> T { 
         const T a1 = 4 * alpha * alpha * lambda;
         constexpr T a2 = 2 * lambda / d;
         return -ref_sol(x) * (a1 * metamath::functions::power<6>(f(x[0])) + a2 * (2. / d * metamath::functions::power<2>(x[1] - m) - 1.)); 
@@ -94,7 +94,11 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
     using I = int64_t;
 
     "all_boundaries_temperature"_test = [] {
-        const auto [mesh, parameters, auxiliary_data, ref_sol] = test_task_1<T, I>();
+        const auto task = test_task_1<T, I>();
+        auto& mesh = std::get<0>(task);
+        auto& parameters = std::get<1>(task);
+        auto& auxiliary_data = std::get<2>(task);
+        auto& ref_sol = std::get<3>(task);
         // Boundaries conditions
         const auto left_temperature   = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({0.0, x[1]}); };
         const auto right_temperature  = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({1.0, x[1]}); };

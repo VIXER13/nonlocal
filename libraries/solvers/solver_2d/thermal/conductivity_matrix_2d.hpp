@@ -201,7 +201,9 @@ void conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters
         integral_condition(is_symmetric);
     _base::calc_coeffs(theories, is_inner, is_symmetric,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
-            const auto& [model, physic] = parameters.at(group);
+            const auto& group_params = parameters.at(group);
+            const auto& model = group_params.model;
+            const auto& physic = group_params.physical;
             const T integral = std::visit(metamath::visitor{
                 [&](const isotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); },
                 [&](const orthotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); },
@@ -210,7 +212,9 @@ void conductivity_matrix_2d<T, I, J>::compute(const parameters_2d<T>& parameters
             return model.local_weight * integral;
         },
         [this, &parameters](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            const auto& [model, physic] = parameters.at(group);
+            const auto& group_params = parameters.at(group);
+            const auto& model = group_params.model;
+            const auto& physic = group_params.physical;
             const T integral = std::visit(metamath::visitor{
                 [&](const isotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); },
                 [&](const orthotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); },
