@@ -190,7 +190,7 @@ template<class T>
 #ifdef __clang__
 T math_expression<T>::pop_stack(std::stack<T, std::vector<T>>& stack) {
 #else
-T pop_stack(std::stack<T>& stack) {
+T math_expression<T>::pop_stack(std::stack<T>& stack) {
 #endif
     const T value = stack.top();
     stack.pop();

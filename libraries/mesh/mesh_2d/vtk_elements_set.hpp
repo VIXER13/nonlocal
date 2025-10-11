@@ -33,8 +33,6 @@ class vtk_elements_set final : public elements_set<T> {
     using element_2d_integrate = metamath::finite_element::element_2d_integrate<U, Element_Type, Args...>;
     template<class U, size_t Order>
     using triangle = metamath::finite_element::triangle<U, Order>;
-    //template<class U, size_t Order>
-    //using serendipity = metamath::finite_element::serendipity<U, Order>;
     template<class U, size_t N, size_t M>
     using lagrangian_element_2d = metamath::finite_element::lagrangian_element_2d<U, N, M>;
 
