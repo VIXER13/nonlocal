@@ -1,4 +1,5 @@
 #pragma once
 
-#include "norm.hpp"
 #include "factorial.hpp"
+#include "norm.hpp"
+#include "sqrt.hpp"

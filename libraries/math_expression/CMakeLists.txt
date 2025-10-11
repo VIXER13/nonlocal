@@ -6,3 +6,4 @@ add_library(math_expression_lib STATIC
     utils.cpp
 )
 target_include_directories(math_expression_lib PUBLIC ${LIBRARIES_DIR})
+target_link_libraries(math_expression_lib logger_lib)

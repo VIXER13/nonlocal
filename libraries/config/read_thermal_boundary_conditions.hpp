@@ -100,8 +100,10 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_1d(const nloh
             heat_transfer, config.value("temperature", T{0}),
             emissivity);
     }
+
+    default:
+        throw std::domain_error{"Unknown boundary condition type: " + config["kind"].get<std::string>()};
     }
-    throw std::domain_error{"Unknown boundary condition type: " + config["kind"].get<std::string>()};
 }
 
 template<std::floating_point T>
@@ -150,8 +152,10 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_2d(const nloh
             heat_transfer, config.contains("temperature") ? read_coefficient<T, 2u>(config["temperature"], path_with_access + "temperature") : T{0},
             emissivity);
     }
+
+    default:
+        throw std::domain_error{"Unknown boundary condition type: " + config["kind"].get<std::string>()};
     }
-    throw std::domain_error{"Unknown boundary condition type: " + config["kind"].get<std::string>()};
 }
 
 template<std::floating_point T>
