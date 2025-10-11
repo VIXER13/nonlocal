@@ -16,7 +16,7 @@ namespace metamath::hack {
     }
     #else
     template<class T> 
-    T sqrt(T val) { return std::sqrt(value); }
+    constexpr T sqrt(T val) { return std::sqrt(val); }
     #endif
 }
 
