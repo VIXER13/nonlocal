@@ -10,3 +10,7 @@ target_link_libraries(math_expression_lib
     PUBLIC
     logger_lib
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(math_expression_lib PUBLIC OpenMP::OpenMP_CXX)
+endif()

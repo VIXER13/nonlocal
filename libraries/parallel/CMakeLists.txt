@@ -21,3 +21,7 @@ target_link_libraries(parallel_lib
     ${MPI_CXX_LIBRARIES}
     Eigen3::Eigen
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(parallel_lib PUBLIC OpenMP::OpenMP_CXX)
+endif()

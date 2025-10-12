@@ -19,3 +19,7 @@ target_link_libraries(finite_element_solver_1d_base_lib
     assembler_base_lib
     mesh_1d_lib
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(finite_element_solver_1d_base_lib INTERFACE OpenMP::OpenMP_CXX)
+endif()

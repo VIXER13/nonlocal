@@ -21,3 +21,7 @@ target_link_libraries(finite_element_solver_2d_base_lib
     assembler_base_lib
     mesh_2d_lib
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(finite_element_solver_2d_base_lib INTERFACE OpenMP::OpenMP_CXX)
+endif()

@@ -11,3 +11,7 @@ target_link_libraries(assembler_base_lib
     INTERFACE
     Eigen3::Eigen
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(assembler_base_lib INTERFACE OpenMP::OpenMP_CXX)
+endif()

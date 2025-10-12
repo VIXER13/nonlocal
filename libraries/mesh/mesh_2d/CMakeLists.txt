@@ -20,3 +20,7 @@ target_link_libraries(mesh_2d_lib
     parallel_lib
     nonlocal_constants_lib
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(mesh_2d_lib INTERFACE OpenMP::OpenMP_CXX)
+endif()

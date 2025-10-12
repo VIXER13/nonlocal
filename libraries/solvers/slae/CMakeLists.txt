@@ -10,3 +10,7 @@ target_link_libraries(slae_solver_lib
 	Eigen3::Eigen
 	Spectra::Spectra
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(slae_solver_lib INTERFACE OpenMP::OpenMP_CXX)
+endif()

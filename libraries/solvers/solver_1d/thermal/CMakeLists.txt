@@ -19,3 +19,7 @@ target_link_libraries(heat_equation_solver_1d_lib
     mesh_1d_lib
     finite_element_solver_1d_base_lib
 )
+
+if(ENABLE_OMP)
+    target_link_libraries(heat_equation_solver_1d_lib INTERFACE OpenMP::OpenMP_CXX)
+endif()
