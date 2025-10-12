@@ -2,8 +2,8 @@
 
 #include "mesh_container_2d_utils.hpp"
 
-#include "MPI_utils.hpp"
-#include "uniform_ranges.hpp"
+#include <parallel/MPI_utils.hpp>
+#include <parallel/uniform_ranges.hpp>
 
 #include <set>
 
@@ -276,7 +276,7 @@ void mesh_2d<T, I>::clear() {
     _mesh.clear();
     _node_elements.clear();
     _node_elements.shrink_to_fit();
-    _global_to_local.claer();
+    _global_to_local.clear();
     _global_to_local.shrink_to_fit();
     _quad_shifts.clear();
     _quad_shifts.shrink_to_fit();
