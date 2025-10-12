@@ -244,14 +244,10 @@ public:
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         using metamath::functions::power;
-        const T root = std::sqrt(power<2>(x[0]) + power<2>(x[1]));
-        const T cos = x[0] / root;
-        const T sin = x[1] / root;
-        const T cos2 = power<2>(cos);
-        const T sin2 = power<2>(sin);
-        const T distance = std::abs(power<2>(y[0]) * (cos2 / _radius[0] + sin2 / _radius[1]) +
-                                    power<2>(y[1]) * (cos2 / _radius[1] + sin2 / _radius[0]) +
-                                    y[0] * y[1] * cos * sin * (1 / _radius[0] - 1 / _radius[1]));
+        const T x2y2 = metamath::functions::powered_norm<2>(x);
+        const T distance = ( (x2y2 - x[0] * y[0] - x[1] * y[1]) * _radius[1] + 
+                            power<2>(x[1] * y[0] - x[0] * y[1]) * _radius[0]) /
+                           (_radius[0] * _radius[1] * x2y2);
         return distance < T{1} ? _norm * (T{1} - distance) : T{0};
     }
 };
