@@ -17,23 +17,18 @@
 > > Поддержка расчётов с использованием изотропных материалов
 
 **Сборка**
-Для сборки необходимы необходимы следующие программы и пакеты: gcc/g++ >= 11.3 или clang/clang++ >= 18, CMake >= 3.16, conan == 1.60.1. После их установки необходимо последовательно выполнить следующие команды в командной строке
-> mkdir build
+Для сборки необходимы необходимы следующие программы и пакеты: gcc/g++ >= 14 или clang/clang++ >= 18, CMake >= 3.16, conan > 2.0 После их установки необходимо последовательно выполнить следующие команды в командной строке
+> conan install . --output-folder=build --build=missing
 > 
-> cd build
+> cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE=build/conan_toolchain.cmake -DCMAKE_BUILD_TYPE=Release
 > 
-> conan install ./..
-> 
-> cmake ..
-> 
-> make -j${nproc}
+> cmake --build build
 
 Команда make соберёт проекты NonLocFEM и unit_tests.
 
 **Запуск**
 Перед первым запуском настоятельно рекомендуется запустить юнит тесты, чтобы убедиться, что основные компоненты программы работают корректно
-> make unit_tests
-> ./bin/unit_tests
+> ./build/tests/unit_tests
 
 Для запуска программы NonLocFEM необходимо указать путь к исполняемому файлу и в качестве аргумента передать путь к .json файлу с конфигурацией запуска, например
->./bin/NonLocFEM ../documents/config_examples/thermal_stationary_1d.json
+>./build/NonLocFEM/NonLocFEM ./documents/config_examples/thermal_stationary_1d.json
