@@ -76,8 +76,8 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     if (auxiliary_data.right_part)
         integrate_right_part<DoF>(f_init, *mesh, *auxiliary_data.right_part);
     if (is_neumann) {
-    //     if (!is_solvable_neumann_problem(*mesh_proxy, f))
-    //         throw std::domain_error{"Unsolvable Neumann problem: contour integral != 0."};
+        //if (!is_solvable_neumann_problem(*mesh_proxy, f))
+            //throw std::domain_error{"Unsolvable Neumann problem: contour integral != 0."};
         f_init[f_init.size() - 1] = auxiliary_data.energy;
     }
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = f_init;
@@ -89,6 +89,10 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
 
+    std::vector<T> solution(mesh->quad_shift(mesh->container().elements_2d_count()), T{0});
+    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, solution);
+    solution = {};
+
     T difference = T{1};
     T norm_of_residual = T{1};
     size_t iteration = 0;
@@ -98,7 +102,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         std::swap(temperature_curr, temperature_prev);
         f = f_init;
         conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
-        conductivity.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
+        conductivity.compute(conductivity_parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
         convection_condition_2d(conductivity.matrix().inner(), *mesh, boundaries_conditions);
         residual = conductivity.matrix().inner().template selfadjointView<Eigen::Upper>() * temperature_prev;
         residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
@@ -116,7 +120,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
             } else {
                 conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
                 conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
-                conductivity_local.compute(parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
+                conductivity_local.compute(conductivity_parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
                 slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};
                 logger::info() << "ILLT preconditioner" << std::endl;
                 solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(

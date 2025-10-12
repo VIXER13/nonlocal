@@ -98,4 +98,18 @@ std::unordered_map<std::string, theory_t> theories_types(const std::unordered_ma
     return theories;
 }
 
+template<std::floating_point T, size_t Dimension>
+bool is_constant(const coefficient_t<T, Dimension>& coefficient) {
+    return std::holds_alternative<T>(coefficient);
+}
+
+template<std::floating_point T, size_t Dimension>
+T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
+    return std::visit(metamath::visitor{
+        [](const T value) noexcept { return value; },
+        [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
+        [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
+    }, coefficient);
+}
+
 }

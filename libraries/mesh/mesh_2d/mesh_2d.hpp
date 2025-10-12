@@ -51,6 +51,7 @@ public:
     size_t global_to_local(const size_t e, const size_t node) const;
 
     size_t quad_shift(const size_t e) const;
+    std::ranges::iota_view<size_t, size_t> quad_shifts(const std::string& group) const;
     std::ranges::iota_view<size_t, size_t> quad_shifts_count(const size_t e) const;
     const std::array<T, 2>& quad_coord(const size_t qshift) const;
     const std::array<T, 2>& quad_coord(const size_t e, const size_t q) const;
@@ -128,6 +129,12 @@ size_t mesh_2d<T, I>::global_to_local(const size_t e, const size_t node) const {
 template<class T, class I>
 size_t mesh_2d<T, I>::quad_shift(const size_t e) const {
     return _quad_shifts[e];
+}
+
+template<class T, class I>
+std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::quad_shifts(const std::string& group) const {
+    const auto elements = container().elements(group);
+    return {quad_shift(elements.front()), quad_shift(elements.back() + 1)};
 }
 
 template<class T, class I>
