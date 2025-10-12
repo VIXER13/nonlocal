@@ -20,7 +20,7 @@ if(ENABLE_OMP)
     message(STATUS "OpenMP enabled")
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 enable_testing()
 
 ### Conan 2 integration (CMakeDeps + CMakeToolchain) ###
