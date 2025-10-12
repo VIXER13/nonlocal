@@ -1,6 +1,7 @@
 #pragma once
 
 #include <constants/nonlocal_constants.hpp>
+#include <metamath/types/visitor.hpp>
 
 #include <algorithm>
 #include <array>
