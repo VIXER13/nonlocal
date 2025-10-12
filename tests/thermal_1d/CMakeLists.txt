@@ -4,19 +4,24 @@ project(thermal_1d_test)
 
 set(INCLUDES $ENV{CPATH})
 
-add_library(thermal_1d_test_lib OBJECT
+add_library(
+    thermal_1d_test_lib
+    OBJECT
     flux_relaxation.cpp
     nonstationary.cpp
     stationary.cpp
 )
-target_include_directories(thermal_1d_test_lib PUBLIC
-    ${LIBRARIES_DIR}
-    ${INCLUDES}
+target_include_directories(
+    thermal_1d_test_lib
+    PUBLIC #
+        ${LIBRARIES_DIR}
+        ${INCLUDES}
 )
 
-target_link_libraries(thermal_1d_test_lib
-    PRIVATE
-    finite_element_solver_1d_lib
-    heat_equation_solver_1d_lib
-    Boost::ut
+target_link_libraries(
+    thermal_1d_test_lib
+    PRIVATE #
+        finite_element_solver_1d_lib
+        heat_equation_solver_1d_lib
+        Boost::ut
 )

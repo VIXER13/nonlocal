@@ -4,17 +4,16 @@ project(math_expression_tests)
 
 set(INCLUDES $ENV{CPATH})
 
-add_library(math_expression_test_lib OBJECT 
-    math_expression_test.cpp
+add_library(math_expression_test_lib OBJECT math_expression_test.cpp)
+target_include_directories(
+    math_expression_test_lib
+    PUBLIC #
+        ${LIBRARIES_DIR}
+        ${INCLUDES}
 )
-target_include_directories(math_expression_test_lib PUBLIC
-    ${LIBRARIES_DIR}
-    ${INCLUDES}
+target_link_libraries(
+    math_expression_test_lib
+    PRIVATE #
+        math_expression_lib
+        Boost::ut
 )
-target_link_libraries(math_expression_test_lib
-    PRIVATE
-    math_expression_lib
-    Boost::ut
-)
-
-

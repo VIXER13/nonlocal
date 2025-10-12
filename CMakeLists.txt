@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(nonlocal)
 
-if (NOT CMAKE_BUILD_TYPE)
+if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-if (MPI_BUILD)
+if(MPI_BUILD)
     find_package(MPI)
     if(MPI_FOUND)
         add_definitions(-DMPI_BUILD=1)
@@ -23,7 +23,7 @@ endif()
 set(CMAKE_CXX_STANDARD 23)
 enable_testing()
 
-### Conan 2 integration (CMakeDeps + CMakeToolchain) ###
+# Conan 2 integration (CMakeDeps + CMakeToolchain)
 # The toolchain file is passed from the "conan install" step (see README).
 # After that we just rely on find_package with CONFIG mode to load dependencies.
 find_package(Eigen3 REQUIRED CONFIG)

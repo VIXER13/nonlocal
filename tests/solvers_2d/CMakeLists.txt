@@ -11,13 +11,16 @@ add_subdirectory(thermal_2d)
 add_subdirectory(mechanical_2d)
 
 add_library(solvers_2d_test_lib INTERFACE)
-target_include_directories(solvers_2d_test_lib INTERFACE
-    ${LIBRARIES_DIR}
-    ${INCLUDES}
-    ${PROJECT_ROOT}/build
+target_include_directories(
+    solvers_2d_test_lib
+    INTERFACE #
+        ${LIBRARIES_DIR}
+        ${INCLUDES}
+        ${PROJECT_ROOT}/build
 )
-target_link_libraries(solvers_2d_test_lib
-    INTERFACE
-    thermal_2d_test_lib
-    mechanical_2d_test_lib
+target_link_libraries(
+    solvers_2d_test_lib
+    INTERFACE #
+        thermal_2d_test_lib
+        mechanical_2d_test_lib
 )

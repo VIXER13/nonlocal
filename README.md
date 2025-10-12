@@ -32,3 +32,8 @@
 
 Для запуска программы NonLocFEM необходимо указать путь к исполняемому файлу и в качестве аргумента передать путь к .json файлу с конфигурацией запуска, например
 >./build/NonLocFEM/NonLocFEM ./documents/config_examples/thermal_stationary_1d.json
+
+**Разработка**
+- Рекомендуется держать файлы CMakeLists.txt в форматированном состоянии. Для этого удобно использовать gersemi
+  > pip3 install gersemi
+  > find . -type f -name CMakeLists.txt -exec python3 -m  gersemi -i --definitions CMakeTools/EmbeddedFiles.cmake {} +
