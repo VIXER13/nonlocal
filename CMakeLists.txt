@@ -21,20 +21,15 @@ if(OPENMP_FOUND)
 endif()
 
 set(CMAKE_CXX_STANDARD 20)
-add_compile_options(-O2)
 enable_testing()
 
-if (NOT DEFINED NO_CONAN)
-    if(NOT EXISTS "${CMAKE_BINARY_DIR}/conanbuildinfo.cmake")
-        message(STATUS "Downloading conanbuildinfo.cmake from https://github.com/conan-io/cmake-conan")
-        file(DOWNLOAD "https://raw.githubusercontent.com/conan-io/cmake-conan/master/conan.cmake" "${CMAKE_BINARY_DIR}/conanbuildinfo.cmake")
-        include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-        conan_cmake_run(CONANFILE conanfile.txt BASIC_SETUP CMAKE_TARGETS KEEP_RPATHS)
-    else()
-        include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-    endif()
-    conan_basic_setup()
-endif()
+### Conan 2 integration (CMakeDeps + CMakeToolchain) ###
+# The toolchain file is passed from the "conan install" step (see README).
+# After that we just rely on find_package with CONFIG mode to load dependencies.
+find_package(Eigen3 REQUIRED CONFIG)
+find_package(nlohmann_json REQUIRED CONFIG)
+find_package(spectra REQUIRED CONFIG)
+find_package(ut REQUIRED CONFIG)
 
 # libraries
 add_subdirectory(libraries)

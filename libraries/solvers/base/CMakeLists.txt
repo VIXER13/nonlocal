@@ -7,4 +7,7 @@ target_sources(assembler_base_lib INTERFACE
     utils.hpp
 )
 target_include_directories(assembler_base_lib INTERFACE ${LIBRARIES_DIR})
-target_link_libraries(assembler_base_lib INTERFACE)
+target_link_libraries(assembler_base_lib
+    INTERFACE
+    Eigen3::Eigen
+)

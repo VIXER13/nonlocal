@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.16)
 project(solvers_2d)
 
 set(INCLUDES $ENV{CPATH})
-if (NOT DEFINED NO_CONAN)
-    set(INCLUDES ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT})
-endif()
 
 FileEmbedAdd(./meshes/plate_10x1_h0.125.su2)
 FileEmbedAdd(./meshes/square_1x1_16el_uniform_mesh.su2)

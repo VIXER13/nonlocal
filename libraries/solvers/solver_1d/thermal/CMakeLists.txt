@@ -14,4 +14,8 @@ target_sources(
     heat_equation_solution_1d.hpp
 )
 target_include_directories(heat_equation_solver_1d_lib INTERFACE ${LIBRARIES_DIR})
-target_link_libraries(heat_equation_solver_1d_lib INTERFACE mesh_1d_lib)
+target_link_libraries(heat_equation_solver_1d_lib
+    INTERFACE
+    mesh_1d_lib
+    finite_element_solver_1d_base_lib
+)

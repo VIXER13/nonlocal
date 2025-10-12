@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.16)
 project(config_tests)
 
 set(INCLUDES $ENV{CPATH})
-if (NOT DEFINED NO_CONAN)
-    set(INCLUDES ${CONAN_INCLUDE_DIRS_BOOST-EXT-UT})
-endif()
 
 FileEmbedAdd(test_exceptions.json)
 FileEmbedAdd(test_utils.json)
@@ -23,4 +20,5 @@ target_include_directories(config_test_lib PRIVATE
 target_link_libraries(config_test_lib 
     PRIVATE
     config_lib
+    Boost::ut
 )

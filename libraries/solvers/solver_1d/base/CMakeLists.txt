@@ -14,7 +14,8 @@ target_sources(finite_element_solver_1d_base_lib INTERFACE
     solution_1d.hpp
 )
 target_include_directories(finite_element_solver_1d_base_lib INTERFACE ${LIBRARIES_DIR})
-target_link_libraries(finite_element_solver_1d_base_lib INTERFACE 
+target_link_libraries(finite_element_solver_1d_base_lib
+    INTERFACE 
     assembler_base_lib
     mesh_1d_lib
 )

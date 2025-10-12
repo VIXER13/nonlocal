@@ -13,3 +13,7 @@ target_sources(heat_equation_solver_2d_lib INTERFACE
 )
 target_include_directories(heat_equation_solver_2d_lib INTERFACE ${LIBRARIES_DIR})
 target_link_libraries(heat_equation_solver_2d_lib INTERFACE mesh_2d_lib)
+target_link_libraries(heat_equation_solver_2d_lib
+    INTERFACE
+    finite_element_solver_2d_base_lib
+)

@@ -15,17 +15,19 @@ add_subdirectory(thermal_1d)
 add_subdirectory(solvers_2d)
 
 add_executable(unit_tests nonlocal_tests.cpp)
-target_include_directories(unit_tests PUBLIC ${LIBRARIES_DIR})
+target_include_directories(unit_tests PRIVATE ${LIBRARIES_DIR})
 target_link_libraries(unit_tests
+    PRIVATE
     embedded_files
     finite_elements_test_lib
     math_expression_test_lib
     parallel_test_lib
     config_test_lib
-	thermal_1d_test_lib
+    thermal_1d_test_lib
     solvers_2d_test_lib
     thermal_2d_test_lib
     mechanical_2d_test_lib
+    Boost::ut
 )
 
 add_test(NAME unit_tests COMMAND unit_tests)

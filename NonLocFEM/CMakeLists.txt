@@ -6,8 +6,9 @@ add_executable(NonLocFEM
     main.cpp
     determine_problem.cpp
 )
-target_include_directories(NonLocFEM PUBLIC ${LIBRARIES_DIR})
+target_include_directories(NonLocFEM PRIVATE ${LIBRARIES_DIR})
 target_link_libraries(NonLocFEM
+    PRIVATE
     config_lib
     finite_element_solver_1d_lib
     finite_element_solver_2d_lib

@@ -14,8 +14,8 @@ target_sources(mesh_2d_lib INTERFACE
     indexator_base.hpp
 )
 target_include_directories(mesh_2d_lib INTERFACE ${LIBRARIES_DIR})
-target_link_libraries(mesh_2d_lib INTERFACE
-    logger_lib
+target_link_libraries(mesh_2d_lib
+    INTERFACE
     metamath_lib
     parallel_lib
     nonlocal_constants_lib

@@ -1,7 +1,6 @@
 #include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
 
 #include <boost/ut.hpp>
-#include <nlohmann/json.hpp>
 
 #include <embedded_files/square_1x1_16el_uniform_mesh_su2.h>
 

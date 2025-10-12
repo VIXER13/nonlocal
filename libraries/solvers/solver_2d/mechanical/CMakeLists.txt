@@ -11,3 +11,8 @@ target_sources(structural_solver_2d_lib INTERFACE
     temperature_condition_2d.hpp
 )
 target_include_directories(structural_solver_2d_lib INTERFACE ${LIBRARIES_DIR})
+target_link_libraries(structural_solver_2d_lib
+    INTERFACE
+    finite_element_solver_2d_base_lib
+    mesh_2d_lib
+)
