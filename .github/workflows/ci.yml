@@ -25,10 +25,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.apt }} make
 
-      - name: Setup Conan
+      - name: Install Conan
         uses: conan-io/setup-conan@v1
         with:
           version: 2.21.0
+
+      - name: Setup Conan
         run: conan install . --build=missing --output-folder=build --profile ./profiles/${{ matrix.compiler }}
 
       - name: Configure project
