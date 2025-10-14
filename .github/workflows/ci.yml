@@ -34,11 +34,17 @@ jobs:
         run: |
           make build COMPILER=${{ matrix.compiler }}
 
+      - name: Prepare binaries for artifact
+        run: |
+          mkdir -p artifacts
+          cp build/NonLocFEM/NonLocFEM artifacts/ 2>/dev/null || true
+          cp build/tests/unit_tests artifacts/ 2>/dev/null || true
+
       - name: Upload build directory
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.compiler }}
-          path: build
+          path: artifacts
           if-no-files-found: error
 
   test:
@@ -59,9 +65,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-${{ matrix.compiler }}
-          path: build
+          path: ./bin
 
-      - name: Run ctest
-        working-directory: build
+      - name: Run unit test
         run: |
-          sudo ./tests/unit_test
+          ./bin/unit_tests
