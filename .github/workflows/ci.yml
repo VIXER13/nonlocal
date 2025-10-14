@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [ conan2-migration ]
+
+jobs:
+  build:
+    name: Build (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+            apt: gcc-13 g++-13
+          - compiler: clang
+            apt: clang-18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (APT)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.apt }} make
+
+      - name: Setup Conan
+        uses: conan-io/conan-action@v1
+        with:
+          version: 2.4.0
+          python-version: 3.12
+
+      - name: Build project
+        run: |
+          make build COMPILER=${{ matrix.compiler }}
+
+      - name: Upload build directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.compiler }}
+          path: build
+          if-no-files-found: error
+
+  test:
+    name: Test (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - compiler: gcc
+          - compiler: clang
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-${{ matrix.compiler }}
+          path: build
+
+      - name: Run ctest
+        working-directory: build
+        run: |
+          make run-tests
