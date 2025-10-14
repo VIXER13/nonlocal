@@ -16,7 +16,6 @@ target_include_directories(
 target_link_libraries(
     mesh_1d_lib
     INTERFACE #
-        #
         metamath_lib
         nonlocal_constants_lib
 )

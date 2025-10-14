@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(config_tests)
 
-set(INCLUDES $ENV{CPATH})
 
 FileEmbedAdd(test_exceptions.json)
 FileEmbedAdd(test_utils.json)
@@ -13,7 +12,7 @@ target_include_directories(
     config_test_lib
     PRIVATE #
         ${LIBRARIES_DIR}
-        ${INCLUDES}
+        
         ${PROJECT_ROOT}/build/embedded_files
 )
 target_link_libraries(

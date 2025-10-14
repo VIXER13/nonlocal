@@ -2,14 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(mechanical_2d_test)
 
-set(INCLUDES $ENV{CPATH})
 
 add_library(mechanical_2d_test_lib OBJECT saint_venant.cpp)
 target_include_directories(
     mechanical_2d_test_lib
     PUBLIC #
         ${LIBRARIES_DIR}
-        ${INCLUDES}
+        
         ${PROJECT_ROOT}/build
 )
 

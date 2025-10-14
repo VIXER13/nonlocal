@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(solvers_2d)
 
-set(INCLUDES $ENV{CPATH})
 
 FileEmbedAdd(./meshes/plate_10x1_h0.125.su2)
 FileEmbedAdd(./meshes/square_1x1_16el_uniform_mesh.su2)
@@ -15,7 +14,7 @@ target_include_directories(
     solvers_2d_test_lib
     INTERFACE #
         ${LIBRARIES_DIR}
-        ${INCLUDES}
+        
         ${PROJECT_ROOT}/build
 )
 target_link_libraries(

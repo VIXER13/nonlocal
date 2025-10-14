@@ -23,7 +23,6 @@ target_include_directories(
 target_link_libraries(
     mesh_2d_lib
     INTERFACE #
-        #
         metamath_lib
         parallel_lib
         nonlocal_constants_lib

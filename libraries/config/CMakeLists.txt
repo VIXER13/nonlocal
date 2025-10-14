@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(config)
 
-set(INCLUDES $ENV{CPATH})
 add_library(
     config_lib
     STATIC
@@ -17,7 +16,7 @@ target_include_directories(
     config_lib
     PUBLIC #
         ${LIBRARIES_DIR}
-        ${INCLUDES}
+        
 )
 target_link_libraries(
     config_lib

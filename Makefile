@@ -12,19 +12,17 @@ $(TOOLCHAIN_FILE): $(PROFILE_PATH)
 $(BUILD_MAKEFILE): $(TOOLCHAIN_FILE)
 	cd $(BUILD_DIR) && cmake .. --preset conan-release
 
-$(UNITTEST_FILE): $(BUILD_MAKEFILE)
-	cmake --build $(BUILD_DIR) --config Release --parallel -- -s
-
 # Default target - ensure everything is set up
 .PHONY: setup
 setup: $(BUILD_MAKEFILE)
 
 # Build target
 .PHONY: build
-build: $(UNITTEST_FILE)
+build:
+	cmake --build $(BUILD_DIR) --config Release --parallel -- -s
 
 .PHONY: run-tests
-run-tests: build
+run-tests:
 	cd $(BUILD_DIR) && ctest --output-on-failure
 
 # Clean target

@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(thermal_1d_test)
 
-set(INCLUDES $ENV{CPATH})
 
 add_library(
     thermal_1d_test_lib
@@ -15,7 +14,7 @@ target_include_directories(
     thermal_1d_test_lib
     PUBLIC #
         ${LIBRARIES_DIR}
-        ${INCLUDES}
+        
 )
 
 target_link_libraries(
