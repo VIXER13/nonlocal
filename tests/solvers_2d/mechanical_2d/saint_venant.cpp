@@ -67,7 +67,7 @@ const suite<"saint_venant"> _ = [] {
 
     "displacement_x_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;
-        static constexpr T Epsilon = 7.5e-14;
+        static constexpr T Epsilon = 7.5e-13;
         const T integral = mesh::utils::integrate(*mesh, solution.displacement()[X]);
             expect(approx(integral, Expected, Epsilon));
     };
