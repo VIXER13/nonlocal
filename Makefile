@@ -1,26 +1,35 @@
+COMPILER ?= clang
 BUILD_DIR := build
 TOOLCHAIN_FILE := $(BUILD_DIR)/conan_toolchain.cmake
 UNITTEST_FILE := $(BUILD_DIR)/tests/unit_tests
 BUILD_MAKEFILE := $(BUILD_DIR)/Makefile
-PROFILE_PATH := ./.profiles/clang
+PROFILE_PATH := ./.profiles/$(COMPILER)
+COMPILER_MARKER := $(BUILD_DIR)/.compiler.stamp
 
-# Install conan dependencies if toolchain doesn't exist
-$(TOOLCHAIN_FILE): $(PROFILE_PATH)
+$(COMPILER_MARKER):
+	mkdir -p $(BUILD_DIR)
+	echo $(COMPILER) > $@
+
+$(TOOLCHAIN_FILE): $(COMPILER_MARKER) $(PROFILE_PATH)
 	conan install . --build=missing --output-folder=$(BUILD_DIR) --profile $(PROFILE_PATH)
 
-# Generate CMake build files if Makefile doesn't exist
-$(BUILD_MAKEFILE): $(TOOLCHAIN_FILE)
+$(BUILD_MAKEFILE): $(COMPILER_MARKER) $(TOOLCHAIN_FILE)
 	cd $(BUILD_DIR) && cmake .. --preset conan-release
 
-# Default target - ensure everything is set up
+.PHONY: update_compiler
+update_compiler:
+	@[ "$$(cat $(COMPILER_MARKER))" != "$(COMPILER)" ] && echo "$(COMPILER)" > $(COMPILER_MARKER) || true
+
+# Setup target
 .PHONY: setup
 setup: $(BUILD_MAKEFILE)
 
 # Build target
 .PHONY: build
-build:
+build: update_compiler setup
 	cmake --build $(BUILD_DIR) --config Release --parallel -- -s
 
+# Run unit tests
 .PHONY: run-tests
 run-tests:
 	cd $(BUILD_DIR) && ctest --output-on-failure
@@ -30,15 +39,14 @@ run-tests:
 clean:
 	rm -rf $(BUILD_DIR)
 
-# Help target
+# Print help
 .PHONY: help
 help:
-	@echo "Available targets:"
-	@echo "  setup       - Create build directory and configure project"
-	@echo "  build       - Build the project"
-	@echo "  run-tests   - Run unit tests"
-	@echo "  clean       - Remove build directory"
-	@echo "  help        - Show this help message (default)"
+	@echo "Available targets:" 
+	@echo "  setup         - Configure project (reconfigures if COMPILER changed)" 
+	@echo "  build         - Build the project" 
+	@echo "  run-tests     - Run unit tests (builds first)" 
+	@echo "  clean         - Remove build directory" 
+	@echo "  help          - Show this help message (default)" 
 
-# Default target is build
 .DEFAULT_GOAL := help
