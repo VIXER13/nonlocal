@@ -1,4 +1,4 @@
-name: CI
+name: Build & Test
 
 on:
   push:
@@ -29,45 +29,19 @@ jobs:
         uses: conan-io/setup-conan@v1
         with:
           version: 2.21.0
+        run: conan install . --build=missing --output-folder=build --profile ./profiles/${{ matrix.compiler }}
+
+      - name: Configure project
+        working-directory: ./build
+        run: |
+          cmake .. --preset conan-release
 
       - name: Build project
+        working-directory: ./build
         run: |
-          make build COMPILER=${{ matrix.compiler }}
+          cmake --build . --config Release --parallel
 
-      - name: Prepare binaries for artifact
+      - name: Run unit tests
+        working-directory: ./build
         run: |
-          mkdir -p artifacts
-          cp build/NonLocFEM/NonLocFEM artifacts/ 2>/dev/null || true
-          cp build/tests/unit_tests artifacts/ 2>/dev/null || true
-
-      - name: Upload build directory
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-${{ matrix.compiler }}
-          path: artifacts
-          if-no-files-found: error
-
-  test:
-    name: Test (${{ matrix.compiler }})
-    runs-on: ubuntu-24.04
-    needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - compiler: gcc
-          - compiler: clang
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-${{ matrix.compiler }}
-          path: ./bin
-
-      - name: Run unit test
-        run: |
-          chmod +x ./bin/unit_tests
-          ./bin/unit_tests
+          ctest --output-on-failure
