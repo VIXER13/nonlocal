@@ -64,4 +64,4 @@ jobs:
       - name: Run ctest
         working-directory: build
         run: |
-          ./tests/unit_tests
+          sudo ./tests/unit_tests
