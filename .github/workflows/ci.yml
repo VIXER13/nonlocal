@@ -69,4 +69,5 @@ jobs:
 
       - name: Run unit test
         run: |
+          chmod +x ./bin/unit_tests
           ./bin/unit_tests
