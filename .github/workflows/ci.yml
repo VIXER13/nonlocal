@@ -64,4 +64,4 @@ jobs:
       - name: Run ctest
         working-directory: build
         run: |
-          make run-tests
+          ./tests/unit_tests
