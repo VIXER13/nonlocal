@@ -28,8 +28,7 @@ jobs:
       - name: Setup Conan
         uses: conan-io/setup-conan@v1
         with:
-          version: 2.4.0
-          python-version: 3.12
+          version: 2.21.0
 
       - name: Build project
         run: |
