@@ -15,7 +15,7 @@ jobs:
           - compiler: gcc
             apt: gcc-13 g++-13
           - compiler: clang
-            apt: clang-18
+            apt: clang-18 libomp-18-dev
     steps:
       - name: Checkout
         uses: actions/checkout@v4
