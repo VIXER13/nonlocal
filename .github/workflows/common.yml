@@ -1,21 +1,23 @@
 name: Build & Test
 
 on:
-  push:
-    branches: [ conan2-migration ]
+  workflow_call:
+    inputs:
+      compiler:
+        required: true
+        type: string
+      deps:
+        required: true
+        type: string
+    outputs:
+      build_output:
+        value: ${{ jobs.build.outputs.result }}
 
 jobs:
   build:
-    name: Build (${{ matrix.compiler }})
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - compiler: gcc
-            apt: gcc-13 g++-13
-          - compiler: clang
-            apt: clang-18 libomp-18-dev
+    outputs:
+      result: ${{ steps.build_app.outputs.status }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +25,7 @@ jobs:
       - name: Install dependencies (APT)
         run: |
           sudo apt-get update
-          sudo apt-get install -y ${{ matrix.apt }} make
+          sudo apt-get install -y ${{ inputs.deps }} make
 
       - name: Install Conan
         uses: conan-io/setup-conan@v1
@@ -31,7 +33,7 @@ jobs:
           version: 2.21.0
 
       - name: Setup Conan
-        run: conan install . --build=missing --output-folder=build --profile ./.profiles/${{ matrix.compiler }}
+        run: conan install . --build=missing --output-folder=build --profile ./.profiles/${{ inputs.compiler }}
 
       - name: Configure project
         working-directory: ./build

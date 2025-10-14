@@ -1,0 +1,12 @@
+name: GCC workflow
+
+on:
+  push:
+    branches: [ conan2-migration ]
+
+jobs:
+  ci_job:
+    uses: ./.github/workflows/common.yml
+    with:
+      compiler: gcc
+      deps: gcc-13 g++-13

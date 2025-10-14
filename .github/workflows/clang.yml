@@ -1,0 +1,12 @@
+name: CLANG workflow
+
+on:
+  push:
+    branches: [ conan2-migration ]
+
+jobs:
+  ci_job:
+    uses: ./.github/workflows/common.yml
+    with:
+      compiler: clang
+      deps: clang-18 libomp-18-dev

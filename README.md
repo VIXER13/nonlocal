@@ -1,8 +1,8 @@
 # NonLocFEM
 
 <!-- CI Badges (matrix jobs) -->
-![gcc](https://img.shields.io/github/actions/workflow/status/VIXER13/nonlocal/ci.yml?branch=conan2-migration&job=Build%20(gcc)&label=gcc-build)
-![clang](https://img.shields.io/github/actions/workflow/status/VIXER13/nonlocal/ci.yml?branch=conan2-migration&job=Build%20(clang)&label=clang-build)
+![gcc](https://img.shields.io/github/actions/workflow/status/VIXER13/nonlocal/gcc.yml?branch=conan2-migration&label=gcc-build)
+![clang](https://img.shields.io/github/actions/workflow/status/VIXER13/nonlocal/clang.yml?branch=conan2-migration&label=clang-build)
 
 Программа NonLocFEM предназначена для решения задач нелокальной теплопроводности и термоупругости в одномерных и двумерных постановках. На текущий момент доступны следующие варианты и всевозможные комбинации расчётов:
 > Уравнения стационарной и нестационарной теплопроводности (1D/2D)
