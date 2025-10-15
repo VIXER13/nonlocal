@@ -1,4 +1,4 @@
-name: GCC workflow
+name: gcc
 
 on:
   push:

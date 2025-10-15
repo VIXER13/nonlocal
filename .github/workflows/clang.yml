@@ -1,4 +1,4 @@
-name: CLANG workflow
+name: clang
 
 on:
   push:
