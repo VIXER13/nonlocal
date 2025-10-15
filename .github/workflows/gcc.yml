@@ -3,6 +3,9 @@ name: GCC workflow
 on:
   push:
     branches: [ conan2-migration ]
+    paths-ignore:
+      - 'documents/**'
+      - '*.md'
 
 jobs:
   ci_job:
