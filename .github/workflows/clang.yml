@@ -1,0 +1,15 @@
+name: clang
+
+on:
+  push:
+    branches: [ conan2-migration ]
+    paths-ignore:
+      - 'documents/**'
+      - '*.md'
+
+jobs:
+  ci_job:
+    uses: ./.github/workflows/common.yml
+    with:
+      compiler: clang
+      deps: clang-18 libomp-18-dev

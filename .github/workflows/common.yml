@@ -1,0 +1,51 @@
+name: Build & Test
+
+on:
+  workflow_call:
+    inputs:
+      compiler:
+        required: true
+        type: string
+      deps:
+        required: true
+        type: string
+    outputs:
+      build_output:
+        value: ${{ jobs.build.outputs.result }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    outputs:
+      result: ${{ steps.build_app.outputs.status }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (APT)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.deps }} make
+
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+        with:
+          version: 2.21.0
+
+      - name: Setup Conan
+        run: conan install . --build=missing --output-folder=build --profile ./.profiles/${{ inputs.compiler }}
+
+      - name: Configure project
+        working-directory: ./build
+        run: |
+          cmake .. --preset conan-release
+
+      - name: Build project
+        working-directory: ./build
+        run: |
+          cmake --build . --config Release --parallel
+
+      - name: Run unit tests
+        working-directory: ./build
+        run: |
+          ctest --output-on-failure

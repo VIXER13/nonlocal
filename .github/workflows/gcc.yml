@@ -1,0 +1,15 @@
+name: gcc
+
+on:
+  push:
+    branches: [ conan2-migration ]
+    paths-ignore:
+      - 'documents/**'
+      - '*.md'
+
+jobs:
+  ci_job:
+    uses: ./.github/workflows/common.yml
+    with:
+      compiler: gcc
+      deps: gcc-13 g++-13
