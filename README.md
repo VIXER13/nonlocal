@@ -41,4 +41,5 @@
 **Разработка**
 - Рекомендуется держать файлы CMakeLists.txt в форматированном состоянии. Для этого удобно использовать gersemi
   > pip3 install gersemi
+  > 
   > find . -type f -name CMakeLists.txt -exec python3 -m  gersemi -i --definitions CMakeTools/EmbeddedFiles.cmake {} +
