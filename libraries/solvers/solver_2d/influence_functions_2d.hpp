@@ -236,18 +236,20 @@ template<class T>
 class polynomial_with_angle_2d final {
     std::array<T, 2> _radius = {};
     const T _norm = 0;
+    const T _dist_norm = T{1};
 
 public:
     explicit polynomial_with_angle_2d(const std::array<T, 2>& radius) noexcept 
         : _radius{radius[0] * radius[0], radius[1] * radius[1]}
-        , _norm{T{2} / (std::numbers::pi_v<T> * radius[0] * radius[1])} {}
+        , _norm{T{2} / (std::numbers::pi_v<T> * radius[0] * radius[1])}
+        , _dist_norm{_radius[0] * _radius[1]} {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         using metamath::functions::power;
-        const T x2y2 = metamath::functions::powered_norm<2>(x);
-        const T distance = ( (x2y2 - x[0] * y[0] - x[1] * y[1]) * _radius[1] + 
-                            power<2>(x[1] * y[0] - x[0] * y[1]) * _radius[0]) /
-                           (_radius[0] * _radius[1] * x2y2);
+        using metamath::functions::powered_norm;
+        const T distance = (_radius[0] * power<2u>(x[0] * y[1] - x[1] * y[0]) +
+                            _radius[1] * power<2u>(x[0] * (x[0] - y[0]) + x[1] * (x[1] - y[1]))) /
+                           (_dist_norm * powered_norm<2>(x));
         return distance < T{1} ? _norm * (T{1} - distance) : T{0};
     }
 };
