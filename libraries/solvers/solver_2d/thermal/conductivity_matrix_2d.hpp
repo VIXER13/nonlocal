@@ -144,13 +144,13 @@ T conductivity_matrix_2d<T, I, J>::integrate_nonlocal(const Material& conductivi
             const auto& conduct = conductivity.index() ? std::get<1>(conductivity)[qshiftNL + qNL] : std::get<0>(conductivity);
             const auto& dNj = _base::mesh().derivatives(eNL, jNL, qNL);
             const T influence_weight = elNL.weight(qNL) * influence(qcoordL, _base::mesh().quad_coord(eNL, qNL));
-            if constexpr (std::is_same_v<Material, isotropic_conductivity_t<T>>) {
+            if constexpr (std::is_same_v<Material, evaluated_isotropic_conductivity_t<T>>) {
                 using namespace metamath::functions;
                 inner_integral += influence_weight * conduct * dNj;
-            } else if constexpr (std::is_same_v<Material, orthotropic_conductivity_t<T>>) {
+            } else if constexpr (std::is_same_v<Material, evaluated_orthotropic_conductivity_t<T>>) {
                 inner_integral[X] += influence_weight * conduct[X] * dNj[X];
                 inner_integral[Y] += influence_weight * conduct[Y] * dNj[Y];
-            } else if constexpr (std::is_same_v<Material, anisotropic_conductivity_t<T>>) {
+            } else if constexpr (std::is_same_v<Material, evaluated_anisotropic_conductivity_t<T>>) {
                 inner_integral[X] += influence_weight * (conduct[X][X] * dNj[X] + conduct[X][Y] * dNj[Y]);
                 inner_integral[Y] += influence_weight * (conduct[Y][X] * dNj[X] + conduct[Y][Y] * dNj[Y]);
             }
