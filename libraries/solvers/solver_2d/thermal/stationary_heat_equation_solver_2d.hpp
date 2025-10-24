@@ -45,7 +45,7 @@ bool is_radiation_problem(const thermal_boundaries_conditions_2d<T>& boundaries_
 
 template<class T>
 bool is_nonlinear_problem(const parameters_2d<T>& parameters) {
-    return false;
+    return true;
     // return std::any_of(parameters.begin(), parameters.end(), [](const auto& parameter) {
     //     return parameter.second.physical->type != coefficients_t::CONSTANTS;
     // });
