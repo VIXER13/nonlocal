@@ -35,8 +35,6 @@ protected:
 
 template<class T>
 class serendipity<T, 1> : public geometry_2d<T, rectangle_element_geometry> {
-    // Билинейный элемент
-
     using _base = geometry_2d<T, rectangle_element_geometry>;
 
     static inline constexpr metamath::symbolic::integral_constant<1> _1{};
@@ -70,8 +68,6 @@ protected:
 
 template<class T>
 class serendipity<T, 2> : public serendipity_base<T> {
-    // Астионенко И.А., Гучек П.И., Литвиненко Е.И., Хомченко А.Н. Применениче альтренативных серендиповых моделей при решении задачи о кручении призматических стержней.
-
     using _base = serendipity_base<T>;
 
     static inline constexpr metamath::symbolic::integral_constant<1> _1{};
@@ -119,8 +115,6 @@ protected:
 
 template<class T>
 class serendipity<T, 3> : public serendipity_base<T> {
-    // Астионенко И.А., Литвиненко Е.И., Хомченко А.Н. Конструирование многопараметрических полиномов на бикубическом элементе серендипова семейства.
-
     using _base = serendipity_base<T>;
 
     static inline constexpr metamath::symbolic::integral_constant<1> _1{};
@@ -181,8 +175,6 @@ protected:
 
 template<class T>
 class serendipity<T, 4> : public geometry_2d<T, rectangle_element_geometry> {
-    // Астионенко И.А., Козуб Н.А., Литвиненко Е.И., Хомченко А.Н. Управляемые серендиповы поверхности, сохраняющие межэлементную непрерывность.
-
     using _base = geometry_2d<T, rectangle_element_geometry>;
 
     static inline constexpr metamath::symbolic::integral_constant<1> _1{};
@@ -260,8 +252,6 @@ protected:
 
 template<class T>
 class serendipity<T, 5> : public geometry_2d<T, rectangle_element_geometry> {
-    // Хомченко А.Н., Астионенко И.А. Серендиповы поверхности высших порядков: особенности формообразования.
-
     using _base = geometry_2d<T, rectangle_element_geometry>;
 
     static inline constexpr metamath::symbolic::integral_constant<1> _1{};
