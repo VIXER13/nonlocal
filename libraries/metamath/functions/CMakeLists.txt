@@ -2,5 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 project(metamath_functions)
 
 add_library(metamath_functions_lib INTERFACE)
-target_sources(metamath_functions_lib INTERFACE metamath_functions.hpp)
-target_include_directories(metamath_functions_lib INTERFACE ${LIBRARIES_DIR})
+target_sources(
+    metamath_functions_lib
+    INTERFACE #
+        metamath_functions.hpp
+)
+target_include_directories(
+    metamath_functions_lib
+    INTERFACE #
+        ${LIBRARIES_DIR}
+)

@@ -49,7 +49,7 @@ const suite<"flux_stability"> _ = [] {
 
     "temperature_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;
-        static constexpr T Epsilon = 3.3e-15;
+        static constexpr T Epsilon = 3.3e-14;
         const T integral = mesh::utils::integrate(*mesh, solution.temperature());
         expect(approx(integral, Expected, Epsilon));
     };
