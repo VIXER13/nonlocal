@@ -114,11 +114,15 @@ void thermal_conductivity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>
 
     _base::template calc_matrix(settings,
         [this, &parameters](const size_t segment, const size_t e, const size_t i, const size_t j) {
-            const auto& [model, physic] = parameters[segment];
+            const auto& segment_params = parameters[segment];
+            const auto& model = segment_params.model;
+            const auto& physic = segment_params.physical;
             return model.local_weight * integrate_local(physic.conductivity, e, i, j);
         },
         [this, &parameters](const size_t segment, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            const auto& [model, physic] = parameters[segment];
+            const auto& segment_params = parameters[segment];
+            const auto& model = segment_params.model;
+            const auto& physic = segment_params.physical;
             return nonlocal_weight(model.local_weight) * integrate_nonlocal(physic.conductivity, model.influence, eL, eNL, iL, jNL);
         }
     );

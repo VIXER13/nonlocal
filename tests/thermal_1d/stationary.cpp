@@ -94,7 +94,9 @@ const boost::ut::suite<"thermal_stationary_1d"> _ = [] {
         std::make_unique<radiation_1d<T>>(-Expected_Flux(Length) / (Stefan_Boltzmann_Constant<T> * power<4>(Expected_Temperature(Length))))
     };
 
-    for(const auto& [test_name, conditions] : boundaries_conditions) {
+    for(const auto& node : boundaries_conditions) {
+        const auto& test_name = node.first;
+        const auto& conditions = node.second;
         boost::ut::test(test_name) = [&parameters, &conditions, &additional_parameters] {
             T prev_temperature_error = std::numeric_limits<T>::max();
             T prev_flux_error = std::numeric_limits<T>::max();

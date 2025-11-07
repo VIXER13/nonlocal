@@ -79,8 +79,9 @@ _read_mesh_1d::quadrature_1d_ptr<T> _read_mesh_1d::make_quadrature(const order_t
         return std::make_unique<quadrature<T, 4>>();
     case order_t::Quintic:
         return std::make_unique<quadrature<T, 5>>();
+    default:
+        throw std::logic_error{"Invalid quadrature order: " + std::to_string(size_t(order))};
     }
-    throw std::logic_error{"Invalid quadrature order: " + std::to_string(size_t(order))};
 }
 
 template<std::floating_point T>
@@ -96,8 +97,9 @@ _read_mesh_1d::finite_element_1d_ptr<T> _read_mesh_1d::make_element(const order_
         return std::make_unique<element_1d<T, 4>>(*quadrature);
     case order_t::Quintic:
         return std::make_unique<element_1d<T, 5>>(*quadrature);
+    default:
+        throw std::logic_error{"Invalid element order: " + std::to_string(size_t(order))};
     }
-    throw std::logic_error{"Invalid element order: " + std::to_string(size_t(order))};
 }
 
 template<std::floating_point T>

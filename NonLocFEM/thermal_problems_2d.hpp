@@ -70,9 +70,15 @@ void solve_thermal_2d_problem(
         solution.calc_flux();
         save_solution(solution, save, 0u);
     }
+    const auto right_part = [right_part = auxiliary.right_part](const std::array<T, 2>& x) {
+        return std::visit(metamath::visitor{
+            [](const T value) { return value; },
+            [&x](const spatial_dependency<T, 2>& value) { return value(x); },
+            [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
+        }, right_part);
+    };
     for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-        solver.calc_step(boundaries_conditions, 
-        [value = std::get<spatial_dependency<T, 2>>(auxiliary.right_part)](const std::array<T, 2>& x) constexpr noexcept { return value(x); });
+        solver.calc_step(boundaries_conditions, right_part);
         if (step % time.save_frequency == 0) {
             solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
             solution.calc_flux();

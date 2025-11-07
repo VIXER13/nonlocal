@@ -65,8 +65,12 @@ template<class Init_Dist>
 void nonstationary_heat_equation_solver_2d<T, I, Matrix_Index>::compute(const parameters_2d<T>& parameters,
                                                                         const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                         const Init_Dist& init_dist) {
+    std::vector<T> solution(_conductivity.mesh().quad_shift(_conductivity.mesh().container().elements_2d_count()), T{0});
+    const auto conductivity_parameters = evaluate_conductivity(_conductivity.mesh(), parameters, solution);
+    solution = {};
+
     const std::vector<bool> is_inner = utils::inner_nodes(_conductivity.mesh().container(), boundaries_conditions);
-    _conductivity.compute(parameters, is_inner);
+    _conductivity.compute(conductivity_parameters, is_inner);
     convection_condition_2d(_conductivity.matrix().inner(), _conductivity.mesh(), boundaries_conditions);
     _capacity.calc_matrix(parameters, is_inner);
 

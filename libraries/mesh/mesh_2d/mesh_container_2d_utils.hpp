@@ -171,7 +171,7 @@ void save_as_vtk(Stream& stream, const mesh_container_2d<T, I>& mesh) {
 
     const auto elements_2d = mesh.elements_2d();
     const auto reduces = [&mesh](const size_t sum, const size_t e) { return sum + mesh.nodes_count(e) + 1; };
-    const size_t list_size = std::reduce(elements_2d.begin(), elements_2d.end(), size_t{0}, reduces);
+    const size_t list_size = std::accumulate(elements_2d.begin(), elements_2d.end(), size_t{0}, reduces);
 
     stream << "CELLS " << mesh.elements_2d_count() << ' ' << list_size << '\n';
     for(const size_t e : elements_2d) {

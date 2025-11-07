@@ -38,7 +38,7 @@ class boundary_conditions_2d final : public std::array<std::unique_ptr<boundary_
     using _base = std::array<std::unique_ptr<boundary_condition_2d<T, Physics>>, DoF>;
 
 public:
-    using _base::array;
+    using _base::_base;
     using _base::operator=;
 };
 
@@ -47,7 +47,7 @@ class boundary_conditions_2d<T, Physics, 1> final : public std::unique_ptr<bound
     using _base = std::unique_ptr<boundary_condition_2d<T, Physics>>;
 
 public:
-    using _base::unique_ptr;
+    using _base::_base;
 };
 
 template<class T, physics_t Physics, size_t DoF>

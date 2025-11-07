@@ -190,8 +190,8 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
     for(const auto& [group, parameter] : _parameters) {
         using namespace metamath::functions;
         const model_parameters<2, T>& model = _base::model(group);
-        const hooke_matrix local_hooke = model.local_weight * parameter.hooke(plane());
-        const hooke_matrix nonlocal_hooke = nonlocal_weight(model.local_weight) * parameter.hooke(plane());
+        const hooke_matrix<T> local_hooke = model.local_weight * parameter.hooke(plane());
+        const hooke_matrix<T> nonlocal_hooke = nonlocal_weight(model.local_weight) * parameter.hooke(plane());
         const auto elements = _base::mesh().container().elements(group);
 #pragma omp parallel for default(none) shared(strains, model, local_hooke, nonlocal_hooke, elements) schedule(dynamic)
         for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
