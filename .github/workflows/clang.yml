@@ -2,7 +2,7 @@ name: clang
 
 on:
   push:
-    branches: [ conan2-migration ]
+    branches: [ master, dev ]
     paths-ignore:
       - 'documents/**'
       - '*.md'
