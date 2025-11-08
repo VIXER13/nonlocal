@@ -3,6 +3,7 @@
 #include "utils.hpp"
 
 #include <logger/logger.hpp>
+#include <metamath/types/visitor.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -49,7 +50,7 @@ public:
 
     std::string to_polish() const;
     std::size_t variables_count() const noexcept;
-    const std::unordered_map<std::string, std::size_t>& get_variables() const noexcept;
+    const std::unordered_map<std::string, std::size_t>& variables() const noexcept;
 
     T operator()(const std::span<const T> input_vars) const;
     T operator()(const std::initializer_list<T>& input_vars) const;
@@ -176,7 +177,7 @@ void math_expression<T>::assemble_polish_notation(const std::string& infix_notat
     _polish_notation.reserve(polish_notation.size());
     for(const std::string& smth : polish_notation) {
         if (utils::is_number(smth))
-            _polish_notation.push_back(utils::get_number<double>(smth));
+            _polish_notation.push_back(utils::get_number<T>(smth));
         else if (_variables.count(smth))
             _polish_notation.push_back(variable_index{_variables.at(smth)});
         else if (binary.count(smth))
@@ -206,8 +207,8 @@ T math_expression<T>::calc_polish_notation(const std::span<const T> input_variab
     std::stack<T> stack;
 #endif
     for(const auto& operation : _polish_notation) {
-        if (std::holds_alternative<double>(operation))
-            stack.push(std::get<double>(operation));
+        if (std::holds_alternative<T>(operation))
+            stack.push(std::get<T>(operation));
         else if (std::holds_alternative<variable_index>(operation))
             stack.push(input_variables[std::get<variable_index>(operation).index]);
         else if (std::holds_alternative<binary_operator>(operation)) {
@@ -242,9 +243,22 @@ math_expression<T>::math_expression(std::string pre_infix_notation) {
 
 template<class T>
 std::string math_expression<T>::to_polish() const {
-    //auto concatenate = [](const std::string& a, const std::string& b){ return a + b; };
-    //return std::accumulate(_polish_notation.begin(), _polish_notation.end(), std::string{""}, concatenate);
-    return "";
+    static constexpr auto get_name = [](const auto& operation, const auto& values) {
+        for (const auto& [name, index] : values)
+            if (index == operation)
+                return name;
+        throw std::domain_error{"Unknown operator, unable to recover polish notation."};
+    };
+    const auto concatenate = [this](const std::string& polish, const operand& operation) {
+        return polish + (polish.empty() ? "" : " ") + std::visit(metamath::visitor{
+            [](const T number) { return std::to_string(number); },
+            [this](const variable_index& index) { return get_name(index.index, variables()); },
+            [this](const unary_operator& operation) { return get_name(operation, unary_operators()); },
+            [this](const binary_operator& operation) { return get_name(operation, binary_operators()); },
+        }, operation);
+    };
+    using namespace std::string_literals;
+    return std::accumulate(_polish_notation.begin(), _polish_notation.end(), ""s, concatenate);
 }
 
 template<class T>
@@ -253,7 +267,7 @@ std::size_t math_expression<T>::variables_count() const noexcept {
 }
 
 template<class T>
-const std::unordered_map<std::string,std::size_t>& math_expression<T>::get_variables() const noexcept {
+const std::unordered_map<std::string,std::size_t>& math_expression<T>::variables() const noexcept {
     return _variables;
 }
 
