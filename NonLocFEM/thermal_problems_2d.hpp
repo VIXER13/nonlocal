@@ -12,18 +12,14 @@ namespace nonlocal {
 
 template<std::floating_point T, std::integral I>
 void save_solution(const solver_2d::thermal::heat_equation_solution_2d<T, I>& solution, 
-                   const config::save_data& save,
+                   config::save_data save,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0) // Only the master process saves data
         return;
     if (step.has_value())
         logger::info() << "step = " << *step << std::endl;
-    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
-                                              save.path("csv", "csv", "solution");
-    mesh::utils::save_as_csv(path, solution.mesh().container(), 
-        {{"temperature", solution.temperature()}, {"flux_x", solution.flux()[X]}, {"flux_y", solution.flux()[Y]}},
-        save.precision()
-    );
+    save_csv<T, I>(solution, std::nullopt, save, step);
+    save_vtk<T, I>(solution, std::nullopt, save, step);
 }
 
 template<std::floating_point T, std::signed_integral I>
