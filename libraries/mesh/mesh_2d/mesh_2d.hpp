@@ -84,7 +84,7 @@ public:
 
     void neighbours(neighbours_t<T, I>&& data);
     const std::vector<I>& neighbours(const size_t e) const;
-    const influences<T>& influences() const noexcept;
+    const influences<T>& get_influences() const noexcept;
 
     T area(const size_t e) const;
     T area(const std::string& element_group) const;
@@ -231,7 +231,7 @@ const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
 }
 
 template<class T, class I>
-const influences<T>& mesh_2d<T, I>::influences() const noexcept {
+const influences<T>& mesh_2d<T, I>::get_influences() const noexcept {
     return _influences;
 }
 

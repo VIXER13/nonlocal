@@ -2,8 +2,8 @@
 
 **Healthchecks**
 
-[![gcc](https://github.com/VIXER13/nonlocal/actions/workflows/gcc.yml/badge.svg?branch=conan2-migration)](https://github.com/VIXER13/nonlocal/actions/workflows/gcc.yml)
-[![clang](https://github.com/VIXER13/nonlocal/actions/workflows/clang.yml/badge.svg?branch=conan2-migration)](https://github.com/VIXER13/nonlocal/actions/workflows/clang.yml)
+[![gcc](https://github.com/VIXER13/nonlocal/actions/workflows/gcc.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/gcc.yml)
+[![clang](https://github.com/VIXER13/nonlocal/actions/workflows/clang.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/clang.yml)
 
 Конечно-элементный программный комплекс NonLocFEM предназначен для эффективного решения задач термоупругости с учётом пространственной нелокальности на многопроцессорных электронно-вычислительных машинах с общей и распределённой памятью. К основным особенностям программного комплекса стоит отнести возможность решения одномерных и двумерных задач стационарной и нестационарной теплопроводности, и задачи статики, для однородных и композитных материалов на неструктурированных сетках с использованием изопараметрических конечных элементов произвольного порядка и формы.
  

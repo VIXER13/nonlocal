@@ -107,7 +107,7 @@ std::unordered_map<std::string, theory_t> theories(const mesh_2d<T, I>& mesh, co
         if (only_local)
             theories[group] = theory_t::LOCAL;
         else {
-            const auto& radius = mesh.influences().at(group).radius;
+            const auto& radius = mesh.get_influences().at(group).radius;
             theories[group] = radius[0] > T{0} && radius[1] > T{0} ? theory_t::NONLOCAL : theory_t::LOCAL;
         }
     }
@@ -129,7 +129,7 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
         throw std::domain_error{"Unsupported balancing type"};
     nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
     mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
-    mesh.neighbours(find_neighbours(mesh, mesh.influences(), diam_adding::NO));
+    mesh.neighbours(find_neighbours(mesh, mesh.get_influences(), diam_adding::NO));
 }
 
 template<class T, class I, std::ranges::random_access_range Vector>
