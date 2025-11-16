@@ -1,20 +1,85 @@
 #pragma once
 
 #include "config_utils.hpp"
-#include "read_influence.hpp"
 
-#include <constants/nonlocal_constants.hpp>
+#include <metamath/functions/norm.hpp>
+#include <mesh/mesh_2d/find_neighbours.hpp>
 #include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_2d/influence_functions_2d.hpp>
 
 namespace nonlocal::config {
 
+enum class influence_t : uint8_t {
+    Custom,
+    Constant,
+    Polynomial,
+    Exponential,
+    Polynomial_With_Angle
+};
+
+enum class distance_t : uint8_t {
+    Custom,
+    Lp,
+    Ellipse_With_Rotation
+};
+
+NLOHMANN_JSON_SERIALIZE_ENUM(influence_t, {
+    {influence_t::Custom, nullptr},
+    {influence_t::Constant, "constant"},
+    {influence_t::Polynomial, "polynomial"},
+    {influence_t::Exponential, "exponential"},
+    {influence_t::Polynomial_With_Angle, "polynomial with rotation"}
+})
+
+NLOHMANN_JSON_SERIALIZE_ENUM(distance_t, {
+    {distance_t::Custom, nullptr},
+    {distance_t::Lp, "lp"},
+    {distance_t::Ellipse_With_Rotation, "ellipse with rotation"},
+})
+
+template<std::floating_point T, size_t N = 2>
+struct powered_distance final {
+    static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
+        return metamath::functions::powered_distance<N>(x, y, r);
+    }
+};
+
+template<std::floating_point T>
+struct powered_distance<T, 0> final {
+    const T p = T{2};
+
+    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
+        return metamath::functions::powered_distance(x, y, r, p);
+    }
+};
+
+template<std::floating_point T>
+struct powered_distance_with_rotation final {
+    static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
+        using metamath::functions::power;
+        using metamath::functions::powered_norm;
+        return (power<2>(r[0] * (x[0] * y[1] - x[1] * y[0])) +
+                power<2>(r[1] * (x[0] * (x[0] - y[0]) + x[1] * (x[1] - y[1])))) /
+               (power<2>(r[0] * r[1]) * powered_norm<2>(x));
+    }
+};
+
 std::string get_model_field(const nlohmann::json& config, const std::string& path_with_access, const std::string& prefix);
 
 class _read_model final {
     template<std::floating_point T, size_t Dimension>
     static std::array<T, Dimension> read_nonlocal_radii(const nlohmann::json& config, const std::string& path);
+
+    template<std::floating_point T>
+    static mesh::distance_f<T> read_distance_2d(const nlohmann::json& config, const std::string& path);
+
+    template<std::floating_point T>
+    static std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std::string& path, const T radius);
+
+    template<std::floating_point T>
+    friend std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
+        const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius);
 
     template<size_t Dimension, std::floating_point T>
     static bool check_parameters(const T local_weight, const std::array<T, Dimension>& radii) noexcept;
@@ -32,7 +97,7 @@ public:
     friend model_parameters<2u, T> read_model_2d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
-    friend std::unordered_map<std::string, T> read_search_radii(const nlohmann::json& config, const std::string& path, const std::string& prefix);
+    friend mesh::influences<T> read_influences(const nlohmann::json& config, const std::string& path, const std::string& prefix);
 };
 
 template<std::floating_point T, size_t Dimension>
@@ -47,6 +112,45 @@ std::array<T, Dimension> _read_model::read_nonlocal_radii(const nlohmann::json& 
     else
         throw std::domain_error{"Field \"" + path + "\" must be an array with length " + std::to_string(Dimension)};
     return result;
+}
+
+template<std::floating_point T>
+mesh::distance_f<T> read_distance_2d(const nlohmann::json& config, const std::string& path) {
+    const std::string path_with_access = append_access_sign(path);
+    check_optional_fields(config, { "distance", "n" }, path_with_access);
+    if (!config.contains("distance"))
+        return powered_distance<T>{};
+    if (const auto distance = config["distance"].get<distance_t>(); distance == distance_t::Ellipse_With_Rotation)
+        return powered_distance_with_rotation<T>{};
+    const T n = config.contains("n") ? config["n"].get<T>() : T{2};
+    if (n <= T{0})
+        throw std::domain_error{"Parameter \"" + path_with_access + "n\" shall be greater than 0."};
+    return powered_distance<T, 0zu>{n};
+}
+
+template<std::floating_point T>
+std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std::string& path, const T radius) {
+    using namespace nonlocal::solver_1d::influence;
+    check_optional_fields(config, { "influence", "p", "q" }, path);
+    if (const auto influence = config["influence"].get<influence_t>(); influence == influence_t::Constant)
+        return constant_1d<T>{radius};
+    else if (influence == influence_t::Exponential)
+        return normal_distribution_1d<T>{radius};
+    return polynomial_1d<T, 1, 1>{radius};
+}
+
+template<std::floating_point T>
+std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
+    const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius) {
+    using namespace nonlocal::solver_2d::influence;
+    check_optional_fields(config, { "influence", "p", "q" }, path);
+    if (const auto influence = config["influence"].get<influence_t>(); influence == influence_t::Constant)
+        return constant_2d<T>{radius};
+    else if (influence == influence_t::Exponential)
+        return normal_distribution_2d<T>{radius};
+    else if (influence == influence_t::Polynomial_With_Angle)
+        return polynomial_with_angle_2d<T>{radius};
+    return polynomial_2d<T, 2u, 1u>{radius};
 }
 
 template<size_t Dimension, std::floating_point T>
@@ -75,8 +179,7 @@ model_parameters<1u, T> read_model_1d(const nlohmann::json& config, const std::s
                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0."};
     _read_model::fix_parameters<1u>(local_weight, nonlocal_radius);
     return {
-        .influence = config.contains("influence") ? read_influence_1d(config["influence"], path_with_access + "influence", nonlocal_radius.front()) :
-                                                    solver_1d::influence::polynomial_1d<T, 1u, 1u>{nonlocal_radius.front()},
+        .influence = read_influence_1d(config, path, nonlocal_radius.front()),
         .local_weight = local_weight
     };
 }
@@ -92,28 +195,29 @@ model_parameters<2u, T> read_model_2d(const nlohmann::json& config, const std::s
                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0."};
     _read_model::fix_parameters<2u>(local_weight, nonlocal_radius);
     return {
-        .influence = config.contains("influence") ? read_influence_2d(config["influence"], path_with_access + "influence", nonlocal_radius) :
-                                                    solver_2d::influence::polynomial_2d<T, 2u, 1u>{nonlocal_radius},
+        .influence = read_influence_2d(config, path, nonlocal_radius),
         .local_weight = local_weight
     };
 }
 
 template<std::floating_point T>
-std::unordered_map<std::string, T> read_search_radii(const nlohmann::json& config, const std::string& path, const std::string& prefix) {
-    std::unordered_map<std::string, T> radii;
+mesh::influences<T> read_influences(const nlohmann::json& config, const std::string& path, const std::string& prefix) {
+    mesh::influences<T> influences;
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_material = append_access_sign(path) + name;
         if (const std::string model_field = get_model_field(material, path_with_material, prefix); !model_field.empty()) {
-            const std::string path_with_access = append_access_sign(append_access_sign(path_with_material) + model_field);
+            const std::string model_path = append_access_sign(path_with_material) + model_field;
+            const std::string path_with_access = append_access_sign(model_path);
             const nlohmann::json& config_model = material[model_field];
-            static constexpr auto max = [](const std::array<T, 2>& radii) noexcept { return std::max(radii[0], radii[1]); };
-            if (config_model.contains("search_radius"))
-                radii[name] = max(_read_model::read_nonlocal_radii<T, 2u>(config_model["search_radius"], path_with_access + "search_radius"));
-            else if (config_model.contains("nonlocal_radius"))
-                radii[name] = max(_read_model::read_nonlocal_radii<T, 2u>(config_model["nonlocal_radius"], path_with_access + "nonlocal_radius"));
+            const std::string field = config_model.contains("search_radius") ? "search_radius" :
+                                      config_model.contains("nonlocal_radius") ? "nonlocal_radius" : "";
+            influences[name] = {
+                .distance = read_distance_2d<T>(config_model, model_path),
+                .radius = field.empty() ? std::array<T, 2>{} : _read_model::read_nonlocal_radii<T, 2>(config_model[field], path_with_access + field)
+            };
         }
     }
-    return radii;
+    return influences;
 }
 
 }

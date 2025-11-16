@@ -35,14 +35,14 @@ public:
     void set_radius(const T radius) noexcept { set_radius(std::array{radius, radius}); }
     void set_radius(const std::array<T, 2>& radius) noexcept {
         using metamath::functions::power;
-        if constexpr (N == std::numeric_limits<size_t>::max())
+        if constexpr (N == metamath::constants::Infinity<size_t>)
             _base::set_parameters(radius, T{1} / (radius[0] * radius[1]));
         else
             _base::set_parameters(radius, std::tgamma(1 + T{2} / N) / (4 * radius[0] * radius[1] * power<2>(std::tgamma(1 + T{1} / N))));
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const noexcept {
-        if constexpr (N == std::numeric_limits<size_t>::max())
+        if constexpr (N == metamath::constants::Infinity<size_t>)
             return metamath::functions::distance<N>(x, y, _base::radius()) < T{1} ? _base::norm() : T{0};
         return metamath::functions::powered_distance<N>(x, y, _base::radius()) < T{1} ? _base::norm() : T{0};
     }
@@ -51,7 +51,7 @@ public:
 template<std::floating_point T>
 class constant_2d<T, 0> final : public influence_2d_base<T> {
     using _base = influence_2d_base<T>;
-
+    
     T _n = T{2};
 
 public:
@@ -199,36 +199,6 @@ public:
         using namespace metamath::functions;
         const T distance = metamath::functions::powered_distance(x, y, _base::radius(), _n);
         return _base::norm() * std::exp(_q * std::pow(distance, _p / _n));
-    }
-};
-
-template<class T>
-class custom_2d {
-    formula::math_expression<T> _expression;
-
-public: 
-    explicit custom_2d(const std::string& expression)
-        : _expression{expression} {
-        if (_expression.variables_count() != 4)
-            throw std::domain_error{"The variables number in the influence function shall be 4."};
-    }
-
-    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
-        return _expression({x[0], x[1], y[0], y[1]});
-    }
-};
-
-template<class T>
-class custom_limited_area_2d final : public custom_2d<T> {
-    std::array<T, 2> _radius = {};
-
-public:
-    explicit custom_limited_area_2d(const std::string& expression, const std::array<T, 2> radius)
-        : custom_2d<T>{expression}
-        , _radius{radius} {}
-    
-    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
-        return metamath::functions::distance<2u>(x, y, _radius) < T{1} ? custom_2d<T>::operator()(x, y) : T{0};
     }
 };
 

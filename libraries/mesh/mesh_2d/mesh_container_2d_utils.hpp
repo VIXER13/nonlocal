@@ -9,10 +9,9 @@ namespace nonlocal::mesh::utils {
 template<class T, class I>
 std::vector<std::vector<I>> node_elements_2d(const mesh_container_2d<T, I>& mesh) {
     std::vector<std::vector<I>> node_elements(mesh.nodes_count());
-    for(const size_t e : mesh.elements_2d()) {
+    for(const size_t e : mesh.elements_2d())
         for(const size_t node : mesh.nodes(e))
             node_elements[node].push_back(e);
-    }
     for(std::vector<I>& elements : node_elements)
         elements.shrink_to_fit();
     return node_elements;
@@ -122,33 +121,6 @@ std::vector<std::array<T, 2>> approx_centers_of_elements(const mesh_container_2d
     for(size_t e = 0; e < centers.size(); ++e)
         centers[e] = mesh.element_2d_data(e).center();
     return centers;
-}
-
-template<class I, class T>
-std::vector<I> find_neighbours(const T radius, const std::vector<std::array<T, 2>>& nodes, const size_t node) {
-    std::vector<I> neighbours;
-    for(const size_t i : std::ranges::iota_view{0u, nodes.size()})
-        if (metamath::functions::distance(nodes[node], nodes[i]) <= radius)
-            neighbours.push_back(i);
-    neighbours.shrink_to_fit();
-    return neighbours;
-}
-
-template<class I, class T>
-std::vector<std::vector<I>> find_neighbours(const T radius, const std::vector<std::array<T, 2>>& nodes) {
-    std::vector<std::vector<I>> neighbours(nodes.size());
-#pragma omp parallel for default(none) shared(neighbours, nodes)
-    for(size_t i = 0; i < nodes.size(); ++i)
-        neighbours[i] = find_neighbours<I>(radius, nodes, i);
-    return neighbours;
-}
-
-template<class T, class I>
-std::vector<std::vector<I>> find_neighbours(const T radius, const std::vector<std::array<T, 2>>& nodes, const std::unordered_set<I>& nodes_to_search) {
-    std::vector<std::vector<I>> neighbours(nodes.size());
-    for(const size_t node : nodes_to_search)
-        neighbours[node] = find_neighbours<I>(radius, nodes, node);
-    return neighbours;
 }
 
 template<class Stream, class T, class I>
