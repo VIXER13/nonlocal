@@ -70,14 +70,18 @@ public:
     size_t elements_count(const size_t segment) const;
     size_t nodes_count() const;
     size_t nodes_count(const size_t segment) const;
+    size_t qnodes_count() const;
+    size_t qnodes_count(const size_t segment) const;
     size_t segment_number(const size_t e) const;
     size_t node_number(const size_t e, const size_t i) const;
     size_t qnode_number(const size_t e, const size_t q) const;
     std::ranges::iota_view<size_t, size_t> segments() const noexcept;
     std::ranges::iota_view<size_t, size_t> elements() const noexcept;
     std::ranges::iota_view<size_t, size_t> nodes() const;
+    std::ranges::iota_view<size_t, size_t> qnodes() const;
     std::ranges::iota_view<size_t, size_t> elements(const size_t segment) const;
     std::ranges::iota_view<size_t, size_t> nodes(const size_t segment) const;
+    std::ranges::iota_view<size_t, size_t> qnodes(const size_t segment) const;
     std::ranges::iota_view<size_t, size_t> neighbours(const size_t e) const;
     left_right_element node_elements(const size_t node) const;
 
@@ -148,6 +152,16 @@ size_t mesh_1d<T>::nodes_count(const size_t segment) const {
 }
 
 template<class T>
+size_t mesh_1d<T>::qnodes_count() const {
+    return element().qnodes_count() * elements_count();
+}
+
+template<class T>
+size_t mesh_1d<T>::qnodes_count(const size_t segment) const {
+    return element().qnodes_count() * elements_count(segment);
+}
+
+template<class T>
 size_t mesh_1d<T>::segment_number(const size_t e) const {
     size_t segment = 0;
     while(_segments[segment].elements <= e)
@@ -167,17 +181,22 @@ size_t mesh_1d<T>::qnode_number(const size_t e, const size_t q) const {
 
 template<class T>
 std::ranges::iota_view<size_t, size_t> mesh_1d<T>::segments() const noexcept {
-    return {size_t{0}, segments_count()};
+    return {0zu, segments_count()};
 }
 
 template<class T>
 std::ranges::iota_view<size_t, size_t> mesh_1d<T>::elements() const noexcept {
-    return {size_t{0}, elements_count()};
+    return {0zu, elements_count()};
 }
 
 template<class T>
 std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes() const {
-    return {size_t{0}, nodes_count()};
+    return {0zu, nodes_count()};
+}
+
+template<class T>
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::qnodes() const {
+    return {0zu, qnodes_count()};
 }
 
 template<class T>
@@ -190,6 +209,13 @@ std::ranges::iota_view<size_t, size_t> mesh_1d<T>::nodes(const size_t segment) c
     const size_t elements_nodes_count = element().nodes_count() - 1;
     const std::ranges::iota_view<size_t, size_t> elements = mesh_1d<T>::elements(segment);
     return {elements_nodes_count * elements.front(), elements_nodes_count * (elements.back() + 1) + 1};
+}
+
+template<class T>
+std::ranges::iota_view<size_t, size_t> mesh_1d<T>::qnodes(const size_t segment) const {
+    const size_t elements_qnodes_count = element().qnodes_count();
+    const std::ranges::iota_view<size_t, size_t> elements = mesh_1d<T>::elements(segment);
+    return {elements_qnodes_count * elements.front(), elements_qnodes_count * (elements.back() + 1)};
 }
 
 template<class T>
