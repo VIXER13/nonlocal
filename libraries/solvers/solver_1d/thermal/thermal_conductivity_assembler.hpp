@@ -79,9 +79,9 @@ T thermal_conductivity_assembler_1d<T, I>::integrate_nonlocal(const coefficient_
     const auto qnodes = el.qnodes();
     for(const size_t qL : qnodes) {
         T inner_integral = T{0};
-        const size_t qcoordL = _base::mesh().qnode_coord(eL, qL);
+        const T qcoordL = _base::mesh().qnode_coord(eL, qL);
         for (const size_t qNL : qnodes) {
-            const size_t qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
+            const T qcoordNL = _base::mesh().qnode_coord(eNL, qNL);
             inner_integral += influence(qcoordL, qcoordNL) * evaluate(conductivity, eNL, qNL) * el.weight(qNL) * el.qNxi(jNL, qNL);
         }
         integral += el.weight(qL) * el.qNxi(iL, qL) * inner_integral;
