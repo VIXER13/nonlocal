@@ -2,7 +2,6 @@
 
 #include "utils.hpp"
 
-#include <logger/logger.hpp>
 #include <metamath/types/visitor.hpp>
 
 #include <algorithm>
@@ -112,8 +111,6 @@ std::unordered_map<std::size_t, std::string> math_expression<T>::find_variables_
         if (!one_symbol_operator.contains(op.front()))
             push_it(op);
 
-    if (variables_and_operators_indices.empty())
-        logger::warning() << "Warning: expression does not depend on the variables." << std::endl;
     return variables_and_operators_indices;
 }
 
@@ -202,26 +199,20 @@ template<class T>
 T math_expression<T>::calc_polish_notation(const std::span<const T> input_variables) const {
     if (input_variables.size() != _variables.size())
         throw std::domain_error{"Wrong number of variables."};
-
 #ifndef __clang__
     std::stack<T> stack;
 #endif
-    for(const auto& operation : _polish_notation) {
-        if (std::holds_alternative<T>(operation))
-            stack.push(std::get<T>(operation));
-        else if (std::holds_alternative<variable_index>(operation))
-            stack.push(input_variables[std::get<variable_index>(operation).index]);
-        else if (std::holds_alternative<binary_operator>(operation)) {
-            const auto& function = std::get<binary_operator>(operation);
-            const T right = pop_stack(stack);
-            const T left = pop_stack(stack);
-            stack.push(function(left, right));
-        } else {
-            const auto& function = std::get<unary_operator>(operation);
-            const T value = pop_stack(stack);
-            stack.push(function(value));
-        }
-    }
+    for(const auto& operation : _polish_notation)
+        std::visit(metamath::types::visitor{
+            [&](const T number) { stack.push(number); },
+            [&](const variable_index& index) { stack.push(input_variables[index.index]); },
+            [&](const unary_operator& operation) { stack.push(operation(pop_stack(stack))); },
+            [&](const binary_operator& operation) {
+                const T right = pop_stack(stack);
+                const T left = pop_stack(stack);
+                stack.push(operation(left, right));
+            }
+        }, operation);
     return pop_stack(stack);
 }
 
@@ -250,7 +241,7 @@ std::string math_expression<T>::to_polish() const {
         throw std::domain_error{"Unknown operator, unable to recover polish notation."};
     };
     const auto concatenate = [this](const std::string& polish, const operand& operation) {
-        return polish + (polish.empty() ? "" : " ") + std::visit(metamath::visitor{
+        return polish + (polish.empty() ? "" : " ") + std::visit(metamath::types::visitor{
             [](const T number) { return std::to_string(number); },
             [this](const variable_index& index) { return get_name(index.index, variables()); },
             [this](const unary_operator& operation) { return get_name(operation, unary_operators()); },

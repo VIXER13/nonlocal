@@ -1,14 +1,12 @@
 #pragma once
 
-#include <concepts>
+#include <metamath/types/traits.hpp>
+
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace formula::utils {
-
-template <typename T> 
-concept arithmetic = std::integral<T> || std::floating_point<T>;
 
 std::string trim(std::string str);
 std::string& delete_all(std::string& str, char symb);
@@ -24,7 +22,7 @@ void parentheses_check(const std::string& infix_notation);
 void dots_check(const std::string& infix_notation);
 std::unordered_map<std::string, std::size_t> get_variables(std::string pre_variables);
 
-template<arithmetic T>
+template<metamath::types::arithmetic T>
 T get_number(const std::string& number, std::size_t* idx = nullptr, int base = 10) {
     if constexpr (std::is_same_v<T, float>)       
         return std::stof(number, idx);

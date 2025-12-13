@@ -30,7 +30,7 @@ solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
     const config::thermal_auxiliary_data_2d<T>& auxiliary) {
     const solver_2d::thermal::stationary_equation_parameters_2d<T> auxiliary_data {
         .right_part = [right_part = auxiliary.right_part](const std::array<T, 2>& x) {
-            return std::visit(metamath::visitor{
+            return std::visit(metamath::types::visitor{
                 [](const T value) { return value; },
                 [&x](const spatial_dependency<T, 2>& value) { return value(x); },
                 [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
@@ -65,7 +65,7 @@ void solve_thermal_2d_problem(
         save_solution(solution, save, 0u);
     }
     const auto right_part = [right_part = auxiliary.right_part](const std::array<T, 2>& x) {
-        return std::visit(metamath::visitor{
+        return std::visit(metamath::types::visitor{
             [](const T value) { return value; },
             [&x](const spatial_dependency<T, 2>& value) { return value(x); },
             [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }

@@ -64,7 +64,7 @@ void _read_thermal_parameters::check_coefficient(const coefficient_t<T, 2u>& coe
 
 template<std::floating_point T>
 void _read_thermal_parameters::check_conductivity(const solver_2d::thermal::conductivity_t<T>& conductivity, const std::string& path_with_access) {
-    std::visit(metamath::visitor{
+    std::visit(metamath::types::visitor{
         [&](const solver_2d::thermal::isotropic_conductivity_t<T>& conductivity) { 
             check_coefficient(conductivity, path_with_access);
         },

@@ -123,6 +123,8 @@ T conductivity_matrix_2d<T, I, J>::integrate_local(const Material& conductivity,
         else if constexpr (std::is_same_v<Material, evaluated_anisotropic_conductivity_t<T>>)
             value = dNi[X] * (conduct[X][X] * dNj[X] + conduct[X][Y] * dNj[Y]) + 
                     dNi[Y] * (conduct[Y][X] * dNj[X] + conduct[Y][Y] * dNj[Y]);
+        else
+            static_assert(false, "Unsupported coefficient type.");
         integral += el.weight(q) * value / _base::mesh().jacobian(e, q);
     }
     return integral;
@@ -153,7 +155,8 @@ T conductivity_matrix_2d<T, I, J>::integrate_nonlocal(const Material& conductivi
             } else if constexpr (std::is_same_v<Material, evaluated_anisotropic_conductivity_t<T>>) {
                 inner_integral[X] += influence_weight * (conduct[X][X] * dNj[X] + conduct[X][Y] * dNj[Y]);
                 inner_integral[Y] += influence_weight * (conduct[Y][X] * dNj[X] + conduct[Y][Y] * dNj[Y]);
-            }
+            } else
+                static_assert(false, "Unsupported coefficient type.");
         }
         integral += elL.weight(qL) * (dNi[X] * inner_integral[X] + dNi[Y] * inner_integral[Y]);
     }
@@ -175,7 +178,7 @@ void conductivity_matrix_2d<T, I, J>::compute(const evaluated_conductivity_2d<T>
             const auto& group_params = conductivity.at(group);
             const auto& model = group_params.model;
             const auto& physic = group_params.physical;
-            const T integral = std::visit(metamath::visitor{
+            const T integral = std::visit(metamath::types::visitor{
                 [&](const evaluated_isotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); },
                 [&](const evaluated_orthotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); },
                 [&](const evaluated_anisotropic_conductivity_t<T>& conductivity) { return integrate_local(conductivity, e, i, j); }
@@ -186,7 +189,7 @@ void conductivity_matrix_2d<T, I, J>::compute(const evaluated_conductivity_2d<T>
             const auto& group_params = conductivity.at(group);
             const auto& model = group_params.model;
             const auto& physic = group_params.physical;
-            const T integral = std::visit(metamath::visitor{
+            const T integral = std::visit(metamath::types::visitor{
                 [&](const evaluated_isotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); },
                 [&](const evaluated_orthotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); },
                 [&](const evaluated_anisotropic_conductivity_t<T>& conductivity) { return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL); }

@@ -106,7 +106,7 @@ bool is_constant(const coefficient_t<T, Dimension>& coefficient) {
 
 template<std::floating_point T, size_t Dimension>
 T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
-    return std::visit(metamath::visitor{
+    return std::visit(metamath::types::visitor{
         [](const T value) noexcept { return value; },
         [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
         [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
