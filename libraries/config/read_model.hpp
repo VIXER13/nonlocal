@@ -3,7 +3,7 @@
 #include "config_utils.hpp"
 
 #include <metamath/functions/norm.hpp>
-#include <mesh/mesh_2d/find_neighbours.hpp>
+#include <mesh/mesh_2d/mesh_2d.hpp>
 #include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_2d/influence_functions_2d.hpp>
@@ -29,41 +29,14 @@ NLOHMANN_JSON_SERIALIZE_ENUM(influence_t, {
     {influence_t::Constant, "constant"},
     {influence_t::Polynomial, "polynomial"},
     {influence_t::Exponential, "exponential"},
-    {influence_t::Polynomial_With_Angle, "polynomial with rotation"}
+    {influence_t::Polynomial_With_Angle, "polynomial_with_rotation"}
 })
 
 NLOHMANN_JSON_SERIALIZE_ENUM(distance_t, {
     {distance_t::Custom, nullptr},
     {distance_t::Lp, "lp"},
-    {distance_t::Ellipse_With_Rotation, "ellipse with rotation"},
+    {distance_t::Ellipse_With_Rotation, "ellipse_with_rotation"},
 })
-
-template<std::floating_point T, size_t N = 2>
-struct powered_distance final {
-    static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
-        return metamath::functions::powered_distance<N>(x, y, r);
-    }
-};
-
-template<std::floating_point T>
-struct powered_distance<T, 0> final {
-    const T p = T{2};
-
-    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
-        return metamath::functions::powered_distance(x, y, r, p);
-    }
-};
-
-template<std::floating_point T>
-struct powered_distance_with_rotation final {
-    static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) noexcept {
-        using metamath::functions::power;
-        using metamath::functions::powered_norm;
-        return (power<2>(r[0] * (x[0] * y[1] - x[1] * y[0])) +
-                power<2>(r[1] * (x[0] * (x[0] - y[0]) + x[1] * (x[1] - y[1])))) /
-               (power<2>(r[0] * r[1]) * powered_norm<2>(x));
-    }
-};
 
 std::string get_model_field(const nlohmann::json& config, const std::string& path_with_access, const std::string& prefix);
 
@@ -72,7 +45,7 @@ class _read_model final {
     static std::array<T, Dimension> read_nonlocal_radii(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
-    static mesh::distance_f<T> read_distance_2d(const nlohmann::json& config, const std::string& path);
+    static mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     static std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std::string& path, const T radius);
@@ -115,17 +88,20 @@ std::array<T, Dimension> _read_model::read_nonlocal_radii(const nlohmann::json& 
 }
 
 template<std::floating_point T>
-mesh::distance_f<T> read_distance_2d(const nlohmann::json& config, const std::string& path) {
+mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_optional_fields(config, { "distance", "n" }, path_with_access);
-    if (!config.contains("distance"))
-        return powered_distance<T>{};
-    if (const auto distance = config["distance"].get<distance_t>(); distance == distance_t::Ellipse_With_Rotation)
-        return powered_distance_with_rotation<T>{};
-    const T n = config.contains("n") ? config["n"].get<T>() : T{2};
-    if (n <= T{0})
-        throw std::domain_error{"Parameter \"" + path_with_access + "n\" shall be greater than 0."};
-    return powered_distance<T, 0zu>{n};
+    mesh::lp_norm_parameter<T> n = 2zu;
+    if (config.contains("n")) {
+        n = config["n"].is_number_unsigned() ? mesh::lp_norm_parameter<T>{config["n"].get<size_t>()} :
+                                               mesh::lp_norm_parameter<T>{config["n"].get<T>()};
+        if (mesh::extract(n) <= T{0})
+            throw std::domain_error{"Parameter \"" + path_with_access + "n\" shall be greater than 0."};
+    }
+    if (config.contains("distance"))
+        if (const auto distance = config["distance"].get<distance_t>(); distance == distance_t::Ellipse_With_Rotation)
+            return mesh::powered_distance_with_rotation<T>{};
+    return mesh::powered_distance<T>{n};
 }
 
 template<std::floating_point T>
