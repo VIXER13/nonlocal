@@ -28,8 +28,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(influence_t, {
     {influence_t::Custom, nullptr},
     {influence_t::Constant, "constant"},
     {influence_t::Polynomial, "polynomial"},
-    {influence_t::Exponential, "exponential"},
-    {influence_t::Polynomial_With_Angle, "polynomial_with_rotation"}
+    {influence_t::Exponential, "exponential"}
 })
 
 NLOHMANN_JSON_SERIALIZE_ENUM(distance_t, {
@@ -91,16 +90,19 @@ template<std::floating_point T>
 mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_optional_fields(config, { "distance", "n" }, path_with_access);
-    mesh::lp_norm_parameter<T> n = 2zu;
+    mesh::size_t_or<T> n = 2zu;
     if (config.contains("n")) {
-        n = config["n"].is_number_unsigned() ? mesh::lp_norm_parameter<T>{config["n"].get<size_t>()} :
-                                               mesh::lp_norm_parameter<T>{config["n"].get<T>()};
-        if (mesh::extract(n) <= T{0})
+        n = config["n"].is_number_unsigned() ? mesh::size_t_or<T>{config["n"].get<size_t>()} :
+                                               mesh::size_t_or<T>{config["n"].get<T>()};
+        if (mesh::get_value(n) <= T{0})
             throw std::domain_error{"Parameter \"" + path_with_access + "n\" shall be greater than 0."};
     }
-    if (config.contains("distance"))
+    if (config.contains("distance")) {
         if (const auto distance = config["distance"].get<distance_t>(); distance == distance_t::Ellipse_With_Rotation)
             return mesh::powered_distance_with_rotation<T>{};
+        else if (distance != distance_t::Lp)
+            throw std::domain_error{"Unknown distance function type: " + path};
+    }
     return mesh::powered_distance<T>{n};
 }
 
@@ -120,13 +122,14 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influenc
     const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius) {
     using namespace nonlocal::solver_2d::influence;
     check_optional_fields(config, { "influence", "p", "q" }, path);
+    const auto distance = read_distance_2d<T>(config, path);
     if (const auto influence = config["influence"].get<influence_t>(); influence == influence_t::Constant)
-        return constant_2d<T>{radius};
+        return constant_2d<T>{{distance, radius}};
     else if (influence == influence_t::Exponential)
-        return normal_distribution_2d<T>{radius};
-    else if (influence == influence_t::Polynomial_With_Angle)
-        return polynomial_with_angle_2d<T>{radius};
-    return polynomial_2d<T, 2u, 1u>{radius};
+        return exponential_2d<T>{{distance, radius}, 2zu, 0.5};
+    else if (influence != influence_t::Polynomial)
+        throw std::domain_error{"Unknown influence function: " + path};
+    return polynomial_2d<T>{{distance, radius}, 2zu, 1zu};
 }
 
 template<size_t Dimension, std::floating_point T>
