@@ -4,6 +4,69 @@
 
 namespace nonlocal::solver_2d::influence {
 
+class _influence_function_2d final {
+    template<std::floating_point T>
+    using power_function = T(*)(const T, const T);
+
+    template<std::floating_point T>
+    static T identity(const T value, const T) noexcept {
+        return value;
+    }
+
+    template<size_t N, std::floating_point T>
+    static T power(const T value, const T) noexcept {
+        return metamath::functions::power<N>(value);
+    }
+
+    template<std::floating_point T>
+    static T sqrt(const T value, const T) noexcept {
+        return std::sqrt(value);
+    }
+
+    template<std::floating_point T>
+    static T cbrt(const T value, const T) noexcept {
+        return std::cbrt(value);
+    }
+
+    template<std::floating_point T>
+    static power_function<T> init_power_function(const mesh::size_t_or<T>& n_variant) {
+        if (std::holds_alternative<size_t>(n_variant)) {
+            const size_t n = std::get<size_t>(n_variant);
+            if (n == 1zu)
+                return identity<T>;
+            if (n == 2zu)
+                return power<2, T>;
+        }
+        return std::pow<T, T>;
+    }
+
+    template<std::floating_point T>
+    static power_function<T> init_power_function(const mesh::size_t_or<T>& n_variant, const mesh::size_t_or<T>& p_variant) {
+        if (std::holds_alternative<size_t>(p_variant) && std::holds_alternative<size_t>(n_variant)) {
+            const size_t p = std::get<size_t>(p_variant);
+            const size_t n = std::get<size_t>(n_variant);
+            if (p == n)
+                return identity<T>;
+            if (2 * p == n)
+                return sqrt<T>;
+            if (3 * p == n)
+                return cbrt<T>;
+            if (p == 2 * n)
+                return power<2, T>;
+        }
+        return std::pow<T, T>;
+    }
+
+    explicit constexpr _influence_function_2d() noexcept = default;
+
+public:
+    template<std::floating_point T>
+    friend class polynomial_2d;
+
+    template<std::floating_point T>
+    friend class exponential_2d;
+};
+
 template<std::floating_point T>
 class constant_2d final {
     const mesh::influence<T> _influence;
@@ -29,9 +92,13 @@ public:
 
 template<std::floating_point T>
 class polynomial_2d final {
+    using _impl = _influence_function_2d;
+
     const mesh::influence<T> _influence;
-    const mesh::size_t_or<T> _p;
-    const mesh::size_t_or<T> _q;
+    _impl::power_function<T> _power_func_inner;
+    _impl::power_function<T> _power_func_outer;
+    T _degree_inner = T{2};
+    T _degree_outer = T{2};
     const T _norm = T{1};
 
     static T calc_norm(const mesh::influence<T>& influence, const T p, const T q) {
@@ -45,42 +112,29 @@ class polynomial_2d final {
 
 public:
     explicit polynomial_2d(const mesh::influence<T>& influence, const mesh::size_t_or<T>& p, const mesh::size_t_or<T>& q)
-        : _influence{influence}, _p{p}, _q{q}, _norm{calc_norm(influence, mesh::get_value(p), mesh::get_value(q))} {}
+        : _influence{influence}
+        , _power_func_inner{_impl::init_power_function(mesh::get_value(influence.distance), p)}
+        , _power_func_outer{_impl::init_power_function(q)}
+        , _degree_inner{mesh::get_value(p) / mesh::get_value(mesh::get_value(influence.distance))}
+        , _degree_outer{mesh::get_value(q)}
+        , _norm{calc_norm(influence, mesh::get_value(p), mesh::get_value(q))} {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
-        using metamath::functions::power;
         const auto& [distance, radius] = _influence;
-        const T n = mesh::get_value(mesh::get_value(distance));
         const T dist = distance(x, y, radius);
-        return dist < T{1} ? _norm * std::pow(T{1} - std::pow(dist, mesh::get_value(_p) / n), mesh::get_value(_q)) : T{0};
+        return dist < T{1} ? _norm * _power_func_outer(T{1} - _power_func_inner(dist, _degree_inner), _degree_outer) : T{0};
     }
 };
 
 template<std::floating_point T>
 class exponential_2d final {
-    using power_function = T(*)(const T, const T);
+    using _impl = _influence_function_2d;
 
     const mesh::influence<T> _influence;
-    power_function _power_func;
+    _impl::power_function<T> _power_func;
     const T _degree = T{2};
     const T _q = T{-0.5};
     const T _norm = T{1};
-
-    static T identity(const T value, const T) noexcept {
-        return value;
-    }
-
-    static T sqr(const T value, const T) noexcept {
-        return metamath::functions::power<2>(value);
-    }
-
-    static T sqrt(const T value, const T) noexcept {
-        return std::sqrt(value);
-    }
-
-    static T cbrt(const T value, const T) noexcept {
-        return std::cbrt(value);
-    }
 
     static T calc_norm(const mesh::influence<T>& influence, const T p, const T q) {
         const auto& [distance, radius] = influence;
@@ -91,32 +145,11 @@ class exponential_2d final {
         return (n * p * std::pow(T{4}, 1 / n) * std::pow(q, 2 / p)) / (8 * radius[0] * radius[1] * std::tgamma(2 / p) * std::beta(T{0.5}, 1 / n));
     }
 
-    static T init_degree(const mesh::influence<T>& influence, const T p) {
-        const auto& [distance, radius] = influence;
-        return p / mesh::get_value(mesh::get_value(distance));
-    }
-
-    static power_function init_power_function(const mesh::size_t_or<T>& n_variant, const mesh::size_t_or<T>& p_variant) {
-        if (std::holds_alternative<size_t>(p_variant) && std::holds_alternative<size_t>(n_variant)) {
-            const size_t p = std::get<size_t>(p_variant);
-            const size_t n = std::get<size_t>(n_variant);
-            if (p == n)
-                return identity;
-            if (2 * p == n)
-                return sqrt;
-            if (3 * p == n)
-                return cbrt;
-            if (p == 2 * n)
-                return sqr;
-        }
-        return std::pow<T, T>;
-    }
-
 public:
     explicit exponential_2d(const mesh::influence<T>& influence, const mesh::size_t_or<T>& p, const T q = T{0.5})
         : _influence{influence}
-        , _power_func(init_power_function(mesh::get_value(influence.distance), p))
-        , _degree{init_degree(influence, mesh::get_value(p))}
+        , _power_func(_impl::init_power_function(mesh::get_value(influence.distance), p))
+        , _degree{mesh::get_value(p) / mesh::get_value(mesh::get_value(influence.distance))}
         , _q{-q}
         , _norm{calc_norm(influence, mesh::get_value(p), q)} {}
 
