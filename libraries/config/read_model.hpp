@@ -99,11 +99,11 @@ mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const 
     }
     if (config.contains("distance")) {
         if (const auto distance = config["distance"].get<distance_t>(); distance == distance_t::Ellipse_With_Rotation)
-            return mesh::powered_distance_with_rotation<T>{};
+            return { mesh::powered_distance_with_rotation<T>{} };
         else if (distance != distance_t::Lp)
             throw std::domain_error{"Unknown distance function type: " + path};
     }
-    return mesh::powered_distance<T>{n};
+    return { mesh::powered_distance<T>{n} };
 }
 
 template<std::floating_point T>

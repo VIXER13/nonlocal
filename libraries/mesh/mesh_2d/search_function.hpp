@@ -14,28 +14,21 @@ template<class T>
 using size_t_or = std::variant<T, size_t>;
 
 template<class T>
-using distance_function = std::function<T(const std::array<T, 2>&, const std::array<T, 2>&, const std::array<T, 2>&)>;
-
-template<class T>
-struct influence final {
-    distance_function<T> distance;
-    std::array<T, 2> radius;
-};
-
-template<class T>
-using influences = std::unordered_map<std::string, influence<T>>;
-
-template<class T, class I>
-using neighbours_t = std::pair<influences<T>, std::vector<std::vector<I>>>;
+T get_value(const size_t_or<T>& value) {
+    if (std::holds_alternative<T>(value))
+        return std::get<T>(value);
+    return T(std::get<size_t>(value));
+}
 
 template<class T>
 struct powered_distance final {
     // x - first point, y - second point, r - normalizator (nonlocal radius)
     using distance_t = T(powered_distance<T>::*)(const std::array<T, 2>&, const std::array<T, 2>&, const std::array<T, 2>&);
 
-    const size_t_or<T> n = 2zu;
-    const distance_t distance;
+    size_t_or<T> n = 2zu;
+    distance_t distance = &powered_distance<T>::calculate<2zu>;
 
+    explicit powered_distance() noexcept = default;
     explicit powered_distance(const mesh::size_t_or<T> parameter)
         : n{parameter}
         , distance{init_distance(parameter)} {}
@@ -50,8 +43,6 @@ struct powered_distance final {
                     return &powered_distance<T>::calculate<1zu>;
                 if (value == 2zu)
                     return &powered_distance<T>::calculate<2zu>;
-                if (value == 3zu)
-                    return &powered_distance<T>::calculate<3zu>;
                 if (value == metamath::constants::Infinity<size_t>)
                     return &powered_distance<T>::calculate<metamath::constants::Infinity<size_t>>;
                 return &powered_distance<T>::calculate_with_exp<size_t>;
@@ -88,19 +79,32 @@ struct powered_distance_with_rotation final {
 };
 
 template<class T>
-T get_value(const size_t_or<T>& value) {
-    if (std::holds_alternative<T>(value))
-        return std::get<T>(value);
-    return T(std::get<size_t>(value));
-}
+struct distance_function final {
+    std::variant<powered_distance<T>, powered_distance_with_rotation<T>> function = powered_distance<T>{};
+
+    const size_t_or<T>& exponent() const {
+        if (std::holds_alternative<powered_distance<T>>(function))
+            return std::get<powered_distance<T>>(function).n;
+        return std::get<powered_distance_with_rotation<T>>(function).n;
+    }
+
+    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) const {
+        if (std::holds_alternative<powered_distance<T>>(function))
+            return const_cast<powered_distance<T>&>(std::get<powered_distance<T>>(function))(x, y, r);
+        return std::get<powered_distance_with_rotation<T>>(function)(x, y, r);
+    }
+};
 
 template<class T>
-size_t_or<T> get_value(const distance_function<T>& distance) {
-    if (const auto* function = distance.template target<powered_distance<T>>())
-        return function->n;
-    if (const auto* function = distance.template target<powered_distance_with_rotation<T>>())
-        return function->n;
-    throw std::domain_error{"Unknown distance function."};
-}
+struct influence final {
+    distance_function<T> distance;
+    std::array<T, 2> radius;
+};
+
+template<class T>
+using influences = std::unordered_map<std::string, influence<T>>;
+
+template<class T, class I>
+using neighbours_t = std::pair<influences<T>, std::vector<std::vector<I>>>;
 
 }
