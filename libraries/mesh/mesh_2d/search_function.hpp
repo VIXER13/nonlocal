@@ -11,29 +11,19 @@
 namespace nonlocal::mesh {
 
 template<class T>
-using size_t_or = std::variant<T, size_t>;
-
-template<class T>
-T get_value(const size_t_or<T>& value) {
-    if (std::holds_alternative<T>(value))
-        return std::get<T>(value);
-    return T(std::get<size_t>(value));
-}
-
-template<class T>
 struct powered_distance final {
     // x - first point, y - second point, r - normalizator (nonlocal radius)
     using distance_t = T(powered_distance<T>::*)(const std::array<T, 2>&, const std::array<T, 2>&, const std::array<T, 2>&);
 
-    size_t_or<T> n = 2zu;
+    metamath::types::size_t_or<T> n = 2zu;
     distance_t distance = &powered_distance<T>::calculate<2zu>;
 
     explicit powered_distance() noexcept = default;
-    explicit powered_distance(const mesh::size_t_or<T> parameter)
+    explicit powered_distance(const metamath::types::size_t_or<T> parameter)
         : n{parameter}
         , distance{init_distance(parameter)} {}
 
-    distance_t init_distance(const mesh::size_t_or<T> parameter) {
+    distance_t init_distance(const metamath::types::size_t_or<T> parameter) {
         return std::visit(metamath::types::visitor{
             [this](const T value) -> distance_t {
                 return &powered_distance<T>::calculate_with_exp<T>; 
@@ -67,7 +57,7 @@ struct powered_distance final {
 
 template<std::floating_point T>
 struct powered_distance_with_rotation final {
-    static constexpr size_t_or<T> n = 2zu;
+    static constexpr metamath::types::size_t_or<T> n = 2zu;
 
     static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) {
         using metamath::functions::power;
@@ -82,7 +72,7 @@ template<class T>
 struct distance_function final {
     std::variant<powered_distance<T>, powered_distance_with_rotation<T>> function = powered_distance<T>{};
 
-    const size_t_or<T>& exponent() const {
+    const metamath::types::size_t_or<T>& exponent() const {
         if (std::holds_alternative<powered_distance<T>>(function))
             return std::get<powered_distance<T>>(function).n;
         return std::get<powered_distance_with_rotation<T>>(function).n;

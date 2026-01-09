@@ -90,11 +90,11 @@ template<std::floating_point T>
 mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_optional_fields(config, { "distance", "n" }, path_with_access);
-    mesh::size_t_or<T> n = 2zu;
+    metamath::types::size_t_or<T> n = 2zu;
     if (config.contains("n")) {
-        n = config["n"].is_number_unsigned() ? mesh::size_t_or<T>{config["n"].get<size_t>()} :
-                                               mesh::size_t_or<T>{config["n"].get<T>()};
-        if (mesh::get_value(n) <= T{0})
+        n = config["n"].is_number_unsigned() ? metamath::types::size_t_or<T>{config["n"].get<size_t>()} :
+                                               metamath::types::size_t_or<T>{config["n"].get<T>()};
+        if (metamath::types::get_value(n) <= T{0})
             throw std::domain_error{"Parameter \"" + path_with_access + "n\" shall be greater than 0."};
     }
     if (config.contains("distance")) {
