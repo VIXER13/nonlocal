@@ -129,6 +129,8 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influenc
         return exponential_2d<T>{{distance, radius}, 2zu, 0.5};
     else if (influence != influence_t::Polynomial)
         throw std::domain_error{"Unknown influence function: " + path};
+    if (distance.function.template target<mesh::powered_distance<T>>())
+        return fast_polynomial<T>{radius};
     return polynomial_2d<T>{{distance, radius}, 2zu, 1zu};
 }
 

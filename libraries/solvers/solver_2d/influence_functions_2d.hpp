@@ -2,47 +2,28 @@
 
 #include <mesh/mesh_2d/search_function.hpp>
 
-#include <iostream>
-
 namespace nonlocal::solver_2d::influence {
 
 class _influence_function_2d final {
     template<std::floating_point T>
-    using power_function = T(*)(const T, const T);
-
-    template<size_t N, std::floating_point T>
-    static T power(const T value, const T) noexcept {
-        return metamath::functions::power<N>(value);
-    }
-
-    template<std::floating_point T>
-    static T sqrt(const T value, const T) noexcept {
-        return std::sqrt(value);
-    }
-
-    template<std::floating_point T>
-    static T cbrt(const T value, const T) noexcept {
-        return std::cbrt(value);
-    }
-
-    template<std::floating_point T>
     static metamath::types::size_t_or<T> division(const metamath::types::size_t_or<T>& lhs, const metamath::types::size_t_or<T>& rhs) {
-        if (std::holds_alternative<size_t>(lhs) && std::holds_alternative<size_t>(rhs) &&
-            std::get<size_t>(lhs) % std::get<size_t>(rhs) == 0)
-            return std::get<size_t>(lhs) / std::get<size_t>(rhs);
+        if (std::holds_alternative<size_t>(rhs)) {
+            if (std::get<size_t>(rhs) == metamath::constants::Infinity<size_t>) // used infinity norm
+                return lhs;
+            if (std::holds_alternative<size_t>(lhs) && std::get<size_t>(lhs) % std::get<size_t>(rhs) == 0)
+                return std::get<size_t>(lhs) / std::get<size_t>(rhs);
+        }
         return metamath::types::get_value(lhs) / metamath::types::get_value(rhs);
     }
 
     template<std::floating_point T>
-    static power_function<T> init_power_function(const metamath::types::size_t_or<T>& n_variant) {
-        if (std::holds_alternative<size_t>(n_variant)) {
-            const size_t n = std::get<size_t>(n_variant);
-            if (n == 1zu)
-                return power<1, T>;
-            if (n == 2zu)
-                return power<2, T>;
-        }
-        return std::pow<T, T>;
+    static T power(const T value, const metamath::types::size_t_or<T>& exp) noexcept {
+        if (std::holds_alternative<T>(exp))
+            return metamath::functions::power(value, std::get<T>(exp));
+        const size_t n = std::get<size_t>(exp);
+        if (n == 1zu)
+            return value;
+        return metamath::functions::power(value, n);
     }
 
     explicit constexpr _influence_function_2d() noexcept = default;
@@ -83,10 +64,8 @@ class polynomial_2d final {
     using _impl = _influence_function_2d;
 
     mesh::influence<T> _influence;
-    _impl::power_function<T> _power_func_inner;
-    _impl::power_function<T> _power_func_outer;
-    T _exp_inner = T{2};
-    T _exp_outer = T{2};
+    metamath::types::size_t_or<T> _p;
+    metamath::types::size_t_or<T> _q;
     T _norm = T{1};
 
     static T calc_norm(const mesh::influence<T>& influence, const T p, const T q) {
@@ -101,16 +80,14 @@ class polynomial_2d final {
 public:
     explicit polynomial_2d(const mesh::influence<T>& influence, const metamath::types::size_t_or<T>& p, const metamath::types::size_t_or<T>& q)
         : _influence{influence}
-        , _power_func_inner{_impl::init_power_function(_impl::division(p, influence.distance.exponent()))}
-        , _power_func_outer{_impl::init_power_function(q)}
-        , _exp_inner{metamath::types::get_value(p) / metamath::types::get_value(influence.distance.exponent())}
-        , _exp_outer{metamath::types::get_value(q)}
+        , _p{_impl::division(p, influence.distance.exponent())}
+        , _q{q}
         , _norm{calc_norm(influence, metamath::types::get_value(p), metamath::types::get_value(q))} {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         const auto& [distance, radius] = _influence;
         const T dist = distance(x, y, radius);
-        return dist < T{1} ? _norm * _power_func_outer(T{1} - _power_func_inner(dist, _exp_inner), _exp_outer) : T{0};
+        return dist < T{1} ? _norm * _impl::power(T{1} - _impl::power(dist, _p), _q) : T{0};
     }
 };
 
@@ -119,8 +96,7 @@ class exponential_2d final {
     using _impl = _influence_function_2d;
 
     mesh::influence<T> _influence;
-    _impl::power_function<T> _power_func;
-    T _degree = T{2};
+    metamath::types::size_t_or<T> _p = 2zu;
     T _q = T{-0.5};
     T _norm = T{1};
 
@@ -136,15 +112,30 @@ class exponential_2d final {
 public:
     explicit exponential_2d(const mesh::influence<T>& influence, const metamath::types::size_t_or<T>& p, const T q = T{0.5})
         : _influence{influence}
-        , _power_func(_impl::init_power_function(_impl::division(p, influence.distance.exponent())))
-        , _degree{metamath::types::get_value(p) / metamath::types::get_value(influence.distance.exponent())}
+        , _p{_impl::division(p, influence.distance.exponent())}
         , _q{-q}
         , _norm{calc_norm(influence, metamath::types::get_value(p), q)} {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         const auto& [distance, radius] = _influence;
         const T dist = distance(x, y, radius);
-        return _norm * std::exp(_q * _power_func(dist, _degree));
+        return _norm * std::exp(_q * _impl::power(dist, _p));
+    }
+};
+
+template<std::floating_point T>
+class fast_polynomial final {
+    std::array<T, 2> _radius;
+    T _norm = T{1};
+
+public:
+    explicit fast_polynomial(const std::array<T, 2>& radius)
+        : _radius{radius}
+        , _norm{T{2} / (std::numbers::pi_v<T> * radius[0] * radius[1])} {}
+
+    T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
+        const T dist = metamath::functions::powered_distance<2>(x, y, _radius);
+        return dist < T{1} ? _norm * (T{1} - dist) : T{0};
     }
 };
 

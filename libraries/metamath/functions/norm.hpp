@@ -4,6 +4,7 @@
 #include "operators.hpp"
 
 #include <metamath/utils/constants.hpp>
+#include <metamath/types/traits.hpp>
 
 #include <array>
 #include <cmath>
@@ -20,10 +21,10 @@ T powered_norm(const std::array<T, D>& x) {
     });
 }
 
-template<class T, size_t D>
-T powered_norm(const std::array<T, D>& x, const T exp) {
+template<class T, size_t D, types::arithmetic Exp>
+T powered_norm(const std::array<T, D>& x, const Exp exp) {
     return std::accumulate(x.begin(), x.end(), T{0}, [exp](const T sum, const T x) {
-        return sum + std::pow(std::abs(x), exp);
+        return sum + power(std::abs(x), exp);
     });
 }
 
@@ -38,64 +39,12 @@ T norm(const std::array<T, D>& x) {
     if constexpr (Exp == constants::Infinity<size_t>)
         return std::abs(*std::max_element(x.begin(), x.end(), 
             [](const T a, const T b) { return std::abs(a) < std::abs(b); }));
-    return std::pow(powered_norm<Exp>(x), T{1} / Exp);
+    return power(powered_norm<Exp>(x), T{1} / Exp);
 }
 
-template<class T, size_t D>
-T norm(const std::array<T, D>& x, const T exp) {
-    return std::pow(powered_norm(x, exp), T{1} / exp);
-}
-
-template<size_t N = 2, class T, size_t D>
-T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y) {
-    return powered_norm<N>(x - y);
-}
-
-template<class T, size_t D>
-T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const T exp) {
-    return powered_norm(x - y, exp);
-}
-
-template<size_t N = 2, class T, size_t D>
-T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r) {
-    std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
-        z[i] = (x[i] - y[i]) / r[i];
-    return powered_norm<N>(z);
-}
-
-template<class T, size_t D>
-T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r, const T exp) {
-    std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
-        z[i] = (x[i] - y[i]) / r[i];
-    return powered_norm(z, exp);
-}
-
-template<size_t N = 2, class T, size_t D>
-T distance(const std::array<T, D>& x, const std::array<T, D>& y) {
-    return norm<N>(x - y);
-}
-
-template<class T, size_t D>
-T distance(const std::array<T, D>& x, const std::array<T, D>& y, const T exp) {
-    return norm(x - y, exp);
-}
-
-template<size_t N = 2, class T, size_t D>
-T distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r) {
-    std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
-        z[i] = (x[i] - y[i]) / r[i];
-    return norm<N>(z);
-}
-
-template<class T, size_t D>
-T distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r, const T exp) {
-    std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
-        z[i] = (x[i] - y[i]) / r[i];
-    return norm(z, exp);
+template<class T, size_t D, types::arithmetic Exp>
+T norm(const std::array<T, D>& x, const Exp exp) {
+    return power(powered_norm(x, exp), T{1} / exp);
 }
 
 }

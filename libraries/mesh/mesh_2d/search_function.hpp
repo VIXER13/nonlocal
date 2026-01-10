@@ -25,10 +25,8 @@ struct powered_distance final {
 
     distance_t init_distance(const metamath::types::size_t_or<T> parameter) {
         return std::visit(metamath::types::visitor{
-            [this](const T value) -> distance_t {
-                return &powered_distance<T>::calculate_with_exp<T>; 
-            },
-            [this](const size_t value) -> distance_t {
+            [this](const T) { return &powered_distance<T>::calculate_with_exp<T>; },
+            [this](const size_t value) {
                 if (value == 1zu)
                     return &powered_distance<T>::calculate<1zu>;
                 if (value == 2zu)
@@ -42,6 +40,8 @@ struct powered_distance final {
 
     template<size_t N>
     T calculate(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) {
+        if constexpr (N == metamath::constants::Infinity<size_t>)
+            return metamath::functions::distance<N, T, 2zu>(x, y, r);
         return metamath::functions::powered_distance<N, T, 2zu>(x, y, r);
     }
 
@@ -70,18 +70,18 @@ struct powered_distance_with_rotation final {
 
 template<class T>
 struct distance_function final {
-    std::variant<powered_distance<T>, powered_distance_with_rotation<T>> function = powered_distance<T>{};
+    std::function<T(const std::array<T, 2>&, const std::array<T, 2>&, const std::array<T, 2>&)> function = powered_distance<T>{};
 
-    const metamath::types::size_t_or<T>& exponent() const {
-        if (std::holds_alternative<powered_distance<T>>(function))
-            return std::get<powered_distance<T>>(function).n;
-        return std::get<powered_distance_with_rotation<T>>(function).n;
+    const metamath::types::size_t_or<T> exponent() const {
+        if (const auto* const distance = function.template target<powered_distance<T>>())
+            return distance->n;
+        if (const auto* const distance = function.template target<powered_distance_with_rotation<T>>())
+            return distance->n;
+        throw std::domain_error{"Unknown distance function type."};
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) const {
-        if (std::holds_alternative<powered_distance<T>>(function))
-            return const_cast<powered_distance<T>&>(std::get<powered_distance<T>>(function))(x, y, r);
-        return std::get<powered_distance_with_rotation<T>>(function)(x, y, r);
+        return function(x, y, r);
     }
 };
 
