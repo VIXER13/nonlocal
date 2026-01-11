@@ -5,7 +5,7 @@
 namespace metamath::types {
 
 template<class T>
-using size_t_or = std::variant<T, size_t>;
+using size_t_or = std::variant<size_t, T>;
 
 template<class T>
 T get_value(const size_t_or<T>& value) {

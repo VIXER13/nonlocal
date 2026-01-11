@@ -44,6 +44,12 @@ class _read_model final {
     static std::array<T, Dimension> read_nonlocal_radii(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
+    static metamath::types::size_t_or<T> read_influence_parameter(const nlohmann::json& config, 
+                                                                  const std::string& path,
+                                                                  const std::string& name,
+                                                                  const metamath::types::size_t_or<T>& default_value);
+
+    template<std::floating_point T>
     static mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
@@ -87,21 +93,35 @@ std::array<T, Dimension> _read_model::read_nonlocal_radii(const nlohmann::json& 
 }
 
 template<std::floating_point T>
+metamath::types::size_t_or<T> read_influence_parameter(const nlohmann::json& config,
+                                                       const std::string& path,
+                                                       const std::string& name,
+                                                       const metamath::types::size_t_or<T>& default_value) {
+    if (!config.contains(name))
+        return default_value;
+    const std::string path_with_access = append_access_sign(path);
+    if (config[name].is_string()) {
+        if (const auto str = config[name].get<std::string>(); str == "inf" || str == "infinity")
+            return metamath::constants::Infinity<size_t>;
+        throw std::domain_error{"Parameter \"" + path_with_access + name + "\" shall be a number or \"infinity\"."};
+    }
+    const auto value = config[name].is_number_unsigned() ? metamath::types::size_t_or<T>{config[name].get<size_t>()} :
+                                                           metamath::types::size_t_or<T>{config[name].get<T>()};
+    if (metamath::types::get_value(value) <= T{0})
+        throw std::domain_error{"Parameter \"" + path_with_access + name + "\" shall be greater than 0."};
+    return value;
+}
+
+template<std::floating_point T>
 mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_optional_fields(config, { "distance", "n" }, path_with_access);
-    metamath::types::size_t_or<T> n = 2zu;
-    if (config.contains("n")) {
-        n = config["n"].is_number_unsigned() ? metamath::types::size_t_or<T>{config["n"].get<size_t>()} :
-                                               metamath::types::size_t_or<T>{config["n"].get<T>()};
-        if (metamath::types::get_value(n) <= T{0})
-            throw std::domain_error{"Parameter \"" + path_with_access + "n\" shall be greater than 0."};
-    }
+    const metamath::types::size_t_or<T> n = read_influence_parameter<T>(config, path, "n", 2zu);
     if (config.contains("distance")) {
         if (const auto distance = config["distance"].get<distance_t>(); distance == distance_t::Ellipse_With_Rotation)
             return { mesh::powered_distance_with_rotation<T>{} };
         else if (distance != distance_t::Lp)
-            throw std::domain_error{"Unknown distance function type: " + path};
+            throw std::domain_error{"Unknown distance function type: " + path_with_access + "distance"};
     }
     return { mesh::powered_distance<T>{n} };
 }
@@ -120,18 +140,26 @@ std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std
 template<std::floating_point T>
 std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
     const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius) {
+    using namespace metamath::types;
     using namespace nonlocal::solver_2d::influence;
-    check_optional_fields(config, { "influence", "p", "q" }, path);
+    check_optional_fields(config, { "influence", "p", "q" }, append_access_sign(path));
     const auto distance = read_distance_2d<T>(config, path);
-    if (const auto influence = config["influence"].get<influence_t>(); influence == influence_t::Constant)
-        return constant_2d<T>{{distance, radius}};
-    else if (influence == influence_t::Exponential)
-        return exponential_2d<T>{{distance, radius}, 2zu, 0.5};
-    else if (influence != influence_t::Polynomial)
-        throw std::domain_error{"Unknown influence function: " + path};
-    if (distance.function.template target<mesh::powered_distance<T>>())
-        return fast_polynomial<T>{radius};
-    return polynomial_2d<T>{{distance, radius}, 2zu, 1zu};
+    const auto influence = config["influence"].get<influence_t>();
+    if (influence == influence_t::Constant)
+        return constant<T>{{distance, radius}};
+    const auto p = read_influence_parameter<T>(config, path, "p", 2zu);
+    if (influence == influence_t::Exponential) {
+        const auto q = read_influence_parameter<T>(config, path, "q", T{0.5});
+        return exponential<T>{{distance, radius}, p, get_value(q)};
+    }
+    if (influence == influence_t::Polynomial) {
+        const auto q = read_influence_parameter<T>(config, path, "q", 1zu);
+        if (const auto* const dist = distance.function.template target<mesh::powered_distance<T>>();
+            dist && dist->n == size_t_or<T>{2zu} && p == size_t_or<T>{2zu} && q == size_t_or<T>{1zu})
+            return fast_polynomial<T>{radius};
+        return polynomial<T>{{distance, radius}, p, q};
+    }
+    throw std::domain_error{"Unknown influence function: " + path};
 }
 
 template<size_t Dimension, std::floating_point T>

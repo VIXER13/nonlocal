@@ -30,14 +30,14 @@ class _influence_function_2d final {
 
 public:
     template<std::floating_point T>
-    friend class polynomial_2d;
+    friend class polynomial;
 
     template<std::floating_point T>
-    friend class exponential_2d;
+    friend class exponential;
 };
 
 template<std::floating_point T>
-class constant_2d final {
+class constant final {
     mesh::influence<T> _influence;
     T _area = T{1};
 
@@ -49,7 +49,7 @@ class constant_2d final {
     }
 
 public:
-    explicit constant_2d(const mesh::influence<T>& influence)
+    explicit constant(const mesh::influence<T>& influence)
         : _influence{influence}
         , _area{calc_area(influence)} {}
 
@@ -60,7 +60,7 @@ public:
 };
 
 template<std::floating_point T>
-class polynomial_2d final {
+class polynomial final {
     using _impl = _influence_function_2d;
 
     mesh::influence<T> _influence;
@@ -78,7 +78,7 @@ class polynomial_2d final {
     }
 
 public:
-    explicit polynomial_2d(const mesh::influence<T>& influence, const metamath::types::size_t_or<T>& p, const metamath::types::size_t_or<T>& q)
+    explicit polynomial(const mesh::influence<T>& influence, const metamath::types::size_t_or<T>& p, const metamath::types::size_t_or<T>& q)
         : _influence{influence}
         , _p{_impl::division(p, influence.distance.exponent())}
         , _q{q}
@@ -92,13 +92,13 @@ public:
 };
 
 template<std::floating_point T>
-class exponential_2d final {
+class exponential final {
     using _impl = _influence_function_2d;
 
     mesh::influence<T> _influence;
-    metamath::types::size_t_or<T> _p = 2zu;
-    T _q = T{-0.5};
-    T _norm = T{1};
+    metamath::types::size_t_or<T> _p;
+    T _q;
+    T _norm;
 
     static T calc_norm(const mesh::influence<T>& influence, const T p, const T q) {
         const auto& [distance, radius] = influence;
@@ -110,7 +110,8 @@ class exponential_2d final {
     }
 
 public:
-    explicit exponential_2d(const mesh::influence<T>& influence, const metamath::types::size_t_or<T>& p, const T q = T{0.5})
+    // The default parameters define the normal distribution function
+    explicit exponential(const mesh::influence<T>& influence, const metamath::types::size_t_or<T>& p = 2zu, const T q = T{0.5})
         : _influence{influence}
         , _p{_impl::division(p, influence.distance.exponent())}
         , _q{-q}
@@ -123,10 +124,11 @@ public:
     }
 };
 
+// influence function for default calculations scenarious
 template<std::floating_point T>
 class fast_polynomial final {
     std::array<T, 2> _radius;
-    T _norm = T{1};
+    T _norm;
 
 public:
     explicit fast_polynomial(const std::array<T, 2>& radius)
