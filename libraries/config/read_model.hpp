@@ -144,7 +144,7 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influenc
     using namespace nonlocal::solver_2d::influence;
     check_optional_fields(config, { "influence", "p", "q" }, append_access_sign(path));
     const auto distance = read_distance_2d<T>(config, path);
-    const auto influence = config["influence"].get<influence_t>();
+    const auto influence = config.value("influence", influence_t::Polynomial);
     if (influence == influence_t::Constant)
         return constant<T>{{distance, radius}};
     const auto p = read_influence_parameter<T>(config, path, "p", 2zu);
