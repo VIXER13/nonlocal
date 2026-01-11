@@ -3,6 +3,7 @@
 #include "matrix.hpp"
 #include "fixed_matrix.hpp"
 #include "optional_integer.hpp"
+#include "size_t_or.hpp"
 #include "traits.hpp"
 #include "vector_with_shifted_index.hpp"
 #include "visitor.hpp"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh_container_2d_utils.hpp"
+#include "search_function.hpp"
 
 #include <parallel/MPI_utils.hpp>
 #include <parallel/uniform_ranges.hpp>
@@ -8,22 +9,6 @@
 #include <set>
 
 namespace nonlocal::mesh {
-
-// x - first point, y - second point, r - normalizator (nonlocal radius)
-template<class T>
-using distance_f = std::function<T(const std::array<T, 2>&, const std::array<T, 2>&, const std::array<T, 2>&)>;
-
-template<class T>
-struct influence final {
-    distance_f<T> distance;
-    std::array<T, 2> radius;
-};
-
-template<class T>
-using influences = std::unordered_map<std::string, influence<T>>;
-
-template<class T, class I>
-using neighbours_t = std::pair<influences<T>, std::vector<std::vector<I>>>;
 
 template<class T>
 constexpr T jacobian(const std::array<T, 2>& J) noexcept {
