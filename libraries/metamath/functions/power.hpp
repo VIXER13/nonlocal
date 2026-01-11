@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cmath>
 #include <concepts>
 #include <type_traits>
 
@@ -13,7 +14,7 @@ constexpr T power(const T x) noexcept {
         return 1;
     else if constexpr (N == 1)
         return x;
-    else if constexpr (N % 2)
+    else if constexpr (N & 1)
         return x * power<N - 1>(x);
     else {
         const T temp = power<N / 2>(x);
@@ -22,18 +23,17 @@ constexpr T power(const T x) noexcept {
 }
 
 template<class T, std::integral Exp>
-constexpr T power(const T x, Exp exp) noexcept {
+constexpr T power(T x, Exp exp) noexcept {
     if (exp < 0)
         return T{1} / power(x, -exp);
     T result = T{1};
-    T temp = x;
     while (exp > 0) {
         if (exp & 1) {
-            result *= temp;
+            result *= x;
             --exp;
         } else {
-            temp *= temp;
-            exp = exp >> 1;
+            x *= x;
+            exp >>= 1;
         }
     }
     return result;
