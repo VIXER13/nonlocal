@@ -55,6 +55,10 @@ class _read_model final {
     template<std::floating_point T>
     static std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std::string& path, const T radius);
 
+    template<std::floating_point T, class Distance>
+    friend std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
+        const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n);
+
     template<std::floating_point T>
     friend std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
         const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius);
@@ -123,7 +127,7 @@ mesh::distance_function<T> read_distance_2d(const nlohmann::json& config, const 
         else if (distance != distance_t::Lp)
             throw std::domain_error{"Unknown distance function type: " + path_with_access + "distance"};
     }
-    return { mesh::powered_distance<T>{n} };
+    return mesh::powered_distance<T>{n};
 }
 
 template<std::floating_point T>
@@ -137,29 +141,40 @@ std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std
     return polynomial_1d<T, 1, 1>{radius};
 }
 
-template<std::floating_point T>
+template<std::floating_point T, class Distance>
 std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
-    const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius) {
+    const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n) {
     using namespace metamath::types;
     using namespace nonlocal::solver_2d::influence;
     check_optional_fields(config, { "influence", "p", "q" }, append_access_sign(path));
-    const auto distance = read_distance_2d<T>(config, path);
     const auto influence = config.value("influence", influence_t::Polynomial);
     if (influence == influence_t::Constant)
-        return constant<T>{{distance, radius}};
+        return constant<T, Distance>{radius, n};
     const auto p = read_influence_parameter<T>(config, path, "p", 2zu);
     if (influence == influence_t::Exponential) {
         const auto q = read_influence_parameter<T>(config, path, "q", T{0.5});
-        return exponential<T>{{distance, radius}, p, get_value(q)};
+        return exponential<T, Distance>{radius, n, p, get_value(q)};
     }
     if (influence == influence_t::Polynomial) {
         const auto q = read_influence_parameter<T>(config, path, "q", 1zu);
-        if (const auto* const dist = distance.function.template target<mesh::powered_distance<T>>();
-            dist && dist->n == size_t_or<T>{2zu} && p == size_t_or<T>{2zu} && q == size_t_or<T>{1zu})
-            return fast_polynomial<T>{radius};
-        return polynomial<T>{{distance, radius}, p, q};
+        if constexpr (std::is_same_v<Distance, mesh::powered_distance<T>>)
+            if (n == size_t_or<T>{2zu} && p == size_t_or<T>{2zu} && q == size_t_or<T>{1zu})
+                return fast_polynomial<T>{radius};
+        return polynomial<T, Distance>{radius, n, p, q};
     }
     throw std::domain_error{"Unknown influence function: " + path};
+}
+
+template<std::floating_point T>
+std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influence_2d(
+    const nlohmann::json& config, const std::string& path, const std::array<T, 2>& radius) {
+    using namespace nonlocal::mesh;
+    const auto distance = read_distance_2d<T>(config, path);
+    if (const auto* const func = distance.template target<powered_distance<T>>())
+        return read_influence_2d<T, powered_distance<T>>(config, path, radius, func->n);
+    if (const auto* const func = distance.template target<powered_distance_with_rotation<T>>())
+        return read_influence_2d<T, powered_distance_with_rotation<T>>(config, path, radius, func->n);
+    throw std::domain_error{"Unknown distance function for influence initialization: " + path};
 }
 
 template<size_t Dimension, std::floating_point T>
