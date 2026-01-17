@@ -157,9 +157,8 @@ std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)> read_influenc
     }
     if (influence == influence_t::Polynomial) {
         const auto q = read_influence_parameter<T>(config, path, "q", 1zu);
-        if constexpr (std::is_same_v<Distance, mesh::powered_distance<T>>)
-            if (n == size_t_or<T>{2zu} && p == size_t_or<T>{2zu} && q == size_t_or<T>{1zu})
-                return fast_polynomial<T>{radius};
+        if (n == size_t_or<T>{2zu} && p == size_t_or<T>{2zu} && q == size_t_or<T>{1zu})
+            return fast_polynomial<T, Distance>{radius};
         return polynomial<T, Distance>{radius, n, p, q};
     }
     throw std::domain_error{"Unknown influence function: " + path};

@@ -48,7 +48,7 @@ class constant final : public Distance {
     }
 
 public:
-    explicit constant(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n)
+    explicit constant(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n = 2zu)
         : Distance{n}
         , _radius{radius}
         , _area{calc_area(radius, n)} {}
@@ -76,9 +76,9 @@ class polynomial final : public Distance {
 
 public:
     explicit polynomial(const std::array<T, 2>& radius,
-                        const metamath::types::size_t_or<T>& n,
-                        const metamath::types::size_t_or<T>& p,
-                        const metamath::types::size_t_or<T>& q)
+                        const metamath::types::size_t_or<T>& n = 2zu,
+                        const metamath::types::size_t_or<T>& p = 2zu,
+                        const metamath::types::size_t_or<T>& q = 1zu)
         : Distance{n}
         , _radius{radius}
         , _p{_impl::division(p, n)}
@@ -110,7 +110,7 @@ class exponential final : public Distance {
 public:
     // The default parameters define the normal distribution function
     explicit exponential(const std::array<T, 2>& radius,
-                         const metamath::types::size_t_or<T>& n,
+                         const metamath::types::size_t_or<T>& n = 2zu,
                          const metamath::types::size_t_or<T>& p = 2zu,
                          const T q = T{0.5})
         : Distance{n}
@@ -124,11 +124,17 @@ public:
     }
 };
 
-// influence function for default calculations scenarious
-template<std::floating_point T>
+// influence function for default calculations scenarious (n == 2, p == 2, q == 1)
+template<std::floating_point T, class Distance = mesh::powered_distance<T>>
 class fast_polynomial final {
     std::array<T, 2> _radius;
     T _norm;
+
+    T distance(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
+        if constexpr (std::is_same_v<Distance, mesh::powered_distance_with_rotation<T>>)
+            return mesh::powered_distance_with_rotation<T>::operator()(x, y, _radius);
+        return metamath::functions::powered_distance<2>(x, y, _radius);
+    }
 
 public:
     explicit fast_polynomial(const std::array<T, 2>& radius)
@@ -136,7 +142,7 @@ public:
         , _norm{T{2} / (std::numbers::pi_v<T> * radius[0] * radius[1])} {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
-        const T dist = metamath::functions::powered_distance<2>(x, y, _radius);
+        const T dist = distance(x, y);
         return dist < T{1} ? _norm * (T{1} - dist) : T{0};
     }
 };
