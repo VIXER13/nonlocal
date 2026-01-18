@@ -21,7 +21,7 @@ class heat_equation_solution_2d : public solution_2d<T, I> {
 
     T evaluate(const isotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
     std::array<T, 2> evaluate(const orthotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
-    metamath::types::square_matrix<T, 2> evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
+    std::array<T, 3> evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
 
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
@@ -95,11 +95,8 @@ std::array<T, 2> heat_equation_solution_2d<T, I>::evaluate(const orthotropic_con
 }
 
 template<std::floating_point T, std::integral I>
-metamath::types::square_matrix<T, 2> heat_equation_solution_2d<T, I>::evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const {
-    return {
-        evaluate(conductivity[X][X], qshift), evaluate(conductivity[X][Y], qshift),
-        evaluate(conductivity[Y][X], qshift), evaluate(conductivity[Y][Y], qshift)
-    };
+std::array<T, 3> heat_equation_solution_2d<T, I>::evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const {
+    return { evaluate(conductivity[X], qshift), evaluate(conductivity[Y], qshift), evaluate(conductivity[XY], qshift) };
 }
 
 template<std::floating_point T, std::integral I>
@@ -122,8 +119,8 @@ std::array<std::vector<T>, 2> heat_equation_solution_2d<T, I>::local_flux_in_qno
                     [&](const anisotropic_conductivity_t<T>& conductivity) {
                         const auto cond = evaluate(conductivity, qshift);
                         std::tie(flux[X][qshift], flux[Y][qshift]) = std::make_tuple(
-                            -cond[X][X] * flux[X][qshift] - cond[X][Y] * flux[Y][qshift],
-                            -cond[Y][X] * flux[X][qshift] - cond[Y][Y] * flux[Y][qshift]
+                            -cond[ X] * flux[X][qshift] - cond[XY] * flux[Y][qshift],
+                            -cond[XY] * flux[X][qshift] - cond[ Y] * flux[Y][qshift]
                         );
                     }
                 }, parameter.conductivity);

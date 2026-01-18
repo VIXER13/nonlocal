@@ -8,9 +8,10 @@ namespace nonlocal {
 inline constexpr auto EMPTY_FUNCTION = []() constexpr noexcept {};
 
 enum axis : uint8_t {
-    X,
-    Y,
-    Z
+    X = 0,
+    Y = 1,
+    XY = 2,
+    Z = 2
 };
 
 enum class material_t : uint8_t {

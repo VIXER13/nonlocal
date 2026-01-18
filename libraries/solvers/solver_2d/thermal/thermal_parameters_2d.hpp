@@ -16,7 +16,7 @@ template<std::floating_point T>
 using orthotropic_conductivity_t = std::array<coefficient_t<T, 2>, 2>;
 
 template<std::floating_point T>
-using anisotropic_conductivity_t = metamath::types::square_matrix<coefficient_t<T, 2>, 2>;
+using anisotropic_conductivity_t = std::array<coefficient_t<T, 2>, 3>;
 
 template<std::floating_point T>
 using conductivity_t = std::variant<
@@ -47,8 +47,8 @@ using evaluated_orthotropic_conductivity_t = std::variant<
 
 template<std::floating_point T>
 using evaluated_anisotropic_conductivity_t = std::variant<
-    metamath::types::square_matrix<T, 2>, 
-    metamath::types::vector_with_shifted_index<metamath::types::square_matrix<T, 2>>
+    std::array<T, 3>,
+    metamath::types::vector_with_shifted_index<std::array<T, 3>>
 >;
 
 template<std::floating_point T>

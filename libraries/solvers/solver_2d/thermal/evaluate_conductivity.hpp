@@ -41,22 +41,19 @@ evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& me
                 return metamath::types::vector_with_shifted_index<std::array<T, 2>>{std::move(result), qshifts.front()};
             },
             [&mesh, &name, &solution](const anisotropic_conductivity_t<T>& conductivity) -> evaluated_conductivity_t<T> {
-                if (is_constant<T, 2u>(conductivity[X][X]) && is_constant<T, 2u>(conductivity[X][Y]) &&
-                    is_constant<T, 2u>(conductivity[Y][X]) && is_constant<T, 2u>(conductivity[Y][Y]))
-                    return metamath::types::square_matrix<T, 2>{std::get<T>(conductivity[X][X]), std::get<T>(conductivity[X][Y]),
-                                                                std::get<T>(conductivity[Y][X]), std::get<T>(conductivity[Y][Y])};
+                if (is_constant<T, 2u>(conductivity[X]) && is_constant<T, 2u>(conductivity[Y]) && is_constant<T, 2u>(conductivity[XY]))
+                    return std::array<T, 3>{std::get<T>(conductivity[X]), std::get<T>(conductivity[Y]), std::get<T>(conductivity[XY])};
     
-                std::vector<metamath::types::square_matrix<T, 2>> result;
+                std::vector<std::array<T, 3>> result;
                 const auto qshifts = mesh.quad_shifts(name);
                 result.reserve(qshifts.size());
                 for(const size_t qshift: qshifts)
                     result.push_back({
-                        evaluate<T, 2u>(conductivity[X][X], mesh.quad_coord(qshift), solution[qshift]),
-                        evaluate<T, 2u>(conductivity[X][Y], mesh.quad_coord(qshift), solution[qshift]),
-                        evaluate<T, 2u>(conductivity[Y][X], mesh.quad_coord(qshift), solution[qshift]),
-                        evaluate<T, 2u>(conductivity[Y][Y], mesh.quad_coord(qshift), solution[qshift])
+                        evaluate<T, 2u>(conductivity[ X], mesh.quad_coord(qshift), solution[qshift]),
+                        evaluate<T, 2u>(conductivity[ Y], mesh.quad_coord(qshift), solution[qshift]),
+                        evaluate<T, 2u>(conductivity[XY], mesh.quad_coord(qshift), solution[qshift])
                     });
-                return metamath::types::vector_with_shifted_index<metamath::types::square_matrix<T, 2>>{std::move(result), qshifts.front()};
+                return metamath::types::vector_with_shifted_index<std::array<T, 3>>{std::move(result), qshifts.front()};
             }
         }, parameter.physical.conductivity);
 

@@ -121,8 +121,8 @@ T conductivity_matrix_2d<T, I, J>::integrate_local(const Material& conductivity,
         else if constexpr (std::is_same_v<Material, evaluated_orthotropic_conductivity_t<T>>)
             value = conduct[X] * dNi[X] * dNj[X] + conduct[Y] * dNi[Y] * dNj[Y];
         else if constexpr (std::is_same_v<Material, evaluated_anisotropic_conductivity_t<T>>)
-            value = dNi[X] * (conduct[X][X] * dNj[X] + conduct[X][Y] * dNj[Y]) + 
-                    dNi[Y] * (conduct[Y][X] * dNj[X] + conduct[Y][Y] * dNj[Y]);
+            value = dNi[X] * (conduct[ X] * dNj[X] + conduct[XY] * dNj[Y]) + 
+                    dNi[Y] * (conduct[XY] * dNj[X] + conduct[ Y] * dNj[Y]);
         else
             static_assert(false, "Unsupported coefficient type.");
         integral += el.weight(q) * value / _base::mesh().jacobian(e, q);
@@ -153,8 +153,8 @@ T conductivity_matrix_2d<T, I, J>::integrate_nonlocal(const Material& conductivi
                 inner_integral[X] += influence_weight * conduct[X] * dNj[X];
                 inner_integral[Y] += influence_weight * conduct[Y] * dNj[Y];
             } else if constexpr (std::is_same_v<Material, evaluated_anisotropic_conductivity_t<T>>) {
-                inner_integral[X] += influence_weight * (conduct[X][X] * dNj[X] + conduct[X][Y] * dNj[Y]);
-                inner_integral[Y] += influence_weight * (conduct[Y][X] * dNj[X] + conduct[Y][Y] * dNj[Y]);
+                inner_integral[X] += influence_weight * (conduct[ X] * dNj[X] + conduct[XY] * dNj[Y]);
+                inner_integral[Y] += influence_weight * (conduct[XY] * dNj[X] + conduct[ Y] * dNj[Y]);
             } else
                 static_assert(false, "Unsupported coefficient type.");
         }
