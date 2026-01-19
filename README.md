@@ -30,8 +30,10 @@ make run-tests
 
 Для запуска программы NonLocFEM необходимо указать путь к исполняемому файлу и в качестве аргумента передать путь к .json файлу с конфигурацией запуска, например
 ```bash
-./build/NonLocFEM/NonLocFEM ./documents/config_examples/thermal_stationary_1d.json
+./build/NonLocFEM/NonLocFEM ./documents/config/examples/thermal_stationary_1d.json
 ```
+
+Для ознакомления со структурой конфигурационных файлов, просьба прочитать соответствующий [README](./documents/config/README.md).
 
 **Разработка**
 - Рекомендуется держать файлы CMakeLists.txt в форматированном состоянии. Для этого удобно использовать gersemi
