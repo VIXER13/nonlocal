@@ -57,10 +57,11 @@ void solve_thermal_2d_problem(
     const config::time_data<T>& time,
     const config::save_data& save) {
     solver_2d::thermal::nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
+    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
     {
-        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
+        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
         solution.calc_flux();
         save_solution(solution, save, 0u);
     }
@@ -74,7 +75,7 @@ void solve_thermal_2d_problem(
     for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
         solver.calc_step(boundaries_conditions, right_part);
         if (step % time.save_frequency == 0) {
-            solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
+            solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
             solution.calc_flux();
             save_solution(solution, save, step);
         }

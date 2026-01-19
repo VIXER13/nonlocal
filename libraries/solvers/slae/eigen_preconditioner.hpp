@@ -7,7 +7,6 @@ namespace nonlocal::slae {
 // Wrapper for Eigen library preconditioners
 template<class T, class I, class Preconditioner = Eigen::IdentityPreconditioner>
 class eigen_preconditioner final : public preconditioner_base<T, I> {
-
     Preconditioner _preconditioner;
 
 public:
@@ -53,7 +52,6 @@ using eigen_identity_preconditioner = eigen_preconditioner<T, I>;
 
 template<class T, class I>
 using eigen_diagonal_preconditioner = eigen_preconditioner<T, I, Eigen::DiagonalPreconditioner<T>>;
-
 
 template<class T, class I>
 using eigen_ILLT_preconditioner = eigen_preconditioner<T, I, Eigen::IncompleteCholesky<T, Eigen::Upper, Eigen::NaturalOrdering<I>>>;

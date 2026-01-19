@@ -14,8 +14,6 @@
 
 #include <Eigen/IterativeLinearSolvers>
 
-#include <chrono>
-
 namespace nonlocal::solver_2d::thermal {
 
 template<class T>
@@ -89,10 +87,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
     Eigen::Matrix<T, Eigen::Dynamic, 1> residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
 
-    std::vector<T> solution(mesh->quad_shift(mesh->container().elements_2d_count()), T{0});
-    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, solution);
-    solution = {};
-
+    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
     T difference = T{1};
     T norm_of_residual = T{1};
     size_t iteration = 0;
@@ -123,13 +118,11 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
                 conductivity_local.compute(conductivity_parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
                 slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};
                 logger::info() << "ILLT preconditioner" << std::endl;
-                solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
-                conductivity_local.matrix().inner()
-                );
+                solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(conductivity_local.matrix().inner());
                 if (solver.preconditioner().computation_info() != Eigen::Success) {
                     solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
                     logger::warning() << "The ILLT preconditioner could not be calculated, "
-                                    << "the preconditioner was switched to Identity." << std::endl;
+                                      << "the preconditioner was switched to Identity." << std::endl;
                 } 
                 temperature_curr = temperature_prev - solver.solve(residual);  
             }
@@ -146,7 +139,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
                        << ", norm(prev - curr) = " << difference 
                        << ", residual = "          << norm_of_residual << ";" << std::endl;
     }
-    return heat_equation_solution_2d<T, I>{mesh, parameters, temperature_curr};
+    return heat_equation_solution_2d<T, I>{mesh, conductivity_parameters, temperature_curr};
 }
 
 }

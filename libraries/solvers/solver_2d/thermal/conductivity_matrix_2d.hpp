@@ -12,8 +12,6 @@ template<std::floating_point T, std::integral I, std::integral J>
 class conductivity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {
     using _base = matrix_assembler_2d<T, I, J, 1>;
 
-    std::vector<T> _solution; // stub for nonlinear problems
-
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                 const std::vector<bool>& is_inner, const bool is_symmetric, const bool is_neumann);
 

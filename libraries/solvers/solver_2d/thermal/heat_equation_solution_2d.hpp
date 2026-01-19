@@ -11,30 +11,24 @@ template<std::floating_point T, std::integral I = uint32_t>
 class heat_equation_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
-    std::vector<T> _solution; // stub for nonlinear problems
-
     std::vector<T> _temperature;
     std::array<std::vector<T>, 2> _flux;
-    std::unordered_map<std::string, parameter_2d<T>> _parameters;
+    std::unordered_map<std::string, evaluated_conductivity_t<T>> _conductivity;
 
     std::array<std::vector<T>, 2> local_flux_in_qnodes() const;
-
-    T evaluate(const isotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
-    std::array<T, 2> evaluate(const orthotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
-    std::array<T, 3> evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const;
 
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     template<class Vector>
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                       const parameters_2d<T>& parameters, const Vector& temperature);
+                                       const evaluated_conductivity_2d<T>& conductivity,
+                                       const Vector& temperature);
     ~heat_equation_solution_2d() noexcept override = default;
 
     const std::vector<T>& temperature() const noexcept;
     const std::array<std::vector<T>, 2>& flux() const;
-    const parameter_2d<T>& parameter(const std::string& group) const;
+    const evaluated_conductivity_t<T>& conductivity(const std::string& group) const;
 
-    T calc_energy() const;
     bool is_flux_calculated() const noexcept;
     const std::array<std::vector<T>, 2>& calc_flux();
 };
@@ -47,10 +41,11 @@ heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr
 template<std::floating_point T, std::integral I>
 template<class Vector>
 heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                           const parameters_2d<T>& parameters, const Vector& temperature)
-    : _base{mesh, get_models(parameters)}
+                                                           const evaluated_conductivity_2d<T>& conductivity,
+                                                           const Vector& temperature)
+    : _base{mesh, get_models(conductivity)}
     , _temperature{temperature.cbegin(), std::next(temperature.cbegin(), mesh->container().nodes_count())}
-    , _parameters{get_physical_parameters(parameters)} {}
+    , _conductivity{get_physical_parameters(conductivity)} {}
 
 template<std::floating_point T, std::integral I>
 const std::vector<T>& heat_equation_solution_2d<T, I>::temperature() const noexcept {
@@ -65,14 +60,8 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::flux() con
 }
 
 template<std::floating_point T, std::integral I>
-const parameter_2d<T>& heat_equation_solution_2d<T, I>::parameter(const std::string& group) const {
-    return _parameters.at(group);
-}
-
-template<std::floating_point T, std::integral I>
-T heat_equation_solution_2d<T, I>::calc_energy() const {
-    //return mesh::integrate(*_base::mesh_proxy(), temperature());
-    return 0;
+const evaluated_conductivity_t<T>& heat_equation_solution_2d<T, I>::conductivity(const std::string& group) const {
+    return _conductivity.at(group);
 }
 
 template<std::floating_point T, std::integral I>
@@ -81,49 +70,30 @@ bool heat_equation_solution_2d<T, I>::is_flux_calculated() const noexcept {
 }
 
 template<std::floating_point T, std::integral I>
-T heat_equation_solution_2d<T, I>::evaluate(const coefficient_t<T, 2u>& conductivity, const size_t qshift) const {
-    return std::visit(metamath::types::visitor{
-        [](const T value) noexcept { return value; },
-        [this, qshift](const spatial_dependency<T, 2u>& value) { return value(_base::mesh().quad_coord(qshift)); },
-        [this, qshift](const solution_dependency<T, 2u>& value) { return value(_base::mesh().quad_coord(qshift), _solution[qshift]); }
-    }, conductivity);
-}
-
-template<std::floating_point T, std::integral I>
-std::array<T, 2> heat_equation_solution_2d<T, I>::evaluate(const orthotropic_conductivity_t<T>& conductivity, const size_t qshift) const {
-    return { evaluate(conductivity[X], qshift), evaluate(conductivity[Y], qshift) };
-}
-
-template<std::floating_point T, std::integral I>
-std::array<T, 3> heat_equation_solution_2d<T, I>::evaluate(const anisotropic_conductivity_t<T>& conductivity, const size_t qshift) const {
-    return { evaluate(conductivity[X], qshift), evaluate(conductivity[Y], qshift), evaluate(conductivity[XY], qshift) };
-}
-
-template<std::floating_point T, std::integral I>
 std::array<std::vector<T>, 2> heat_equation_solution_2d<T, I>::local_flux_in_qnodes() const {
     auto flux = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
-    for (const auto& [group, parameter] : _parameters)
+    for (const auto& [group, conductivity] : _conductivity)
         for(const size_t e : _base::mesh().container().elements(group))
             for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
                 std::visit(metamath::types::visitor{
-                    [&](const isotropic_conductivity_t<T>& conductivity) { 
-                        const T cond = evaluate(conductivity, qshift);
-                        flux[X][qshift] *= -cond;
-                        flux[Y][qshift] *= -cond;
+                    [&flux, qshift](const evaluated_isotropic_conductivity_t<T>& conductivity) { 
+                        const T conduct = conductivity.index() ? std::get<1>(conductivity)[qshift] : std::get<0>(conductivity);
+                        flux[X][qshift] *= -conduct;
+                        flux[Y][qshift] *= -conduct;
                     },
-                    [&](const orthotropic_conductivity_t<T>& conductivity) {
-                        const auto cond = evaluate(conductivity, qshift);
-                        flux[X][qshift] *= -cond[X];
-                        flux[Y][qshift] *= -cond[Y];
+                    [&flux, qshift](const evaluated_orthotropic_conductivity_t<T>& conductivity) {
+                        const auto& conduct = conductivity.index() ? std::get<1>(conductivity)[qshift] : std::get<0>(conductivity);
+                        flux[X][qshift] *= -conduct[X];
+                        flux[Y][qshift] *= -conduct[Y];
                     },
-                    [&](const anisotropic_conductivity_t<T>& conductivity) {
-                        const auto cond = evaluate(conductivity, qshift);
+                    [&flux, qshift](const evaluated_anisotropic_conductivity_t<T>& conductivity) {
+                        const auto& conduct = conductivity.index() ? std::get<1>(conductivity)[qshift] : std::get<0>(conductivity);
                         std::tie(flux[X][qshift], flux[Y][qshift]) = std::make_tuple(
-                            -cond[ X] * flux[X][qshift] - cond[XY] * flux[Y][qshift],
-                            -cond[XY] * flux[X][qshift] - cond[ Y] * flux[Y][qshift]
+                            -conduct[ X] * flux[X][qshift] - conduct[XY] * flux[Y][qshift],
+                            -conduct[XY] * flux[X][qshift] - conduct[ Y] * flux[Y][qshift]
                         );
                     }
-                }, parameter.conductivity);
+                }, conductivity);
             }
     return flux;
 }
@@ -135,7 +105,7 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
 
     _flux = local_flux_in_qnodes();
     std::array<std::vector<T>, 2> flux = _flux;
-    for(const auto& [group, parameter] : _parameters)
+    for(const auto& [group, parameter] : _conductivity)
         if (const model_parameters<2, T>& model = _base::model(group); theory_type(model.local_weight) == theory_t::NONLOCAL) {
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
             for(const size_t eL : _base::mesh().container().elements(group))
