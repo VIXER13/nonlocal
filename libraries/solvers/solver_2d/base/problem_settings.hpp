@@ -3,19 +3,21 @@
 #include <constants/nonlocal_constants.hpp>
 #include <logger/logger.hpp>
 
-#include <array>
 #include <algorithm>
+#include <ranges>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
-namespace nonlocal::solver_1d {
+namespace nonlocal::solver_2d {
 
 struct problem_settings final {
-    std::vector<theory_t> theories;
+    std::unordered_map<std::string, theory_t> theories;
     bool is_neumann = false;
     bool is_nonlinear_boundary = false;
     bool is_nonconstant_parameters = false;
     bool is_solution_dependent = false;
-    std::array<bool, 2> is_first_kind = {false, false};
+    std::vector<bool> is_inner_nodes;
 
     constexpr bool is_nonlinear() const noexcept {
         return is_nonlinear_boundary || is_solution_dependent;
@@ -23,7 +25,8 @@ struct problem_settings final {
 
     bool is_symmetric() const {
         static constexpr auto is_nonlocal = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
-        const bool is_any_nonlocal = std::any_of(theories.begin(), theories.end(), is_nonlocal);
+        const auto theories_view = theories | std::views::values;
+        const bool is_any_nonlocal = std::any_of(theories_view.begin(), theories_view.end(), is_nonlocal);
         return !(is_any_nonlocal && is_nonconstant_parameters);
     }
 };
