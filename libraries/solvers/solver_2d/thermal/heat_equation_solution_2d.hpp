@@ -77,20 +77,23 @@ std::array<std::vector<T>, 2> heat_equation_solution_2d<T, I>::local_flux_in_qno
             for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
                 std::visit(metamath::types::visitor{
                     [&flux, qshift](const evaluated_isotropic_conductivity_t<T>& conductivity) { 
-                        const T conduct = conductivity.index() ? std::get<1>(conductivity)[qshift] : std::get<0>(conductivity);
+                        const T conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift] :
+                                                                 std::get<Constant>(conductivity);
                         flux[X][qshift] *= -conduct;
                         flux[Y][qshift] *= -conduct;
                     },
                     [&flux, qshift](const evaluated_orthotropic_conductivity_t<T>& conductivity) {
-                        const auto& conduct = conductivity.index() ? std::get<1>(conductivity)[qshift] : std::get<0>(conductivity);
+                        const auto& conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift] :
+                                                                     std::get<Constant>(conductivity);
                         flux[X][qshift] *= -conduct[X];
                         flux[Y][qshift] *= -conduct[Y];
                     },
                     [&flux, qshift](const evaluated_anisotropic_conductivity_t<T>& conductivity) {
-                        const auto& conduct = conductivity.index() ? std::get<1>(conductivity)[qshift] : std::get<0>(conductivity);
+                        const auto& conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift] :
+                                                                     std::get<Constant>(conductivity);
                         std::tie(flux[X][qshift], flux[Y][qshift]) = std::make_tuple(
-                            -conduct[ X] * flux[X][qshift] - conduct[XY] * flux[Y][qshift],
-                            -conduct[XY] * flux[X][qshift] - conduct[ Y] * flux[Y][qshift]
+                            -conduct[XX] * flux[X][qshift] - conduct[XY] * flux[Y][qshift],
+                            -conduct[XY] * flux[X][qshift] - conduct[YY] * flux[Y][qshift]
                         );
                     }
                 }, conductivity);

@@ -7,8 +7,11 @@ namespace nonlocal {
 
 enum axis : uint8_t {
     X = 0,
+    XX = 0,
     Y = 1,
+    YY = 1,
     XY = 2,
+    YX = 2,
     Z = 2
 };
 

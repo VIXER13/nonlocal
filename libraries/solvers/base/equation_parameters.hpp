@@ -2,6 +2,7 @@
 
 #include <constants/nonlocal_constants.hpp>
 #include <metamath/types/visitor.hpp>
+#include <metamath/types/vector_with_shifted_index.hpp>
 
 #include <algorithm>
 #include <array>
@@ -26,6 +27,11 @@ using solution_dependency = std::function<T(const point<T, Dimension>&, const T)
 template<std::floating_point T, size_t Dimension>
 using coefficient_t = std::variant<T, spatial_dependency<T, Dimension>, solution_dependency<T, Dimension>>;
 
+template<class T>
+using evaluated_parameters = std::variant<T, metamath::types::vector_with_shifted_index<T>>;
+constexpr size_t Constant = 0;
+constexpr size_t Nonconstant = 1; // Named indices for evaluated_parameters variants
+
 template<size_t Dimension, class T>
 struct model_parameters final {
     static_assert(Dimension > 0, "Dimension must be non-zero.");
@@ -39,6 +45,20 @@ struct equation_parameters final {
     model_parameters<Dimension, T> model;
     Physical<T, Args...> physical;
 };
+
+template<std::floating_point T, size_t Dimension>
+bool is_constant(const coefficient_t<T, Dimension>& coefficient) {
+    return std::holds_alternative<T>(coefficient);
+}
+
+template<std::floating_point T, size_t Dimension>
+T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
+    return std::visit(metamath::types::visitor{
+        [](const T value) noexcept { return value; },
+        [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
+        [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
+    }, coefficient);
+}
 
 template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
 std::vector<model_parameters<Dimension, T>> get_models(const std::vector<equation_parameters<Dimension, T, Physical, Args...>>& parameters) {
@@ -97,20 +117,6 @@ std::unordered_map<std::string, theory_t> theories_types(const std::unordered_ma
     for(const auto& [name, parameter] : parameters)
         theories[name] = theory_type(parameter.model.local_weight);
     return theories;
-}
-
-template<std::floating_point T, size_t Dimension>
-bool is_constant(const coefficient_t<T, Dimension>& coefficient) {
-    return std::holds_alternative<T>(coefficient);
-}
-
-template<std::floating_point T, size_t Dimension>
-T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
-    return std::visit(metamath::types::visitor{
-        [](const T value) noexcept { return value; },
-        [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
-        [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
-    }, coefficient);
 }
 
 }

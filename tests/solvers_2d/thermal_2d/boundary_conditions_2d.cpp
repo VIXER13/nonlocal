@@ -63,7 +63,7 @@ std::tuple<std::shared_ptr<mesh::mesh_2d<T, I>>, parameters_2d<T>,
     parameters_2d<T> parameters;
     parameters["Layer1"] = {
         .physical = {
-            .conductivity = anisotropic_conductivity_t<T> {lambda, lambda, 0.0},
+            .conductivity = raw_anisotropic_conductivity_t<T>{lambda, lambda, 0.0},
             .capacity = T{1},
             .density = T{1},
             .relaxation_time = T{0}
