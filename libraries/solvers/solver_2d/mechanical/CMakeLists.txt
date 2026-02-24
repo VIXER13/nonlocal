@@ -6,6 +6,7 @@ target_sources(
     structural_solver_2d_lib
     INTERFACE #
         equilibrium_equation_2d.hpp
+        evaluate_hooke_matrix.hpp
         mechanical_boundary_conditions_2d.hpp
         mechanical_parameters_2d.hpp
         mechanical_solution_2d.hpp

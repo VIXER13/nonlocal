@@ -8,10 +8,10 @@
 #include <array>
 #include <concepts>
 #include <functional>
+#include <ranges>
 #include <string>
 #include <unordered_map>
 #include <variant>
-#include <vector>
 
 namespace nonlocal {
 
@@ -51,6 +51,12 @@ bool is_constant(const coefficient_t<T, Dimension>& coefficient) {
     return std::holds_alternative<T>(coefficient);
 }
 
+template<std::floating_point T, size_t Dimension, size_t N>
+bool is_constant(const std::array<coefficient_t<T, Dimension>, N>& coefficient) {
+    static constexpr auto checker = [](const coefficient_t<T, Dimension>& coefficient) { return is_constant<T, Dimension>(coefficient); };
+    return std::all_of(coefficient.begin(), coefficient.end(), checker);
+}
+
 template<std::floating_point T, size_t Dimension>
 T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
     return std::visit(metamath::types::visitor{
@@ -58,6 +64,15 @@ T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimens
         [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
         [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
     }, coefficient);
+}
+
+template<std::floating_point T, size_t Dimension, size_t N>
+std::array<T, N> evaluate(const std::array<coefficient_t<T, Dimension>, N>& coefficient,
+                          const point<T, Dimension>& point, const T solution) {
+    std::array<T, N> result;
+    for (const size_t i : std::ranges::iota_view{0zu, N})
+        result[i] = evaluate<T, Dimension>(coefficient[i], point, solution);
+    return result;
 }
 
 template<size_t Dimension, class T, template<class, auto...> class Physical, auto... Args>
