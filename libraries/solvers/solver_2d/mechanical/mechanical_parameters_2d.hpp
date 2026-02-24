@@ -2,11 +2,58 @@
 
 #include <solvers/base/equation_parameters.hpp>
 
-#include <array>
-#include <string>
-#include <unordered_map>
-
 namespace nonlocal::solver_2d::mechanical {
+
+// d[0] d[1]  0
+// d[1] d[0]  0
+//  0    0   d[2]
+template<class T>
+using isotropic_hook_matrix_t = std::array<T, 3>;
+// d[0] d[1]  0
+// d[1] d[2]  0
+//  0    0   d[3]
+template<class T>
+using orthotropic_hook_matrix_t = std::array<T, 4>;
+// d[0] d[1] d[2]
+// d[1] d[3] d[4]
+// d[2] d[4] d[5]
+template<class T>
+using anisotropic_hook_matrix_t = std::array<T, 6>;
+template<class T>
+using hook_matrix_t = std::variant<
+    isotropic_hook_matrix_t<T>,
+    orthotropic_hook_matrix_t<T>,
+    anisotropic_hook_matrix_t<T>
+>;
+
+template<std::floating_point T>
+using raw_isotropic_hook_matrix_t = isotropic_hook_matrix_t<coefficient_t<T, 2>>;
+template<std::floating_point T>
+using raw_orthotropic_hook_matrix_t = orthotropic_hook_matrix_t<coefficient_t<T, 2>>;
+template<std::floating_point T>
+using raw_anisotropic_hook_matrix_t = anisotropic_hook_matrix_t<coefficient_t<T, 2>>;
+template<std::floating_point T>
+using raw_hook_matrix_t = std::variant<
+    raw_isotropic_hook_matrix_t<T>,
+    raw_orthotropic_hook_matrix_t<T>,
+    raw_anisotropic_hook_matrix_t<T>
+>;
+
+template<std::floating_point T>
+using evaluated_isotropic_hook_matrix_t = evaluated_parameters<isotropic_hook_matrix_t<T>>;
+template<std::floating_point T>
+using evaluated_orthotropic_hook_matrix_t = evaluated_parameters<orthotropic_hook_matrix_t<T>>;
+template<std::floating_point T>
+using evaluated_anisotropic_hook_matrix_t = evaluated_parameters<anisotropic_hook_matrix_t<T>>;
+template<std::floating_point T>
+using evaluated_hook_matrix_t = std::variant<
+    evaluated_isotropic_hook_matrix_t<T>,
+    evaluated_orthotropic_hook_matrix_t<T>,
+    evaluated_anisotropic_hook_matrix_t<T>
+>;
+
+template<std::floating_point T>
+using evaluated_hook_matrix_2d = std::unordered_map<std::string, equation_parameters<2, T, evaluated_hook_matrix_t>>;
 
 enum class plane_t : bool {
     STRESS,

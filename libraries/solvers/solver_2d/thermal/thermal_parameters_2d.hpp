@@ -1,18 +1,18 @@
 #pragma once
 
-#include <metamath/metamath.hpp>
 #include <solvers/base/equation_parameters.hpp>
-
-#include <string>
-#include <unordered_map>
-#include <variant>
 
 namespace nonlocal::solver_2d::thermal {
 
+// single constant
 template<class T>
 using isotropic_conductivity_t = T;
+// l[0]  0
+//  0   l[1]
 template<class T>
 using orthotropic_conductivity_t = std::array<T, 2>;
+// l[0] l[2]
+// l[2] l[1]
 template<class T>
 using anisotropic_conductivity_t = std::array<T, 3>;
 template<class T>

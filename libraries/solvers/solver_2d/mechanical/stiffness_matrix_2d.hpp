@@ -9,7 +9,7 @@ namespace nonlocal::solver_2d::mechanical {
 template<class T, class I, class J>
 class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using _base = matrix_assembler_2d<T, I, J, 2>;
-    using hooke_parameter = equation_parameters<2, T, hooke_matrix>;
+    using hooke_parameter = equation_parameters<2, T, evaluated_hook_matrix_t>;
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
 
@@ -19,10 +19,11 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
 protected:
     static hooke_parameters to_hooke(const parameters_2d<T>& parameters, const plane_t plane, const theory_t theory);
 
-    static block_t calc_block(const hooke_matrix<T>& hooke, const block_t& integral) noexcept;
-    static void add_to_integral(block_t& integral, const std::array<T, 2>& wdN, const std::array<T, 2>& dN) noexcept;
-    block_t integrate_loc(const hooke_matrix<T>& hooke, const size_t e, const size_t i, const size_t j) const;
-    block_t integrate_nonloc(const hooke_parameter& parameter, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
+    template<class Hooke>
+    block_t integrate_local(const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const;
+    template<class Hooke>
+    block_t integrate_nonlocal(const Hooke& hooke_matrix, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>)>& influence,
+                               const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                 const std::vector<bool>& is_inner, const bool is_neumann);
@@ -58,53 +59,76 @@ stiffness_matrix<T, I, J>::hooke_parameters stiffness_matrix<T, I, J>::to_hooke(
 }
 
 template<class T, class I, class J>
-metamath::types::square_matrix<T, 2> stiffness_matrix<T, I, J>::calc_block(
-    const hooke_matrix<T>& hooke, const metamath::types::square_matrix<T, 2>& integral) noexcept {
-    return {
-        hooke[0] * integral[X][X] + hooke[3] * integral[Y][Y],
-        hooke[1] * integral[X][Y] + hooke[3] * integral[Y][X],
-        hooke[1] * integral[Y][X] + hooke[3] * integral[X][Y],
-        hooke[2] * integral[Y][Y] + hooke[3] * integral[X][X],
-    };
-}
-
-template<class T, class I, class J>
-void stiffness_matrix<T, I, J>::add_to_integral(block_t& integral, const std::array<T, 2>& wdN, const std::array<T, 2>& dN) noexcept {
-    for(const size_t i : std::ranges::iota_view{0u, wdN.size()})
-        for(const size_t j : std::ranges::iota_view{0u, dN.size()})
-            integral[i][j] += wdN[i] * dN[j];
-}
-
-template<class T, class I, class J>
-stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_loc(
-    const hooke_matrix<T>& hooke, const size_t e, const size_t i, const size_t j) const {
+template<class Hooke>
+stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_local(const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const {
     block_t integral = {};
+    const size_t qshift = _base::mesh().quad_shift(e);
     const auto& el = _base::mesh().container().element_2d(e);
-    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
+    for(const size_t q : el.qnodes()) {
         using namespace metamath::functions;
-        const T weight = el.weight(q) / _base::mesh().jacobian(e, q);
-        add_to_integral(integral, weight * _base::mesh().derivatives(e, i, q), _base::mesh().derivatives(e, j, q));
+        const auto& hooke = hooke_matrix.index() ? std::get<Nonconstant>(hooke_matrix)[qshift + q] : 
+                                                   std::get<Constant>(hooke_matrix);
+        const auto& dNj = _base::mesh().derivatives(e, j, q);
+        const auto wdNi = (el.weight(q) / _base::mesh().jacobian(e, q)) * _base::mesh().derivatives(e, i, q);
+        if constexpr (std::is_same_v<Hooke, evaluated_isotropic_hook_matrix_t<T>>) {
+            integral[X][X] += hooke[0] * wdNi[X] * dNj[X] + hooke[2] * wdNi[Y] * dNj[Y];
+            integral[X][Y] += hooke[1] * wdNi[X] * dNj[Y] + hooke[2] * wdNi[Y] * dNj[X];
+            integral[Y][X] += hooke[1] * wdNi[Y] * dNj[X] + hooke[2] * wdNi[X] * dNj[Y];
+            integral[Y][Y] += hooke[0] * wdNi[Y] * dNj[Y] + hooke[2] * wdNi[X] * dNj[X];
+        } else if constexpr (std::is_same_v<Hooke, evaluated_orthotropic_hook_matrix_t<T>>) {
+            integral[X][X] += hooke[0] * wdNi[X] * dNj[X] + hooke[3] * wdNi[Y] * dNj[Y];
+            integral[X][Y] += hooke[1] * wdNi[X] * dNj[Y] + hooke[3] * wdNi[Y] * dNj[X];
+            integral[Y][X] += hooke[1] * wdNi[Y] * dNj[X] + hooke[3] * wdNi[X] * dNj[Y];
+            integral[Y][Y] += hooke[2] * wdNi[Y] * dNj[Y] + hooke[3] * wdNi[X] * dNj[X];
+        } else if constexpr (std::is_same_v<Hooke, evaluated_anisotropic_hook_matrix_t<T>>) {
+            integral[X][X] += (hooke[0] * wdNi[X] + hooke[2] * wdNi[Y]) * dNj[X] + (hooke[2] * wdNi[X] + hooke[5] * wdNi[Y]) * dNj[Y];
+            integral[X][Y] += (hooke[2] * wdNi[X] + hooke[5] * wdNi[Y]) * dNj[X] + (hooke[1] * wdNi[X] + hooke[4] * wdNi[Y]) * dNj[Y];
+            integral[Y][X] += (hooke[2] * wdNi[X] + hooke[1] * wdNi[Y]) * dNj[X] + (hooke[5] * wdNi[X] + hooke[4] * wdNi[Y]) * dNj[Y];
+            integral[Y][Y] += (hooke[5] * wdNi[X] + hooke[4] * wdNi[Y]) * dNj[X] + (hooke[4] * wdNi[X] + hooke[3] * wdNi[Y]) * dNj[Y];
+        } else
+            static_assert(false, "Unsupported coefficient type.");
     }
-    return calc_block(hooke, integral);
+    return integral;
 }
 
 template<class T, class I, class J>
-stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonloc(
-    const hooke_parameter& parameter, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
+template<class Hooke>
+stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonlocal(
+    const Hooke& hooke_matrix, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>)>& influence,
+    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     block_t integral = {};
+    const size_t qshiftNL = _base::mesh().quad_shift(eNL);
     const auto& elL  = _base::mesh().container().element_2d(eL );
     const auto& elNL = _base::mesh().container().element_2d(eNL);
     for(const size_t qL : elL.qnodes()) {
         using namespace metamath::functions;
-        std::array<T, 2> inner_integral = {};
-        const auto influence = [&model = parameter.model, &qnodeL = _base::mesh().quad_coord(eL,  qL )](const std::array<T, 2>& qnodeNL) {
-            return model.influence(qnodeL, qnodeNL);
-        };
-        for(const size_t qNL : elNL.qnodes())
-            inner_integral += elNL.weight(qNL) * influence(_base::mesh().quad_coord(eNL, qNL)) * _base::mesh().derivatives(eNL, jNL, qNL);
-        add_to_integral(integral, elL.weight(qL) * _base::mesh().derivatives(eL, iL, qL), inner_integral);
+        const auto& qnodeL = _base::mesh().quad_coord(eL, qL);
+        const auto wdNi = elL.weight(qL) * _base::mesh().derivatives(eL, iL, qL);
+        for(const size_t qNL : elNL.qnodes()) {
+            const auto& hooke = hooke_matrix.index() ? std::get<Nonconstant>(hooke_matrix)[qshiftNL + qNL] : 
+                                                       std::get<Constant>(hooke_matrix);
+            const T weight = elNL.weight(qNL) * influence(qnodeL, _base::mesh().quad_coord(eNL, qNL));
+            const auto wdNj = weight * _base::mesh().derivatives(eNL, jNL, qNL);
+            if constexpr (std::is_same_v<Hooke, evaluated_isotropic_hook_matrix_t<T>>) {
+                integral[X][X] += hooke[0] * wdNi[X] * wdNj[X] + hooke[2] * wdNi[Y] * wdNj[Y];
+                integral[X][Y] += hooke[1] * wdNi[X] * wdNj[Y] + hooke[2] * wdNi[Y] * wdNj[X];
+                integral[Y][X] += hooke[1] * wdNi[Y] * wdNj[X] + hooke[2] * wdNi[X] * wdNj[Y];
+                integral[Y][Y] += hooke[0] * wdNi[Y] * wdNj[Y] + hooke[2] * wdNi[X] * wdNj[X];
+            } else if constexpr (std::is_same_v<Hooke, evaluated_orthotropic_hook_matrix_t<T>>) {
+                integral[X][X] += hooke[0] * wdNi[X] * wdNj[X] + hooke[3] * wdNi[Y] * wdNj[Y];
+                integral[X][Y] += hooke[1] * wdNi[X] * wdNj[Y] + hooke[3] * wdNi[Y] * wdNj[X];
+                integral[Y][X] += hooke[1] * wdNi[Y] * wdNj[X] + hooke[3] * wdNi[X] * wdNj[Y];
+                integral[Y][Y] += hooke[2] * wdNi[Y] * wdNj[Y] + hooke[3] * wdNi[X] * wdNj[X];
+            } else if constexpr (std::is_same_v<Hooke, evaluated_anisotropic_hook_matrix_t<T>>) {
+                integral[X][X] += (hooke[0] * wdNi[X] + hooke[2] * wdNi[Y]) * wdNj[X] + (hooke[2] * wdNi[X] + hooke[5] * wdNi[Y]) * wdNj[Y];
+                integral[X][Y] += (hooke[2] * wdNi[X] + hooke[5] * wdNi[Y]) * wdNj[X] + (hooke[1] * wdNi[X] + hooke[4] * wdNi[Y]) * wdNj[Y];
+                integral[Y][X] += (hooke[2] * wdNi[X] + hooke[1] * wdNi[Y]) * wdNj[X] + (hooke[5] * wdNi[X] + hooke[4] * wdNi[Y]) * wdNj[Y];
+                integral[Y][Y] += (hooke[5] * wdNi[X] + hooke[4] * wdNi[Y]) * wdNj[X] + (hooke[4] * wdNi[X] + hooke[3] * wdNi[Y]) * wdNj[Y];
+            } else
+                static_assert(false, "Unsupported coefficient type.");
+        }
     }
-    return calc_block(parameter.physical, integral);
+    return integral;
 }
 
 template<class T, class I, class J>
@@ -164,13 +188,19 @@ void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, cons
     if (NEUMANN)
         integral_condition();
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
-        [this, only_nonlocal = part == assemble_part::NONLOCAL, hooke = to_hooke(parameters, plane, theory_t::LOCAL)]
+        [this, hooke = to_hooke(parameters, plane, theory_t::LOCAL)]
         (const std::string& group, const size_t e, const size_t i, const size_t j) {
-            return only_nonlocal ? block_t{} : integrate_loc(hooke.at(group).physical, e, i, j);
+            const auto& physic = hooke.at(group).physical;
+            return std::visit([this, e, i, j](const auto& hook) { return integrate_local(hook, e, i, j); }, physic);
         },
         [this, hooke = to_hooke(parameters, plane, theory_t::NONLOCAL)]
         (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            return integrate_nonloc(hooke.at(group), eL, eNL, iL, jNL);
+            const auto& group_params = hooke.at(group);
+            const auto& model = group_params.model;
+            const auto& physic = group_params.physical;
+            return std::visit([this, &model, eL, eNL, iL, jNL](const auto& hook) {
+                return integrate_nonlocal(hook, model.influence, eL, eNL, iL, jNL);
+            }, physic);
         }
     );
     logger::info() << "Stiffness matrix assembly finished" << std::endl;
