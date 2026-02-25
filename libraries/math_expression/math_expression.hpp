@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tokenizer.hpp"
 #include "utils.hpp"
 
 #include <metamath/types/visitor.hpp>
@@ -39,6 +40,7 @@ class math_expression {
 
     std::unordered_map<std::size_t, std::string> find_variables_and_operators(const std::string& infix_notation) const;
     void assemble_polish_notation(const std::string& infix_notation);
+    void assemble_polish_notation(const std::vector<utils::token_t>& tokens);
 
     T calc_polish_notation(const std::span<const T> input_variables) const;
 
@@ -181,6 +183,141 @@ void math_expression<T>::assemble_polish_notation(const std::string& infix_notat
             _polish_notation.push_back(binary.at(smth));
         else
             _polish_notation.push_back(unary.at(smth));
+    }
+}
+
+template<class T>
+void math_expression<T>::assemble_polish_notation(const std::vector<utils::token_t>& tokens) {
+    const auto& operator_priority = utils::get_operator_priority();
+
+    // expression starts after ':'
+    std::size_t expr_start = 0;
+    for (; expr_start < tokens.size(); ++expr_start) {
+        if (tokens[expr_start].type == utils::token_t::type_t::Separator && tokens[expr_start].str == ":") {
+            ++expr_start;
+            break;
+        }
+    }
+    if (expr_start == 0 || expr_start > tokens.size())
+        throw std::domain_error{"Wrong variables format. Symbol ':' is required after variables initialization."};
+
+    const auto& unary = unary_operators();
+    const auto& binary = binary_operators();
+
+    using op_entry = std::pair<int, operand>; // (priority, operator operand). priority < 0 means '('
+    std::stack<op_entry> operators;
+
+    const auto is_paren = [](const op_entry& e) { return e.first < 0; };
+
+    const auto emit_operator = [this, &is_paren](const op_entry& e) {
+        if (is_paren(e))
+            throw std::domain_error{"Wrong expression format. The expression contains open parentheses."};
+        _polish_notation.push_back(e.second);
+    };
+
+    const auto make_paren = []() -> op_entry {
+        // sentinel: '(' marker
+        return {-1, operand{unary_operator{nullptr}}};
+    };
+
+    const auto make_operator = [&operator_priority, &unary, &binary](const std::string& op) -> op_entry {
+        if (!operator_priority.contains(op))
+            throw std::domain_error{"Wrong expression format. Unknown operator."};
+        const int priority = static_cast<int>(operator_priority.at(op));
+        if (binary.contains(op))
+            return {priority, operand{binary.at(op)}};
+        if (unary.contains(op))
+            return {priority, operand{unary.at(op)}};
+        throw std::domain_error{"Wrong expression format. Unknown operator."};
+    };
+
+    const auto is_value_token = [this](const utils::token_t& t) {
+        return t.type == utils::token_t::type_t::Number ||
+               (t.type == utils::token_t::type_t::Symbol && _variables.contains(t.str)) ||
+               t.type == utils::token_t::type_t::ParenthesisRight;
+    };
+
+    _polish_notation.clear();
+    _polish_notation.reserve(tokens.size() - expr_start);
+
+    for (std::size_t i = expr_start; i < tokens.size(); ++i) {
+        const auto& token = tokens[i];
+
+        if (token.type == utils::token_t::type_t::Separator) {
+            // allow optional wrappers like '|'
+            if (token.str == "|" || token.str == ",")
+                continue;
+            throw std::domain_error{"Wrong expression format. Unexpected separator in expression."};
+        }
+
+        if (token.type == utils::token_t::type_t::Number) {
+            _polish_notation.push_back(utils::get_number<T>(token.str));
+            continue;
+        }
+
+        if (token.type == utils::token_t::type_t::ParenthesisLeft) {
+            operators.push(make_paren());
+            continue;
+        }
+
+        if (token.type == utils::token_t::type_t::ParenthesisRight) {
+            while (!operators.empty() && !is_paren(operators.top())) {
+                emit_operator(operators.top());
+                operators.pop();
+            }
+            if (operators.empty())
+                throw std::domain_error{"Wrong expression format. The expression contains open parentheses."};
+            operators.pop();
+            continue;
+        }
+
+        if (token.type == utils::token_t::type_t::Symbol) {
+            if (_variables.contains(token.str)) {
+                _polish_notation.push_back(variable_index{_variables.at(token.str)});
+                continue;
+            }
+
+            // function-like operators: sin, cos, ... are tokenized as Symbol
+            if (operator_priority.contains(token.str)) {
+                const op_entry current = make_operator(token.str);
+                while (!operators.empty() && !is_paren(operators.top()) && operators.top().first >= current.first) {
+                    emit_operator(operators.top());
+                    operators.pop();
+                }
+                operators.push(current);
+                continue;
+            }
+
+            throw std::domain_error{"Wrong variables and operators searching. Can not find contained string."};
+        }
+
+        if (token.type == utils::token_t::type_t::Operator) {
+            std::string op = token.str;
+
+            // unary minus
+            if (op == "-") {
+                const bool unary_context = (i == expr_start) || (i > expr_start && !is_value_token(tokens[i - 1]));
+                if (unary_context)
+                    op = "~";
+            }
+
+            const op_entry current = make_operator(op);
+            while (!operators.empty() && !is_paren(operators.top()) && operators.top().first >= current.first) {
+                emit_operator(operators.top());
+                operators.pop();
+            }
+            operators.push(current);
+            continue;
+        }
+
+        throw std::domain_error{"Wrong expression format. Unexpected token."};
+    }
+
+    while (!operators.empty()) {
+        if (is_paren(operators.top()))
+            throw std::domain_error{"Wrong expression format. The expression contains open parentheses."};
+        emit_operator(operators.top());
+        operators.pop();
     }
 }
 
