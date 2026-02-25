@@ -32,7 +32,7 @@ evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& me
                     return evaluate<T, 2u>(conductivity, {}, {});
     
                 const auto qshifts = mesh.quad_shifts(name);
-                static constexpr size_t N = decltype(conductivity){}.size();
+                static constexpr size_t N = std::tuple_size_v<std::remove_cvref_t<decltype(conductivity)>>;
                 metamath::types::vector_with_shifted_index<std::array<T, N>> result = {
                     .container = std::vector<std::array<T, N>>(qshifts.size()),
                     .shift = qshifts.front()
