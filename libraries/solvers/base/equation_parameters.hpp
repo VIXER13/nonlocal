@@ -47,7 +47,7 @@ struct equation_parameters final {
 };
 
 template<std::floating_point T, size_t Dimension>
-bool is_constant(const coefficient_t<T, Dimension>& coefficient) {
+bool is_constant(const coefficient_t<T, Dimension>& coefficient) noexcept {
     return std::holds_alternative<T>(coefficient);
 }
 

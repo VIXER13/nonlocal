@@ -1,5 +1,6 @@
 #pragma once
 
+#include "evaluate_hooke_matrices.hpp"
 #include "stiffness_matrix_2d.hpp"
 #include "mechanical_boundary_conditions_2d.hpp"
 #include "mechanical_solution_2d.hpp"

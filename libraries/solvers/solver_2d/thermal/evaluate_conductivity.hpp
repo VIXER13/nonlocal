@@ -19,7 +19,6 @@ evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& me
             [&mesh, &name, &solution](const raw_isotropic_conductivity_t<T>& conductivity) -> evaluated_conductivity_t<T> {
                 if (is_constant<T, 2u>(conductivity))
                     return std::get<T>(conductivity);
-    
                 std::vector<T> result;
                 const auto qshifts = mesh.quad_shifts(name);
                 result.reserve(qshifts.size());
@@ -30,7 +29,6 @@ evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& me
             [&mesh, &name, &solution](const auto& conductivity) -> evaluated_conductivity_t<T> {
                 if (is_constant<T, 2u>(conductivity))
                     return evaluate<T, 2u>(conductivity, {}, {});
-    
                 const auto qshifts = mesh.quad_shifts(name);
                 static constexpr size_t N = decltype(conductivity){}.size();
                 metamath::types::vector_with_shifted_index<std::array<T, N>> result = {
