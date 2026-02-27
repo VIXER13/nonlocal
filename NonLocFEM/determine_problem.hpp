@@ -107,9 +107,8 @@ std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> mechanical_2d(
     mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "mechanical")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     const auto boundaries_field = problem == config::problem_t::Mechanical ? "boundaries" : "mechanical_boundaries";
-    solver_2d::mechanical::mechanical_parameters_2d<T> parameters = config::read_mechanical_parameters_2d<T>(config["materials"], "materials");
-    parameters.delta_temperature = delta_temperature;
-    return solver_2d::mechanical::equilibrium_equation<I>(mesh, {},
+    return solver_2d::mechanical::equilibrium_equation<I>(mesh, 
+        config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
         config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field)
     );
 }

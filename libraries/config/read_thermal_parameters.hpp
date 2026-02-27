@@ -110,7 +110,7 @@ solver_2d::thermal::raw_conductivity_t<T> _read_thermal_parameters::read_conduct
         return read_coefficient<T, 2u>(config, path);
     if (config.is_array() && config.size() == 2)
         return solver_2d::thermal::raw_orthotropic_conductivity_t<T>{ read_coefficient<T, 2u>(config[X], append_access_sign(path, X)), 
-                                                                  read_coefficient<T, 2u>(config[Y], append_access_sign(path, Y)) };
+                                                                      read_coefficient<T, 2u>(config[Y], append_access_sign(path, Y)) };
     if (config.is_array() && config.size() == 3)
         return solver_2d::thermal::raw_anisotropic_conductivity_t<T>{
             read_coefficient<T, 2u>(config[ X], append_access_sign(path,  X)),
