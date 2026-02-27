@@ -1,6 +1,7 @@
 #include "tokenizer.hpp"
 
 #include <array>
+#include <bitset>
 #include <cctype>
 #include <iomanip>
 #include <stdexcept>
@@ -8,7 +9,7 @@
 
 namespace {
 constexpr auto make_lut(std::string_view chars) {
-    std::array<bool, 256> lut{};
+    std::bitset<256> lut{};
     for (const auto c : chars) lut[static_cast<uint8_t>(c)] = true;
     return lut;
 }
@@ -54,9 +55,12 @@ std::ostream& operator<<(std::ostream& os, token_t token) {
 }
 
 std::vector<token_t> tokenize(std::string_view input) {
-    input = input.substr(input.find_first_not_of(" "));
-    input = input.substr(0, input.find_last_not_of(" ") + 1);
-    if (input.empty()) return {};
+    constexpr std::string_view trim_chars = " \t\n\r\v\f";
+    const auto first = input.find_first_not_of(trim_chars);
+    if (first == std::string_view::npos) return {};
+    const auto last = input.find_last_not_of(trim_chars);
+    input = input.substr(first, last - first + 1);
+
     std::vector<token_t> tokens;
 
     enum class state_t : uint8_t {
@@ -73,28 +77,32 @@ std::vector<token_t> tokenize(std::string_view input) {
     };
     state_t state = state_t::NewToken;
 
-    token_t token;
+    token_t::type_t token_type = token_t::type_t::Unknown;
     size_t parenthesis_checker = 0;
+    std::string_view::const_iterator token_begin = input.end();
 
     for (auto it = input.begin(); state != state_t::Terminate;) {
-        char c = (it == input.end() || *it > 255) ? 0 : *it;
+        // If the iterator is at the end of the input or points to a non-ANSI character we use '\0' as a sentinel value.
+        const char c = (it == input.end() || *it > 255) ? '\0' : *it;
+        // Handle incorrect implicit conversion. I think so... In any case, the app fails without this cast.
+        uint8_t idx = static_cast<uint8_t>(c);
 
         switch (state) {
             case state_t::NewToken: {
-                // ToDo: Use iterators instead of string concatenation for better performance
-                token = {token_t::type_t::Unknown, ""};
-                if (whitespace_chars.at(c)) {
+                token_type = token_t::type_t::Unknown;
+                token_begin = it;
+                if (whitespace_chars[idx]) {
                     state = state_t::NewToken;
-                } else if (float_chars.at(c)) {
+                } else if (float_chars[idx]) {
                     state = state_t::IntegerNumber;
                     continue;
-                } else if (operator_chars.at(c)) {
+                } else if (operator_chars[idx]) {
                     state = state_t::Operator;
                     continue;
-                } else if (parenthesis_chars.at(c)) {
+                } else if (parenthesis_chars[idx]) {
                     state = c == '(' ? state_t::ParenthesisLeft : state_t::ParenthesisRight;
                     continue;
-                } else if (separator_chars.at(c)) {
+                } else if (separator_chars[idx]) {
                     state = state_t::Separator;
                     continue;
                 } else {  // if nothing detected can be a symbol
@@ -103,63 +111,52 @@ std::vector<token_t> tokenize(std::string_view input) {
                 }
             } break;
             case state_t::IntegerNumber: {
-                if (!float_chars.at(c) && symbol_chars.at(c)) {
+                if (!float_chars[idx] && symbol_chars[idx]) {
                     throw std::domain_error{"Wrong expression format. The expression contains invalid numeric construction"};
-                } else if (!float_chars.at(c)) {
-                    token.type = token_t::type_t::Number;
+                } else if (!float_chars[idx]) {
+                    token_type = token_t::type_t::Number;
                     state = state_t::CompleteToken;
                     continue;
                 } else {
                     if (c == '.') state = state_t::RealNumber;
-                    token.str.push_back(c);
                 }
             } break;
             case state_t::RealNumber: {
-                if (!integer_chars.at(c) && symbol_chars.at(c)) {
+                if (!integer_chars[idx] && symbol_chars[idx]) {
                     throw std::domain_error{"Wrong expression format. The expression contains invalid dots. Dots are only allowed in number representation"};
-                } else if (!integer_chars.at(c)) {
-                    token.type = token_t::type_t::Number;
+                } else if (!integer_chars[idx]) {
+                    token_type = token_t::type_t::Number;
                     state = state_t::CompleteToken;
                     continue;
-                } else {
-                    token.str.push_back(c);
                 }
             } break;
             case state_t::Operator: {
-                if (operator_chars.at(c)) {
-                    token.str.push_back(c);
-                    token.type = token_t::type_t::Operator;
-                    state = state_t::CompleteToken;
-                }
+                token_type = token_t::type_t::Operator;
+                state = state_t::CompleteToken;
             } break;
             case state_t::ParenthesisLeft: {
                 ++parenthesis_checker;
-                token.str.push_back(c);
-                token.type = token_t::type_t::ParenthesisLeft;
+                token_type = token_t::type_t::ParenthesisLeft;
                 state = state_t::CompleteToken;
             } break;
             case state_t::ParenthesisRight: {
                 --parenthesis_checker;
-                token.str.push_back(c);
-                token.type = token_t::type_t::ParenthesisRight;
+                token_type = token_t::type_t::ParenthesisRight;
                 state = state_t::CompleteToken;
             } break;
             case state_t::Separator: {
-                token.str.push_back(c);
-                token.type = token_t::type_t::Separator;
+                token_type = token_t::type_t::Separator;
                 state = state_t::CompleteToken;
             } break;
             case state_t::Symbol: {
-                if (!symbol_chars.at(c)) {
-                    token.type = token_t::type_t::Symbol;
+                if (!symbol_chars[idx]) {
+                    token_type = token_t::type_t::Symbol;
                     state = state_t::CompleteToken;
                     continue;
-                } else {
-                    token.str.push_back(c);
                 }
             } break;
             case state_t::CompleteToken: {
-                tokens.push_back(std::move(token));
+                tokens.emplace_back(token_t{token_type, {token_begin, it}});
                 state = it == input.end() ? state_t::Terminate : state_t::NewToken;
                 continue;
             } break;
