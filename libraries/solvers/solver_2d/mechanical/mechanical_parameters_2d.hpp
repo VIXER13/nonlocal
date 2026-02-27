@@ -21,7 +21,7 @@ using orthotropic_hook_matrix_t = std::array<T, 4>;
 template<class T>
 using anisotropic_hook_matrix_t = std::array<T, 6>;
 template<class T>
-using hook_matrix_t = std::variant<
+using hooke_matrix_t = std::variant<
     isotropic_hook_matrix_t<T>,
     orthotropic_hook_matrix_t<T>,
     anisotropic_hook_matrix_t<T>

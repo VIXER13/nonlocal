@@ -2,7 +2,6 @@
 
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
-#include "mechanical_problems_2d.hpp"
 
 #include <config/read_mechanical_boundary_conditions.hpp>
 #include <config/read_mechanical_parameters.hpp>
@@ -13,6 +12,7 @@
 #include <config/time_data.hpp>
 #include <config/thermal_auxiliary_data.hpp>
 #include <mesh/mesh_2d/find_neighbours.hpp>
+#include <solvers/solver_2d/mechanical/equilibrium_equation_2d.hpp>
 
 #include <set>
 
@@ -109,7 +109,7 @@ std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> mechanical_2d(
     const auto boundaries_field = problem == config::problem_t::Mechanical ? "boundaries" : "mechanical_boundaries";
     solver_2d::mechanical::mechanical_parameters_2d<T> parameters = config::read_mechanical_parameters_2d<T>(config["materials"], "materials");
     parameters.delta_temperature = delta_temperature;
-    return solve_mechanical_2d_problem<T, I>(mesh, parameters,
+    return solver_2d::mechanical::equilibrium_equation<I>(mesh, {},
         config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field)
     );
 }

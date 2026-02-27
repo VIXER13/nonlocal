@@ -13,12 +13,9 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
 
-    static constexpr size_t DoF = 2;
     static constexpr bool SYMMETRIC = true;
 
 protected:
-    static hooke_parameters to_hooke(const parameters_2d<T>& parameters, const plane_t plane, const theory_t theory);
-
     template<class Hooke>
     block_t integrate_local(const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const;
     template<class Hooke>
@@ -35,28 +32,12 @@ public:
     explicit stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     ~stiffness_matrix() noexcept override = default;
 
-    void compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part = assemble_part::FULL);
+    void compute(const evaluated_hook_matrices_2d<T>& hooke, const std::vector<bool>& is_inner, const assemble_part part = assemble_part::FULL);
 };
 
 template<class T, class I, class J>
 stiffness_matrix<T, I, J>::stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _base{mesh} {}
-
-template<class T, class I, class J>
-stiffness_matrix<T, I, J>::hooke_parameters stiffness_matrix<T, I, J>::to_hooke(const parameters_2d<T>& parameters, const plane_t plane, const theory_t theory) {
-    hooke_parameters params;
-    for(const auto& [group, equation_parameters] : parameters) {
-        const T factor = theory == theory_t::LOCAL ?
-                         equation_parameters.model.local_weight :
-                         nonlocal_weight(equation_parameters.model.local_weight);
-        using namespace metamath::functions;
-        params[group] = {
-            .model = equation_parameters.model,
-            .physical = factor * equation_parameters.physical.hooke(plane)
-        };
-    }
-    return params;
-}
 
 template<class T, class I, class J>
 template<class Hooke>
@@ -178,29 +159,35 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 }
 
 template<class T, class I, class J>
-void stiffness_matrix<T, I, J>::compute(const parameters_2d<T>& parameters, const plane_t plane, const std::vector<bool>& is_inner, const assemble_part part) {
+void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hooke, const std::vector<bool>& is_inner, const assemble_part part) {
     logger::info() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
-                                                               theories_types(parameters);
+                                                               theories_types(hooke);
     static constexpr bool NEUMANN = false;
     create_matrix_portrait(theories, is_inner, NEUMANN);
     if (NEUMANN)
         integral_condition();
     _base::calc_coeffs(theories, is_inner, SYMMETRIC,
-        [this, hooke = to_hooke(parameters, plane, theory_t::LOCAL)]
-        (const std::string& group, const size_t e, const size_t i, const size_t j) {
-            const auto& physic = hooke.at(group).physical;
-            return std::visit([this, e, i, j](const auto& hook) { return integrate_local(hook, e, i, j); }, physic);
-        },
-        [this, hooke = to_hooke(parameters, plane, theory_t::NONLOCAL)]
-        (const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+        [this, &hooke](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& group_params = hooke.at(group);
             const auto& model = group_params.model;
             const auto& physic = group_params.physical;
-            return std::visit([this, &model, eL, eNL, iL, jNL](const auto& hook) {
+            const auto integral = std::visit([this, e, i, j](const auto& hook) {
+                return integrate_local(hook, e, i, j);
+            }, physic);
+            using namespace metamath::functions;
+            return model.local_weight * integral;
+        },
+        [this, &hooke](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+            const auto& group_params = hooke.at(group);
+            const auto& model = group_params.model;
+            const auto& physic = group_params.physical;
+            const auto integral = std::visit([this, &model, eL, eNL, iL, jNL](const auto& hook) {
                 return integrate_nonlocal(hook, model.influence, eL, eNL, iL, jNL);
             }, physic);
+            using namespace metamath::functions;
+            return nonlocal::nonlocal_weight(model.local_weight) * integral;
         }
     );
     logger::info() << "Stiffness matrix assembly finished" << std::endl;
