@@ -16,27 +16,18 @@ class _mechanical_parameters_2d final {
     static void check_null_combinations(const std::bitset<2> is_null_young_modulus,
                                         const std::bitset<2> is_null_poissons_ratio,
                                         const std::string& path);
+                                                   
+    template<std::floating_point T>
+    static void calculate_elastic_parameters(std::array<coefficient_t<T, 2>, 2>& young_modulus,
+                                             std::array<coefficient_t<T, 2>, 2>& poissons_ratio,
+                                             const std::bitset<2> is_null_young_modulus,
+                                             const std::bitset<2> is_null_poissons_ratio);
 
     template<std::floating_point T>
     static std::array<coefficient_t<T, 2>, 2> read_elastic_parameter(const nlohmann::json& config,
                                                                      const std::bitset<2> is_null,
                                                                      const std::string& path);
-                                                   
-    template<std::floating_point T>
-    static void calculate_elastic_parameters(solver_2d::mechanical::parameter_2d<T>& parameters,
-                                             const std::bitset<2> is_null_young_modulus,
-                                             const std::bitset<2> is_null_poissons_ratio) noexcept;
-
-    template<std::floating_point T>
-    static bool check_elasticity_parameters(const solver_2d::mechanical::parameter_2d<T>& parameters) noexcept;
-
-    template<std::floating_point T>
-    static solver_2d::mechanical::parameter_2d<T> read_elastic_parameters(
-        const nlohmann::json& config,
-        const std::string& path_with_access,
-        const std::optional<std::bitset<2>> is_null_young_modulus,
-        const std::optional<std::bitset<2>> is_null_poissons_ratio);
-
+    
     template<std::floating_point T>
     static solver_2d::mechanical::isotropic_elastic_parameters<T> read_isotropic_coefficient_2d(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
@@ -64,58 +55,24 @@ std::array<coefficient_t<T, 2>, 2> _mechanical_parameters_2d::read_elastic_param
 }
 
 template<std::floating_point T>
-void _mechanical_parameters_2d::calculate_elastic_parameters(solver_2d::mechanical::parameter_2d<T>& parameters,
+void _mechanical_parameters_2d::calculate_elastic_parameters(std::array<coefficient_t<T, 2>, 2>& young_modulus,
+                                                             std::array<coefficient_t<T, 2>, 2>& poissons_ratio,
                                                              const std::bitset<2> is_null_young_modulus,
-                                                             const std::bitset<2> is_null_poissons_ratio) noexcept {
+                                                             const std::bitset<2> is_null_poissons_ratio) {
     // young_modulus[1] * poissons_ratio[0] == Ey * nuxy == Ex * nuyx == young_modulus[0] * poissons_ratio[1]
-    auto& young_modulus = parameters.young_modulus;
-    auto& poissons_ratio = parameters.poissons_ratio;
-    if (is_null_young_modulus.count() != 0) {
-        if (is_null_young_modulus[0])
-            young_modulus[0] = young_modulus[1] * poissons_ratio[0] / poissons_ratio[1];
-        else
-            young_modulus[1] = young_modulus[0] * poissons_ratio[1] / poissons_ratio[0];
-    }
-    if (is_null_poissons_ratio.count() != 0) {
-        if (is_null_poissons_ratio[0])
-            poissons_ratio[0] = young_modulus[0] * poissons_ratio[1] / young_modulus[1];
-        else
-            poissons_ratio[1] = young_modulus[1] * poissons_ratio[0] / young_modulus[0];
-    }
-}
-
-template<std::floating_point T>
-bool _mechanical_parameters_2d::check_elasticity_parameters(const solver_2d::mechanical::parameter_2d<T>& parameters) noexcept {
-    for(const size_t i : std::ranges::iota_view{0u, 2u}) {
-        if (std::isinf(parameters.poissons_ratio[i]) || std::isinf(parameters.young_modulus[i]))
-            return false;
-        if (parameters.poissons_ratio[i] <= -1 || parameters.poissons_ratio[i] >= 0.5 || 
-            std::abs(parameters.poissons_ratio[i]) < std::numeric_limits<T>::epsilon())
-            return false;
-        if (parameters.young_modulus[i] <= 0)
-            return false;
-    }
-    if (parameters.shear_modulus <= 0)
-        return false;
-    return true;
-}
-
-template<std::floating_point T>
-solver_2d::mechanical::parameter_2d<T> _mechanical_parameters_2d::read_elastic_parameters(
-    const nlohmann::json& config,
-    const std::string& path_with_access,
-    const std::optional<std::bitset<2>> is_null_young_modulus,
-    const std::optional<std::bitset<2>> is_null_poissons_ratio) {
-    solver_2d::mechanical::parameter_2d<T> parameters;
-    parameters.thermal_expansion = config.value("thermal_expansion", T{0});
-    parameters.young_modulus = read_elastic_parameter<T>(config["young_modulus"], is_null_young_modulus);
-    parameters.poissons_ratio = read_elastic_parameter<T>(config["poissons_ratio"], is_null_poissons_ratio);
-    if (is_null_young_modulus && is_null_poissons_ratio) {
-        check_required_fields(config, {"shear_modulus"}, path_with_access + "shear_modulus");
-        parameters.shear_modulus = config["shear_modulus"].get<T>();
-        calculate_elastic_parameters(parameters, *is_null_young_modulus, *is_null_poissons_ratio);
-    }
-    return parameters;
+    using namespace nonlocal::utils;
+    young_modulus[0] = young_modulus[1] * poissons_ratio[0];
+    // if (is_null_young_modulus.count() != 0) {
+    //     if (is_null_young_modulus[0])
+    //         young_modulus[0] = young_modulus[1] * poissons_ratio[0] / poissons_ratio[1];
+    //     else
+    //         young_modulus[1] = young_modulus[0] * poissons_ratio[1] / poissons_ratio[0];
+    // } else if (is_null_poissons_ratio.count() != 0) {
+    //     if (is_null_poissons_ratio[0])
+    //         poissons_ratio[0] = young_modulus[0] * poissons_ratio[1] / young_modulus[1];
+    //     else
+    //         poissons_ratio[1] = young_modulus[1] * poissons_ratio[0] / young_modulus[0];
+    // }
 }
 
 template<std::floating_point T>
@@ -149,11 +106,8 @@ solver_2d::mechanical::orthotropic_elastic_parameters<T> _mechanical_parameters_
         check_null_combinations(is_null_young_modulus, is_null_poissons_ratio, path);
         parameters.young_modulus = read_elastic_parameter<T>(config["young_modulus"], is_null_young_modulus, young_modulus_path);
         parameters.poissons_ratio = read_elastic_parameter<T>(config["poissons_ratio"], is_null_poissons_ratio, poissons_ratio_path);
-
-        ///////////////////////////////////////
-        //////// CALCULATE FOURTH PARAMETER////
-        ///////////////////////////////////////
-
+        calculate_elastic_parameters(parameters.young_modulus, parameters.poissons_ratio,
+                                    is_null_young_modulus, is_null_poissons_ratio);
     } else
         throw std::domain_error{"Wrong elastic parameters format: \"" + path + "\".\n"
                                 "For orthotropic and anisotropic materials \"young_modulus\" and \"poissons_ratio\" "
