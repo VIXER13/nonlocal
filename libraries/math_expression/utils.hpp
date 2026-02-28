@@ -2,25 +2,37 @@
 
 #include <metamath/types/traits.hpp>
 
+#include <cstdint>
+#include <ostream>
+#include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
-#include <unordered_set>
+#include <vector>
 
 namespace formula::utils {
 
-std::string trim(std::string str);
-std::string& delete_all(std::string& str, char symb);
-std::size_t count_all(const std::string& s, char symb);
+struct token_t {
+    enum class type_t : uint8_t {
+        Unknown,
+        Number,
+        ParenthesisLeft,
+        ParenthesisRight,
+        Separator,
+        Operator,
+        Symbol,
+    };
 
-bool is_latin_str(const std::string& s);
-bool is_number(const std::string& s);
+    type_t type = type_t::Unknown;
+    std::string str;
 
+    friend std::ostream& operator<<(std::ostream& os, token_t token);
+};
+
+std::vector<token_t> tokenize(std::string_view input);
 const std::unordered_map<std::string, std::size_t>& get_operator_priority();
-const std::unordered_set<char>& get_one_sym_operators();
+std::unordered_map<std::string, std::size_t> get_variables(const std::span<token_t>& tokens);
 void check_variables_admissibility(const std::unordered_map<std::string, std::size_t>& variables);
-void parentheses_check(const std::string& infix_notation);
-void dots_check(const std::string& infix_notation);
-std::unordered_map<std::string, std::size_t> get_variables(std::string pre_variables);
 
 template<metamath::types::arithmetic T>
 T get_number(const std::string& number, std::size_t* idx = nullptr, int base = 10) {

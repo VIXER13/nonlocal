@@ -1,6 +1,5 @@
 #pragma once
 
-#include "tokenizer.hpp"
 #include "utils.hpp"
 
 #include <metamath/types/visitor.hpp>
