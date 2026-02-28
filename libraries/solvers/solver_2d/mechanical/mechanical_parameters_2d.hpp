@@ -5,19 +5,23 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-// d[0] d[1]  0
-// d[1] d[0]  0
-//  0    0   d[2]
+namespace isotropic_indices   { enum : size_t {_11, _12, _66}; }
+namespace orthotropic_indices { enum : size_t {_11, _12, _22, _66}; }
+namespace anisotropic_indices { enum : size_t {_11, _12, _16, _22, _26, _66}; }
+
+// d[_11] d[_12]   0
+// d[_12] d[_11]   0
+//   0      0    d[_66]
 template<class T>
 using isotropic_hook_matrix_t = std::array<T, 3>;
-// d[0] d[1]  0
-// d[1] d[2]  0
-//  0    0   d[3]
+// d[_11] d[_12]   0
+// d[_12] d[_22]   0
+//   0      0    d[_66]
 template<class T>
 using orthotropic_hook_matrix_t = std::array<T, 4>;
-// d[0] d[1] d[2]
-// d[1] d[3] d[4]
-// d[2] d[4] d[5]
+// d[_11] d[_12] d[_16]
+// d[_12] d[_22] d[_26]
+// d[_16] d[_26] d[_66]
 template<class T>
 using anisotropic_hook_matrix_t = std::array<T, 6>;
 template<class T>
@@ -142,7 +146,22 @@ struct anisotropic_elastic_parameters final {
     static anisotropic_hook_matrix_t<T> rotate(const orthotropic_hook_matrix_t<T>& matrix, const T angle) noexcept {
         const T sin = std::sin(angle);
         const T cos = std::cos(angle);
-        return {0, 1, 2, 3, 4, 5};
+        const T sin2 = sin * sin;
+        const T cos2 = cos * cos;
+        const T sin4 = sin2 * sin2;
+        const T cos4 = cos2 * cos2;
+        const T sin2cos2 = sin2 * cos2;
+        const T sin3cos = sin2 * sin * cos;
+        const T sincos3 = sin * cos * cos2;
+        using namespace orthotropic_indices;
+        return {
+            matrix[_11] * cos4 + matrix[_22] * sin4 + (2 * matrix[_12] + 4 * matrix[_66]) * sin2cos2,
+            (matrix[_11] + matrix[_22] - 4 * matrix[_66]) * sin2cos2 + matrix[_12] * (cos4 + sin4),
+            (matrix[_11] - matrix[_12] - 2 * matrix[_66]) * sincos3 - (matrix[_22] - matrix[_12] - 2 * matrix[_66]) * sin3cos,
+            matrix[_11] * sin4 + matrix[_22] * cos4 + (2 * matrix[_12] + 4 * matrix[_66]) * sin2cos2,
+            (matrix[_11] - matrix[_12] - 2 * matrix[_66]) * sin3cos - (matrix[_22] - matrix[_12] - 2 * matrix[_66]) * sincos3,
+            (matrix[_11] + matrix[_22] - 2 * (matrix[_12] + matrix[_66])) * sin2cos2 + matrix[_66] * (cos4 + sin4)
+        };
     }
 
     anisotropic_hook_matrix_t<T> hooke(const std::array<T, 2>& x) const {
