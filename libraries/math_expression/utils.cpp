@@ -200,7 +200,8 @@ const std::unordered_map<std::string, std::size_t>& get_operator_priority() {
         {"asin", 4}, {"acos", 4}, {"sinh", 4}, {"cosh", 4},
         {"tanh", 4}, {"asinh", 4}, {"acosh", 4}, {"atanh", 4},
         {"erf", 4}, {"erfc", 4}, {"lgamma", 4}, {"ceil", 4},
-        {"floor", 4}, {"round", 4}, {"trunc", 4}
+        {"floor", 4}, {"round", 4}, {"trunc", 4}, {"atan2", 4}, 
+        {"hypot", 4}, {"fmod", 4}, {"min", 4}, {"max", 4}
     };
     return operator_priority;
 }
