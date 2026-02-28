@@ -16,18 +16,11 @@ class _mechanical_parameters_2d final {
     static void check_null_combinations(const std::bitset<2> is_null_young_modulus,
                                         const std::bitset<2> is_null_poissons_ratio,
                                         const std::string& path);
-                                                   
     template<std::floating_point T>
-    static void calculate_elastic_parameters(std::array<coefficient_t<T, 2>, 2>& young_modulus,
-                                             std::array<coefficient_t<T, 2>, 2>& poissons_ratio,
-                                             const std::bitset<2> is_null_young_modulus,
-                                             const std::bitset<2> is_null_poissons_ratio);
-
+    static std::array<coefficient_t<T, 2>, 2> read_elastic_parameter(const nlohmann::json& config, const std::bitset<2> is_null, const std::string& path);
     template<std::floating_point T>
-    static std::array<coefficient_t<T, 2>, 2> read_elastic_parameter(const nlohmann::json& config,
-                                                                     const std::bitset<2> is_null,
-                                                                     const std::string& path);
-    
+    static void calculate_elastic_parameters(std::array<coefficient_t<T, 2>, 2>& young_modulus, std::array<coefficient_t<T, 2>, 2>& poissons_ratio,
+                                             const std::bitset<2> is_null_young_modulus, const std::bitset<2> is_null_poissons_ratio);
     template<std::floating_point T>
     static solver_2d::mechanical::isotropic_elastic_parameters<T> read_isotropic_coefficient_2d(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
@@ -61,18 +54,17 @@ void _mechanical_parameters_2d::calculate_elastic_parameters(std::array<coeffici
                                                              const std::bitset<2> is_null_poissons_ratio) {
     // young_modulus[1] * poissons_ratio[0] == Ey * nuxy == Ex * nuyx == young_modulus[0] * poissons_ratio[1]
     using namespace nonlocal::utils;
-    young_modulus[0] = young_modulus[1] * poissons_ratio[0];
-    // if (is_null_young_modulus.count() != 0) {
-    //     if (is_null_young_modulus[0])
-    //         young_modulus[0] = young_modulus[1] * poissons_ratio[0] / poissons_ratio[1];
-    //     else
-    //         young_modulus[1] = young_modulus[0] * poissons_ratio[1] / poissons_ratio[0];
-    // } else if (is_null_poissons_ratio.count() != 0) {
-    //     if (is_null_poissons_ratio[0])
-    //         poissons_ratio[0] = young_modulus[0] * poissons_ratio[1] / young_modulus[1];
-    //     else
-    //         poissons_ratio[1] = young_modulus[1] * poissons_ratio[0] / young_modulus[0];
-    // }
+    if (is_null_young_modulus.count() != 0) {
+        if (is_null_young_modulus[0])
+            young_modulus[0] = young_modulus[1] * poissons_ratio[0] / poissons_ratio[1];
+        else
+            young_modulus[1] = young_modulus[0] * poissons_ratio[1] / poissons_ratio[0];
+    } else if (is_null_poissons_ratio.count() != 0) {
+        if (is_null_poissons_ratio[0])
+            poissons_ratio[0] = young_modulus[0] * poissons_ratio[1] / young_modulus[1];
+        else
+            poissons_ratio[1] = young_modulus[1] * poissons_ratio[0] / young_modulus[0];
+    }
 }
 
 template<std::floating_point T>
@@ -107,7 +99,7 @@ solver_2d::mechanical::orthotropic_elastic_parameters<T> _mechanical_parameters_
         parameters.young_modulus = read_elastic_parameter<T>(config["young_modulus"], is_null_young_modulus, young_modulus_path);
         parameters.poissons_ratio = read_elastic_parameter<T>(config["poissons_ratio"], is_null_poissons_ratio, poissons_ratio_path);
         calculate_elastic_parameters(parameters.young_modulus, parameters.poissons_ratio,
-                                    is_null_young_modulus, is_null_poissons_ratio);
+                                     is_null_young_modulus, is_null_poissons_ratio);
     } else
         throw std::domain_error{"Wrong elastic parameters format: \"" + path + "\".\n"
                                 "For orthotropic and anisotropic materials \"young_modulus\" and \"poissons_ratio\" "

@@ -16,17 +16,17 @@ evaluated_hook_matrices_2d<T> evaluate_hooke_matrices(const mesh::mesh_2d<T, I>&
 
         auto hook_matrices = std::visit([&mesh, &name](const auto& elastic) -> evaluated_hook_matrix_t<T> {
             if constexpr (std::is_same_v<std::remove_cvref_t<decltype(elastic)>, isotropic_elastic_parameters<T>>) {
-                if (is_constant<T, 2u>(elastic.young_modulus) && is_constant<T, 2u>(elastic.poissons_ratio))
+                if (is_constant(elastic.young_modulus) && is_constant(elastic.poissons_ratio))
                     return elastic.hooke({});
             } else if constexpr (std::is_same_v<std::remove_cvref_t<decltype(elastic)>, orthotropic_elastic_parameters<T>>) {
-                if (is_constant<T, 2u>(elastic.young_modulus) && 
-                    is_constant<T, 2u>(elastic.poissons_ratio) && 
-                    is_constant<T, 2u>(elastic.shear_modulus))
+                if (is_constant(elastic.young_modulus) && 
+                    is_constant(elastic.poissons_ratio) && 
+                    is_constant(elastic.shear_modulus))
                     return elastic.hooke({});
             } else if constexpr (std::is_same_v<std::remove_cvref_t<decltype(elastic)>, anisotropic_elastic_parameters<T>>) {
-                if (is_constant<T, 2u>(elastic.main_parameters.young_modulus) && 
-                    is_constant<T, 2u>(elastic.main_parameters.poissons_ratio) && 
-                    is_constant<T, 2u>(elastic.main_parameters.shear_modulus))
+                if (is_constant(elastic.main_parameters.young_modulus) && 
+                    is_constant(elastic.main_parameters.poissons_ratio) && 
+                    is_constant(elastic.main_parameters.shear_modulus))
                     return elastic.hooke({});
             } else
                 static_assert(false, "Unknown material type");
