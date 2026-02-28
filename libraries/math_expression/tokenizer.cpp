@@ -1,6 +1,5 @@
 #include "tokenizer.hpp"
 
-#include <array>
 #include <bitset>
 #include <cctype>
 #include <iomanip>
@@ -16,7 +15,7 @@ constexpr auto make_lut(std::string_view chars) {
 constexpr auto whitespace_chars = make_lut(" \t\n\r\v\f");
 constexpr auto integer_chars = make_lut("0123456789");
 constexpr auto float_chars = make_lut("0123456789.");
-constexpr auto operator_chars = make_lut("+-*/^");
+constexpr auto operator_chars = make_lut("+-*/^~");
 constexpr auto symbol_chars = make_lut("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789.");
 constexpr auto separator_chars = make_lut(",:|");
 constexpr auto parenthesis_chars = make_lut("()");
@@ -82,8 +81,10 @@ std::vector<token_t> tokenize(std::string_view input) {
     std::string_view::const_iterator token_begin = input.end();
 
     for (auto it = input.begin(); state != state_t::Terminate;) {
-        // If the iterator is at the end of the input or points to a non-ANSI character we use '\0' as a sentinel value.
-        const char c = (it == input.end() || *it > 255) ? '\0' : *it;
+        if(static_cast<uint8_t>(*it) > 127)
+        throw std::domain_error{"Wrong expression format. The expression contains non-ANSI characters."};
+        // If the iterator is at the end of the input we use '\0' as a sentinel value.
+        const char c = (it == input.end()) ? '\0' : *it;
         // Handle incorrect implicit conversion. I think so... In any case, the app fails without this cast.
         uint8_t idx = static_cast<uint8_t>(c);
 
@@ -156,6 +157,8 @@ std::vector<token_t> tokenize(std::string_view input) {
                 }
             } break;
             case state_t::CompleteToken: {
+                if(token_begin == it)
+                    throw std::runtime_error{"Wrong tokenizer behaviour. Empty token parsed."};
                 tokens.emplace_back(token_t{token_type, {token_begin, it}});
                 state = it == input.end() ? state_t::Terminate : state_t::NewToken;
                 continue;
