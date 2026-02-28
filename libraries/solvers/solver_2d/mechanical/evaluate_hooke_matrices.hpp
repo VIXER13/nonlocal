@@ -15,22 +15,8 @@ evaluated_hook_matrices_2d<T> evaluate_hooke_matrices(const mesh::mesh_2d<T, I>&
         const auto& parameter = pair.second;
 
         auto hook_matrices = std::visit([&mesh, &name](const auto& elastic) -> evaluated_hook_matrix_t<T> {
-            if constexpr (std::is_same_v<std::remove_cvref_t<decltype(elastic)>, isotropic_elastic_parameters<T>>) {
-                if (is_constant(elastic.young_modulus) && is_constant(elastic.poissons_ratio))
-                    return elastic.hooke({});
-            } else if constexpr (std::is_same_v<std::remove_cvref_t<decltype(elastic)>, orthotropic_elastic_parameters<T>>) {
-                if (is_constant(elastic.young_modulus) && 
-                    is_constant(elastic.poissons_ratio) && 
-                    is_constant(elastic.shear_modulus))
-                    return elastic.hooke({});
-            } else if constexpr (std::is_same_v<std::remove_cvref_t<decltype(elastic)>, anisotropic_elastic_parameters<T>>) {
-                if (is_constant(elastic.main_parameters.young_modulus) && 
-                    is_constant(elastic.main_parameters.poissons_ratio) && 
-                    is_constant(elastic.main_parameters.shear_modulus))
-                    return elastic.hooke({});
-            } else
-                static_assert(false, "Unknown material type");
-
+            if (elastic.is_constant())
+                return elastic.hooke({});
             const auto qshifts = mesh.quad_shifts(name);
             static constexpr size_t N = decltype(elastic.hooke({})){}.size();
             metamath::types::vector_with_shifted_index<std::array<T, N>> result = {

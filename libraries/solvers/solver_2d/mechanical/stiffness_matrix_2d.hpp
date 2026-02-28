@@ -3,6 +3,7 @@
 #include "mechanical_parameters_2d.hpp"
 
 #include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
+#include <solvers/solver_2d/base/problem_settings.hpp>
 
 namespace nonlocal::solver_2d::mechanical {
 
@@ -13,6 +14,7 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
     using block_t = metamath::types::square_matrix<T, 2>;
 
+    static constexpr bool NEUMANN = false;
     static constexpr bool SYMMETRIC = true;
 
 protected:
@@ -23,7 +25,7 @@ protected:
                                const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
-                                const std::vector<bool>& is_inner, const bool is_neumann);
+                                const problem_settings& settings);
 
     T integrate_basic(const size_t e, const size_t i) const;
     void integral_condition();
@@ -32,7 +34,7 @@ public:
     explicit stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     ~stiffness_matrix() noexcept override = default;
 
-    void compute(const evaluated_hook_matrices_2d<T>& hooke, const std::vector<bool>& is_inner, const assemble_part part = assemble_part::FULL);
+    void compute(const evaluated_hook_matrices_2d<T>& hooke, const problem_settings& settings, const assemble_part part = assemble_part::FULL);
 };
 
 template<class T, class I, class J>
@@ -120,21 +122,21 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonlocal
 
 template<class T, class I, class J>
 void stiffness_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
-                                                       const std::vector<bool>& is_inner, const bool is_neumann) {
-    const size_t cols = _base::cols() + is_neumann;
+                                                       const problem_settings& settings) {
+    const size_t cols = _base::cols() + NEUMANN;
     const size_t rows = _base::rows() == _base::cols() ?
-                        cols : _base::rows() + (is_neumann && parallel::is_last_process());
+                        cols : _base::rows() + (NEUMANN && parallel::is_last_process());
     _base::matrix().inner().resize(rows, cols);
     _base::matrix().bound().resize(rows, cols);
-    if (is_neumann) {
+    if (NEUMANN) {
         for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
             _base::matrix().inner().outerIndexPtr()[2 * row + 1] = 1;
         _base::matrix().inner().outerIndexPtr()[2 * _base::mesh().container().nodes_count() + 1] = 1;
     }
-    _base::init_shifts(theories, is_inner, SYMMETRIC);
-    static constexpr bool SORT_INDICES = false;
-    _base::init_indices(theories, is_inner, SYMMETRIC, SORT_INDICES);
-    if (is_neumann) {
+    _base::init_shifts(theories, settings.is_inner_nodes, settings.is_symmetric());
+    static constexpr bool Sort_Indices = false;
+    _base::init_indices(theories, settings.is_inner_nodes, settings.is_symmetric(), Sort_Indices);
+    if (NEUMANN) {
         for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
             _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().outerIndexPtr()[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
         _base::matrix().inner().innerIndexPtr()[_base::matrix().inner().nonZeros() - 1] = 2 * _base::mesh().container().nodes_count();
@@ -165,16 +167,15 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 }
 
 template<class T, class I, class J>
-void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hooke, const std::vector<bool>& is_inner, const assemble_part part) {
+void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hooke, const problem_settings& settings, const assemble_part part) {
     logger::info() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
                                                                theories_types(hooke);
-    static constexpr bool NEUMANN = false;
-    create_matrix_portrait(theories, is_inner, NEUMANN);
+    create_matrix_portrait(theories, settings);
     if (NEUMANN)
         integral_condition();
-    _base::calc_coeffs(theories, is_inner, SYMMETRIC,
+    _base::calc_coeffs(theories, settings.is_inner_nodes, settings.is_symmetric(),
         [this, &hooke](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& group_params = hooke.at(group);
             const auto& model = group_params.model;

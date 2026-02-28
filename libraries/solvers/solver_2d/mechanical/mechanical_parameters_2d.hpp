@@ -111,7 +111,10 @@ template<std::floating_point T>
 struct isotropic_elastic_parameters final {
     coefficient_t<T, 2> young_modulus = T{210.};
     coefficient_t<T, 2> poissons_ratio = T{0.3};
-    raw_isotropic_thermal_expansion_t<T> thermal_expansion = T{13e-6};
+
+    bool is_constant() const {
+        return nonlocal::is_constant(young_modulus) && nonlocal::is_constant(poissons_ratio);
+    }
 
     isotropic_hook_matrix_t<T> hooke(const std::array<T, 2>& x) const {
         const T E = evaluate<T, 2zu>(young_modulus, x, {});
@@ -126,7 +129,12 @@ struct orthotropic_elastic_parameters final {
     std::array<coefficient_t<T, 2>, 2> young_modulus = {T{210.}, T{210.}};
     std::array<coefficient_t<T, 2>, 2> poissons_ratio = {T{0.3}, T{0.3}};
     coefficient_t<T, 2> shear_modulus = T{210.} / T{13};
-    raw_orthotropic_thermal_expansion_t<T> thermal_expansion = {T{13e-6}, T{13e-6}};
+
+    bool is_constant() const {
+        return nonlocal::is_constant(young_modulus) && 
+               nonlocal::is_constant(poissons_ratio) &&
+               nonlocal::is_constant(shear_modulus);
+    }
 
     orthotropic_hook_matrix_t<T> hooke(const std::array<T, 2>& x) const {
         const auto E = evaluate<T, 2zu>(young_modulus, x, {});
@@ -141,7 +149,13 @@ template<std::floating_point T>
 struct anisotropic_elastic_parameters final {
     orthotropic_elastic_parameters<T> main_parameters;
     coefficient_t<T, 2> angle = T{0};
-    raw_anisotropic_thermal_expansion_t<T> thermal_expansion = {T{13e-6}, T{13e-6}, T{0}};
+
+    bool is_constant() const {
+        return nonlocal::is_constant(main_parameters.young_modulus) && 
+               nonlocal::is_constant(main_parameters.poissons_ratio) && 
+               nonlocal::is_constant(main_parameters.shear_modulus) && 
+               nonlocal::is_constant(angle);
+    }
 
     static anisotropic_hook_matrix_t<T> rotate(const orthotropic_hook_matrix_t<T>& matrix, const T angle) noexcept {
         const T sin = std::sin(angle);
@@ -182,5 +196,14 @@ using elastic_parameters_t = std::variant<
 
 template<std::floating_point T>
 using elastic_parameters = std::unordered_map<std::string, equation_parameters<2, T, elastic_parameters_t>>;
+
+template<std::floating_point T>
+bool is_constant(const elastic_parameters_t<T>& elastic) {
+    return std::visit(metamath::types::visitor{
+        [](const isotropic_elastic_parameters<T>&   elastic) { return elastic.is_constant(); },
+        [](const orthotropic_elastic_parameters<T>& elastic) { return elastic.is_constant(); },
+        [](const anisotropic_elastic_parameters<T>& elastic) { return elastic.is_constant(); },
+    }, elastic);
+}
 
 }
