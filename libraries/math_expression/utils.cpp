@@ -54,6 +54,10 @@ std::ostream& operator<<(std::ostream& os, token_t token) {
     return os;
 }
 
+bool operator==(const token_t& lhs, const token_t& rhs) {
+    return lhs.type == rhs.type && lhs.str == rhs.str;
+}
+
 std::vector<token_t> tokenize(std::string_view input) {
     constexpr std::string_view trim_chars = " \t\n\r\v\f";
     const auto first = input.find_first_not_of(trim_chars);

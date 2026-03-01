@@ -1,10 +1,8 @@
 #include <math_expression/math_expression.hpp>
+#include <math_expression/utils.hpp>
 
 #include <boost/ut.hpp>
 
-#include <functional>
-#include <initializer_list>
-#include <string>
 #include <numbers>
 #include <limits>
 
@@ -48,6 +46,49 @@ static constexpr auto sign = [](const T value) noexcept { return T((value > 0) -
         expect(eq(test.to_polish(), expected ## s)) << repr << "expression is not correctly parsed"
 
 const suite<"formula"> _ = [] {
+    "tokenize"_test = [] {
+        using formula::utils::token_t;
+        using enum formula::utils::token_t::type_t;
+        using formula::utils::tokenize;
+
+        expect(eq(tokenize("").size(), 0));
+        expect(eq(tokenize(" \t\n\r\v\f ").size(), 0));
+
+        {
+            const auto tokens = tokenize("x y : sin(x) + 2.5*y");
+            expect(eq(tokens.size(), 11));
+            expect(eq(tokens[0], token_t{Symbol, "x"}));
+            expect(eq(tokens[1], token_t{Symbol, "y"}));
+            expect(eq(tokens[2], token_t{Separator, ":"}));
+            expect(eq(tokens[3], token_t{Symbol, "sin"}));
+            expect(eq(tokens[4], token_t{ParenthesisLeft, "("}));
+            expect(eq(tokens[5], token_t{Symbol, "x"}));
+            expect(eq(tokens[6], token_t{ParenthesisRight, ")"}));
+            expect(eq(tokens[7], token_t{Operator, "+"}));
+            expect(eq(tokens[8], token_t{Number, "2.5"}));
+            expect(eq(tokens[9], token_t{Operator, "*"}));
+            expect(eq(tokens[10], token_t{Symbol, "y"}));
+        }
+
+        {
+            const auto tokens = tokenize("atan2(x, y)");
+            expect(eq(tokens.size(), 6));
+            expect(eq(tokens[0], token_t{Symbol, "atan2"}));
+            expect(eq(tokens[1], token_t{ParenthesisLeft, "("}));
+            expect(eq(tokens[2], token_t{Symbol, "x"}));
+            expect(eq(tokens[3], token_t{Separator, ","}));
+            expect(eq(tokens[4], token_t{Symbol, "y"}));
+            expect(eq(tokens[5], token_t{ParenthesisRight, ")"}));
+        }
+
+        {
+            const auto tokens = tokenize(".1 1.");
+            expect(eq(tokens.size(), 2));
+            expect(eq(tokens[0], token_t{Number, ".1"}));
+            expect(eq(tokens[1], token_t{Number, "1."}));
+        }
+    };
+
     "math_expression_literal"_test = [] {
         auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
 

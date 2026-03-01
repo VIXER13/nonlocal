@@ -27,6 +27,7 @@ struct token_t {
     std::string str;
 
     friend std::ostream& operator<<(std::ostream& os, token_t token);
+    friend bool operator==(const token_t& lhs, const token_t& rhs);
 };
 
 std::vector<token_t> tokenize(std::string_view input);
