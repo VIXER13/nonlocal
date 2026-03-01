@@ -182,6 +182,9 @@ std::unordered_map<std::string, std::size_t> get_variables(const std::span<token
             variables[token.str] = variables.size();
             continue;
         }
+        if (token.type == token_t::type_t::Separator && token.str == ",") {
+            continue;
+        }
         // numbers/operators/parentheses are invalid in variables declaration
         throw std::domain_error{"Wrong variables format. Variables must be declared as symbols before ':' separator."};
     }
@@ -192,7 +195,7 @@ std::unordered_map<std::string, std::size_t> get_variables(const std::span<token
 const std::unordered_map<std::string, std::size_t>& get_operator_priority() {
     static const std::unordered_map<std::string, size_t> operator_priority{
         {"(", 0}, {"+", 1}, {"-", 1}, {"*", 2},
-        {"/", 2}, {"^", 3}, {"~", 4}, {"sin", 4}, 
+        {"/", 2}, {"^", 3}, {"pow", 3}, {"~", 4}, {"sin", 4}, 
         {"cos", 4}, {"tan", 4}, {"atan", 4}, {"exp", 4},
         {"abs", 4}, {"sign", 4}, {"sqr", 4},  {"sqrt", 4},
         {"log", 4}, {"tgamma", 4}, {"exp2", 4}, {"expm1", 4},

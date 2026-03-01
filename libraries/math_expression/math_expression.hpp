@@ -78,9 +78,10 @@ const std::unordered_map<std::string, typename math_expression<T>::binary_operat
     static constexpr auto multiplies = [](const T left, const T right) noexcept { return left * right; };
     static constexpr auto min        = [](const T left, const T right) noexcept { return std::min(left, right); };
     static constexpr auto max        = [](const T left, const T right) noexcept { return std::max(left, right); };
+    static constexpr auto pow        = [](const T left, const T right) noexcept { return std::pow(left, right); };
     static const std::unordered_map<std::string, math_expression<T>::binary_operator> operators{
-        {"+", plus}, {"-", minus}, {"*", multiplies}, {"/", divides}, {"^", std::pow}, {"atan2", std::atan2}, {"hypot", std::hypot}, 
-        {"fmod", std::fmod}, {"min", min}, {"max", max}
+        {"+", plus}, {"-", minus}, {"*", multiplies}, {"/", divides}, {"^", std::pow}, {"pow", pow},
+        {"atan2", std::atan2}, {"hypot", std::hypot}, {"fmod", std::fmod}, {"min", min}, {"max", max}
     };
     return operators;
 }
@@ -139,7 +140,7 @@ void math_expression<T>::assemble_polish_notation(const std::span<utils::token_t
                         }
                     }
 
-                    const bool token_is_right_associative = (token.str == "^") || unary.contains(token.str);
+                    const bool token_is_right_associative = (token.str == "^") || token.str == "pow" || unary.contains(token.str);
 
                     while (!operators.empty() && operators.top().type != utils::token_t::type_t::ParenthesisLeft) {
                         const auto top_priority = operator_priority.at(operators.top().str);
