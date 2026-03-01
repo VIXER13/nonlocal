@@ -27,12 +27,7 @@ using std::pow; using std::hypot; using std::fmod; using std::min; using std::ma
 static constexpr auto sqr = [](const T value) { return value * value; };
 static constexpr auto sign = [](const T value) noexcept { return T((value > 0) - (value < 0)); };
 #define _COUNT(...) (std::ranges::count(#__VA_ARGS__, ',') + 1)
-#define _FUNC(exp,...) \
-[](std::array<T, _COUNT(__VA_ARGS__)> arr) -> T { \
-    const auto& [__VA_ARGS__] = arr;\
-    if constexpr (std::ranges::count(#exp, '^') > 0) return std::nan("1"); \
-    else return exp;\
-}
+#define _FUNC(exp,...) [](std::array<T, _COUNT(__VA_ARGS__)> arr) -> T { const auto& [__VA_ARGS__] = arr; return exp; }
 #define PRESETUP_EXPR(exp,...) \
         auto repr = #exp; \
         expect(nothrow([&test, &repr] {test = math_expression<T>{#__VA_ARGS__ ":" #exp};})) << repr << "expression ctor throws" << fatal; \
@@ -351,6 +346,8 @@ const suite<"formula"> _ = [] {
     };
 };
 
+#undef _COUNT
+#undef _FUNC
 #undef PRESETUP_EXPR
 #undef SETUP_EXPR
 #undef CHECK_VALUE
