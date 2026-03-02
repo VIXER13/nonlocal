@@ -5,23 +5,27 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-// d[0] d[1]  0
-// d[1] d[0]  0
-//  0    0   d[2]
+namespace isotropic_indices   { enum : size_t {_11, _12, _66}; }
+namespace orthotropic_indices { enum : size_t {_11, _12, _22, _66}; }
+namespace anisotropic_indices { enum : size_t {_11, _12, _16, _22, _26, _66}; }
+
+// d[_11] d[_12]   0
+// d[_12] d[_11]   0
+//   0      0    d[_66]
 template<class T>
 using isotropic_hook_matrix_t = std::array<T, 3>;
-// d[0] d[1]  0
-// d[1] d[2]  0
-//  0    0   d[3]
+// d[_11] d[_12]   0
+// d[_12] d[_22]   0
+//   0      0    d[_66]
 template<class T>
 using orthotropic_hook_matrix_t = std::array<T, 4>;
-// d[0] d[1] d[2]
-// d[1] d[3] d[4]
-// d[2] d[4] d[5]
+// d[_11] d[_12] d[_16]
+// d[_12] d[_22] d[_26]
+// d[_16] d[_26] d[_66]
 template<class T>
 using anisotropic_hook_matrix_t = std::array<T, 6>;
 template<class T>
-using hook_matrix_t = std::variant<
+using hooke_matrix_t = std::variant<
     isotropic_hook_matrix_t<T>,
     orthotropic_hook_matrix_t<T>,
     anisotropic_hook_matrix_t<T>
@@ -107,7 +111,10 @@ template<std::floating_point T>
 struct isotropic_elastic_parameters final {
     coefficient_t<T, 2> young_modulus = T{210.};
     coefficient_t<T, 2> poissons_ratio = T{0.3};
-    raw_isotropic_thermal_expansion_t<T> thermal_expansion = T{13e-6};
+
+    bool is_constant() const {
+        return nonlocal::is_constant(young_modulus) && nonlocal::is_constant(poissons_ratio);
+    }
 
     isotropic_hook_matrix_t<T> hooke(const std::array<T, 2>& x) const {
         const T E = evaluate<T, 2zu>(young_modulus, x, {});
@@ -122,7 +129,12 @@ struct orthotropic_elastic_parameters final {
     std::array<coefficient_t<T, 2>, 2> young_modulus = {T{210.}, T{210.}};
     std::array<coefficient_t<T, 2>, 2> poissons_ratio = {T{0.3}, T{0.3}};
     coefficient_t<T, 2> shear_modulus = T{210.} / T{13};
-    raw_orthotropic_thermal_expansion_t<T> thermal_expansion = {T{13e-6}, T{13e-6}};
+
+    bool is_constant() const {
+        return nonlocal::is_constant(young_modulus) && 
+               nonlocal::is_constant(poissons_ratio) &&
+               nonlocal::is_constant(shear_modulus);
+    }
 
     orthotropic_hook_matrix_t<T> hooke(const std::array<T, 2>& x) const {
         const auto E = evaluate<T, 2zu>(young_modulus, x, {});
@@ -137,12 +149,33 @@ template<std::floating_point T>
 struct anisotropic_elastic_parameters final {
     orthotropic_elastic_parameters<T> main_parameters;
     coefficient_t<T, 2> angle = T{0};
-    raw_anisotropic_thermal_expansion_t<T> thermal_expansion = {T{13e-6}, T{13e-6}, T{0}};
+
+    bool is_constant() const {
+        return nonlocal::is_constant(main_parameters.young_modulus) && 
+               nonlocal::is_constant(main_parameters.poissons_ratio) && 
+               nonlocal::is_constant(main_parameters.shear_modulus) && 
+               nonlocal::is_constant(angle);
+    }
 
     static anisotropic_hook_matrix_t<T> rotate(const orthotropic_hook_matrix_t<T>& matrix, const T angle) noexcept {
         const T sin = std::sin(angle);
         const T cos = std::cos(angle);
-        return {0, 1, 2, 3, 4, 5};
+        const T sin2 = sin * sin;
+        const T cos2 = cos * cos;
+        const T sin4 = sin2 * sin2;
+        const T cos4 = cos2 * cos2;
+        const T sin2cos2 = sin2 * cos2;
+        const T sin3cos = sin2 * sin * cos;
+        const T sincos3 = sin * cos * cos2;
+        using namespace orthotropic_indices;
+        return {
+            matrix[_11] * cos4 + matrix[_22] * sin4 + (2 * matrix[_12] + 4 * matrix[_66]) * sin2cos2,
+            (matrix[_11] + matrix[_22] - 4 * matrix[_66]) * sin2cos2 + matrix[_12] * (cos4 + sin4),
+            (matrix[_11] - matrix[_12] - 2 * matrix[_66]) * sincos3 - (matrix[_22] - matrix[_12] - 2 * matrix[_66]) * sin3cos,
+            matrix[_11] * sin4 + matrix[_22] * cos4 + (2 * matrix[_12] + 4 * matrix[_66]) * sin2cos2,
+            (matrix[_11] - matrix[_12] - 2 * matrix[_66]) * sin3cos - (matrix[_22] - matrix[_12] - 2 * matrix[_66]) * sincos3,
+            (matrix[_11] + matrix[_22] - 2 * (matrix[_12] + matrix[_66])) * sin2cos2 + matrix[_66] * (cos4 + sin4)
+        };
     }
 
     anisotropic_hook_matrix_t<T> hooke(const std::array<T, 2>& x) const {
@@ -164,77 +197,13 @@ using elastic_parameters_t = std::variant<
 template<std::floating_point T>
 using elastic_parameters = std::unordered_map<std::string, equation_parameters<2, T, elastic_parameters_t>>;
 
-template<class T>
-struct _parameters_2d final {
-    elastic_parameters<T> elastic;
-    std::vector<T> delta_temperature; // if empty, then thermal expansions are not taken into account
-};
-
-
-enum class plane_t : bool {
-    Stress,
-    Strain
-}; 
-
-// arr[0] arr[1]   0
-// arr[1] arr[0]   0
-//   0      0    arr[2]
-template<class T>
-using hooke_matrix = std::array<T, 4>;
-
-template<class T>
-struct parameter_2d final {
-    std::array<T, 2> youngs_modulus = {210, 210};
-    std::array<T, 2> poissons_ratio = {0.3, 0.3};
-    T shear_modulus = 80;
-    T thermal_expansion = 13e-6;
-
-    material_t material = material_t::ISOTROPIC;
-
-    constexpr T E(const plane_t plane, const std::size_t i) const noexcept;
-    constexpr T nu(const plane_t plane, const std::size_t i) const noexcept;
-    constexpr T G() const noexcept;
-    constexpr hooke_matrix<T> hooke(const plane_t plane) const noexcept;
-};
-
-template<class T>
-using parameters_2d = std::unordered_map<std::string, equation_parameters<2, T, parameter_2d>>;
-
-template<class T>
-struct mechanical_parameters_2d final {
-    parameters_2d<T> materials;
-    std::vector<T> delta_temperature; // if empty, then thermal expansions are not taken into account
-    plane_t plane = plane_t::Stress;
-};
-
-template<class T>
-constexpr T parameter_2d<T>::E(const plane_t plane, const std::size_t i) const noexcept {
-    return plane == plane_t::Stress ? youngs_modulus[i] : youngs_modulus[i] / (T{1} - poissons_ratio[i] * poissons_ratio[i]);
-}
-
-template<class T>
-constexpr T parameter_2d<T>::nu(const plane_t plane, const std::size_t i) const noexcept {
-    return plane == plane_t::Stress ? poissons_ratio[i] : poissons_ratio[i] / (T{1} - poissons_ratio[i]);
-}
-
-template<class T>
-constexpr T parameter_2d<T>::G() const noexcept {
-    return shear_modulus;
-}
-
-template<class T>
-constexpr hooke_matrix<T> parameter_2d<T>::hooke(const plane_t plane) const noexcept {
-    const T Ex = this->E(plane, 0);
-    const T Ey = this->E(plane, 1);
-    const T nu_xy = this->nu(plane, 0);
-    const T nu_yx = this->nu(plane, 1);
-    const T Gxy = material == material_t::ISOTROPIC ? T{0.5} * Ex / (1 + nu_xy) : this->G();
-    const T div = T{1} / (T{1} - nu_xy*nu_yx);
-    // Ey * nu_xy == Ex * nu_yx
-    return { Ex * div, 
-             Ex * nu_yx * div,
-             Ey * div, 
-             Gxy};
+template<std::floating_point T>
+bool is_constant(const elastic_parameters_t<T>& elastic) {
+    return std::visit(metamath::types::visitor{
+        [](const isotropic_elastic_parameters<T>&   elastic) { return elastic.is_constant(); },
+        [](const orthotropic_elastic_parameters<T>& elastic) { return elastic.is_constant(); },
+        [](const anisotropic_elastic_parameters<T>& elastic) { return elastic.is_constant(); },
+    }, elastic);
 }
 
 }

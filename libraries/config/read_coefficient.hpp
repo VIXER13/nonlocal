@@ -1,7 +1,7 @@
 #pragma once
 
 #include <math_expression/math_expression.hpp>
-#include <solvers/base/equation_parameters.hpp>
+#include <solvers/base/coefficient.hpp>
 
 #include <nlohmann/json.hpp>
 

@@ -26,10 +26,8 @@ std::vector<T> get_values_on_center_line(const mesh_container_2d<T, I>& mesh, co
 const suite<"saint_venant"> _ = [] {
     std::stringstream stream{plate_10x1_h0_125_su2_data};
     const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
-    const mechanical_parameters_2d<T> parameters = { 
-        .materials = {
-            {"DEFAULT", { .physical = { .youngs_modulus = {1, 1}, .poissons_ratio = {0.3, 0.3} } }}
-        }
+    const elastic_parameters<T> parameters = { 
+        {"DEFAULT", { .physical = isotropic_elastic_parameters<T>{ .young_modulus = 1., .poissons_ratio = 0.3 } }}
     };
     mechanical_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Vertical"] = {
@@ -49,7 +47,6 @@ const suite<"saint_venant"> _ = [] {
         std::make_unique<pressure_2d<T>>(T{0})
     };
     auto solution = equilibrium_equation<I>(mesh, parameters, boundaries_conditions);
-    solution.calc_strain_and_stress();
 
     "displacement_x_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;
