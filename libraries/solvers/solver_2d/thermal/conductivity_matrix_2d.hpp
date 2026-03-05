@@ -175,18 +175,14 @@ void conductivity_matrix_2d<T, I, J>::compute(const evaluated_conductivity_2d<T>
         integral_condition(is_symmetric);
     _base::calc_coeffs(theories, is_inner, is_symmetric,
         [this, &conductivity](const std::string& group, const size_t e, const size_t i, const size_t j) {
-            const auto& group_params = conductivity.at(group);
-            const auto& model = group_params.model;
-            const auto& physic = group_params.physical;
+            const auto& [model, physic] = conductivity.at(group);
             const T integral = std::visit([this, e, i, j](const auto& conductivity) {
                 return integrate_local(conductivity, e, i, j);
             }, physic);
             return model.local_weight * integral;
         },
         [this, &conductivity](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            const auto& group_params = conductivity.at(group);
-            const auto& model = group_params.model;
-            const auto& physic = group_params.physical;
+            const auto& [model, physic] = conductivity.at(group);
             const T integral = std::visit([this, &model, eL, eNL, iL, jNL](const auto& conductivity) {
                 return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL);
             }, physic);

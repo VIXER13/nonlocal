@@ -94,10 +94,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
 
     "all_boundaries_temperature"_test = [] {
         const auto task = test_task_1<T, I>();
-        auto& mesh = std::get<0>(task);
-        auto& parameters = std::get<1>(task);
-        auto& auxiliary_data = std::get<2>(task);
-        auto& ref_sol = std::get<3>(task);
+        const auto& [mesh, parameters, auxiliary_data, ref_sol] = task;
         // Boundaries conditions
         const auto left_temperature   = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({0.0, x[1]}); };
         const auto right_temperature  = [&](const std::array<T, 2>& x) constexpr noexcept -> T { return ref_sol({1.0, x[1]}); };

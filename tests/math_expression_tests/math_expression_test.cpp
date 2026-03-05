@@ -312,8 +312,8 @@ const suite<"formula"> _ = [] {
         expect(throws([]() { math_expression<T>{"x y z: Г(x) * Г(y) * Г(z)"}; }));
 
         // Invalid variable designation. Variable name <" + variable + "> is unavailable.
-        for (const auto& node : operator_priority) 
-            expect(throws([op = node.first]() { math_expression<T>{op + " : 2 * 2"}; }));
+        for (const auto& [op, _] : operator_priority)
+            expect(throws([op]() { math_expression<T>{op + " : 2 * 2"}; }));
         
         // Wrong expression format. The expression contains open parentheses
         expect(throws([]() { math_expression<T>{"x y z: exp(x*y*z"}; }));

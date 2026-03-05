@@ -10,9 +10,7 @@ template<std::floating_point T, std::integral I>
 evaluated_hook_matrices_2d<T> evaluate_hooke_matrices(const mesh::mesh_2d<T, I>& mesh, 
                                                       const elastic_parameters<T>& parameters) {
     evaluated_hook_matrices_2d<T> result;
-    for (const auto& pair : parameters) {
-        const auto& name = pair.first;
-        const auto& parameter = pair.second;
+    for (const auto& [name, parameter] : parameters) {
 
         auto hook_matrices = std::visit([&mesh, &name](const auto& elastic) -> evaluated_hook_matrix_t<T> {
             if (elastic.is_constant())

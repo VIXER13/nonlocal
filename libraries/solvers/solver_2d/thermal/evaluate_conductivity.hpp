@@ -11,9 +11,7 @@ evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& me
                                                    const parameters_2d<T>& parameters,
                                                    const std::vector<T>& solution) {
     evaluated_conductivity_2d<T> conductivity;
-    for (const auto& pair : parameters) {
-        const auto& name = pair.first;
-        const auto& parameter = pair.second;
+    for (const auto& [name, parameter] : parameters) {
 
         auto conduct = std::visit(metamath::types::visitor{
             [&mesh, &name, &solution](const raw_isotropic_conductivity_t<T>& conductivity) -> evaluated_conductivity_t<T> {

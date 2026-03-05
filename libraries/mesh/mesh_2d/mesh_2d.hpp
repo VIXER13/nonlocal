@@ -204,10 +204,11 @@ void mesh_2d<T, I>::MPI_ranges(const parallel::MPI_ranges& ranges) {
 
 template<class T, class I>
 void mesh_2d<T, I>::neighbours(neighbours_t<T, I>&& data) {
-    if (data.second.size() != container().elements_2d_count())
+    auto&& [influences, elements_neighbors] = data;
+    if (elements_neighbors.size() != container().elements_2d_count())
         throw std::domain_error{"The neighbor list length does not match the number of 2D mesh elements."};
-    _influences = std::move(data.first);
-    _elements_neighbors = std::move(data.second);
+    _influences = std::move(influences);
+    _elements_neighbors = std::move(elements_neighbors);
 }
 
 template<class T, class I>
