@@ -177,9 +177,7 @@ void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hoo
         integral_condition();
     _base::calc_coeffs(theories, settings.is_inner_nodes, settings.is_symmetric(),
         [this, &hooke](const std::string& group, const size_t e, const size_t i, const size_t j) {
-            const auto& group_params = hooke.at(group);
-            const auto& model = group_params.model;
-            const auto& physic = group_params.physical;
+            const auto& [model, physic] = hooke.at(group);
             const auto integral = std::visit([this, e, i, j](const auto& hook) {
                 return integrate_local(hook, e, i, j);
             }, physic);
@@ -187,9 +185,7 @@ void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hoo
             return model.local_weight * integral;
         },
         [this, &hooke](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
-            const auto& group_params = hooke.at(group);
-            const auto& model = group_params.model;
-            const auto& physic = group_params.physical;
+            const auto& [model, physic] = hooke.at(group);
             const auto integral = std::visit([this, &model, eL, eNL, iL, jNL](const auto& hook) {
                 return integrate_nonlocal(hook, model.influence, eL, eNL, iL, jNL);
             }, physic);
