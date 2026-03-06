@@ -224,8 +224,8 @@ void save_as_csv(const std::filesystem::path& path, const mesh_container_2d<T, I
     for(const size_t j : std::ranges::iota_view{0u, data.size()})
         csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
     for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {
-        const std::array<T, 2>& node = mesh.node_coord(i);
-        csv << node[X] << ',' << node[Y] << (data.empty() ? '\n' : ',');
+        const auto& [x, y] = mesh.node_coord(i);
+        csv << x << ',' << y << (data.empty() ? '\n' : ',');
         for(const size_t j : std::ranges::iota_view{0u, data.size()})
             csv << data[j].second[i] << (j == data.size() - 1 ? '\n' : ',');
     }
