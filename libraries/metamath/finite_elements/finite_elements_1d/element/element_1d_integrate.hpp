@@ -6,8 +6,7 @@
 namespace metamath::finite_element {
 
 template<class T, template<class, auto...> class Element_Type, auto... Args>
-class element_1d_integrate : public element_1d_integrate_base<T>,
-                             public element_1d<T, Element_Type, Args...> {
+class element_1d_integrate : public element_1d_integrate_base<T> {
     using element_1d_t = element_1d<T, Element_Type, Args...>;
     using element_integrate_1d_t = element_1d_integrate_base<T>;
     using element_integrate_1d_t::_nearest_qnode;
@@ -15,18 +14,31 @@ class element_1d_integrate : public element_1d_integrate_base<T>,
     using element_integrate_1d_t::_weights;
     using element_integrate_1d_t::_qN;
     using element_integrate_1d_t::_qNxi;
+    using element_integrate_1d_t::set_element;
+    using element_integrate_1d_t::element;
 
 public:
     using element_integrate_1d_t::qnodes_count;
     using element_integrate_1d_t::nodes_count;
     using element_integrate_1d_t::qnodes;
     using element_integrate_1d_t::nodes;
-    using element_1d_t::boundary;
-    using element_1d_t::node;
-    using element_1d_t::N;
-    using element_1d_t::Nxi;
+    using element_integrate_1d_t::boundary;
+    using element_integrate_1d_t::node;
+    using element_integrate_1d_t::N;
+    using element_integrate_1d_t::Nxi;
 
-    explicit element_1d_integrate(const quadrature_1d_base<T>& quadrature) { set_quadrature(quadrature); }
+    explicit element_1d_integrate(const quadrature_1d_base<T>& quadrature)
+    {
+        set_element(std::make_unique<element_1d_t>());
+        set_quadrature(quadrature);
+    }
+
+    element_1d_integrate(std::unique_ptr<element_1d_t> element, const quadrature_1d_base<T>& quadrature)
+    {
+        set_element(std::move(element));
+        set_quadrature(quadrature);
+    }
+
     ~element_1d_integrate() override = default;
 
     void set_quadrature(const quadrature_1d_base<T>& quadrature) override {
@@ -40,9 +52,9 @@ public:
             _weights[q] = quadrature.weight(q) * jacobian;
         }
 
-        _nearest_qnode.resize(element_1d_t::nodes_count());
-        _qN  .resize(element_1d_t::nodes_count() * qnodes_count());
-        _qNxi.resize(element_1d_t::nodes_count() * qnodes_count());
+        _nearest_qnode.resize(element().nodes_count());
+        _qN  .resize(element().nodes_count() * qnodes_count());
+        _qNxi.resize(element().nodes_count() * qnodes_count());
         for(size_t i = 0; i < nodes_count(); ++i) {
             size_t nearest_quadrature = 0;
             T length = std::numeric_limits<T>::max();
