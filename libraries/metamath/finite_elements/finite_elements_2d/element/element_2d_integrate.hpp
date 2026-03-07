@@ -6,8 +6,7 @@
 namespace metamath::finite_element {
 
 template<class T, template<class, auto...> class Element_Type, auto... Args>
-class element_2d_integrate : public element_2d_integrate_base<T>,
-                             public element_2d<T, Element_Type, Args...> {
+class element_2d_integrate : public element_2d_integrate_base<T> {
 protected:
     using element_2d_t = element_2d<T, Element_Type, Args...>;
     using element_integrate_2d_t = element_2d_integrate_base<T>;
@@ -16,21 +15,37 @@ protected:
     using element_integrate_2d_t::_qN;
     using element_integrate_2d_t::_qNxi;
     using element_integrate_2d_t::_qNeta;
+    using element_integrate_2d_t::set_element;
+    using element_integrate_2d_t::element;
 
 public:
     using element_integrate_2d_t::qnodes_count;
     using element_integrate_2d_t::nodes_count;
-    using element_2d_t::N;
-    using element_2d_t::Nxi;
-    using element_2d_t::Neta;
-    using element_2d_t::node;
-    using element_2d_t::boundary;
+    using element_integrate_2d_t::N;
+    using element_integrate_2d_t::Nxi;
+    using element_integrate_2d_t::Neta;
+    using element_integrate_2d_t::node;
+    using element_integrate_2d_t::boundary;
 
     explicit element_2d_integrate(const quadrature_1d_base<T>& quadrature) {
+        set_element(std::make_unique<element_2d_t>());
         set_quadrature(quadrature, quadrature);
     }
 
     explicit element_2d_integrate(const quadrature_1d_base<T>& quadrature_x, const quadrature_1d_base<T>& quadrature_y) {
+        set_element(std::make_unique<element_2d_t>());
+        set_quadrature(quadrature_x, quadrature_y);
+    }
+
+    explicit element_2d_integrate(std::unique_ptr<element_2d_t> element, const quadrature_1d_base<T>& quadrature) {
+        set_element(std::move(element));
+        set_quadrature(quadrature, quadrature);
+    }
+
+    explicit element_2d_integrate(std::unique_ptr<element_2d_t> element,
+                                 const quadrature_1d_base<T>& quadrature_x,
+                                 const quadrature_1d_base<T>& quadrature_y) {
+        set_element(std::move(element));
         set_quadrature(quadrature_x, quadrature_y);
     }
 
@@ -54,10 +69,10 @@ public:
             }
         }
 
-        _nearest_qnode.resize(element_2d_t::nodes_count());
-        _qN.resize(element_2d_t::nodes_count() * qnodes_count());
-        _qNxi.resize(element_2d_t::nodes_count() * qnodes_count());
-        _qNeta.resize(element_2d_t::nodes_count() * qnodes_count());
+        _nearest_qnode.resize(element().nodes_count());
+        _qN.resize(element().nodes_count() * qnodes_count());
+        _qNxi.resize(element().nodes_count() * qnodes_count());
+        _qNeta.resize(element().nodes_count() * qnodes_count());
         for(size_t i = 0; i < nodes_count(); ++i) {
             size_t nearest_quadrature = 0;
             T length = std::numeric_limits<T>::max();
