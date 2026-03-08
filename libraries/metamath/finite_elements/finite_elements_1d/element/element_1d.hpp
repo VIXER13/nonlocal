@@ -18,6 +18,8 @@ public:
 
     ~element_1d() override = default;
 
+    std::unique_ptr<element_1d_base<T>> clone() const override { return std::make_unique<element_1d>(*this); }
+
     size_t nodes_count() const override { return derivative_base::basis_as_functions.size(); }
 
     T node(const size_t i) const override { return derivative_base::nodes[i]; }

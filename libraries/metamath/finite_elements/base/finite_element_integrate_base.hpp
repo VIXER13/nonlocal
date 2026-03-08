@@ -17,6 +17,8 @@ protected:
 public:
     virtual ~element_integrate_base() noexcept = default;
 
+    virtual std::unique_ptr<element_integrate_base<T>> clone() const = 0;
+
     size_t qnodes_count() const noexcept { return _weights.size(); }
     size_t  nodes_count() const noexcept { return _qN.size() / qnodes_count(); }
     std::ranges::iota_view<size_t, size_t> qnodes() const noexcept { return {0u, qnodes_count()}; }

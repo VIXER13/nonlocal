@@ -16,6 +16,8 @@ public:
 
     virtual const std::array<T, 2>& node(const size_t i) const = 0;
 
+    virtual std::unique_ptr<element_2d_base> clone() const = 0;
+    
     virtual T N   (const size_t i, const std::array<T, 2>& x) const = 0;
     virtual T Nxi (const size_t i, const std::array<T, 2>& x) const = 0;
     virtual T Neta(const size_t i, const std::array<T, 2>& x) const = 0;

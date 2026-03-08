@@ -13,6 +13,8 @@ class element_2d : public element_2d_base<T>,
 public:
     ~element_2d() override = default;
 
+    std::unique_ptr<element_2d_base<T>> clone() const override { return std::make_unique<element_2d>(*this); }
+
     size_t nodes_count() const override { return derivative_base::N.size(); }
 
     const std::array<T, 2>& node(const size_t i) const override { return derivative_base::nodes[i]; }

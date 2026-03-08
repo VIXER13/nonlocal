@@ -18,6 +18,8 @@ protected:
     using element_integrate_2d_t::set_element;
     using element_integrate_2d_t::element;
 
+    element_2d_integrate() = default;
+
 public:
     using element_integrate_2d_t::qnodes_count;
     using element_integrate_2d_t::nodes_count;
@@ -50,6 +52,16 @@ public:
     }
 
     ~element_2d_integrate() override = default;
+
+    std::unique_ptr<element_integrate_base<T>> clone() const override {
+        auto result = std::unique_ptr<element_2d_integrate>(new element_2d_integrate());
+        static_cast<element_integrate_base<T>&>(*result) = static_cast<const element_integrate_base<T>&>(*this);
+        result->_qNxi = this->_qNxi;
+        result->_qNeta = this->_qNeta;
+        result->_element = this->_element->clone();
+        return result;
+
+    }
 
     void set_quadrature(const quadrature_1d_base<T>& quadrature_x, const quadrature_1d_base<T>& quadrature_y) override {
         T jacobian_x = (             boundary(side_2d::RIGHT, 0) -              boundary(side_2d::LEFT, 0)) /
