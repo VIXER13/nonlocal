@@ -4,24 +4,25 @@
 
 #include <metamath/finite_elements/base/finite_element_integrate_base.hpp>
 #include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
+#include <metamath/utils/clonnable_ptr_holder.hpp>
 
 
 namespace metamath::finite_element {
 
 template<class T>
-class element_1d_integrate_base : public element_integrate_base<T> {
+class element_1d_integrate_base : public element_integrate_base<T>,
+                                  public metamath::utils::clonnable_ptrs<quadrature_1d_base<T>, element_1d_base<T>> {
 protected:
+    using holder_t = metamath::utils::clonnable_ptrs<quadrature_1d_base<T>, element_1d_base<T>>;
+    using holder_t::_ptrs;
     std::vector<T> _qNxi;
-    std::unique_ptr<quadrature_1d_base<T>> _quadrature = nullptr;
-    std::unique_ptr<element_1d_base<T>> _element = nullptr;
 
     void set_element(std::unique_ptr<element_1d_base<T>>&& element) noexcept {
-        _element = std::move(element);
+        auto& [quadrature_ptr, element_ptr] = _ptrs;
+        element_ptr = std::move(element);
     }
 
-    const element_1d_base<T>& element() const noexcept {
-        return *_element;
-    }
+    const element_1d_base<T>& element() const noexcept { return *std::get<1>(_ptrs); }
 
 public:
     using element_integrate_base<T>::nodes_count;
@@ -32,7 +33,7 @@ public:
     ~element_1d_integrate_base() override = default;
 
     virtual void set_quadrature(const quadrature_1d_base<T>& quadrature) = 0;
-    const quadrature_1d_base<T>& quadrature() const { return *_quadrature; }
+    const quadrature_1d_base<T>& quadrature() const { return *std::get<0>(_ptrs); }
 
     T node(const size_t i) const { return element().node(i); }
     T N(const size_t i, const T xi) const { return element().N(i, xi); }

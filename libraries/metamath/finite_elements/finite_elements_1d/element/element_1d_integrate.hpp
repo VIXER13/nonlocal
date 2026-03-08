@@ -10,10 +10,10 @@ class element_1d_integrate : public element_1d_integrate_base<T> {
     using element_1d_t = element_1d<T, Element_Type, Args...>;
     using element_integrate_1d_t = element_1d_integrate_base<T>;
     using element_integrate_1d_t::_nearest_qnode;
-    using element_integrate_1d_t::_quadrature;
     using element_integrate_1d_t::_weights;
     using element_integrate_1d_t::_qN;
     using element_integrate_1d_t::_qNxi;
+    using element_integrate_1d_t::_ptrs;
     using element_integrate_1d_t::set_element;
     using element_integrate_1d_t::element;
 
@@ -44,16 +44,11 @@ public:
     ~element_1d_integrate() override = default;
 
     std::unique_ptr<element_integrate_base<T>> clone() const override {
-        auto result = std::unique_ptr<element_1d_integrate>(new element_1d_integrate());
-        static_cast<element_integrate_base<T>&>(*result) = static_cast<const element_integrate_base<T>&>(*this);
-        result->_qNxi = this->_qNxi;
-        result->_element = this->_element->clone();
-        result->_quadrature = this->_quadrature->clone();
-        return result;
+        return std::make_unique<element_1d_integrate>(*this);
     }
 
     void set_quadrature(const quadrature_1d_base<T>& quadrature) override {
-        _quadrature = quadrature.clone();
+        std::get<0>(_ptrs) = quadrature.clone();
         std::vector<T> xi(quadrature.nodes_count());
         _weights.resize(quadrature.nodes_count());
         T jacobian = (           boundary(side_1d::RIGHT) -            boundary(side_1d::LEFT)) /

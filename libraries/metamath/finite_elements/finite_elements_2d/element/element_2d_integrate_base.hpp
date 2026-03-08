@@ -4,22 +4,24 @@
 
 #include <metamath/finite_elements/base/finite_element_integrate_base.hpp>
 #include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
+#include <metamath/utils/clonnable_ptr_holder.hpp>
 
 namespace metamath::finite_element {
 
 template<class T>
-class element_2d_integrate_base : public element_integrate_base<T> {
+class element_2d_integrate_base : public element_integrate_base<T>,
+                                  public metamath::utils::clonnable_ptrs<element_2d_base<T>> {
 protected:
+    using holder_t = metamath::utils::clonnable_ptrs<element_2d_base<T>>;
+    using holder_t::_ptrs;
     std::vector<T> _qNxi, _qNeta;
-    std::unique_ptr<element_2d_base<T>> _element = nullptr;
 
     void set_element(std::unique_ptr<element_2d_base<T>> element) noexcept {
-        _element = std::move(element);
+        auto& [element_ptr] = _ptrs;
+        element_ptr = std::move(element);
     }
 
-    const element_2d_base<T>& element() const noexcept {
-        return *_element;
-    }
+    const element_2d_base<T>& element() const noexcept { return *std::get<0>(_ptrs); }
 
 public:
     using element_integrate_base<T>::nodes_count;

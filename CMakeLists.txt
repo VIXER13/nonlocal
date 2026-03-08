@@ -31,7 +31,9 @@ find_package(nlohmann_json REQUIRED CONFIG)
 find_package(spectra REQUIRED CONFIG)
 find_package(ut REQUIRED CONFIG)
 
-add_compile_options(-Wno-missing-template-arg-list-after-template-kw)
+add_compile_options(
+    $<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Wno-missing-template-arg-list-after-template-kw>
+)
 
 # libraries
 add_subdirectory(libraries)
