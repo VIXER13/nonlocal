@@ -3,6 +3,10 @@
 #include <boost/ut.hpp>
 
 #include <numeric>
+#include <cstddef>
+#include <memory>
+#include <ranges>
+#include <type_traits>
 
 namespace {
 
@@ -142,6 +146,33 @@ const suite<"element_2d"> _ = [] {
                     expect(lt(std::abs(Neta_sum), Epsilon_Derivative)) << 
                         "Unexpected Neta sum in point = " + to_string(point);
                 }
+            };
+
+            test("clone" + suffix) = [&element] {
+                auto cloned_base = element->clone();
+                expect(cloned_base != nullptr);
+                expect(cloned_base.get() != element.get());
+
+                auto* cloned = dynamic_cast<element_2d_integrate_base<T>*>(cloned_base.get());
+                expect(cloned != nullptr);
+
+                expect(eq(cloned->nodes_count(), element->nodes_count()));
+                expect(eq(cloned->qnodes_count(), element->qnodes_count()));
+
+                for(const size_t i : element->nodes()) {
+                    expect(eq(cloned->nearest_qnode(i), element->nearest_qnode(i)));
+                    expect(cloned->node(i) == element->node(i));
+                }
+
+                for(const size_t q : element->qnodes())
+                    expect(eq(cloned->weight(q), element->weight(q)));
+
+                for(const size_t i : element->nodes())
+                    for(const size_t q : element->qnodes()) {
+                        expect(eq(cloned->qN(i, q), element->qN(i, q)));
+                        expect(eq(cloned->qNxi(i, q), element->qNxi(i, q)));
+                        expect(eq(cloned->qNeta(i, q), element->qNeta(i, q)));
+                    }
             };
 
             ++order;
