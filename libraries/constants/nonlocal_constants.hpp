@@ -5,21 +5,8 @@
 
 namespace nonlocal {
 
-enum axis : uint8_t {
-    X = 0,
-    XX = 0,
-    Y = 1,
-    YY = 1,
-    XY = 2,
-    YX = 2,
-    Z = 2
-};
-
-enum class material_t : uint8_t {
-    ISOTROPIC,
-    ORTHOTROPIC,
-    ANISOTROPIC
-};
+enum axis : uint8_t { X, Y, Z };
+enum : uint8_t { XX, YY, XY, YX = XY };
 
 enum class physics_t : uint8_t {
     THERMAL,

@@ -12,11 +12,9 @@ template<class T, class I = uint32_t>
 class mechanical_solution_2d : public solution_2d<T, I> {
     using _base = solution_2d<T, I>;
 
-    enum : size_t { XX, YY, XY };
-
     std::array<std::vector<T>, 2> _displacement;
     std::array<std::vector<T>, 3> _strain, _stress;
-    std::unordered_map<std::string, evaluated_hook_matrix_t<T>> _parameters;
+    std::unordered_map<std::string, evaluated_mechanical_parameters_t<T>> _parameters;
     std::vector<T> _delta_temperature;
 
     static std::array<T, 3> calc_stress(const hooke_matrix_t<T>& hooke, const std::array<T, 3>& strain) noexcept;
@@ -31,14 +29,14 @@ public:
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     template<class Vector>
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                    const evaluated_hook_matrices_2d<T>& parameters, const Vector& displacement);
+                                    const evaluated_mechanical_parameters<T>& parameters, const Vector& displacement);
     ~mechanical_solution_2d() noexcept override = default;
 
     const std::array<std::vector<T>, 2>& displacement() const noexcept;
     const std::array<std::vector<T>, 3>& strain() const noexcept;
     const std::array<std::vector<T>, 3>& stress() const noexcept;
 
-    const evaluated_hook_matrix_t<T>& parameters(const std::string& group) const;
+    const evaluated_mechanical_parameters_t<T>& parameters(const std::string& group) const;
     const std::vector<T>& delta_temperature() const noexcept;
 
     T calc_energy() const;
@@ -56,7 +54,7 @@ mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh:
 template<class T, class I>
 template<class Vector>
 mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                     const evaluated_hook_matrices_2d<T>& parameters, const Vector& displacement)
+                                                     const evaluated_mechanical_parameters<T>& parameters, const Vector& displacement)
     : _base{mesh, get_models(parameters)}
     , _parameters{get_physical_parameters(parameters)} {
     for(std::vector<T>& displacement : _displacement)
@@ -83,7 +81,7 @@ const std::array<std::vector<T>, 3>& mechanical_solution_2d<T, I>::stress() cons
 }
 
 template<class T, class I>
-const evaluated_hook_matrix_t<T>& mechanical_solution_2d<T, I>::parameters(const std::string& group) const {
+const evaluated_mechanical_parameters_t<T>& mechanical_solution_2d<T, I>::parameters(const std::string& group) const {
     return _parameters.at(group);
 }
 
@@ -205,7 +203,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
     //substract_temperature_strains(strains);
     for(const auto& [group, parameter] : _parameters) {
         const auto& model = _base::model(group);
-        const auto& hooke_matrices = parameters(group);
+        const auto& hooke_matrices = parameters(group).elastic;
         const auto elements = _base::mesh().container().elements(group);
         std::visit([this, &model, &elements, &strains](const auto& hooke_matrices) {
 #pragma omp parallel for schedule(dynamic)

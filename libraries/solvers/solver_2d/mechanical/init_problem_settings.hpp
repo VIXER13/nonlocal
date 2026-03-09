@@ -12,9 +12,9 @@ namespace nonlocal::solver_2d::mechanical {
 
 template<std::floating_point T, std::integral I>
 problem_settings init_problem_settings(const mesh::mesh_container_2d<T, I>& mesh,
-                                       const elastic_parameters<T>& parameters,
+                                       const raw_mechanical_parameters<T>& parameters,
                                        const mechanical_boundaries_conditions_2d<T>& boundaries_conditions) {
-    static constexpr auto is_nonconstant_parameters = [](const auto& parameter) { return !is_constant(parameter.physical); };
+    static constexpr auto is_nonconstant_parameters = [](const auto& parameter) { return !is_constant(parameter.physical.elastic); };
     const auto parameters_view = parameters | std::views::values;
     return {
         .theories = theories_types(parameters),

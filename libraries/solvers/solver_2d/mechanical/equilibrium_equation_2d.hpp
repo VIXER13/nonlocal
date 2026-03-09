@@ -1,6 +1,6 @@
 #pragma once
 
-#include "evaluate_hooke_matrices.hpp"
+#include "evaluate_mechanical_parameters.hpp"
 #include "stiffness_matrix_2d.hpp"
 #include "mechanical_boundary_conditions_2d.hpp"
 #include "mechanical_solution_2d.hpp"
@@ -19,13 +19,12 @@ namespace nonlocal::solver_2d::mechanical {
 
 template<class Matrix_Index, class T, class I>
 mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                              const elastic_parameters<T>& parameters,
+                                                              const raw_mechanical_parameters<T>& parameters,
                                                               const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
                                                               const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt) {
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions);
     log_problem_settings(settings);
-
-    const auto hooke = evaluate_hooke_matrices(*mesh, parameters);
+    const auto hooke = evaluate_mechanical_parameters(*mesh, parameters);
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
     stiffness.compute(hooke, settings);
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix().inner().cols());
@@ -46,7 +45,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
         if (solver.preconditioner().computation_info() != Eigen::Success) {
             solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
             logger::warning() << "The ILLT preconditioner could not be calculated, "
-                            << "the preconditioner was switched to Identity." << std::endl;
+                              << "the preconditioner was switched to Identity." << std::endl;
         }
         displacement = solver.solve(f);
     } else {

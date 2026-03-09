@@ -34,7 +34,7 @@ public:
     explicit stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     ~stiffness_matrix() noexcept override = default;
 
-    void compute(const evaluated_hook_matrices_2d<T>& hooke, const problem_settings& settings, const assemble_part part = assemble_part::FULL);
+    void compute(const evaluated_mechanical_parameters<T>& hooke, const problem_settings& settings, const assemble_part part = assemble_part::FULL);
 };
 
 template<class T, class I, class J>
@@ -167,7 +167,7 @@ void stiffness_matrix<T, I, J>::integral_condition() {
 }
 
 template<class T, class I, class J>
-void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hooke, const problem_settings& settings, const assemble_part part) {
+void stiffness_matrix<T, I, J>::compute(const evaluated_mechanical_parameters<T>& hooke, const problem_settings& settings, const assemble_part part) {
     logger::info() << "Stiffness matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) :
@@ -180,7 +180,7 @@ void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hoo
             const auto& [model, physic] = hooke.at(group);
             const auto integral = std::visit([this, e, i, j](const auto& hook) {
                 return integrate_local(hook, e, i, j);
-            }, physic);
+            }, physic.elastic);
             using namespace metamath::functions;
             return model.local_weight * integral;
         },
@@ -188,7 +188,7 @@ void stiffness_matrix<T, I, J>::compute(const evaluated_hook_matrices_2d<T>& hoo
             const auto& [model, physic] = hooke.at(group);
             const auto integral = std::visit([this, &model, eL, eNL, iL, jNL](const auto& hook) {
                 return integrate_nonlocal(hook, model.influence, eL, eNL, iL, jNL);
-            }, physic);
+            }, physic.elastic);
             using namespace metamath::functions;
             return nonlocal::nonlocal_weight(model.local_weight) * integral;
         }

@@ -34,7 +34,7 @@ class _mechanical_parameters_2d final {
 
 public:
     template<std::floating_point T>
-    friend solver_2d::mechanical::elastic_parameters<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path);
+    friend solver_2d::mechanical::raw_mechanical_parameters<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path);
 };
 
 template<std::floating_point T>
@@ -130,17 +130,19 @@ solver_2d::mechanical::elastic_parameters_t<T> _mechanical_parameters_2d::read_m
 }
 
 template<std::floating_point T>
-solver_2d::mechanical::elastic_parameters<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::mechanical::raw_mechanical_parameters<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path) {
     if (!config.is_object())
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an object."};
     const std::string path_with_access = append_access_sign(path);
-    solver_2d::mechanical::elastic_parameters<T> parameters;
+    solver_2d::mechanical::raw_mechanical_parameters<T> parameters;
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_access_to_material = append_access_sign(path_with_access + name);
         const std::string model_field = get_model_field(material, path_with_access, "mechanical");
         parameters[name] = {
             .model = model_field.empty() ? model_parameters<2u, T>{} : read_model_2d<T>(material[model_field], path_with_access + model_field),
-            .physical = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical")
+            .physical = {
+                .elastic = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical")
+            }
         };
     }
     return parameters;
