@@ -129,18 +129,36 @@ std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratur
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std::vector<T>, 3>& strain) const {
-    // if (!_delta_temperature.empty()) {
-    //     const std::vector<T> temperature_in_qnodes = nonlocal::mesh::utils::nodes_to_qnodes(_base::mesh(), _delta_temperature);
-    //     for(const std::string& group : _base::mesh().container().groups_2d()) {
-    //         const auto& parameter = parameters(group);
-    //         for(const size_t e : _base::mesh().container().elements(group))
-    //             for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
-    //                 const T temperature_strain = temperature_in_qnodes[qshift] * parameter.thermal_expansion;
-    //                 strain[XX][qshift] -= temperature_strain;
-    //                 strain[YY][qshift] -= temperature_strain;
-    //             }
-    //     }
-    // }
+    if (!_delta_temperature.empty()) {
+        const std::vector<T> temperature_in_qnodes = nonlocal::mesh::utils::nodes_to_qnodes(_base::mesh(), _delta_temperature);
+        for(const std::string& group : _base::mesh().container().groups_2d()) {
+            const auto& thermal_expansion = parameters(group).thermal_expansion;
+            if (thermal_expansion.valueless_by_exception())
+                continue;
+            for(const size_t e : _base::mesh().container().elements(group))
+                for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
+                    const auto temperature_strain = std::visit([qshift, &temperature_in_qnodes](const auto& thermal_expansion) -> std::array<T, 3> {
+                        const auto& expansion = thermal_expansion.index() ? std::get<Variable>(thermal_expansion)[qshift] : 
+                                                                            std::get<Constant>(thermal_expansion);
+                        using namespace metamath::functions;
+                        using thermal_expansion_t = std::remove_cvref_t<decltype(thermal_expansion)>;
+                        if constexpr (std::is_same_v<thermal_expansion_t, evaluated_isotropic_thermal_expansion_t<T>>) {
+                            const T temperature_strain = expansion * temperature_in_qnodes[qshift];
+                            return {temperature_strain, temperature_strain, T{0}};
+                        } else if constexpr (std::is_same_v<thermal_expansion_t, evaluated_orthotropic_thermal_expansion_t<T>>) {
+                            const auto temperature_strain = expansion * temperature_in_qnodes[qshift];
+                            return {temperature_strain[X], temperature_strain[Y], T{0}};
+                        } else if constexpr (std::is_same_v<thermal_expansion_t, evaluated_anisotropic_thermal_expansion_t<T>>) {
+                            return expansion * temperature_in_qnodes[qshift];
+                        } else
+                            static_assert(false, "Unknown linear thermal expansion coefficients type.");
+                    }, thermal_expansion);
+                    strain[XX][qshift] -= temperature_strain[XX];
+                    strain[YY][qshift] -= temperature_strain[YY];
+                    strain[XY][qshift] -= temperature_strain[XY];
+                }
+        }
+    }
 }
 
 template<class T, class I>
@@ -179,7 +197,7 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_stress(const size_t
         const size_t qshiftNL = _base::mesh().quad_shift(eNL);
         for(const size_t qNL : elNL.qnodes()) {
             const size_t qshift = qshiftNL + qNL;
-            const auto& hooke = hooke_matrices.index() ? std::get<Nonconstant>(hooke_matrices)[qshift] : 
+            const auto& hooke = hooke_matrices.index() ? std::get<Variable>(hooke_matrices)[qshift] : 
                                                          std::get<Constant>(hooke_matrices);
             const T influence_weight = elNL.weight(qNL) * _base::mesh().jacobian(qshift) *
                                        influence(_base::mesh().quad_coord(qshift));
@@ -200,7 +218,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
         _strain[i] = mesh::utils::qnodes_to_nodes(_base::mesh(), strains[i]);
         _stress[i].resize(strains[i].size(), T{0});
     }
-    //substract_temperature_strains(strains);
+    substract_temperature_strains(strains);
     for(const auto& [group, parameter] : _parameters) {
         const auto& model = _base::model(group);
         const auto& hooke_matrices = parameters(group).elastic;
@@ -210,7 +228,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
             for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
                 for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
                     using namespace metamath::functions;
-                    const auto& hooke = hooke_matrices.index() ? std::get<Nonconstant>(hooke_matrices)[qshiftL] : 
+                    const auto& hooke = hooke_matrices.index() ? std::get<Variable>(hooke_matrices)[qshiftL] : 
                                                                  std::get<Constant>(hooke_matrices);
                     std::array<T, 3> stress = calc_stress(model.local_weight * hooke, {strains[XX][qshiftL], strains[YY][qshiftL], strains[XY][qshiftL]});
                     if (theory_type(model.local_weight) == theory_t::NONLOCAL) {

@@ -49,7 +49,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_local(co
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes()) {
         using namespace metamath::functions;
-        const auto& hooke = hooke_matrix.index() ? std::get<Nonconstant>(hooke_matrix)[qshift + q] : 
+        const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift + q] : 
                                                    std::get<Constant>(hooke_matrix);
         const auto& dNj = _base::mesh().derivatives(e, j, q);
         const auto wdNi = (el.weight(q) / _base::mesh().jacobian(e, q)) * _base::mesh().derivatives(e, i, q);
@@ -91,7 +91,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonlocal
         const auto& qnodeL = _base::mesh().quad_coord(eL, qL);
         const auto wdNi = elL.weight(qL) * _base::mesh().derivatives(eL, iL, qL);
         for(const size_t qNL : elNL.qnodes()) {
-            const auto& hooke = hooke_matrix.index() ? std::get<Nonconstant>(hooke_matrix)[qshiftNL + qNL] : 
+            const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshiftNL + qNL] : 
                                                        std::get<Constant>(hooke_matrix);
             const T weight = elNL.weight(qNL) * influence(qnodeL, _base::mesh().quad_coord(eNL, qNL));
             const auto wdNj = weight * _base::mesh().derivatives(eNL, jNL, qNL);

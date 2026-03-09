@@ -13,7 +13,7 @@ namespace nonlocal {
 template<class T>
 using evaluated_parameters = std::variant<T, metamath::types::vector_with_shifted_index<T>>;
 constexpr size_t Constant = 0;
-constexpr size_t Nonconstant = 1; // Named indices for evaluated_parameters variants
+constexpr size_t Variable = 1; // Named indices for evaluated_parameters variants
 
 template<size_t Dimension, class T>
 struct model_parameters final {

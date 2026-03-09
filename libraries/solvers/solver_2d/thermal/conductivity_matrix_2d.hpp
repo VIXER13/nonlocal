@@ -113,7 +113,7 @@ T conductivity_matrix_2d<T, I, J>::integrate_local(const Conductivity& conductiv
         const auto& dNi = _base::mesh().derivatives(e, i, q);
         const auto& dNj = _base::mesh().derivatives(e, j, q);
         T value = T{0};
-        const auto& conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift + q] :
+        const auto& conduct = conductivity.index() ? std::get<Variable>(conductivity)[qshift + q] :
                                                      std::get<Constant>(conductivity);
         if constexpr (std::is_same_v<Conductivity, evaluated_isotropic_conductivity_t<T>>)
             value = conduct * (dNi[X] * dNj[X] + dNi[Y] * dNj[Y]);
@@ -142,7 +142,7 @@ T conductivity_matrix_2d<T, I, J>::integrate_nonlocal(const Conductivity& conduc
         const auto& qcoordL = _base::mesh().quad_coord(eL, qL);
         const auto& dNi = _base::mesh().derivatives(eL, iL, qL);
         for(const size_t qNL : elNL.qnodes()) {
-            const auto& conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshiftNL + qNL] : 
+            const auto& conduct = conductivity.index() ? std::get<Variable>(conductivity)[qshiftNL + qNL] : 
                                                          std::get<Constant>(conductivity);
             const auto& dNj = _base::mesh().derivatives(eNL, jNL, qNL);
             const T influence_weight = elNL.weight(qNL) * influence(qcoordL, _base::mesh().quad_coord(eNL, qNL));

@@ -75,27 +75,22 @@ std::array<std::vector<T>, 2> heat_equation_solution_2d<T, I>::local_flux_in_qno
     for (const auto& [group, conductivity] : _conductivity)
         for(const size_t e : _base::mesh().container().elements(group))
             for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
-                std::visit(metamath::types::visitor{
-                    [&flux, qshift](const evaluated_isotropic_conductivity_t<T>& conductivity) { 
-                        const T conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift] :
+                std::visit([&flux, qshift](const auto& conductivity) {
+                    const auto& conduct = conductivity.index() ? std::get<Variable>(conductivity)[qshift] :
                                                                  std::get<Constant>(conductivity);
+                    using conductivity_t = std::remove_cvref_t<decltype(conductivity)>;
+                    if constexpr (std::is_same_v<conductivity_t, evaluated_isotropic_conductivity_t<T>>) {
                         flux[X][qshift] *= -conduct;
                         flux[Y][qshift] *= -conduct;
-                    },
-                    [&flux, qshift](const evaluated_orthotropic_conductivity_t<T>& conductivity) {
-                        const auto& conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift] :
-                                                                     std::get<Constant>(conductivity);
+                    } else if constexpr (std::is_same_v<conductivity_t, evaluated_orthotropic_conductivity_t<T>>) {
                         flux[X][qshift] *= -conduct[X];
                         flux[Y][qshift] *= -conduct[Y];
-                    },
-                    [&flux, qshift](const evaluated_anisotropic_conductivity_t<T>& conductivity) {
-                        const auto& conduct = conductivity.index() ? std::get<Nonconstant>(conductivity)[qshift] :
-                                                                     std::get<Constant>(conductivity);
+                    } else if constexpr (std::is_same_v<conductivity_t, evaluated_anisotropic_conductivity_t<T>>) {
                         std::tie(flux[X][qshift], flux[Y][qshift]) = std::make_tuple(
                             -conduct[XX] * flux[X][qshift] - conduct[XY] * flux[Y][qshift],
-                            -conduct[XY] * flux[X][qshift] - conduct[YY] * flux[Y][qshift]
-                        );
-                    }
+                            -conduct[XY] * flux[X][qshift] - conduct[YY] * flux[Y][qshift]);
+                    } else
+                        static_assert(false, "Unknown conductivity coefficients type.");
                 }, conductivity);
             }
     return flux;
