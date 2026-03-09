@@ -39,11 +39,11 @@ jobs:
 
       - name: 📦 Pull model
         run: |
-          echo "📥 Downloading model '$OLLAMA_MODEL'..."
+          echo "📥 Downloading model '${{ vars.OLLAMA_MODEL }}'..."
           payload='{"model":"__model__"}'
           curl -X POST http://localhost:11434/api/pull \
             -H "Content-Type: application/json" \
-            -d "${payload//__model__/$OLLAMA_MODEL}"
+            -d "${payload//__model__/${{ vars.OLLAMA_MODEL }}}"
 
       - name: 🔥 Warm up model
         run: |
@@ -51,13 +51,13 @@ jobs:
           payload='{"model":"__model__","stream":false,"messages":[{"role":"user","content":"Hello!"}]}'
           curl -s -X POST http://localhost:11434/api/chat \
             -H "Content-Type: application/json" \
-            -d "${payload//__model__/$OLLAMA_MODEL}"
+            -d "${payload//__model__/${{ vars.OLLAMA_MODEL }}}"
           echo "✅ Warm-up complete."
 
       - name: 🚀 Run AI Review
         uses: Nikita-Filonov/ai-review@v0.59.0
         env:
-          LLM__META__MODEL: ${{ env.OLLAMA_MODEL }}
+          LLM__META__MODEL: ${{ vars.OLLAMA_MODEL }}
           VCS__PIPELINE__OWNER: ${{ github.repository_owner }}
           VCS__PIPELINE__REPO: ${{ github.event.repository.name }}
           VCS__PIPELINE__PULL_NUMBER: ${{ github.event.pull_request.number }}
