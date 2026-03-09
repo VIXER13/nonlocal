@@ -17,7 +17,7 @@ protected:
 public:
     ~element_2d_serendipity() override = default;
 
-    std::unique_ptr<element_2d_base<T>> clone() const override { return std::make_unique<element_2d_serendipity>(*this); }
+    std::unique_ptr<element_2d_base<T>> copy() const override { return std::make_unique<element_2d_serendipity>(*this); }
 
     size_t nodes_count() const override { return derivative_base::N.size(); }
 

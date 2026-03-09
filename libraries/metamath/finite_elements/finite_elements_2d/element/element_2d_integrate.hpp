@@ -54,7 +54,7 @@ public:
 
     ~element_2d_integrate() override = default;
 
-    std::unique_ptr<element_integrate_base<T>> clone() const override {
+    std::unique_ptr<element_integrate_base<T>> copy() const override {
         return std::make_unique<element_2d_integrate>(*this);
     }
 

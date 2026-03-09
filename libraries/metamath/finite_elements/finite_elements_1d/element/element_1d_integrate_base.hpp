@@ -4,16 +4,16 @@
 
 #include <metamath/finite_elements/base/finite_element_integrate_base.hpp>
 #include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
-#include <metamath/utils/clonnable_ptr_holder.hpp>
+#include <metamath/types/copyable_ptrs.hpp>
 
 
 namespace metamath::finite_element {
 
 template<class T>
 class element_1d_integrate_base : public element_integrate_base<T>,
-                                  public metamath::utils::clonnable_ptrs<quadrature_1d_base<T>, element_1d_base<T>> {
+                                  public metamath::types::copyable_ptrs<quadrature_1d_base<T>, element_1d_base<T>> {
 protected:
-    using holder_t = metamath::utils::clonnable_ptrs<quadrature_1d_base<T>, element_1d_base<T>>;
+    using holder_t = metamath::types::copyable_ptrs<quadrature_1d_base<T>, element_1d_base<T>>;
     using holder_t::_ptrs;
     std::vector<T> _qNxi;
 

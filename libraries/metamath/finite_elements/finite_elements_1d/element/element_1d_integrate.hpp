@@ -43,12 +43,12 @@ public:
 
     ~element_1d_integrate() override = default;
 
-    std::unique_ptr<element_integrate_base<T>> clone() const override {
+    std::unique_ptr<element_integrate_base<T>> copy() const override {
         return std::make_unique<element_1d_integrate>(*this);
     }
 
     void set_quadrature(const quadrature_1d_base<T>& quadrature) override {
-        std::get<0>(_ptrs) = quadrature.clone();
+        std::get<0>(_ptrs) = quadrature.copy();
         std::vector<T> xi(quadrature.nodes_count());
         _weights.resize(quadrature.nodes_count());
         T jacobian = (           boundary(side_1d::RIGHT) -            boundary(side_1d::LEFT)) /

@@ -104,8 +104,8 @@ const suite<"element_1d"> _ = [] {
             }                
         };
 
-        test("clone" + suffix) = [&element] {
-            auto cloned_base = element->clone();
+        test("copy" + suffix) = [&element] {
+            auto cloned_base = element->copy();
             expect(cloned_base != nullptr);
             expect(cloned_base.get() != element.get());
 
