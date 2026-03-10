@@ -1,0 +1,71 @@
+name: 🤖 AI Review
+
+on:
+  pull_request:
+    branches:
+      - dev
+    types: [opened, reopened]
+
+  workflow_dispatch:
+    inputs:
+      pull_request_number:
+        description: "Pull request number to review"
+        required: true
+        type: number
+
+jobs:
+  ai-review:
+    name: Run AI Review
+    runs-on: ubuntu-latest
+
+    services:
+      ollama:
+        image: ollama/ollama:latest
+        ports: [ 11434:11434 ]
+
+    steps:
+      - name: 🧱 Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: ⏳ Wait for Ollama to start
+        run: |
+          echo "Waiting for Ollama service to become ready..."
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:11434/api/version; then
+              echo "✅ Ollama is ready."
+              break
+            fi
+            echo "⏳ Attempt $i: still waiting..."
+            sleep 3
+          done
+
+      - name: 📦 Pull model
+        run: |
+          echo "📥 Downloading model '${{ vars.OLLAMA_MODEL }}'..."
+          payload='{"model":"__model__"}'
+          curl -X POST http://localhost:11434/api/pull \
+            -H "Content-Type: application/json" \
+            -d "${payload//__model__/${{ vars.OLLAMA_MODEL }}}"
+
+      - name: 🔥 Warm up model
+        run: |
+          echo "🔥 Warming up model..."
+          payload='{"model":"__model__","stream":false,"messages":[{"role":"user","content":"Hello!"}]}'
+          curl -s -X POST http://localhost:11434/api/chat \
+            -H "Content-Type: application/json" \
+            -d "${payload//__model__/${{ vars.OLLAMA_MODEL }}}"
+          echo "✅ Warm-up complete."
+
+      - name: 🚀 Run AI Review
+        uses: Nikita-Filonov/ai-review@v0.59.0
+        env:
+          LLM__META__MODEL: ${{ vars.OLLAMA_MODEL }}
+          VCS__PIPELINE__OWNER: ${{ github.repository_owner }}
+          VCS__PIPELINE__REPO: ${{ github.event.repository.name }}
+          VCS__PIPELINE__PULL_NUMBER: ${{ github.event.pull_request.number || inputs.pull_request_number }}
+          VCS__HTTP_CLIENT__API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+          review-command: run

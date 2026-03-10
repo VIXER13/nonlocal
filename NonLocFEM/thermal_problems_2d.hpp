@@ -5,8 +5,6 @@
 #include <config/thermal_auxiliary_data.hpp>
 #include <config/time_data.hpp>
 #include <logger/logger.hpp>
-#include <mesh/mesh_2d/cuthill_mckee.hpp>
-#include <mesh/mesh_2d/find_neighbours.hpp>
 #include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
 #include <solvers/solver_2d/thermal/nonstationary_heat_equation_solver_2d.hpp>
 
@@ -14,18 +12,14 @@ namespace nonlocal {
 
 template<std::floating_point T, std::integral I>
 void save_solution(const solver_2d::thermal::heat_equation_solution_2d<T, I>& solution, 
-                   const config::save_data& save,
+                   config::save_data save,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0) // Only the master process saves data
         return;
     if (step.has_value())
         logger::info() << "step = " << *step << std::endl;
-    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + save.get_name("csv", "solution"), "csv") : 
-                                              save.path("csv", "csv", "solution");
-    mesh::utils::save_as_csv(path, solution.mesh().container(), 
-        {{"temperature", solution.temperature()}, {"flux_x", solution.flux()[X]}, {"flux_y", solution.flux()[Y]}},
-        save.precision()
-    );
+    save_csv<T, I>(solution, std::nullopt, save, step);
+    save_vtk<T, I>(solution, std::nullopt, save, step);
 }
 
 template<std::floating_point T, std::signed_integral I>
@@ -36,7 +30,7 @@ solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
     const config::thermal_auxiliary_data_2d<T>& auxiliary) {
     const solver_2d::thermal::stationary_equation_parameters_2d<T> auxiliary_data {
         .right_part = [right_part = auxiliary.right_part](const std::array<T, 2>& x) {
-            return std::visit(metamath::visitor{
+            return std::visit(metamath::types::visitor{
                 [](const T value) { return value; },
                 [&x](const spatial_dependency<T, 2>& value) { return value(x); },
                 [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
@@ -63,15 +57,16 @@ void solve_thermal_2d_problem(
     const config::time_data<T>& time,
     const config::save_data& save) {
     solver_2d::thermal::nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
+    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });
     {
-        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
+        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
         solution.calc_flux();
         save_solution(solution, save, 0u);
     }
     const auto right_part = [right_part = auxiliary.right_part](const std::array<T, 2>& x) {
-        return std::visit(metamath::visitor{
+        return std::visit(metamath::types::visitor{
             [](const T value) { return value; },
             [&x](const spatial_dependency<T, 2>& value) { return value(x); },
             [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
@@ -80,7 +75,7 @@ void solve_thermal_2d_problem(
     for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
         solver.calc_step(boundaries_conditions, right_part);
         if (step % time.save_frequency == 0) {
-            solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, parameters, solver.temperature()};
+            solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
             solution.calc_flux();
             save_solution(solution, save, step);
         }

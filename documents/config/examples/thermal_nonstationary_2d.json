@@ -8,6 +8,7 @@
         "folder": "./test",
         "config": "config",
         "csv": "solution_thermal_nonstationary_2d",
+        "vtk": "solution_thermal_nonstationary_2d",
         "precision": 7
     },
     "mesh": {

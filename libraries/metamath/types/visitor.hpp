@@ -1,6 +1,6 @@
 #pragma once
 
-namespace metamath {
+namespace metamath::types {
 
 template<class... Ts>
 struct visitor : Ts... {

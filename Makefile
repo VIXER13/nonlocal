@@ -1,4 +1,4 @@
-COMPILER ?= clang
+COMPILER ?= gcc
 BUILD_DIR := build
 TOOLCHAIN_FILE := $(BUILD_DIR)/conan_toolchain.cmake
 UNITTEST_FILE := $(BUILD_DIR)/tests/unit_tests

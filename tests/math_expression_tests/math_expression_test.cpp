@@ -1,244 +1,355 @@
+#include <math_expression/math_expression.hpp>
+#include <math_expression/utils.hpp>
+
+#include <boost/ut.hpp>
+
 #include <numbers>
 #include <limits>
-
-#include <math_expression/math_expression.hpp>
-#include <boost/ut.hpp>
 
 namespace {
 
 using namespace boost::ut;
 using namespace formula;
 using namespace std::numbers;
+using namespace std::string_literals;
+
 using T = double;
+constexpr auto eps = std::numeric_limits<T>::epsilon();
+
+// Some ugly code to simplify testing
+using std::abs; using std::acos; using std::acosh; using std::asin; using std::asinh; 
+using std::atan; using std::atanh; using std::cbrt; using std::ceil; using std::cos; 
+using std::cosh; using std::erf; using std::erfc; using std::exp; using std::exp2; 
+using std::expm1; using std::floor; using std::lgamma; using std::log; using std::log10; 
+using std::log1p; using std::log2; using std::round; using std::sin; using std::sinh; 
+using std::sqrt; using std::tan; using std::tanh; using std::tgamma; using std::trunc; 
+using std::pow; using std::hypot; using std::fmod; using std::min; using std::max;
+static constexpr auto sqr = [](const T value) { return value * value; };
+static constexpr auto sign = [](const T value) noexcept { return T((value > 0) - (value < 0)); };
+#define _COUNT(...) (std::ranges::count(#__VA_ARGS__, ',') + 1)
+#define _FUNC(exp,...) [](std::array<T, _COUNT(__VA_ARGS__)> arr) -> T { const auto& [__VA_ARGS__] = arr; return exp; }
+#define PRESETUP_EXPR(exp,...) \
+        auto repr = #exp; \
+        expect(nothrow([&test, &repr] {test = math_expression<T>{#__VA_ARGS__ ":" #exp};})) << repr << "expression ctor throws" << fatal; \
+        expect(eq(test.variables_count(), _COUNT(__VA_ARGS__))) << repr << "expression has wrong variables count"
+#define SETUP_EXPR(exp,...) \
+        PRESETUP_EXPR(exp, __VA_ARGS__); \
+        auto func = _FUNC(exp, __VA_ARGS__)
+#define CHECK_VALUE(...) \
+        expect(lt(std::abs(test({__VA_ARGS__}) - func({__VA_ARGS__})), eps)) << repr << "expression is not correctly computed at values = {" #__VA_ARGS__ "}";
+#define CHECK_NOTATION(expected) \
+        expect(eq(test.to_polish(), expected ## s)) << repr << "expression is not correctly parsed"
 
 const suite<"formula"> _ = [] {
-    "polish_notation_general"_test = [] {
-        auto test = math_expression<T>("x : -x");
-        //expect(test.to_polish() == "x~" and test.variables_count() == 1);
+    "tokenize"_test = [] {
+        using formula::utils::token_t;
+        using enum formula::utils::token_t::type_t;
+        using formula::utils::tokenize;
 
-        test = math_expression<T>("x:-x");
-        //expect(test.to_polish() == "x~" and test.variables_count() == 1);
+        expect(eq(tokenize("").size(), 0));
+        expect(eq(tokenize(" \t\n\r\v\f ").size(), 0));
 
-        test = math_expression<T>("x : x + x - x / x * x");
-        //expect(test.to_polish() == "xx+xx/x*-" and test.variables_count() == 1);
+        {
+            const auto tokens = tokenize("x y : sin(x) + 2.5*y");
+            expect(eq(tokens.size(), 11));
+            expect(eq(tokens[0], token_t{Symbol, "x"}));
+            expect(eq(tokens[1], token_t{Symbol, "y"}));
+            expect(eq(tokens[2], token_t{Separator, ":"}));
+            expect(eq(tokens[3], token_t{Symbol, "sin"}));
+            expect(eq(tokens[4], token_t{ParenthesisLeft, "("}));
+            expect(eq(tokens[5], token_t{Symbol, "x"}));
+            expect(eq(tokens[6], token_t{ParenthesisRight, ")"}));
+            expect(eq(tokens[7], token_t{Operator, "+"}));
+            expect(eq(tokens[8], token_t{Number, "2.5"}));
+            expect(eq(tokens[9], token_t{Operator, "*"}));
+            expect(eq(tokens[10], token_t{Symbol, "y"}));
+        }
 
-        test = math_expression<T>("x : sin(x)");
-        //expect(test.to_polish() == "xsin" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ pi / 4 }) - std::sin(pi / 4)), std::numeric_limits<double>::epsilon()));
+        {
+            const auto tokens = tokenize("atan2(x, y)");
+            expect(eq(tokens.size(), 6));
+            expect(eq(tokens[0], token_t{Symbol, "atan2"}));
+            expect(eq(tokens[1], token_t{ParenthesisLeft, "("}));
+            expect(eq(tokens[2], token_t{Symbol, "x"}));
+            expect(eq(tokens[3], token_t{Separator, ","}));
+            expect(eq(tokens[4], token_t{Symbol, "y"}));
+            expect(eq(tokens[5], token_t{ParenthesisRight, ")"}));
+        }
 
-        test = math_expression<T>("x : cos(x)");
-        //expect(test.to_polish() == "xcos" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ pi / 4 }) - std::cos(pi / 4)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : tan(x)");
-        //expect(test.to_polish() == "xtan" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ pi / 4 }) - std::tan(pi / 4)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : atan(x)");
-        //expect(test.to_polish() == "xatan" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ pi / 4 }) - std::atan(pi / 4)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : abs(x)");
-        //expect(test.to_polish() == "xabs" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ -pi / 4 }) - std::abs(-pi / 4)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : sign(x)");
-        //expect(test.to_polish() == "xsign" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ -pi / 4 }) + 1), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : sqr(x)");
-        //expect(test.to_polish() == "xsqr" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ std::sqrt(2) }) - 2), std::numeric_limits<double>::epsilon() * 3));
-
-        test = math_expression<T>("x : sqrt(x)");
-        //expect(test.to_polish() == "xsqrt" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 5. }) - std::sqrt(5)), std::numeric_limits<double>::epsilon() * 3));
-
-        test = math_expression<T>("x : log(x)");
-        //expect(test.to_polish() == "xlog" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ e }) - 1), std::numeric_limits<double>::epsilon()));
-
-        // remark: Euler Gamma function
-        // for each natural number i = 1, 2, 3, ... tgamma(i) = (i - 1)! 
-        test = math_expression<T>("x : tgamma(x)");
-        //expect(test.to_polish() == "xtgamma" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 6. }) - 120.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : lgamma(x)");
-        //expect(test.to_polish() == "xlgamma" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::lgamma(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : exp2(x)");
-        //expect(test.to_polish() == "xexp2" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 4. }) - 16.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : expm1(x)");
-        //expect(test.to_polish() == "xexpm1" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - 0.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : log10(x)");
-        //expect(test.to_polish() == "xlog10" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 100. }) - 2.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : log2(x)");
-        //expect(test.to_polish() == "xlog2" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 4. }) - 2.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : log1p(x)");
-        //expect(test.to_polish() == "xlog1p" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ e - 1. }) - 1.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : cbrt(x)");
-        //expect(test.to_polish() == "xcbrt" and test.variables_count() == 1);
-        expect(approx(test({ T{27} }), std::cbrt(T{27}), 3 * std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : asin(x)");
-        //expect(test.to_polish() == "xasin" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 1. }) - pi / 2.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : acos(x)");
-        //expect(test.to_polish() == "xacos" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - pi / 2.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : sinh(x)");
-        //expect(test.to_polish() == "xsinh" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - 0.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : cosh(x)");
-        //expect(test.to_polish() == "xcosh" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - 1.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : tanh(x)");
-        //expect(test.to_polish() == "xtanh" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - 0.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : asinh(x)");
-        //expect(test.to_polish() == "xasinh" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - 0.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : acosh(x)");
-        //expect(test.to_polish() == "xacosh" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 1. }) - 0.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : atanh(x)");
-        //expect(test.to_polish() == "xatanh" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0. }) - 0.), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : erf(x)");
-        //expect(test.to_polish() == "xerf" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::erf(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : erfc(x)");
-        //expect(test.to_polish() == "xerfc" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::erfc(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : trunc(x)");
-        //expect(test.to_polish() == "xtrunc" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::trunc(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : floor(x)");
-        //expect(test.to_polish() == "xfloor" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::floor(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : ceil(x)");
-        //expect(test.to_polish() == "xceil" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::ceil(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : round(x)");
-        //expect(test.to_polish() == "xround" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 124.23 }) - std::round(124.23)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : x^(0.3415234)");
-        //expect(test.to_polish() == "x0.3415234^" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ e }) - std::pow(e, 0.3415234)), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x : 0.411313 + .5 - x");
-        //expect(test.to_polish() == "0.411313.5+x-" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 0.411313 }) - .5), std::numeric_limits<double>::epsilon()));
-
-        // trivial literal arithmetics
-        test = math_expression<T>("x : -5 + 56.23424 - .51241 / 0.4321 * 4 / 10");
-        //expect(test.to_polish() == "5~56.23424+.512410.4321/4*10/-" and test.variables_count() == 1);
-        expect(lt(std::abs(test({ 100. }) - 50.7599), 1e-5));
-
-        // general routine, examples
-        test = math_expression<T>("v1 v2 v3 p1 p2 p3 m : (p1^2 + p2^2 + p3^2) / (2 * m) + .5 * (v1^2 + v2^2 + v3^2) ");
-        //expect(test.to_polish() == "p12^p22^+p32^+2m*/.5v12^v22^+v32^+*+" and test.variables_count() == 7);
-        expect(lt(std::abs(test({ 1., 1., 1., 2., 2., 2., 2. }) - 4.5), 1e-8));
-
-        test = math_expression<T>("x a b : (x - 1)^(a - 1) * (x + 1)^(b + 1)");
-        //expect(test.to_polish() == "x1-a1-^x1+b1+^*");
-        expect(test.variables_count() == 3);
-        expect(lt(std::abs(test({ 1., 1., 1. }) - 4), std::numeric_limits<double>::epsilon()));
-        expect(lt(std::abs(test({ 1., 100., 100. })), std::numeric_limits<double>::epsilon()));
-        expect(lt(std::abs(test({ -1., 100., 100. })), std::numeric_limits<double>::epsilon()));
-        expect(lt(std::abs(test({ 3., 3., 2. }) - 256), std::numeric_limits<double>::epsilon()));
-
-        test = math_expression<T>("x y t : x * cos(y) / exp(t) + 10");
-        //expect(test.to_polish() == "xycos*texp/10+");
-        expect(test.variables_count() == 3);
-        expect(std::abs(test({ 2., pi, 10. }) - 9.99991) < 1e-6);
-
-        test = math_expression<T>("x y : 400.0 * exp((x - 1.0)^2 * -400.0 )");
-        expect(test.variables_count() == 2);
-        expect(std::abs(test({ 1., 100. }) - 400.) < 1e-6);
-        std::cout << test({ 1.13, 100. }) << std::endl;
-        expect(std::abs(test({ 1.13, 100. }) - 0.463692) < 1e-6);
+        {
+            const auto tokens = tokenize(".1 1.");
+            expect(eq(tokens.size(), 2));
+            expect(eq(tokens[0], token_t{Number, ".1"}));
+            expect(eq(tokens[1], token_t{Number, "1."}));
+        }
     };
 
-    "polish_notation_throws"_test = [] {
-        using namespace std::string_literals;
-        static const std::unordered_map<std::string, std::size_t> operator_priority{{"("s, 0}, {"+"s, 1}, {"-"s, 1}, {"*"s, 2},
-                                                                                    {"/"s, 2}, {"^"s, 3}, {"~"s, 4}, {"sin"s, 4}, 
-                                                                                    {"cos"s, 4}, {"tan"s, 4}, {"atan"s, 4}, {"exp"s, 4},
-                                                                                    {"abs"s, 4}, {"sign"s, 4}, {"sqr"s, 4},  {"sqrt"s, 4},
-                                                                                    {"log"s, 4}, {"tgamma"s, 4}, {"exp2"s, 4}, {"expm1"s, 4},
-                                                                                    {"log10"s, 4}, {"log2"s, 4}, {"log1p"s, 4}, {"cbrt"s, 4},
-                                                                                    {"asin"s, 4}, {"acos"s, 4}, {"sinh"s, 4}, {"cosh"s, 4},
-                                                                                    {"tanh"s, 4}, {"asinh"s, 4}, {"acosh"s, 4}, {"atanh"s, 4},
-                                                                                    {"erf"s, 4}, {"erfc"s, 4}, {"lgamma"s, 4}, {"ceil"s, 4},
-                                                                                    {"floor"s, 4}, {"round"s, 4}, {"trunc"s, 4}};
+    "math_expression_literal"_test = [] {
+        auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
+
+        expect(nothrow([&test] {test = math_expression<T>{" : 1"};})) << fatal;
+        expect(eq(test.variables_count(), 0));
+        expect(eq(test.to_polish(), "1.000000"s));
+        expect(lt(std::abs(test({}) - 1.0), eps));
+
+        expect(nothrow([&test] {test = math_expression<T>{" : .1"};})) << fatal;
+        expect(eq(test.variables_count(), 0));
+        expect(eq(test.to_polish(), "0.100000"s));
+        expect(lt(std::abs(test({}) - 0.1), eps));
+
+        expect(nothrow([&test] {test = math_expression<T>{" : 1."};})) << fatal;
+        expect(eq(test.variables_count(), 0));
+        expect(eq(test.to_polish(), "1.000000"s));
+        expect(lt(std::abs(test({}) - 1.0), eps));
+
+        expect(nothrow([&test] {test = math_expression<T>{" : 0.123456789"};})) << fatal;
+        expect(eq(test.variables_count(), 0));
+        expect(eq(test.to_polish(), "0.123457"s));
+        expect(lt(std::abs(test({}) - 0.123456789), eps));
+    };
+    "math_expression_unary"_test = [] {
+        auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
+        for( auto& [name, func] : math_expression<T>::unary_operators()) {
+            expect(nothrow([&test, &name] {test = math_expression<T>{"x : " + name + "(x)"};})) << name << "operator ctor throws" << fatal;
+            expect(eq(test.to_polish(), "x " + name)) << name << "operator is not correctly parsed.";
+            for(auto x : {0.1, 0.2, pi/4, 1., 2., 5.})
+                if(!std::isnan(func(x)) && !std::isinf(func(x)))
+                    expect(lt(std::abs(test({x}) - func(x)), eps)) << name << "operator is not correctly computed at x =" << x;
+        }
+    };
+    "math_expression_binary"_test = [] {
+        auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
+        for(auto& [name, func] : math_expression<T>::binary_operators()) {
+            expect(nothrow([&test, &name] {test = math_expression<T>{"x y : x " + name + " y"};})) << name << "operator ctor throws" << fatal;
+            expect(eq(test.to_polish(), "x y " + name)) << name << "operator is not correctly parsed.";
+            for(auto x : {0.1, 0.2, pi/4, 1., 2., 5.})
+                for(auto y : {0.1, 0.2, pi/4, 1., 2., 5.})
+                if(!std::isnan(func(x, y)) && !std::isinf(func(x, y)))
+                    expect(lt(std::abs(test({x, y}) - func(x, y)), eps)) << name << "operator is not correctly computed at x =" << x << ", y =" << y;
+
+            if(name.size() == 1) // skip single symbol operators
+                continue;
+            expect(nothrow([&test, &name] {test = math_expression<T>{"x y : " + name + "(x, y)"};})) << name << "operator ctor throws" << fatal;
+            expect(eq(test.to_polish(), "x y " + name)) << name << "operator is not correctly parsed.";
+            for(auto x : {0.1, 0.2, pi/4, 1., 2., 5.})
+                for(auto y : {0.1, 0.2, pi/4, 1., 2., 5.})
+                if(!std::isnan(func(x, y)) && !std::isinf(func(x, y)))
+                    expect(lt(std::abs(test({x, y}) - func(x, y)), eps)) << name << "operator is not correctly computed at x =" << x << ", y =" << y;
+
+        }
+    };
+    "math_expression_complex"_test = [] {
+        auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
+        {
+            SETUP_EXPR(0.411313 + .5 - x, x);
+            CHECK_NOTATION("0.411313 0.500000 + x -");
+            CHECK_VALUE(0.411313);
+        }
+
+        {
+            SETUP_EXPR(-5 + 56.23424 - .51241 / 0.4321 * 4 / 10, x);
+            CHECK_NOTATION("5.000000 ~ 56.234240 + 0.512410 0.432100 / 4.000000 * 10.000000 / -");
+            CHECK_VALUE(100);
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR((p1^2 + p2^2 + p3^2) / (2 * m) + .5 * (v1^2 + v2^2 + v3^2), v1, v2, v3, p1, p2, p3, m);
+            auto func = [](std::array<T, 7> arr) -> T {
+                const auto& [v1, v2, v3, p1, p2, p3, m] = arr;
+                return (sqr(p1) + sqr(p2) + sqr(p3)) / (2 * m) + .5 * (sqr(v1) + sqr(v2) + sqr(v3));
+            };
+            CHECK_NOTATION("p1 2.000000 ^ p2 2.000000 ^ + p3 2.000000 ^ + 2.000000 m * / 0.500000 v1 2.000000 ^ v2 2.000000 ^ + v3 2.000000 ^ + * +");
+            CHECK_VALUE({ 1., 1., 1., 2., 2., 2., 2. });
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR((x - 1)^(a - 1) * (x + 1)^(b + 1), x, a, b);
+            auto func = [](std::array<T, 3> arr) -> T {
+                const auto& [x, a, b] = arr;
+                return pow(x - 1, a - 1) * pow(x + 1, b + 1);
+            };
+            CHECK_NOTATION("x 1.000000 - a 1.000000 - ^ x 1.000000 + b 1.000000 + ^ *");
+            CHECK_VALUE({ 1., 1., 1. });
+            CHECK_VALUE({ 1., 100., 100. });
+            CHECK_VALUE({ -1., 100., 100. });
+            CHECK_VALUE({ 3., 3., 2. });
+        }
+
+        {
+            SETUP_EXPR(x * cos(y) / exp(t) + 10, x, y, t);
+            CHECK_NOTATION("x y cos * t exp / 10.000000 +");
+            CHECK_VALUE(2., pi, 10.);
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR(400.0 * exp((x - 1.0)^2 * -400.0), x, y);
+            auto func = [](std::array<T, 2> arr) -> T {
+                const auto& [x, y] = arr;
+                return 400.0 * exp(sqr(x - 1.0) * -400.0);
+            };
+            CHECK_NOTATION("400.000000 x 1.000000 - 2.000000 ^ 400.000000 ~ * exp *");
+            CHECK_VALUE(1., 100.);
+            CHECK_VALUE(1.13, 95.);
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR(exp(-t) * (sin(x)^2 + cos(x)^2), x, t);
+            auto func = [](std::array<T, 2> arr) -> T {
+                const auto& [x, t] = arr;
+                return exp(-t) * (sqr(sin(x)) + sqr(cos(x)));
+            };
+            CHECK_NOTATION("t ~ exp x sin 2.000000 ^ x cos 2.000000 ^ + *");
+            CHECK_VALUE(0.3, 1.7);
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR(sqrt(x^2 + y^2) + abs(x - y) + (-sign(x*y)), x, y);
+            auto func = [](std::array<T, 2> arr) -> T {
+                const auto& [x, y] = arr;
+                return sqrt(sqr(x) + sqr(y)) + abs(x - y) + (-sign(x*y));
+            };
+            CHECK_NOTATION("x 2.000000 ^ y 2.000000 ^ + sqrt x y - abs + x y * sign ~ +");
+            CHECK_VALUE(3., 4.);
+        }
+
+        {
+            SETUP_EXPR(atan2(y, x) + log1p(abs(x)) * expm1(y), x, y);
+            CHECK_NOTATION("y x atan2 x abs log1p y expm1 * +");
+            CHECK_VALUE(1., 0.5);
+        }
+
+        {
+            SETUP_EXPR(abs(x) - y, x, y);
+            CHECK_NOTATION("x abs y -");
+            CHECK_VALUE(1., 5.5);
+        }
+
+        {
+            SETUP_EXPR(atan2(y + 1, x * 2), x, y);
+            CHECK_NOTATION("y 1.000000 + x 2.000000 * atan2");
+            CHECK_VALUE(-1., 12.);
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR((u + v - w)^3 / (1 + sqr(u - v)), u, v, w);
+            auto func = [](std::array<T, 3> arr) -> T {
+                const auto& [u, v, w] = arr;
+                return pow(u + v - w, 3) / (1 + sqr(u - v));
+            };
+            CHECK_NOTATION("u v + w - 3.000000 ^ 1.000000 u v - sqr + /");
+            CHECK_VALUE(2., 0.5, 1.);
+        }
+
+        {
+            SETUP_EXPR(exp2(log2(x)) + expm1(log1p(x)), x);
+            CHECK_NOTATION("x log2 exp2 x log1p expm1 +");
+            CHECK_VALUE(0.25);
+        }
+
+        { // Operator '^' breaks the _FUNC macro, so we have to write this one manually
+            PRESETUP_EXPR((a + b * c) / sqrt(a^2 + b^2 + c^2) - abs(a - b + c) * log(1 + exp(-a*b+c)), a, b, c);
+            auto func = [](std::array<T, 3> arr) -> T {
+                const auto& [a, b, c] = arr;
+                return (a + b * c) / sqrt(sqr(a) + sqr(b) + sqr(c)) - abs(a - b + c) * log(1 + exp(-a*b+c));
+            };
+            CHECK_NOTATION("a b c * + a 2.000000 ^ b 2.000000 ^ + c 2.000000 ^ + sqrt / a b - c + abs 1.000000 a ~ b * c + exp + log * -");
+            CHECK_VALUE(2., 0.5, 1.);
+            CHECK_VALUE(1., 2, 3.);
+            CHECK_VALUE(-1., 20, -3.);
+        }
+
+        {
+            SETUP_EXPR(exp(sin(x) + cos(y)) * tan(x/y) - floor(abs(x) + ceil(y)) + sign(x*y) * atan2(x, y), x, y);
+            CHECK_NOTATION("x sin y cos + exp x y / tan * x abs y ceil + floor - x y * sign x y atan2 * +");
+            CHECK_VALUE(pi / 2., pi / 4.);
+        }
+
+        {
+            PRESETUP_EXPR((p^q + r^s) / log(q + abs(r)) + min(p, max(q, r)) - sign(p*q*r*s) * (p - q + r - s)^3, p, q, r, s);
+            auto func = [](std::array<T, 4> arr) -> T {
+                const auto& [p, q, r, s] = arr;
+                return (pow(p, q) + pow(r, s)) / log(q + abs(r)) + min(p, max(q, r)) - sign(p*q*r*s) * pow(p - q + r - s, 3);
+            };
+            CHECK_NOTATION("p q ^ r s ^ + q r abs + log / p q r max min + p q * r * s * sign p q - r + s - 3.000000 ^ * -");
+            CHECK_VALUE(2., 3., 4., 5.);
+        }
+
+        {
+            SETUP_EXPR(sqrt(sqr(u) * sqr(v)) + asin(u/v) - acos(v/u) * atan2(u, v) + (-sign(u + v)) * cbrt(u*v), u, v);
+            CHECK_NOTATION("u sqr v sqr * sqrt u v / asin + v u / acos u v atan2 * - u v + sign ~ u v * cbrt * +");
+            CHECK_VALUE(1., -1.);
+        }
+
+        {
+            SETUP_EXPR(exp(m) * log(n) + sinh(m + n) - cosh(o) / tanh(m*n*o) + abs(fmod(m, n)) * round(o), m, n, o);
+            CHECK_NOTATION("m exp n log * m n + sinh + o cosh m n * o * tanh / - m n fmod abs o round * +");
+            CHECK_VALUE(0.5, 2., 3.);
+        }
+
+        {
+            SETUP_EXPR((pow(a, b) - pow(b, a)) * sin(a*2/b) + cos(b*5/a) / tan(a + b) - sign(a - b) * sqrt(abs(a*b)), a, b);
+            CHECK_NOTATION("a b pow b a pow - a 2.000000 * b / sin * b 5.000000 * a / cos a b + tan / + a b - sign a b * abs sqrt * -");
+            CHECK_VALUE(4., 2.);
+        }
+    };
+
+    "math_expression_throws"_test = [] {
+        const auto& operator_priority = utils::get_operator_priority();
+
         // Wrong variables format. Symbol ':' is required after variables initialization.
-        expect(throws([]() { auto test = math_expression<T>("x y z x * y * z"s); }));
+        expect(throws([]() { math_expression<T>{"x y z x * y * z"}; }));
 
         // Wrong variables format. Variables must start with latin letter, variable cannot start with a number
-        expect(throws([]() { auto test = math_expression<T>("1x 2x 3x: 1x + 2x + 3x)"s); }));
-        expect(nothrow([]() { auto test = math_expression<T>("x1 x2 x3: x1 + x2 + x3"s); }));
+        expect(throws([]() { math_expression<T>{"1x 2x 3x: 1x + 2x + 3x)"}; }));
 
         // Wrong expression format. Formula after ':' is required.
-        expect(throws([]() { auto test = math_expression<T>("x y z: "s); }));
+        expect(throws([]() { math_expression<T>{"x y z: "}; }));
 
-        // Everything alright. Variables are not required if not used.
-        expect(nothrow([]() { auto test = math_expression<T>(": 2 * 2"s); }));
-        expect(nothrow([]() { auto test = math_expression<T>("x : 2 * 2"s); }));
+        // Unknown variable used in expression.
+        expect(throws([]() { math_expression<T>{"x : 2 * 2 * y"}; }));
 
-        // TODO : implement verification for this case, when variable in infix notation is not used 
-        auto test = math_expression<T>("x : 2 * 2 * y"s);
-        //expect(test.to_polish() == "22**");
-        // Must be throws
-        expect(nothrow([]() { auto test = math_expression<T>("x : 2 * 2 * y"s); }));
-        // Must be throws, no functionality related with symbol "Г"
-        expect(nothrow([]() { auto test = math_expression<T>("x y z: Г(x) * Г(y) * Г(z)"s); }));
+        // Wrong expression format. non-ANSI "Г" present.
+        expect(throws([]() { math_expression<T>{"x y z: Г(x) * Г(y) * Г(z)"}; }));
 
         // Invalid variable designation. Variable name <" + variable + "> is unavailable.
-        for (const auto& node : operator_priority) 
-            expect(throws([op = node.first]() { auto test = math_expression<T>(op + " : 2 * 2"s); }));
+        for (const auto& [op, _] : operator_priority)
+            expect(throws([op]() { math_expression<T>{op + " : 2 * 2"}; }));
         
         // Wrong expression format. The expression contains open parentheses
-        expect(throws([]() { auto test = math_expression<T>("x y z: exp(x*y*z"s); }));
-        expect(throws([]() { auto test = math_expression<T>("x y z: exp x*y*z)"s); }));
+        expect(throws([]() { math_expression<T>{"x y z: exp(x*y*z"}; }));
+        expect(throws([]() { math_expression<T>{"x y z: exp x*y*z)"}; }));
 
-        // Wrong expression format. The expression can not be started or finished with dot. Dots are only allowed in number representation.
-        // TODO : 0. format
-        expect(throws([]() { auto test = math_expression<T>("x y z: .5"s); }));
-        expect(throws([]() { auto test = math_expression<T>("x y z: 0."s); }));
-        // must be nothrow
-        expect(throws([]() { auto test = math_expression<T>("x y z: 0. * x / y"s); }));
-        expect(nothrow([]() { auto test = math_expression<T>("x y z: 0.5"s); }));
-        expect(nothrow([]() { auto test = math_expression<T>("x y z: 0.0"s); }));
-        expect(nothrow([]() { auto test = math_expression<T>("x y z: x* .5 / y"s); }));
+        // Wrong variables format. Variables must be declared as symbols before ':' separator.
+        expect(throws([]() { math_expression<T>{"x 1 : x"}; }));
+        expect(throws([]() { math_expression<T>{"( x ) : x"}; }));
 
+        // Tokenizer edge cases
+        // Invalid numeric construction: digit sequence immediately followed by symbol characters.
+        expect(throws([]() { math_expression<T>{"x : 1x + 2"}; }));
+        // Invalid dots in number representation.
+        expect(throws([]() { math_expression<T>{"x : 1..2"}; }));
+        // Unexpected / unsupported character can lead to an empty-token tokenizer failure.
+        expect(throws([]() { math_expression<T>{"x : x $ 1"}; }));
+
+        // Wrong expression format. Unexpected separator in expression part.
+        expect(throws([]() { math_expression<T>{"x : x : 1"}; }));
+        expect(throws([]() { math_expression<T>{"x y : atan2(x|y, 1)"}; }));
+
+        // Unknown function/operator in expression.
+        expect(throws([]() { math_expression<T>{"x : foo(x)"}; }));
+
+        // Wrong number of variables at evaluation time.
+        auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
+        expect(nothrow([&test] {test =  math_expression<T>{"x y : x + y"};})) << fatal;
+        expect(throws([&test]() { (void)test({1.}); }));
+        expect(throws([&test]() { (void)test({1., 2., 3.}); }));
     };
 };
 
+#undef _COUNT
+#undef _FUNC
+#undef PRESETUP_EXPR
+#undef SETUP_EXPR
+#undef CHECK_VALUE
+#undef CHECK_NOTATION
 }

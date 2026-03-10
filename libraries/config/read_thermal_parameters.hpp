@@ -17,15 +17,15 @@ class _read_thermal_parameters final {
     template<std::floating_point T>
     static void check_coefficient(const coefficient_t<T, 2u>& coefficient, const std::string& path_with_access);
     template<std::floating_point T>
-    static void check_conductivity(const solver_2d::thermal::conductivity_t<T>& conductivity, const std::string& path_with_access);
+    static void check_conductivity(const solver_2d::thermal::raw_conductivity_t<T>& conductivity, const std::string& path_with_access);
     template<std::floating_point T>
-    static void check_parameters(const solver_2d::thermal::conductivity_t<T>& conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access);
+    static void check_parameters(const solver_2d::thermal::raw_conductivity_t<T>& conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access);
 
     template<std::floating_point T>
     static solver_1d::thermal::parameter_1d<T> read_thermal_coefficient_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
-    static solver_2d::thermal::conductivity_t<T> read_conductivity_2d(const nlohmann::json& config, const std::string& path);
+    static solver_2d::thermal::raw_conductivity_t<T> read_conductivity_2d(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
     static solver_2d::thermal::parameter_2d<T> read_thermal_coefficient_2d(const nlohmann::json& config, const std::string& path);
 
@@ -63,21 +63,20 @@ void _read_thermal_parameters::check_coefficient(const coefficient_t<T, 2u>& coe
 }
 
 template<std::floating_point T>
-void _read_thermal_parameters::check_conductivity(const solver_2d::thermal::conductivity_t<T>& conductivity, const std::string& path_with_access) {
-    std::visit(metamath::visitor{
-        [&](const solver_2d::thermal::isotropic_conductivity_t<T>& conductivity) { 
+void _read_thermal_parameters::check_conductivity(const solver_2d::thermal::raw_conductivity_t<T>& conductivity, const std::string& path_with_access) {
+    std::visit(metamath::types::visitor{
+        [&](const solver_2d::thermal::raw_isotropic_conductivity_t<T>& conductivity) { 
             check_coefficient(conductivity, path_with_access);
         },
-        [&](const solver_2d::thermal::orthotropic_conductivity_t<T>& conductivity) { 
+        [&](const solver_2d::thermal::raw_orthotropic_conductivity_t<T>& conductivity) { 
             check_coefficient(conductivity[X], path_with_access);
             check_coefficient(conductivity[Y], path_with_access);
         },
-        [&](const solver_2d::thermal::anisotropic_conductivity_t<T>& conductivity) {
-            if (std::holds_alternative<T>(conductivity[X][X]) && std::holds_alternative<T>(conductivity[X][Y]) &&
-                std::holds_alternative<T>(conductivity[Y][X]) && std::holds_alternative<T>(conductivity[Y][Y])) {
+        [&](const solver_2d::thermal::raw_anisotropic_conductivity_t<T>& conductivity) {
+            if (std::holds_alternative<T>(conductivity[X]) && std::holds_alternative<T>(conductivity[Y]) && std::holds_alternative<T>(conductivity[XY])) {
                 const metamath::types::square_matrix<T, 2u> matrix = {
-                    std::get<T>(conductivity[X][X]), std::get<T>(conductivity[X][Y]),
-                    std::get<T>(conductivity[Y][X]), std::get<T>(conductivity[Y][Y])
+                    std::get<T>(conductivity[ X]), std::get<T>(conductivity[XY]),
+                    std::get<T>(conductivity[XY]), std::get<T>(conductivity[ Y])
                 };
                 if (!metamath::types::is_positive(matrix))
                     throw std::domain_error{"Parameter \"" + path_with_access + "conductivity\" shall be positive matrix."};
@@ -88,7 +87,7 @@ void _read_thermal_parameters::check_conductivity(const solver_2d::thermal::cond
 
 template<std::floating_point T>
 void _read_thermal_parameters::check_parameters(
-    const solver_2d::thermal::conductivity_t<T>& conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access) {
+    const solver_2d::thermal::raw_conductivity_t<T>& conductivity, const T capacity, const T density, const T relaxation_time, const std::string& path_with_access) {
     check_conductivity(conductivity, path_with_access);
     check_parameters(capacity, density, relaxation_time, path_with_access);
 }
@@ -106,23 +105,22 @@ solver_1d::thermal::parameter_1d<T> _read_thermal_parameters::read_thermal_coeff
 }
 
 template<std::floating_point T>
-solver_2d::thermal::conductivity_t<T> _read_thermal_parameters::read_conductivity_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::thermal::raw_conductivity_t<T> _read_thermal_parameters::read_conductivity_2d(const nlohmann::json& config, const std::string& path) {
     if (config.is_number())
         return read_coefficient<T, 2u>(config, path);
     if (config.is_array() && config.size() == 2)
-        return solver_2d::thermal::orthotropic_conductivity_t<T>{ read_coefficient<T, 2u>(config[0], append_access_sign(path, 0)), 
-                                                                  read_coefficient<T, 2u>(config[1], append_access_sign(path, 1)) };
-    if (config.is_array() && config.size() == 4)
-        return solver_2d::thermal::anisotropic_conductivity_t<T>{
-            read_coefficient<T, 2u>(config[0], append_access_sign(path, 0)),
-            read_coefficient<T, 2u>(config[1], append_access_sign(path, 1)),
-            read_coefficient<T, 2u>(config[2], append_access_sign(path, 2)),
-            read_coefficient<T, 2u>(config[3], append_access_sign(path, 3))
+        return solver_2d::thermal::raw_orthotropic_conductivity_t<T>{ read_coefficient<T, 2u>(config[X], append_access_sign(path, X)), 
+                                                                      read_coefficient<T, 2u>(config[Y], append_access_sign(path, Y)) };
+    if (config.is_array() && config.size() == 3)
+        return solver_2d::thermal::raw_anisotropic_conductivity_t<T>{
+            read_coefficient<T, 2u>(config[ X], append_access_sign(path,  X)),
+            read_coefficient<T, 2u>(config[ Y], append_access_sign(path,  Y)),
+            read_coefficient<T, 2u>(config[XY], append_access_sign(path, XY))
         };
     throw std::domain_error{"The thermal parameter \"" + path + "\" "
                             "must be either a number in the isotropic case, "
                             "or an array of size 2 in the orthotropic case, "
-                            "or an array of size 4 in the anisotropic case."};
+                            "or an array of size 3 in the anisotropic case."};
 }
 
 template<std::floating_point T>

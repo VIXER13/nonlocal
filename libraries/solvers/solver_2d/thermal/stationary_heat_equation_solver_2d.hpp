@@ -3,7 +3,7 @@
 #include "conductivity_matrix_2d.hpp"
 #include "convection_condition_2d.hpp"
 #include "radiation_condition_2d.hpp"
-#include "thermal_boundary_conditions_2d.hpp"
+#include "init_problem_settings.hpp"
 #include "heat_equation_solution_2d.hpp"
 
 #include <solvers/base/utils.hpp>
@@ -13,8 +13,6 @@
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
 #include <Eigen/IterativeLinearSolvers>
-
-#include <chrono>
 
 namespace nonlocal::solver_2d::thermal {
 
@@ -27,36 +25,22 @@ struct stationary_equation_parameters_2d final {
     T energy = T{0};
 };
 
-template<class T>
-bool is_neumann_problem(const thermal_boundaries_conditions_2d<T>& boundaries_conditions) {
-    const auto conditions = boundaries_conditions | std::views::values;
-    return std::all_of(conditions.begin(), conditions.end(), [](const auto& condition) {
-        return bool(dynamic_cast<const flux_2d<T>*>(condition.get()));
-    });
-}
-
-template<class T>
-bool is_radiation_problem(const thermal_boundaries_conditions_2d<T>& boundaries_conditions) {
-    const auto conditions = boundaries_conditions | std::views::values;
-    return std::any_of(conditions.begin(), conditions.end(), [](const auto& condition) {
-        return bool(dynamic_cast<const radiation_2d<T>*>(condition.get()));
-    });
-}
-
-template<class T>
-bool is_nonlinear_problem(const parameters_2d<T>& parameters) {
-    return true;
-    // return std::any_of(parameters.begin(), parameters.end(), [](const auto& parameter) {
-    //     return parameter.second.physical->type != coefficients_t::CONSTANTS;
-    // });
-}
-
-template<class T>
-bool is_nonlocal_problem(const parameters_2d<T>& parameters) {
-    const std::unordered_map<std::string, theory_t> theories = theories_types(parameters);
-    return std::any_of(theories.begin(), theories.end(), [](const auto& theory) noexcept {
-        return theory.second == theory_t::NONLOCAL;
-    });
+template<class T, class I>
+Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const mesh::mesh_2d<T, I>& mesh,
+                                                    const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+                                                    const stationary_equation_parameters_2d<T>& auxiliary_data,
+                                                    const bool is_neumann = false) {
+    static constexpr size_t DoF = 1;
+    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh.container().nodes_count() + is_neumann);
+    boundary_condition_second_kind_2d(right_part, mesh, boundaries_conditions);
+    if (auxiliary_data.right_part)
+        integrate_right_part<DoF>(right_part, mesh, *auxiliary_data.right_part);                                 
+    if (is_neumann) {
+        if (std::abs(std::reduce(right_part.begin(), right_part.end(), T{0})) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
+            throw std::domain_error{"It's unsolvable Neumann problem."};
+        right_part[right_part.size() - 1] = auxiliary_data.energy;
+    }
+    return right_part;
 }
 
 template<class Matrix_Index, class T, class I>
@@ -64,35 +48,21 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
                                                                    const parameters_2d<T>& parameters,
                                                                    const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                    const stationary_equation_parameters_2d<T>& auxiliary_data) {
-    static constexpr size_t DoF = 1;
-    const bool is_neumann = is_neumann_problem(boundaries_conditions);
-    const bool is_radiation = is_radiation_problem(boundaries_conditions);
-    if (is_neumann)
-        logger::info() << "Neumann problem" << std::endl;
-    const bool is_symmetric = !(is_nonlinear_problem(parameters) && is_nonlocal_problem(parameters));
-    logger::info() << (is_symmetric ? "Symmetric" : "Asymmetrical") << " problem" << std::endl;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f_init = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann); 
-    boundary_condition_second_kind_2d(f_init, *mesh, boundaries_conditions);
-    if (auxiliary_data.right_part)
-        integrate_right_part<DoF>(f_init, *mesh, *auxiliary_data.right_part);
-    if (is_neumann) {
-        //if (!is_solvable_neumann_problem(*mesh_proxy, f))
-            //throw std::domain_error{"Unsolvable Neumann problem: contour integral != 0."};
-        f_init[f_init.size() - 1] = auxiliary_data.energy;
-    }
+    static constexpr bool Is_Stationary = true;
+    const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions, Is_Stationary);
+    log_problem_settings(settings);
+
+    Eigen::Matrix<T, Eigen::Dynamic, 1> f_init = init_right_part(*mesh, boundaries_conditions, auxiliary_data, settings.is_neumann); 
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = f_init;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
+    Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_curr = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + settings.is_neumann);
     if (auxiliary_data.initial_distribution)
         for(const size_t node : mesh->container().nodes())
             temperature_curr[node] = (*auxiliary_data.initial_distribution)(mesh->container().node_coord(node));
     Eigen::Matrix<T, Eigen::Dynamic, 1> temperature_prev = temperature_curr;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> residual = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
+    Eigen::Matrix<T, Eigen::Dynamic, 1> residual = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + settings.is_neumann);
+    Eigen::Matrix<T, Eigen::Dynamic, 1> residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + settings.is_neumann);
 
-    std::vector<T> solution(mesh->quad_shift(mesh->container().elements_2d_count()), T{0});
-    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, solution);
-    solution = {};
-
+    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
     T difference = T{1};
     T norm_of_residual = T{1};
     size_t iteration = 0;
@@ -102,34 +72,32 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
         std::swap(temperature_curr, temperature_prev);
         f = f_init;
         conductivity_matrix_2d<T, I, Matrix_Index> conductivity{mesh};
-        conductivity.compute(conductivity_parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann);
+        conductivity.compute(conductivity_parameters, settings.is_inner_nodes, settings.is_symmetric(), settings.is_neumann);
         convection_condition_2d(conductivity.matrix().inner(), *mesh, boundaries_conditions);
         residual = conductivity.matrix().inner().template selfadjointView<Eigen::Upper>() * temperature_prev;
-        residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + is_neumann);
+        residual_rad = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->container().nodes_count() + settings.is_neumann);
         radiation_condition_2d(conductivity.matrix().inner(), residual_rad, *mesh, boundaries_conditions, temperature_prev);
-        if (!is_neumann) {
+        if (!settings.is_neumann) {
             first_kind_matrix_fill_2d(conductivity.matrix().inner(), residual_rad, *mesh, boundaries_conditions);
             boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, conductivity.matrix().bound());
         }           
         residual -= residual_rad + f;
-        if (is_symmetric) {
+        if (settings.is_symmetric()) {
             logger::info() << "Local matrix" << std::endl;
-            if (is_radiation) {                   
+            if (settings.is_nonlinear_boundary) {                   
                 const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>, Eigen::Upper> solver{conductivity.matrix().inner()};
                 temperature_curr = temperature_prev - solver.solve(residual);
             } else {
                 conductivity_matrix_2d<T, I, Matrix_Index> conductivity_local{mesh};
                 conductivity_local.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
-                conductivity_local.compute(conductivity_parameters, utils::inner_nodes(mesh->container(), boundaries_conditions), is_symmetric, is_neumann, assemble_part::LOCAL);
+                conductivity_local.compute(conductivity_parameters, settings.is_inner_nodes, settings.is_symmetric(), settings.is_neumann, assemble_part::LOCAL);
                 slae::conjugate_gradient<T, Matrix_Index> solver{conductivity.matrix().inner()};
                 logger::info() << "ILLT preconditioner" << std::endl;
-                solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(
-                conductivity_local.matrix().inner()
-                );
+                solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(conductivity_local.matrix().inner());
                 if (solver.preconditioner().computation_info() != Eigen::Success) {
                     solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
                     logger::warning() << "The ILLT preconditioner could not be calculated, "
-                                    << "the preconditioner was switched to Identity." << std::endl;
+                                      << "the preconditioner was switched to Identity." << std::endl;
                 } 
                 temperature_curr = temperature_prev - solver.solve(residual);  
             }
@@ -137,7 +105,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
             const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{conductivity.matrix().inner()};
             temperature_curr = temperature_prev - solver.solve(residual);
         }
-        if (!is_radiation)
+        if (!settings.is_nonlinear_boundary)
             break;
         ++iteration;
         norm_of_residual = residual.norm();
@@ -146,7 +114,7 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
                        << ", norm(prev - curr) = " << difference 
                        << ", residual = "          << norm_of_residual << ";" << std::endl;
     }
-    return heat_equation_solution_2d<T, I>{mesh, parameters, temperature_curr};
+    return heat_equation_solution_2d<T, I>{mesh, conductivity_parameters, temperature_curr};
 }
 
 }

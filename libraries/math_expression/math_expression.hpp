@@ -2,7 +2,7 @@
 
 #include "utils.hpp"
 
-#include <logger/logger.hpp>
+#include <metamath/types/visitor.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -34,22 +34,21 @@ class math_expression {
     static T pop_stack(std::stack<T>& stack);
 #endif
 
-    static const std::unordered_map<std::string, unary_operator>& unary_operators();
-    static const std::unordered_map<std::string, binary_operator>& binary_operators();
-
-    std::unordered_map<std::size_t, std::string> find_variables_and_operators(const std::string& infix_notation) const;
-    void assemble_polish_notation(const std::string& infix_notation);
+    void assemble_polish_notation(const std::span<utils::token_t>& tokens);
 
     T calc_polish_notation(const std::span<const T> input_variables) const;
 
 public:
+    static const std::unordered_map<std::string, unary_operator>& unary_operators();
+    static const std::unordered_map<std::string, binary_operator>& binary_operators();
+
     // pre_infix_notation -> |variables : expression|. Example: |x y z t : x * y * z - t / x + sin(x * y * z)|.
-    // infix notation (standart) -> x + 5 * (y - z / t), polish notation (prefix) -> x 5 y z t / - * +
+    // infix notation (standart) -> x + 5 * (y - z / t), polish notation (postfix) -> x 5 y z t / - * +
     explicit math_expression(std::string pre_infix_notation);
 
     std::string to_polish() const;
     std::size_t variables_count() const noexcept;
-    const std::unordered_map<std::string, std::size_t>& get_variables() const noexcept;
+    const std::unordered_map<std::string, std::size_t>& variables() const noexcept;
 
     T operator()(const std::span<const T> input_vars) const;
     T operator()(const std::initializer_list<T>& input_vars) const;
@@ -77,112 +76,140 @@ const std::unordered_map<std::string, typename math_expression<T>::binary_operat
     static constexpr auto minus      = [](const T left, const T right) noexcept { return left - right; };
     static constexpr auto divides    = [](const T left, const T right) noexcept { return left / right; };
     static constexpr auto multiplies = [](const T left, const T right) noexcept { return left * right; };
+    static constexpr auto min        = [](const T left, const T right) noexcept { return std::min(left, right); };
+    static constexpr auto max        = [](const T left, const T right) noexcept { return std::max(left, right); };
+    static constexpr auto pow        = [](const T left, const T right) noexcept { return std::pow(left, right); };
     static const std::unordered_map<std::string, math_expression<T>::binary_operator> operators{
-        {"+", plus}, {"-", minus}, {"*", multiplies}, {"/", divides}, {"^", std::pow}
+        {"+", plus}, {"-", minus}, {"*", multiplies}, {"/", divides}, {"^", std::pow}, {"pow", pow},
+        {"atan2", std::atan2}, {"hypot", std::hypot}, {"fmod", std::fmod}, {"min", min}, {"max", max}
     };
     return operators;
 }
 
 template<class T>
-std::unordered_map<std::size_t, std::string> math_expression<T>::find_variables_and_operators(const std::string& infix_notation) const {
+void math_expression<T>::assemble_polish_notation(const std::span<utils::token_t>& tokens) {
     const auto& operator_priority = utils::get_operator_priority();
-    const auto& one_symbol_operator = utils::get_one_sym_operators();
-    std::unordered_map<std::size_t, std::string> variables_and_operators_indices;
+    const auto& unary = unary_operators();
+    const auto& binary = binary_operators();
+    std::vector<utils::token_t> prefixed;
+    std::stack<utils::token_t> operators;
+    auto prev_type = utils::token_t::type_t::Unknown;
 
-    const auto check_integrity = [&one_symbol_operator, &infix_notation](std::size_t pos, const std::string& smth) {
-        const std::size_t shift = smth.size() - 1;
-        const bool is_not_boundary_position = ((0 < pos && pos < infix_notation.size() - 1 - shift)
-            && (one_symbol_operator.contains(infix_notation[pos - 1]) && one_symbol_operator.contains(infix_notation[pos + shift + 1]) ));
-        const bool is_boundary_position = (pos == 0 && one_symbol_operator.contains(infix_notation[pos + shift + 1]) ) ||
-            (pos == infix_notation.size() - 1 - shift && one_symbol_operator.contains(infix_notation[pos - 1]) );
-        return is_boundary_position || is_not_boundary_position;
-    };
+    prefixed.reserve(tokens.size());
 
-    const auto push_it = [&infix_notation, &check_integrity, &variables_and_operators_indices](const std::string& smth) {
-        for(std::size_t position = infix_notation.find(smth); position != std::string::npos; position = infix_notation.find(smth, position + smth.size()))
-            if (check_integrity(position, smth))
-                variables_and_operators_indices[position] = smth;
-    };
+    for (auto& token: tokens) {
+        switch(token.type) {
+            case utils::token_t::type_t::Number:
+            prefixed.push_back(token);
+            prev_type = utils::token_t::type_t::Number;
+            continue;
+            case utils::token_t::type_t::ParenthesisLeft:
+            operators.push(token);
+            prev_type = utils::token_t::type_t::ParenthesisLeft;
+            continue;
+            case utils::token_t::type_t::ParenthesisRight: {
+                while (!operators.empty() && operators.top().type != utils::token_t::type_t::ParenthesisLeft) {
+                    prefixed.push_back(operators.top());
+                    operators.pop();    
+                }
+                if (operators.empty())
+                    throw std::domain_error{"Wrong expression format. The expression contains open parentheses."};
+                operators.pop();
 
-    for(const auto& [variable, _] : _variables)
-        push_it(variable);
-
-    for(const auto& [op, priority] : operator_priority)
-        if (!one_symbol_operator.contains(op.front()))
-            push_it(op);
-
-    if (variables_and_operators_indices.empty())
-        logger::warning() << "Warning: expression does not depend on the variables." << std::endl;
-    return variables_and_operators_indices;
-}
-
-template<class T>
-void math_expression<T>::assemble_polish_notation(const std::string& infix_notation) {
-    const auto variables_and_operators_indices = find_variables_and_operators(infix_notation);
-    const auto& operator_priority = utils::get_operator_priority();
-    const auto& one_symbol_operator = utils::get_one_sym_operators();
-    std::stack<std::string> operators;
-    std::vector<std::string> polish_notation;
-    for(std::size_t i = 0; i < infix_notation.size(); ++i) {
-        const char symbol = infix_notation[i];
-        if (variables_and_operators_indices.contains(i)) {
-            const auto& smth = variables_and_operators_indices.at(i);
-            if (operator_priority.contains(smth)) {
-                while (!operators.empty() && (operator_priority.at(operators.top()) >= operator_priority.at(smth))) {
-                    polish_notation.push_back(operators.top());
+                // if a function (Symbol token) or unary operator is on top, pop it too
+                if (!operators.empty() && operator_priority.contains(operators.top().str)
+                    && (operators.top().type == utils::token_t::type_t::Symbol || operators.top().str == "~")) {
+                    prefixed.push_back(operators.top());
                     operators.pop();
                 }
-                operators.push(smth);
-            } else if (_variables.contains(smth)) {
-                polish_notation.push_back(smth);
-            } else {
+
+                prev_type = utils::token_t::type_t::ParenthesisRight;
+                continue;
+            }
+            case utils::token_t::type_t::Symbol:
+            case utils::token_t::type_t::Operator: {
+                if (operator_priority.contains(token.str)) {
+                    if(token.str == "-") {
+                        switch(prev_type) {
+                            case utils::token_t::type_t::Unknown:
+                            case utils::token_t::type_t::Operator:
+                            case utils::token_t::type_t::Separator:
+                            case utils::token_t::type_t::ParenthesisLeft:
+                                token.str = "~";
+                                break;
+                        }
+                    }
+
+                    const bool token_is_right_associative = (token.str == "^") || token.str == "pow" || unary.contains(token.str);
+
+                    while (!operators.empty() && operators.top().type != utils::token_t::type_t::ParenthesisLeft) {
+                        const auto top_priority = operator_priority.at(operators.top().str);
+                        const auto token_priority = operator_priority.at(token.str);
+                        const bool should_pop = (top_priority > token_priority) || (top_priority == token_priority && !token_is_right_associative);
+
+                        if (!should_pop)
+                            break;
+
+                        prefixed.push_back(operators.top());
+                        operators.pop();
+                    }
+                    operators.push(token);
+                    prev_type = utils::token_t::type_t::Operator;
+                    continue;
+                } else if (_variables.contains(token.str)) {
+                    prefixed.push_back(token);
+                    prev_type = utils::token_t::type_t::Symbol;
+                    continue;
+                }
+
                 throw std::domain_error{"Wrong variables and operators searching. Can not find contained string."};
             }
-            i += smth.size() - 1;
-        } else if (std::isdigit(symbol) || symbol == '.') {
-            if (i == 0 || (i > 0 && !std::isdigit(infix_notation[i - 1]) && infix_notation[i - 1] != '.')) {
-                polish_notation.emplace_back(std::string{ symbol });
-            } else {
-                polish_notation.back().push_back(symbol);
+            case utils::token_t::type_t::Separator: {
+                if (token.str != ",")
+                    throw std::domain_error{"Wrong expression format. Unexpected separator."};
+                while (!operators.empty() && operators.top().type != utils::token_t::type_t::ParenthesisLeft) {
+                    prefixed.push_back(operators.top());
+                    operators.pop();
+                }
+                if (operators.empty())
+                    throw std::domain_error{"Wrong expression format. Separator used out of parentheses."};
+                prev_type = utils::token_t::type_t::Separator;
+                continue;
             }
-        } else if (symbol == '(') {
-            operators.push(std::string{ symbol });
-        } else if (symbol == ')') {
-            while (!operators.empty() && operators.top() != std::string{ '(' }) {
-                polish_notation.push_back(operators.top());
-                operators.pop();
+            default: {
+                throw std::domain_error{"Wrong expression format. Unexpected token."};
             }
-            operators.pop();
-        } else if (one_symbol_operator.contains(symbol) && operator_priority.contains(std::string{symbol})) {
-            std::string op = std::string{ symbol };
-            // for unary minus
-            if (op == std::string{ '-' } && (i == 0 || (i > 1 && operator_priority.contains(std::string{ infix_notation[i - 1] }) )))
-                op = std::string{ '~' };
-
-            while (!operators.empty() && (operator_priority.at(operators.top()) >= operator_priority.at(op))) {
-                polish_notation.push_back(operators.top());
-                operators.pop();
-            }
-            operators.push(op);
         }
+        throw std::domain_error{"Wrong expression format. Unexpected token."};
     }
+
     while (!operators.empty()) {
-        polish_notation.push_back(operators.top());
+        if (operators.top().type == utils::token_t::type_t::ParenthesisLeft)
+            throw std::domain_error{"Wrong expression format. The expression contains open parentheses."};
+        prefixed.push_back(operators.top());
         operators.pop();
     }
 
-    const auto& unary = unary_operators();
-    const auto& binary = binary_operators();
-    _polish_notation.reserve(polish_notation.size());
-    for(const std::string& smth : polish_notation) {
-        if (utils::is_number(smth))
-            _polish_notation.push_back(utils::get_number<double>(smth));
-        else if (_variables.count(smth))
-            _polish_notation.push_back(variable_index{_variables.at(smth)});
-        else if (binary.count(smth))
-            _polish_notation.push_back(binary.at(smth));
-        else
-            _polish_notation.push_back(unary.at(smth));
+    _polish_notation.reserve(prefixed.size());
+    for(const auto& token : prefixed) {
+        switch(token.type) {
+            case utils::token_t::type_t::Number:
+                _polish_notation.push_back(utils::get_number<T>(token.str));
+                continue;
+            case utils::token_t::type_t::Symbol:
+            case utils::token_t::type_t::Operator:
+                if (token.type == utils::token_t::type_t::Symbol && _variables.contains(token.str))
+                    _polish_notation.push_back(variable_index{_variables.at(token.str)});
+                else if (binary.contains(token.str))
+                    _polish_notation.push_back(binary.at(token.str));
+                else if(unary.contains(token.str))
+                    _polish_notation.push_back(unary.at(token.str));
+                else
+                    throw std::domain_error{"Wrong variables and operators searching. Can not find contained string."};
+                continue;
+            default:
+                throw std::domain_error{"Wrong expression format. Unexpected token."};
+        }
     }
 }
 
@@ -201,50 +228,57 @@ template<class T>
 T math_expression<T>::calc_polish_notation(const std::span<const T> input_variables) const {
     if (input_variables.size() != _variables.size())
         throw std::domain_error{"Wrong number of variables."};
-
 #ifndef __clang__
     std::stack<T> stack;
 #endif
-    for(const auto& operation : _polish_notation) {
-        if (std::holds_alternative<double>(operation))
-            stack.push(std::get<double>(operation));
-        else if (std::holds_alternative<variable_index>(operation))
-            stack.push(input_variables[std::get<variable_index>(operation).index]);
-        else if (std::holds_alternative<binary_operator>(operation)) {
-            const auto& function = std::get<binary_operator>(operation);
-            const T right = pop_stack(stack);
-            const T left = pop_stack(stack);
-            stack.push(function(left, right));
-        } else {
-            const auto& function = std::get<unary_operator>(operation);
-            const T value = pop_stack(stack);
-            stack.push(function(value));
-        }
-    }
+    for(const auto& operation : _polish_notation)
+        std::visit(metamath::types::visitor{
+            [&](const T number) { stack.push(number); },
+            [&](const variable_index& index) { stack.push(input_variables[index.index]); },
+            [&](const unary_operator& operation) { stack.push(operation(pop_stack(stack))); },
+            [&](const binary_operator& operation) {
+                const T right = pop_stack(stack);
+                const T left = pop_stack(stack);
+                stack.push(operation(left, right));
+            }
+        }, operation);
     return pop_stack(stack);
 }
 
 template<class T>
 math_expression<T>::math_expression(std::string pre_infix_notation) {
-    const std::size_t delimiter = pre_infix_notation.find(':');
-    if (delimiter == std::string::npos)
+    auto tokens = utils::tokenize(pre_infix_notation);
+    auto sep_it = std::find_if(tokens.begin(), tokens.end(), [](const utils::token_t& t) {
+        return t.type == utils::token_t::type_t::Separator && t.str == ":";
+    });
+    if (sep_it == tokens.end())
         throw std::domain_error{"Wrong variables format. Symbol ':' is required after variables initialization."};
-    _variables = utils::get_variables(utils::trim(pre_infix_notation.substr(0, delimiter)));
+    _variables = utils::get_variables(std::span(tokens.begin(), sep_it));
     utils::check_variables_admissibility(_variables);
-    std::string infix_notation = pre_infix_notation.substr(delimiter + 1);
-    infix_notation = utils::delete_all(infix_notation, ' ');
+    auto infix_notation = std::span(std::next(sep_it), tokens.end());
     if (infix_notation.empty())
         throw std::domain_error{"Wrong expression format. Formula after ':' is required."};
-    utils::parentheses_check(infix_notation);
-    utils::dots_check(infix_notation);
     assemble_polish_notation(infix_notation);
 }
 
 template<class T>
 std::string math_expression<T>::to_polish() const {
-    //auto concatenate = [](const std::string& a, const std::string& b){ return a + b; };
-    //return std::accumulate(_polish_notation.begin(), _polish_notation.end(), std::string{""}, concatenate);
-    return "";
+    static constexpr auto get_name = [](const auto& operation, const auto& values) {
+        for (const auto& [name, index] : values)
+            if (index == operation)
+                return name;
+        throw std::domain_error{"Unknown operator, unable to recover polish notation."};
+    };
+    const auto concatenate = [this](const std::string& polish, const operand& operation) {
+        return polish + (polish.empty() ? "" : " ") + std::visit(metamath::types::visitor{
+            [](const T number) { return std::to_string(number); },
+            [this](const variable_index& index) { return get_name(index.index, variables()); },
+            [this](const unary_operator& operation) { return get_name(operation, unary_operators()); },
+            [this](const binary_operator& operation) { return get_name(operation, binary_operators()); },
+        }, operation);
+    };
+    using namespace std::string_literals;
+    return std::accumulate(_polish_notation.begin(), _polish_notation.end(), ""s, concatenate);
 }
 
 template<class T>
@@ -253,7 +287,7 @@ std::size_t math_expression<T>::variables_count() const noexcept {
 }
 
 template<class T>
-const std::unordered_map<std::string,std::size_t>& math_expression<T>::get_variables() const noexcept {
+const std::unordered_map<std::string,std::size_t>& math_expression<T>::variables() const noexcept {
     return _variables;
 }
 
