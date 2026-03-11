@@ -6,7 +6,7 @@ llm:
     temperature: 0.2
 
   http_client:
-    timeout: 600
+    timeout: 3600
     api_url: http://localhost:11434
 
 vcs:
