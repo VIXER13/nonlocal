@@ -1,35 +1,34 @@
 #pragma once
 
+#include "traits.hpp"
+
 #include <concepts>
 #include <memory>
-#include <tuple>
 
 namespace metamath::types {
 
 template<class T>
-concept copyable = requires(const T& v) { { v.copy() } -> std::convertible_to<std::unique_ptr<T>>; };
-
-template<class... Ts>
-requires(sizeof...(Ts) > 0) && (copyable<Ts> && ...)
-class copyable_ptrs {
-    using tuple_type = std::tuple<std::unique_ptr<Ts>...>;
-
-    static tuple_type _copy(const tuple_type& src) {
-        constexpr auto copy = [](const auto&... ptrs) { return tuple_type{(ptrs ? ptrs->copy() : nullptr)...}; };
-        return std::apply(copy, src);
-    }
+requires copyable<T>
+class copyable_uptr {
+    std::unique_ptr<T> _ptr{};
 
 public:
-    tuple_type _ptrs{};
+    constexpr copyable_uptr() noexcept = default;
 
-public:
-    constexpr copyable_ptrs() noexcept = default;
+    constexpr explicit copyable_uptr(std::unique_ptr<T>&& ptr) noexcept
+        : _ptr(std::move(ptr)) {}
 
-    constexpr explicit copyable_ptrs(std::unique_ptr<Ts>... ptrs) noexcept
-        : _ptrs(std::move(ptrs)...) {}
+    constexpr copyable_uptr(const copyable_uptr& other) noexcept
+        : _ptr(other._ptr ? other._ptr->copy() : nullptr) {}
 
-    copyable_ptrs(const copyable_ptrs& other)
-        : _ptrs(_copy(other._ptrs)) {}
+    constexpr copyable_uptr(copyable_uptr&& other) noexcept
+        : _ptr(std::move(other._ptr)) {}
+
+    T* operator->() noexcept { return _ptr.get(); }
+    const T* operator->() const noexcept { return _ptr.get(); }
+    T& operator*() noexcept { return *_ptr; }
+    const T& operator*() const noexcept { return *_ptr; }
+    void reset(std::unique_ptr<T>&& ptr = nullptr) noexcept { _ptr.reset(ptr.release()); }
 };
 
 } // namespace metamath::types

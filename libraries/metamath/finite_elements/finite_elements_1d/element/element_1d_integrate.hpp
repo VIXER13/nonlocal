@@ -13,9 +13,9 @@ class element_1d_integrate : public element_1d_integrate_base<T> {
     using element_integrate_1d_t::_weights;
     using element_integrate_1d_t::_qN;
     using element_integrate_1d_t::_qNxi;
-    using element_integrate_1d_t::_ptrs;
     using element_integrate_1d_t::set_element;
     using element_integrate_1d_t::element;
+    using element_integrate_1d_t::_quadrature;
 
     element_1d_integrate() = default;
 
@@ -48,7 +48,7 @@ public:
     }
 
     void set_quadrature(const quadrature_1d_base<T>& quadrature) override {
-        std::get<0>(_ptrs) = quadrature.copy();
+        _quadrature.reset(quadrature.copy());
         std::vector<T> xi(quadrature.nodes_count());
         _weights.resize(quadrature.nodes_count());
         T jacobian = (           boundary(side_1d::RIGHT) -            boundary(side_1d::LEFT)) /

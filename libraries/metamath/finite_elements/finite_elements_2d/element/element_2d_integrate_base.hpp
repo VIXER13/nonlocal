@@ -9,19 +9,19 @@
 namespace metamath::finite_element {
 
 template<class T>
-class element_2d_integrate_base : public element_integrate_base<T>,
-                                  public metamath::types::copyable_ptrs<element_2d_base<T>> {
+class element_2d_integrate_base : public element_integrate_base<T> {
 protected:
-    using holder_t = metamath::types::copyable_ptrs<element_2d_base<T>>;
-    using holder_t::_ptrs;
+    template<class U>
+    using cuptr_t = metamath::types::copyable_uptr<U>;
     std::vector<T> _qNxi, _qNeta;
+    cuptr_t<element_2d_base<T>> _element;
+    
 
     void set_element(std::unique_ptr<element_2d_base<T>> element) noexcept {
-        auto& [element_ptr] = _ptrs;
-        element_ptr = std::move(element);
+        _element.reset(std::move(element));
     }
 
-    const element_2d_base<T>& element() const noexcept { return *std::get<0>(_ptrs); }
+    const element_2d_base<T>& element() const noexcept { return *_element; }
 
 public:
     using element_integrate_base<T>::nodes_count;

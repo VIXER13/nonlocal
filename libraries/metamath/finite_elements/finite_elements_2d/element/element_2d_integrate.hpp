@@ -15,7 +15,6 @@ protected:
     using element_integrate_2d_t::_qN;
     using element_integrate_2d_t::_qNxi;
     using element_integrate_2d_t::_qNeta;
-    using element_integrate_2d_t::_ptrs;
     using element_integrate_2d_t::set_element;
     using element_integrate_2d_t::element;
 
