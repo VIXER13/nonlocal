@@ -41,6 +41,9 @@ add_subdirectory(libraries)
 # NonLocFEM
 add_subdirectory(NonLocFEM)
 
+# sandbox
+add_subdirectory(sandbox)
+
 # unit tests
 include(CMakeTools/EmbeddedFiles.cmake)
 add_subdirectory(tests)

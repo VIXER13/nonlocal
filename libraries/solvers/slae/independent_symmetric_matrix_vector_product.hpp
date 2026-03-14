@@ -15,10 +15,17 @@ class independent_symmetric_matrix_vector_product : public iterative_solver_base
     mutable Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> _threaded_product;
     bool _mpi_reduction = true;
 
-protected:
+public:
     void reduction(Eigen::Matrix<T, Eigen::Dynamic, 1>& result) const;
     void matrix_vector_product(Eigen::Matrix<T, Eigen::Dynamic, 1>& product,
                                const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector) const;
+    Eigen::Matrix<T, Eigen::Dynamic, 1> solve(
+        const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
+        const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0 = std::nullopt) const override {
+            Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(b.size()));
+            matrix_vector_product(x, x);
+            return x;
+        }
 
 public:
     using _base::matrix;
