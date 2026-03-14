@@ -9,14 +9,18 @@
 
 #include <solvers/slae/independent_symmetric_matrix_vector_product.hpp>
 
+constexpr size_t ITERS = 100;
+
 namespace Native_NS {
 template <class T, class I>
 void dot(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
          const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector,
          Eigen::Matrix<T, Eigen::Dynamic, 1>& result) {
     result.resize(matrix.rows());
-    result.setZero();
-    result = matrix.template selfadjointView<Eigen::Upper>() * vector;  // Встроенная оптимизированная операция
+    for (size_t i = 0; i < ITERS; ++i) {
+        result.setZero();
+        result = matrix.template selfadjointView<Eigen::Upper>() * vector;  // Встроенная оптимизированная операция
+    }
 }
 }  // namespace Native_NS
 
@@ -26,41 +30,38 @@ void dot(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
          const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector,
          Eigen::Matrix<T, Eigen::Dynamic, 1>& result) {
     result.resize(matrix.rows());
-    result.setZero();
-
     const I n = static_cast<I>(matrix.rows());
     const int max_threads = omp_get_max_threads();
     std::vector<Eigen::Matrix<T, Eigen::Dynamic, 1>> local_results(
         static_cast<size_t>(max_threads),
         Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(n));
 
+    for (size_t i = 0; i < ITERS; ++i) {
+        result.setZero();
 #pragma omp parallel
-    {
-        const int tid = omp_get_thread_num();
-        auto& local = local_results[static_cast<size_t>(tid)];
+        {
+            const int tid = omp_get_thread_num();
+            auto& local = local_results[static_cast<size_t>(tid)];
 
 #pragma omp for schedule(dynamic, 64)
-        for (I i = 0; i < n; ++i) {
-            for (typename Eigen::SparseMatrix<T, Eigen::RowMajor, I>::InnerIterator it(
-                     matrix, i);
-                 it; ++it) {
-                const I j = static_cast<I>(it.col());
-                if (j < i) {
-                    continue;
-                }
-
-                const T a = it.value();
-                local(i) += a * vector(j);
-                if (j != i) {
-                    local(j) += a * vector(i);
+            for (I i = 0; i < n; ++i) {
+                for (typename Eigen::SparseMatrix<T, Eigen::RowMajor, I>::InnerIterator it(
+                        matrix, i);
+                    it; ++it) {
+                    const I j = static_cast<I>(it.col());
+                    const T a = it.value();
+                    local(i) += a * vector(j);
+                    if (j != i) {
+                        local(j) += a * vector(i);
+                    }
                 }
             }
         }
-    }
 
-    result = local_results.front();
-    for (size_t t = 1; t < local_results.size(); ++t) {
-        result.noalias() += local_results[t];
+        result = local_results.front();
+        for (size_t t = 1; t < local_results.size(); ++t) {
+            result.noalias() += local_results[t];
+        }
     }
 }
 }  // namespace Iterator_NS
@@ -71,8 +72,11 @@ template <class T, class I>
 void dot(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
          const Eigen::Matrix<T, Eigen::Dynamic, 1>& vector,
          Eigen::Matrix<T, Eigen::Dynamic, 1>& result) {
+            result.resize(matrix.cols());
             nonlocal::slae::independent_symmetric_matrix_vector_product<T, I> product(matrix);
-            product.matrix_vector_product(result, vector);
+            for (size_t i = 0; i < ITERS; ++i) {
+                product.matrix_vector_product(result, vector);
+            }
          }
 } // namespace NonLocal_NS
 
@@ -103,8 +107,10 @@ Eigen::SparseMatrix<T, Eigen::RowMajor, I> create_sparse_matrix(
         for (I j = 0; j < nnz_in_row; ++j) {
             I col = col_dist(gen);
             T val = dist(gen);
-            tripletList.emplace_back(i, col, val);
+            if (col >= i)
+                tripletList.emplace_back(i, col, val);
         }
+        tripletList.emplace_back(i, i, 1.0);
     }
 
     matrix.setFromTriplets(tripletList.begin(), tripletList.end());
@@ -130,8 +136,11 @@ template <class T>
 bool verify_results(const Eigen::Matrix<T, Eigen::Dynamic, 1>& v1,
                     const Eigen::Matrix<T, Eigen::Dynamic, 1>& v2,
                     T tolerance = 1e-6) {
-    if (v1.size() != v2.size()) return false;
-    return (v1 - v2).cwiseAbs().maxCoeff() < tolerance;
+    if (v1.size() != v2.size()) 
+        return false;
+    const T max = (v1 - v2).cwiseAbs().maxCoeff();
+    std::cout << max << std::endl;
+    return max < tolerance;
 }
 
 // ============================================================================

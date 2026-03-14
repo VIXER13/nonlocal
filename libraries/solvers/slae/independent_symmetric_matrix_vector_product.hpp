@@ -71,14 +71,15 @@ void independent_symmetric_matrix_vector_product<T, I>::matrix_vector_product(
 #else
     const I thread = 0;
 #endif
-    _threaded_product.col(thread).setZero();
+    auto local = _threaded_product.col(thread);
+    local.setZero();
     for(const I row : _thread_rows.get(thread)) {
         const I ind = matrix().outerIndexPtr()[row];
         const I glob_row = row + shift;
-        _threaded_product(glob_row, thread) += matrix().valuePtr()[ind] * vector[matrix().innerIndexPtr()[ind]];
+        local[glob_row] += matrix().valuePtr()[ind] * vector[matrix().innerIndexPtr()[ind]];
         for(const I i : std::ranges::iota_view{ind + 1, matrix().outerIndexPtr()[row + 1]}) {
-            _threaded_product(glob_row, thread) += matrix().valuePtr()[i] * vector[matrix().innerIndexPtr()[i]];
-            _threaded_product(matrix().innerIndexPtr()[i], thread) += matrix().valuePtr()[i] * vector[glob_row];
+            local[glob_row] += matrix().valuePtr()[i] * vector[matrix().innerIndexPtr()[i]];
+            local[matrix().innerIndexPtr()[i]] += matrix().valuePtr()[i] * vector[glob_row];
         }
     }
 }
