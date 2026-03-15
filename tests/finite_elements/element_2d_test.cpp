@@ -15,15 +15,15 @@ using namespace metamath::finite_element;
 using T = double;
 
 template<template<class, auto...> class Element_Type, size_t Quadrature_Order_X1, size_t Quadrature_Order_X2, size_t... Element_Order>
-std::unique_ptr<element_2d_integrate_base<T>> make_element() {
+std::unique_ptr<element_2d_integrate<T>> make_element() {
     return std::make_unique<element_2d_integrate<T>>(
         std::make_unique<element_2d<T, Element_Type, Element_Order...>>(),
         quadrature_1d<T, gauss, Quadrature_Order_X1>{},
         quadrature_1d<T, gauss, Quadrature_Order_X2>{});
 }
 
-std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_lagrangian_elements_2d() {
-    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+std::vector<std::unique_ptr<element_2d_integrate<T>>> init_lagrangian_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate<T>>> result;
     result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 0, 0>());
     result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 0, 1>());
     result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 1, 0>());
@@ -37,8 +37,8 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_lagrangian_eleme
     return result;
 }
 
-std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_serendipity_elements_2d() {
-    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+std::vector<std::unique_ptr<element_2d_integrate<T>>> init_serendipity_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate<T>>> result;
     result.emplace_back(make_element<serendipity, 1, 1, 0>());
     result.emplace_back(make_element<serendipity, 1, 1, 1>());
     // Second and third order shall be created manually, due to a bug in compiling specialized templates
@@ -55,8 +55,8 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_serendipity_elem
     return result;
 }
 
-std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_triangle_elements_2d() {
-    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+std::vector<std::unique_ptr<element_2d_integrate<T>>> init_triangle_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate<T>>> result;
     result.emplace_back(make_element<triangle, 1, 1, 0>());
     result.emplace_back(make_element<triangle, 1, 1, 1>());
     result.emplace_back(make_element<triangle, 2, 2, 2>());
@@ -65,7 +65,7 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_triangle_element
 }
 
 struct basis_summator final {
-    const element_2d_integrate_base<T>& element;
+    const element_2d_integrate<T>& element;
     std::array<T, 2> point = {};
 
     std::array<T, 3> operator()(const std::array<T, 3>& sum, const size_t i) const {
@@ -159,7 +159,7 @@ const suite<"element_2d"> _ = [] {
                 expect(cloned_base != nullptr);
                 expect(cloned_base.get() != element.get());
 
-                auto* cloned = dynamic_cast<element_2d_integrate_base<T>*>(cloned_base.get());
+                auto* cloned = dynamic_cast<element_2d_integrate<T>*>(cloned_base.get());
                 expect(cloned != nullptr);
 
                 expect(eq(cloned->nodes_count(), element->nodes_count()));
