@@ -32,7 +32,7 @@ class _read_mesh_1d final {
     template<class T>
     using quadrature_1d_ptr = std::unique_ptr<metamath::finite_element::quadrature_1d_base<T>>;
     template<class T>
-    using finite_element_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate_base<T>>;
+    using finite_element_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate<T>>;
 
     template<class T, size_t Order>
     using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, Order>;

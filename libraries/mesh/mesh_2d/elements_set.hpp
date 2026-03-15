@@ -5,7 +5,7 @@
 namespace nonlocal::mesh {
 
 template<class T>
-using element_integrate_1d = metamath::finite_element::element_1d_integrate_base<T>;
+using element_integrate_1d = metamath::finite_element::element_1d_integrate<T>;
 template<class T>
 using element_integrate_2d = metamath::finite_element::element_2d_integrate_base<T>;
 
