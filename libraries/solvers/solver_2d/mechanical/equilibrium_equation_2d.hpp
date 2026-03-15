@@ -21,6 +21,7 @@ template<class Matrix_Index, class T, class I>
 mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                                               const raw_mechanical_parameters<T>& parameters,
                                                               const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
+                                                              const std::vector<T>& delta_temperature = {},
                                                               const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt) {
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions);
     log_problem_settings(settings);
@@ -31,7 +32,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
     if (right_part)
         integrate_right_part<2>(f, *mesh, *right_part);
-    temperature_condition(f, *mesh, evaluated_parameters, {});
+    temperature_condition(f, *mesh, evaluated_parameters, delta_temperature);
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
     if (settings.is_nonlocal()) {
         local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});

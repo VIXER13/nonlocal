@@ -109,7 +109,8 @@ std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> mechanical_2d(
     const auto boundaries_field = problem == config::problem_t::Mechanical ? "boundaries" : "mechanical_boundaries";
     return solver_2d::mechanical::equilibrium_equation<I>(mesh, 
         config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
-        config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field)
+        config::read_mechanical_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
+        delta_temperature
     );
 }
 
