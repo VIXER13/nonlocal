@@ -5,10 +5,9 @@
 
 namespace metamath::finite_element {
 
-template<class T, template<class, auto...> class Element_Type, auto... Args>
+template<class T>
 class element_2d_integrate : public element_2d_integrate_base<T> {
 protected:
-    using element_2d_t = element_2d<T, Element_Type, Args...>;
     using element_integrate_2d_t = element_2d_integrate_base<T>;
     using element_integrate_2d_t::_nearest_qnode;
     using element_integrate_2d_t::_weights;
@@ -29,22 +28,12 @@ public:
     using element_integrate_2d_t::node;
     using element_integrate_2d_t::boundary;
 
-    explicit element_2d_integrate(const quadrature_1d_base<T>& quadrature) {
-        set_element(std::make_unique<element_2d_t>());
-        set_quadrature(quadrature, quadrature);
-    }
-
-    explicit element_2d_integrate(const quadrature_1d_base<T>& quadrature_x, const quadrature_1d_base<T>& quadrature_y) {
-        set_element(std::make_unique<element_2d_t>());
-        set_quadrature(quadrature_x, quadrature_y);
-    }
-
-    explicit element_2d_integrate(std::unique_ptr<element_2d_t> element, const quadrature_1d_base<T>& quadrature) {
+    explicit element_2d_integrate(std::unique_ptr<element_2d_base<T>> element, const quadrature_1d_base<T>& quadrature) {
         set_element(std::move(element));
         set_quadrature(quadrature, quadrature);
     }
 
-    explicit element_2d_integrate(std::unique_ptr<element_2d_t> element,
+    explicit element_2d_integrate(std::unique_ptr<element_2d_base<T>> element,
                                  const quadrature_1d_base<T>& quadrature_x,
                                  const quadrature_1d_base<T>& quadrature_y) {
         set_element(std::move(element));

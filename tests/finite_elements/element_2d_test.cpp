@@ -16,10 +16,10 @@ using T = double;
 
 template<template<class, auto...> class Element_Type, size_t Quadrature_Order_X1, size_t Quadrature_Order_X2, size_t... Element_Order>
 std::unique_ptr<element_2d_integrate_base<T>> make_element() {
-    return std::make_unique<element_2d_integrate<T, Element_Type, Element_Order...>>(
+    return std::make_unique<element_2d_integrate<T>>(
+        std::make_unique<element_2d<T, Element_Type, Element_Order...>>(),
         quadrature_1d<T, gauss, Quadrature_Order_X1>{},
-        quadrature_1d<T, gauss, Quadrature_Order_X2>{}
-    );
+        quadrature_1d<T, gauss, Quadrature_Order_X2>{});
 }
 
 std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_lagrangian_elements_2d() {
@@ -42,8 +42,14 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_serendipity_elem
     result.emplace_back(make_element<serendipity, 1, 1, 0>());
     result.emplace_back(make_element<serendipity, 1, 1, 1>());
     // Second and third order shall be created manually, due to a bug in compiling specialized templates
-    result.emplace_back(std::make_unique<element_2d_integrate<T, serendipity, 2>>(quadrature_1d<T, gauss, 2>{}, quadrature_1d<T, gauss, 2>{}));
-    result.emplace_back(std::make_unique<element_2d_integrate<T, serendipity, 3>>(quadrature_1d<T, gauss, 2>{}, quadrature_1d<T, gauss, 2>{}));
+    result.emplace_back(std::make_unique<element_2d_integrate<T>>(
+        std::make_unique<element_2d<T, serendipity, 2>>(),
+        quadrature_1d<T, gauss, 2>{},
+        quadrature_1d<T, gauss, 2>{}));
+    result.emplace_back(std::make_unique<element_2d_integrate<T>>(
+        std::make_unique<element_2d<T, serendipity, 3>>(),
+        quadrature_1d<T, gauss, 2>{},
+        quadrature_1d<T, gauss, 2>{}));
     result.emplace_back(make_element<serendipity, 3, 3, 4>());
     result.emplace_back(make_element<serendipity, 3, 3, 5>());
     return result;
