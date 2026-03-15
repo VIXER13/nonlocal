@@ -5,9 +5,8 @@
 
 namespace metamath::finite_element {
 
-template<class T, template<class, auto...> class Element_Type, auto... Args>
+template<class T>
 class element_1d_integrate : public element_1d_integrate_base<T> {
-    using element_1d_t = element_1d<T, Element_Type, Args...>;
     using element_integrate_1d_t = element_1d_integrate_base<T>;
     using element_integrate_1d_t::_nearest_qnode;
     using element_integrate_1d_t::_weights;
@@ -29,13 +28,7 @@ public:
     using element_integrate_1d_t::N;
     using element_integrate_1d_t::Nxi;
 
-    explicit element_1d_integrate(const quadrature_1d_base<T>& quadrature)
-    {
-        set_element(std::make_unique<element_1d_t>());
-        set_quadrature(quadrature);
-    }
-
-    element_1d_integrate(std::unique_ptr<element_1d_t> element, const quadrature_1d_base<T>& quadrature)
+    element_1d_integrate(std::unique_ptr<element_1d_base<T>> element, const quadrature_1d_base<T>& quadrature)
     {
         set_element(std::move(element));
         set_quadrature(quadrature);

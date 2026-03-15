@@ -101,9 +101,11 @@ const boost::ut::suite<"thermal_stationary_1d"> _ = [] {
             for(const size_t elements : {10, 20, 40}) {
                 static constexpr size_t Order = 1;
                 using quadrature = quadrature_1d<T, gauss, Order>;
-                using element_1d = element_1d_integrate<T, lagrangian_element_1d, Order>;
+                using element_integrate_1d = element_1d_integrate<T>;
                 const auto mesh = std::make_shared<mesh_1d<T>>(
-                    std::make_unique<element_1d>(quadrature{}),
+                    std::make_unique<element_integrate_1d>(
+                        std::make_unique<element_1d<T, lagrangian_element_1d, Order>>(),
+                        quadrature{}),
                     std::vector<segment_data<T>>{{ .length = Length, .elements = elements }});
                 auto solution = stationary_heat_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
                 solution.calc_flux();

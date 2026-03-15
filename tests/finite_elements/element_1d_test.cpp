@@ -16,9 +16,9 @@ using T = double;
 
 template<size_t Element_Order, size_t Quadrature_Order>
 std::unique_ptr<element_1d_integrate_base<T>> make_element() {
-    return std::make_unique<element_1d_integrate<T, lagrangian_element_1d, Element_Order>>(
-        quadrature_1d<T, gauss, Quadrature_Order>{}
-    );
+    return std::make_unique<element_1d_integrate<T>>(
+        std::make_unique<element_1d<T, lagrangian_element_1d, Element_Order>>(),
+        quadrature_1d<T, gauss, Quadrature_Order>{});
 }
 
 std::vector<std::unique_ptr<element_1d_integrate_base<T>>> init_lagrangian_elements_1d() {

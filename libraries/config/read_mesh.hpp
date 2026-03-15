@@ -36,8 +36,10 @@ class _read_mesh_1d final {
 
     template<class T, size_t Order>
     using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, Order>;
+    template<class T>
+    using element_1d_integrate = metamath::finite_element::element_1d_integrate<T>;
     template<class T, size_t Order>
-    using element_1d = metamath::finite_element::element_1d_integrate<T, metamath::finite_element::lagrangian_element_1d, Order>;
+    using element_1d = metamath::finite_element::element_1d<T, metamath::finite_element::lagrangian_element_1d, Order>;
 
     static bool is_valid_order(const size_t order) noexcept;
     static order_t get_order(const nlohmann::json& config, const std::string& field, const order_t default_order = order_t::Linear);
@@ -88,15 +90,25 @@ template<std::floating_point T>
 _read_mesh_1d::finite_element_1d_ptr<T> _read_mesh_1d::make_element(const order_t order, const quadrature_1d_ptr<T>& quadrature) {
     switch(order) {
     case order_t::Linear:
-        return std::make_unique<element_1d<T, 1>>(*quadrature);
+        return std::make_unique<element_1d_integrate<T>>(
+            std::make_unique<element_1d<T, 1>>(),
+            *quadrature);
     case order_t::Quadratic:
-        return std::make_unique<element_1d<T, 2>>(*quadrature);
+        return std::make_unique<element_1d_integrate<T>>(
+            std::make_unique<element_1d<T, 2>>(),
+            *quadrature);
     case order_t::Сubic:
-        return std::make_unique<element_1d<T, 3>>(*quadrature);
+        return std::make_unique<element_1d_integrate<T>>(
+            std::make_unique<element_1d<T, 3>>(),
+            *quadrature);
     case order_t::Quartic:
-        return std::make_unique<element_1d<T, 4>>(*quadrature);
+        return std::make_unique<element_1d_integrate<T>>(
+            std::make_unique<element_1d<T, 4>>(),
+            *quadrature);
     case order_t::Quintic:
-        return std::make_unique<element_1d<T, 5>>(*quadrature);
+        return std::make_unique<element_1d_integrate<T>>(
+            std::make_unique<element_1d<T, 5>>(),
+            *quadrature);
     default:
         throw std::logic_error{"Invalid element order: " + std::to_string(size_t(order))};
     }

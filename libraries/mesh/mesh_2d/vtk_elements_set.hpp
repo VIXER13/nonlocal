@@ -24,10 +24,12 @@ class vtk_elements_set final : public elements_set<T> {
     template<class U, size_t N>
     using gauss = metamath::finite_element::gauss<U, N>;
 
-    template<class U, template<class, auto...> class Element_Type, auto... Args>
-    using element_1d_integrate = metamath::finite_element::element_1d_integrate<U, Element_Type, Args...>;
+    template<class U>
+    using element_1d_integrate = metamath::finite_element::element_1d_integrate<U>;
     template<class U, size_t N>
     using lagrangian_element_1d = metamath::finite_element::lagrangian_element_1d<U, N>;
+    template<class U, size_t Order>
+    using element_1d = metamath::finite_element::element_1d<U, lagrangian_element_1d, Order>;
 
     template<class U, template<class, auto...> class Element_Type, auto... Args>
     using element_2d_integrate = metamath::finite_element::element_2d_integrate<U, Element_Type, Args...>;
@@ -37,8 +39,14 @@ class vtk_elements_set final : public elements_set<T> {
     using lagrangian_element_2d = metamath::finite_element::lagrangian_element_2d<U, N, M>;
 
     static std::vector<finite_element_1d_sptr<T>> make_default_1d_elements() {
-        return { std::make_shared<element_1d_integrate<T, lagrangian_element_1d, 1>>(quadrature<T, gauss, 1>{}),
-                 std::make_shared<element_1d_integrate<T, lagrangian_element_1d, 2>>(quadrature<T, gauss, 2>{}) };
+        return {
+            std::make_shared<element_1d_integrate<T>>(
+                std::make_unique<element_1d<T, 1>>(),
+                quadrature<T, gauss, 1>{}),
+            std::make_shared<element_1d_integrate<T>>(
+                std::make_unique<element_1d<T, 2>>(),
+                quadrature<T, gauss, 2>{})
+        };
     }
 
     static std::vector<finite_element_2d_sptr<T>> make_default_2d_elements() {
