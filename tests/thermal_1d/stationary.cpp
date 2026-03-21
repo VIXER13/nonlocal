@@ -1,9 +1,8 @@
-#include "utils.hpp"
-
 #include <metamath/metamath.hpp>
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_1d/thermal/stationary_heat_equation_solver_1d.hpp>
+#include <tests/utils/error.hpp>
 
 #include <boost/ut.hpp>
 
