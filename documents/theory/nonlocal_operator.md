@@ -48,20 +48,17 @@ $$
 $$
 - $p > 0$, $q > 0$ &mdash; параметры плотности распределения;
 - $A$ &mdash; нормировочный параметр, который равен
-
 $$
 A = \dfrac{np}
 	{
 		4 r_1 r_2 
-		\operatorname{B}\left( \dfrac{1}{n}, \dfrac{1}{n} \right) 
-		\operatorname{B}\left( \dfrac{2}{p}, q+1 \right)
+		\mathrm{B}\left( \dfrac{1}{n}, \dfrac{1}{n} \right) 
+		\mathrm{B}\left( \dfrac{2}{p}, q+1 \right)
 	};
 $$
-
 при $n \rightarrow \infty$ принимает вид
-
 $$
-A = \dfrac{p}{8 r_2 r_2 \operatorname{B}\left( \dfrac{2}{p}, q+1 \right)}
+A = \dfrac{p}{8 r_2 r_2 \mathrm{B}\left( \dfrac{2}{p}, q+1 \right)}
 $$
 
 ### Экспоненциальное семейство функций нелокального влияния
@@ -71,7 +68,6 @@ $$
 $$
 - $p > 0$, $q > 0$ &mdash; параметры плотности распределения;
 - $A$ &mdash; нормировочный параметр, который равен
-
 $$
 A = 
 	\dfrac
@@ -79,12 +75,10 @@ A =
 		4^{\frac{1}{n}} n p q^{\frac{2}{p}}
 	}
 	{
-		8 r_1 r_2 \operatorname{B} \left( \dfrac{1}{2}, \dfrac{1}{n} \right) \operatorname{\Gamma} \left( \dfrac{2}{p} \right)
+		8 r_1 r_2 \mathrm{B} \left( \dfrac{1}{2}, \dfrac{1}{n} \right) \mathrm{\Gamma} \left( \dfrac{2}{p} \right)
 	},
 $$
-
 при $n \rightarrow \infty$ принимает вид
-
 $$
 A = \dfrac{p q^{\frac{2}{p}}}{8 r_1 r_2 \Gamma \left( \dfrac{2}{p} \right)}.
 $$
