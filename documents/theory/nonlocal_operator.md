@@ -68,6 +68,7 @@ $$
 $$
 - $p > 0$, $q > 0$ &mdash; параметры плотности распределения;
 - $A$ &mdash; нормировочный параметр, который равен
+
 $$
 A = 
 	\dfrac
@@ -78,7 +79,9 @@ A =
 		8 r_1 r_2 \mathrm{B} \left( \dfrac{1}{2}, \dfrac{1}{n} \right) \mathrm{\Gamma} \left( \dfrac{2}{p} \right)
 	},
 $$
+
 при $n \rightarrow \infty$ принимает вид
+
 $$
 A = \dfrac{p q^{\frac{2}{p}}}{8 r_1 r_2 \Gamma \left( \dfrac{2}{p} \right)}.
 $$
