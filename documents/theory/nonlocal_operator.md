@@ -48,6 +48,7 @@ $$
 $$
 - $p > 0$, $q > 0$ &mdash; параметры плотности распределения;
 - $A$ &mdash; нормировочный параметр, который равен
+
 $$
 A = \dfrac{np}
 	{
@@ -56,7 +57,9 @@ A = \dfrac{np}
 		\mathrm{B}\left( \dfrac{2}{p}, q+1 \right)
 	};
 $$
+
 при $n \rightarrow \infty$ принимает вид
+
 $$
 A = \dfrac{p}{8 r_2 r_2 \mathrm{B}\left( \dfrac{2}{p}, q+1 \right)}
 $$
