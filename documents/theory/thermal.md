@@ -10,9 +10,9 @@ $$\nabla \cdot \boldsymbol{q} = q_V,$$
 
 - $T = T(\boldsymbol{x})$ &mdash; поле температуры;
 - $t$ &mdash; время;
+- $\nabla = \partial/\partial x_i \boldsymbol{e}_i$ &mdash; дифференциальный оператор набла;
 - $\boldsymbol{x} = x_i \boldsymbol{e}_i$ &mdash; вектор пространственной переменной;
 - $\boldsymbol{e}_i$ &mdash; единичный орт;
-- $\nabla = \partial/\partial x_i \boldsymbol{e}_i$ &mdash; дифференциальный оператор набла;
 - $c_V$ &mdash; удельная объёмная теплоёмкость;
 - $q_V$ &mdash; объёмная плотность мощности внутренних источников и стоков теплоты;
 - $\boldsymbol{q} = q_i \boldsymbol{e}_i$ &mdash; вектор плотности теплового потока, который определён через обобщённую гипотезу Био &mdash; Фурье
