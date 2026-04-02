@@ -17,7 +17,9 @@ $$
 - $S'(\boldsymbol{x})$ &mdash; область нелокального влияния с центром в точке $\boldsymbol{x} \in S$;
 - $S$ &mdash; область занимаемая рассматриваемым телом.
 
-![image](images/nonlocal_area.svg)
+<p align="center">
+	<img src="images/nonlocal_area.svg" alt="nonlocal_area" width="500px"/>
+</p>
 
 ## Функции нелокального влияния
 
@@ -40,7 +42,9 @@ $$
 - $r_i > 0$ &mdash; длины главных полуосей;
 - $n > 0$ &mdash; метрический параметр.
 
-![image](images/super_ellipse.svg)
+<p align="center">
+	<img src="images/super_ellipse.svg" alt="super_ellipse" width="500px"/>
+</p>
 
 ### Полиномиальное семейство функций нелокального влияния
 $$
