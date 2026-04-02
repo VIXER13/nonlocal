@@ -1,9 +1,13 @@
 # Теплопроводность
 
 Нестационарное уравнение теплопроводности
+
 $$c_V \dfrac{\partial T}{\partial t} = \nabla \cdot \boldsymbol{q} - q_V,$$
+
 cтационарное уравнение теплопроводности
+
 $$\nabla \cdot \boldsymbol{q} = q_V,$$
+
 - $T = T(\boldsymbol{x})$ &mdash; поле температуры;
 - $t$ &mdash; время;
 - $\boldsymbol{x} = x_i \boldsymbol{e}_i$ &mdash; вектор пространственной переменной;
@@ -12,7 +16,9 @@ $$\nabla \cdot \boldsymbol{q} = q_V,$$
 - $c_V$ &mdash; удельная объёмная теплоёмкость;
 - $q_V$ &mdash; объёмная плотность мощности внутренних источников и стоков теплоты;
 - $\boldsymbol{q} = q_i \boldsymbol{e}_i$ &mdash; вектор плотности теплового потока, который определён через обобщённую гипотезу Био &mdash; Фурье
+
 $$\boldsymbol{q}(\boldsymbol{x}) = \mathcal{N} \left( -\widehat{\boldsymbol{\lambda}} \cdot \nabla T \right),$$
+
 - $\mathcal{N}$ &mdash; [линейный интегральный нелокальный оператор](./nonlocal_operator.md#линейный-интегральный-нелокальный-оператор);
 - $\widehat{\boldsymbol{\lambda}} = \lambda_{ij} (\boldsymbol{x}) \boldsymbol{e}_i \boldsymbol{e}_j$ тензор коэффициентов теплопроводности.
 
@@ -29,6 +35,7 @@ $$\boldsymbol{q}(\boldsymbol{x}) = \mathcal{N} \left( -\widehat{\boldsymbol{\lam
 #### Ортотропный случай
 
 В ортотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ имеет две независимых компоненты
+
 $$
 \widehat{\boldsymbol{\lambda}} = 
 \begin{pmatrix}
@@ -40,6 +47,7 @@ $$
 #### Анизотропный случай
 
 В ортотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ имеет три независимых компоненты
+
 $$
 \widehat{\boldsymbol{\lambda}} = 
 \begin{pmatrix}
