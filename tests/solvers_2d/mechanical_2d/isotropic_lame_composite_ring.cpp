@@ -50,74 +50,148 @@ const suite<"isotropic_lame_composite_ring"> _ = [] {
 
     "displacement_x"_test = [&mesh, &solution] {
         static constexpr auto Expected_Displacement_X = [](const std::array<T, 2>& point) {
-            return T{0};
+            const auto& [x, y] = point;
+            const T hypot2 = x * x + y * y;
+            if (hypot2 < T{ 0.5625 }) {
+                return x * (T{ 2.52841 } + hypot2) / (T{ 47303 } * hypot2);
+            }
+            else {
+                return x * (T{ 9.75721 } - hypot2) / (T{ 140715 } * hypot2);
+            }
         };
-        static constexpr T Epsilon = 1.1e-3;
+        static constexpr T Epsilon = 1.6e-3;
         const T error = norm_error(solution.displacement()[X], mesh->container(), Expected_Displacement_X);
-        //expect(approx(error, Expected_Error, Epsilon));
+        expect(approx(error, Expected_Error, Epsilon));
     };
 
     "displacement_y"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Displacement_Y = [](const std::array<T, 2>& point) {
-            return T{0};
+        static constexpr auto Expected_Displacement_X = [](const std::array<T, 2>& point) {
+            const auto& [x, y] = point;
+            const T hypot2 = x * x + y * y;
+            if (hypot2 < T{ 0.5625 }) {
+                return y * (T{ 2.52841 } + hypot2) / (T{ 47303 } * hypot2);
+            }
+            else {
+                return y * (T{ 9.75721 } - hypot2) / (T{ 140715 } * hypot2);
+            }
+            };
+        static constexpr T Epsilon = 1.6e-3;
+        const T error = norm_error(solution.displacement()[Y], mesh->container(), Expected_Displacement_X);
+        expect(approx(error, Expected_Error, Epsilon));
         };
-        static constexpr T Epsilon = 1.1e-3;
-        const T error = norm_error(solution.displacement()[Y], mesh->container(), Expected_Displacement_Y);
-        //expect(approx(error, Expected_Error, Epsilon));
-    };
 
     "strain_xx"_test = [&mesh, &solution] {
         static constexpr auto Expected_Strain_XX = [](const std::array<T, 2>& point) {
-            return T{0};
-        };
-        static constexpr T Epsilon = 3.1e-2;
+            const auto& [x, y] = point;
+            const T x2 = x * x;
+            const T y2 = y * y;
+            const T hypot2 = x * x + y * y;
+            using metamath::functions::power;
+            if (hypot2 < T{ 0.5625 }) {
+                return (T{ 1 } + T{ 2.52841 } * (y2 - x2) / power<2>(hypot2)) / T{ 47303 };
+            }
+            else {
+                return (T{ -1 } + T{ 9.7572 } * (y2 - x2) / power<2>(hypot2)) / T{ 140715 };
+            }
+            };
+        static constexpr T Epsilon = 1.e-1;
         const T error = norm_error(solution.strain()[XX], mesh->container(), Expected_Strain_XX);
-        //expect(approx(error, Expected_Error, Epsilon));
-    };
+        expect(approx(error, Expected_Error, Epsilon));
+        };
 
     "strain_yy"_test = [&mesh, &solution] {
         static constexpr auto Expected_Strain_YY = [](const std::array<T, 2>& point) {
-            return T{0};
-        };
-        static constexpr T Epsilon = 3.1e-2;
+            const auto& [x, y] = point;
+            const T x2 = x * x;
+            const T y2 = y * y;
+            const T hypot2 = x * x + y * y;
+            using metamath::functions::power;
+            if (hypot2 < T{ 0.5625 }) {
+                return (T{ 1 } - T{ 2.52841 } * (y2 - x2) / power<2>(hypot2)) / T{ 47303 };
+            }
+            else {
+                return (T{ -1 } - T{ 9.7572 } * (y2 - x2) / power<2>(hypot2)) / T{ 140715 };
+            }
+            };
+        static constexpr T Epsilon = 1.e-1;
         const T error = norm_error(solution.strain()[YY], mesh->container(), Expected_Strain_YY);
-        //expect(approx(error, Expected_Error, Epsilon));
+        expect(approx(error, Expected_Error, Epsilon));
     };
 
     "strain_xy"_test = [&mesh, &solution] {
         static constexpr auto Expected_Strain_XY = [](const std::array<T, 2>& point) {
-            return T{0};
-        };
-        static constexpr T Epsilon = 3.2e-2;
+            const auto& [x, y] = point;
+            const T hypot2 = x * x + y * y;
+            using metamath::functions::power;
+            if (hypot2 < T{ 0.5625 }) {
+                return -x * y / (T{ 9354.31 } * power<2>(hypot2));
+            }
+            else {
+                return -x * y / (T{ 7210.83 } * power<2>(hypot2));
+            }
+            };
+        static constexpr T Epsilon = 1.e-1;
         const T error = norm_error(solution.strain()[XY], mesh->container(), Expected_Strain_XY);
-        //expect(approx(error, Expected_Error, Epsilon));
+        expect(approx(error, Expected_Error, Epsilon));
     };
 
     "stress_xx"_test = [&mesh, &solution] {
         static constexpr auto Expected_Stress_XX = [](const std::array<T, 2>& point) {
-            return T{0};
-        };
-        static constexpr T Epsilon = 3.3e-2;
+            const auto& [x, y] = point;
+            const T x2 = x * x;
+            const T y2 = y * y;
+            const T hypot2 = x * x + y * y;
+            using metamath::functions::power;
+            if (hypot2 < T{ 0.5625 }) {
+                return ((power<2>(x2) + power<2>(y2)) / T{ 101.364 } + (y2 - x2) / T{ 66.8165 } + (x2 * y2) / T{ 50.6818 }) 
+                    / (power<2>(hypot2));
+            }
+            else {
+                return ((-power<2>(x2) - power<2>(y2)) / T{ 750.481 } + (y2 - x2) / T{ 115.373 } - (x2 * y2) / T{ 375.24 })
+                    / (power<2>(hypot2));
+            }
+            };
+        static constexpr T Epsilon = 1.e-1;
         const T error = norm_error(solution.stress()[XX], mesh->container(), Expected_Stress_XX);
-        //expect(approx(error, Expected_Error, Epsilon));
+        expect(approx(error, Expected_Error, Epsilon));
     };
 
     "stress_yy"_test = [&mesh, &solution] {
         static constexpr auto Expected_Stress_YY = [](const std::array<T, 2>& point) {
-            return T{0};
-        };
-        static constexpr T Epsilon = 3.3e-2;
+            const auto& [x, y] = point;
+            const T x2 = x * x;
+            const T y2 = y * y;
+            const T hypot2 = x * x + y * y;
+            using metamath::functions::power;
+            if (hypot2 < T{ 0.5625 }) {
+                return ((power<2>(x2) + power<2>(y2)) / T{ 101.364 } - (y2 - x2) / T{ 66.8165 } + (x2 * y2) / T{ 50.6818 })
+                    / (power<2>(hypot2));
+            }
+            else {
+                return ((-power<2>(x2) - power<2>(y2)) / T{ 750.481 } - (y2 - x2) / T{ 115.373 } - (x2 * y2) / T{ 375.24 })
+                    / (power<2>(hypot2));
+            }
+            };
+        static constexpr T Epsilon = 1.e-1;
         const T error = norm_error(solution.stress()[YY], mesh->container(), Expected_Stress_YY);
-        //expect(approx(error, Expected_Error, Epsilon));
+        expect(approx(error, Expected_Error, Epsilon));
     };
 
     "stress_xy"_test = [&mesh, &solution] {
         static constexpr auto Expected_Stress_XY = [](const std::array<T, 2>& point) {
-            return T{0};
-        };
-        static constexpr T Epsilon = 3.3e-2;
+            const auto& [x, y] = point;
+            const T hypot2 = x * x + y * y;
+            using metamath::functions::power;
+            if (hypot2 < T{ 0.5625 }) {
+                return -x * y / (T{ 33.4082 } * power<2>(hypot2));
+            }
+            else {
+                return -x * y / (T{ 57.6866 } * power<2>(hypot2));
+            }
+            };
+        static constexpr T Epsilon = 1.e-1;
         const T error = norm_error(solution.stress()[XY], mesh->container(), Expected_Stress_XY);
-        //expect(approx(error, Expected_Error, Epsilon));
+        expect(approx(error, Expected_Error, Epsilon));
     };
 };
 
