@@ -19,8 +19,8 @@ $$
 $$
 
 - $\mathcal{N}$ &mdash; [линейный интегральный нелокальный оператор](./nonlocal_operator.md#линейный-интегральный-нелокальный-оператор);
-- $\widehat{\text{\textbf{C}}} = C_{ijkl} \boldsymbol{e}_i \otimes \boldsymbol{e}_j \otimes \boldsymbol{e}_k \otimes \boldsymbol{e}_l$ &mdash; тензор коэффициентов упругости;
-- $\widehat{\boldsymbol{\alpha}}^T = \alpha_{ij}^T \boldsymbol{e}_i \otimes \boldsymbol{e}_j$ &mdash; тензор температурных коэффициентов линейного расширения;
+- $\widehat{\text{\textbf{C}}} = C_{ijkl} \boldsymbol{e}_i \otimes \boldsymbol{e}_j \otimes \boldsymbol{e}_k \otimes \boldsymbol{e}_l$ &mdash; [тензор коэффициентов упругости](#тензор-коэффициентов-упругости);
+- $\widehat{\boldsymbol{\alpha}}^T = \alpha_{ij}^T \boldsymbol{e}_i \otimes \boldsymbol{e}_j$ &mdash; [тензор температурных коэффициентов линейного расширения](#тензор-температурных-коэффициентов-линейного-расширения);
 - $\Delta T = T - T_0$ &mdash; разница между текущим распределением температуры $T$ и распределением $T_0$ при котором отсутствуют температурные деформации;
 - $\widehat{\varepsilon} = \varepsilon_{ij} \boldsymbol{e}_i \otimes \boldsymbol{e}_j$ &mdash; тензор деформации, считаем, что деформации достаточно малы, поэтому для определения компонент тензора деформации $\widehat{\boldsymbol{\varepsilon}}$ воспользуемся соотношением Коши
 
@@ -31,3 +31,103 @@ $$
 $$
 
 - $\boldsymbol{u} = u_i \boldsymbol{e}_i$ &mdash; вектор перемещения.
+
+## Граничные условия
+
+- $\boldsymbol{u}|_{\Gamma_1} = \boldsymbol{d} (\boldsymbol{x})$ &mdash; кинематические граничные условия (первого рода);
+- $\boldsymbol{n} \cdot \widehat{\boldsymbol{\sigma}}|_{\Gamma_2} = \boldsymbol{p} (\boldsymbol{x})$ &mdash; силовые граничные условия (второго рода);
+
+**Примечание**: Так же возможны смешанные условия, когда по одной оси задано кинематическое условие, а по второй силовое.
+
+Здесь $\Gamma_1 \cup \Gamma_2 = \partial S$, $\Gamma_1 \cap \Gamma_2 = \varnothing$, где
+- $\Gamma_i$ &mdash; подобласть границы тела $\partial S$;
+- $\boldsymbol{d} (\boldsymbol{x}) = d_i (\boldsymbol{x}) \boldsymbol{e}_i$ &mdash; вектор перемещений на границе $\Gamma_1$;
+- $\boldsymbol{p} (\boldsymbol{x}) = p_i (\boldsymbol{x}) \boldsymbol{e}_i$ &mdash; вектор плотности поверхностностного нагружения на границе $\Gamma_2$;
+- $\boldsymbol{n}$ &mdash; вектор внешней нормали.
+
+Для моделирования идеального механического контакта используются условия следующего вида
+
+$$
+\boldsymbol{u}_i|_{\Gamma_{ij}} = \boldsymbol{u}_j|_{\Gamma_{ij}},
+\quad
+\boldsymbol{n} \cdot \widehat{\boldsymbol{\sigma}}_i|_{\Gamma_{ij}} = \boldsymbol{n} \cdot \widehat{\boldsymbol{\sigma}}_j|_{\Gamma_{ij}},
+$$
+
+где $\Gamma_{ij}$ &mdash; граница контакта материалов под номерами $i$ и $j$.
+
+## Тензор коэффициентов упругости
+
+### Двумерный случай
+
+#### Изотропный материал
+
+
+Матрица Гука имеет вид
+
+$$
+D = 
+\begin{pmatrix}
+	d_{11} & d_{12} & 0 \\
+	d_{12} & d_{11} & 0 \\
+	     0 &      0 & d_{66}
+\end{pmatrix}
+$$
+
+#### Ортотропный материал
+
+Матрица Гука имеет вид
+
+$$
+D = 
+\begin{pmatrix}
+	d_{11} & d_{12} & 0 \\
+	d_{12} & d_{22} & 0 \\
+	     0 &      0 & d_{66}
+\end{pmatrix}
+$$
+
+#### Анизотропный материал
+
+Матрица Гука имеет вид
+
+$$
+D = 
+\begin{pmatrix}
+	d_{11} & d_{12} & d_{16} \\
+	d_{12} & d_{22} & d_{26} \\
+	d_{16} & d_{26} & d_{66}
+\end{pmatrix}
+$$
+
+
+## Тензор температурных коэффициентов линейного расширения
+
+### Двумерный случай
+
+#### Изотропный материал
+
+В изотропном случае тензор теплопроводности $\widehat{\boldsymbol{\alpha}}^T$ представлен в виде скалярной величины $\alpha^T$.
+
+#### Ортотропный материал
+
+В ортотропном случае тензор теплопроводности $\widehat{\boldsymbol{\alpha}}^T$ имеет две независимых компоненты
+
+$$
+\widehat{\boldsymbol{\alpha}}^T = 
+\begin{pmatrix}
+    \alpha_{11}^T & 0 \\
+    0 & \alpha_{22}^T
+\end{pmatrix}
+$$
+
+#### Анизотропный материал
+
+В анизотропном случае тензор теплопроводности $\widehat{\boldsymbol{\alpha}}^T$ имеет три независимых компоненты
+
+$$
+\widehat{\boldsymbol{\alpha}}^T = 
+\begin{pmatrix}
+    \alpha_{11}^T & \alpha_{12}^T \\
+    \alpha_{12}^T & \alpha_{22}^T
+\end{pmatrix}
+$$

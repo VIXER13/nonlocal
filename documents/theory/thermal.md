@@ -22,7 +22,7 @@ $$\nabla \cdot \boldsymbol{q} = q_V,$$
 $$\boldsymbol{q}(\boldsymbol{x}) = \mathcal{N} \left( -\widehat{\boldsymbol{\lambda}} \cdot \nabla T \right),$$
 
 - $\mathcal{N}$ &mdash; [линейный интегральный нелокальный оператор](./nonlocal_operator.md#линейный-интегральный-нелокальный-оператор);
-- $\widehat{\boldsymbol{\lambda}} = \lambda_{ij} (\boldsymbol{x}) \boldsymbol{e}_i \boldsymbol{e}_j$ тензор коэффициентов теплопроводности.
+- $\widehat{\boldsymbol{\lambda}} = \lambda_{ij} (\boldsymbol{x}) \boldsymbol{e}_i \boldsymbol{e}_j$ &mdash; [тензор коэффициентов теплопроводности](#тензор-теплопроводности).
 
 ## Граничные условия
 
@@ -32,11 +32,12 @@ $$\boldsymbol{q}(\boldsymbol{x}) = \mathcal{N} \left( -\widehat{\boldsymbol{\lam
 - $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_4} = \varepsilon_r \sigma T^4$ &mdash; условие собственного излучения.
 
 Здесь $\bigcup\limits_i \Gamma_i = \partial S$, $\bigcap\limits_i\Gamma_i = \varnothing$, где 
-- $\Gamma_i$ &mdash; кусок границы тела $\partial S$;
+- $\Gamma_i$ &mdash; подобласть границы тела $\partial S$;
 - $T_\Gamma$ и $f$ &mdash; функции определяющие температуру и величину теплового потока на границе $\Gamma_1$ и $\Gamma_2$ соответственно;
+- $\boldsymbol{n}$ &mdash; вектор внешней нормали;
 - $\alpha$ &mdash; коэффициент конвективного теплообмена с внешней средой;
 - $T_a$ &mdash; температура внешней среды вблизи границы $\Gamma_3$;
-- $varepsilon_r$ &mdash; коэффициент излучения;
+- $\varepsilon_r$ &mdash; коэффициент излучения;
 - $\sigma = 5.67036713 \cdot 10^{-8} \text{Вт} \cdot \text{м}^{-2} \cdot \text{К}^{-4}$ &mdash; постоянная Стефана &mdash; Больцмана.
 
 Для моделирования идеального теплового контакта используются условия следующего вида
@@ -75,7 +76,7 @@ $$
 
 #### Анизотропный материал
 
-В ортотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ имеет три независимых компоненты
+В анизотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ имеет три независимых компоненты
 
 $$
 \widehat{\boldsymbol{\lambda}} = 
