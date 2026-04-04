@@ -1,5 +1,7 @@
 # Теплопроводность
 
+## Уравнение
+
 Нестационарное уравнение теплопроводности
 
 $$c_V \dfrac{\partial T}{\partial t} = \nabla \cdot \boldsymbol{q} - q_V,$$
@@ -22,17 +24,44 @@ $$\boldsymbol{q}(\boldsymbol{x}) = \mathcal{N} \left( -\widehat{\boldsymbol{\lam
 - $\mathcal{N}$ &mdash; [линейный интегральный нелокальный оператор](./nonlocal_operator.md#линейный-интегральный-нелокальный-оператор);
 - $\widehat{\boldsymbol{\lambda}} = \lambda_{ij} (\boldsymbol{x}) \boldsymbol{e}_i \boldsymbol{e}_j$ тензор коэффициентов теплопроводности.
 
-### Тензор теплопроводности в 1D
+## Граничные условия
+
+- $T|_{\Gamma_1} = T_{\Gamma} (\boldsymbol{x})$ &mdash; температурное граничное условие (первого рода);
+- $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_2} = f(\boldsymbol{x})$ &mdash; потоковое граничное условие (второго рода);
+- $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_3} = \alpha (T_a(\boldsymbol{x}) - T(\boldsymbol{x}))$ &mdash; условие конвективного теплообмена (третьего рода);
+- $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_4} = \varepsilon_r \sigma T^4$ &mdash; условие собственного излучения.
+
+Здесь $\bigcup\limits_i \Gamma_i = \partial S$, $\bigcap\limits_i\Gamma_i = \varnothing$, где 
+- $\Gamma_i$ &mdash; кусок границы тела $\partial S$;
+- $T_\Gamma$ и $f$ &mdash; функции определяющие температуру и величину теплового потока на границе $\Gamma_1$ и $\Gamma_2$ соответственно;
+- $\alpha$ &mdash; коэффициент конвективного теплообмена с внешней средой;
+- $T_a$ &mdash; температура внешней среды вблизи границы $\Gamma_3$;
+- $varepsilon_r$ &mdash; коэффициент излучения;
+- $\sigma = 5.67036713 \cdot 10^{-8} \text{Вт} \cdot \text{м}^{-2} \cdot \text{К}^{-4}$ &mdash; постоянная Стефана &mdash; Больцмана.
+
+Для моделирования идеального теплового контакта используются условия следующего вида
+
+$$
+T_i|_{\Gamma_{ij}} = T_j|_{\Gamma_{ij}},
+\quad
+\boldsymbol{n} \cdot \boldsymbol{q}_i|_{\Gamma_{ij}} = \boldsymbol{n} \cdot \boldsymbol{q}_j|_{\Gamma_{ij}},
+$$
+
+где $\Gamma_{ij}$ &mdash; граница контакта материалов под номерами $i$ и $j$.
+
+## Тензор теплопроводности
+
+### Одномерный случай
 
 В одномерном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ представлен в виде скалярной величины $\lambda$.
 
-### Тензор теплопроводности в 2D
+### Двумерный случай
 
-#### Изотропный случай
+#### Изотропный материал
 
 В изотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ представлен в виде скалярной величины $\lambda$.
 
-#### Ортотропный случай
+#### Ортотропный материал
 
 В ортотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ имеет две независимых компоненты
 
@@ -44,7 +73,7 @@ $$
 \end{pmatrix}
 $$
 
-#### Анизотропный случай
+#### Анизотропный материал
 
 В ортотропном случае тензор теплопроводности $\widehat{\boldsymbol{\lambda}}$ имеет три независимых компоненты
 
