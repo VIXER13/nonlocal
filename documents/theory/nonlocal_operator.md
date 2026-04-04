@@ -17,6 +17,10 @@ $$
 - $S'(\boldsymbol{x})$ &mdash; область нелокального влияния с центром в точке $\boldsymbol{x} \in S$;
 - $S$ &mdash; область занимаемая рассматриваемым телом.
 
+<p align="center">
+	<img src="images/nonlocal_area.svg" alt="nonlocal_area" width="500px"/>
+</p>
+
 ## Функции нелокального влияния
 
 ### Метрическая функция
@@ -37,6 +41,10 @@ $$
 $$
 - $r_i > 0$ &mdash; длины главных полуосей;
 - $n > 0$ &mdash; метрический параметр.
+
+<p align="center">
+	<img src="images/super_ellipse.svg" alt="super_ellipse" width="500px"/>
+</p>
 
 ### Полиномиальное семейство функций нелокального влияния
 $$
@@ -64,6 +72,8 @@ $$
 A = \dfrac{p}{8 r_2 r_2 \mathrm{B}\left( \dfrac{2}{p}, q+1 \right)}
 $$
 
+**Рекомендованные параметры**: $n = 2$, $p = 2$, $q = 1$.
+
 ### Экспоненциальное семейство функций нелокального влияния
 $$
 \varphi_{p,q}^{E} (\boldsymbol{x}, \boldsymbol{x}') =
@@ -89,3 +99,4 @@ $$
 A = \dfrac{p q^{\frac{2}{p}}}{8 r_1 r_2 \Gamma \left( \dfrac{2}{p} \right)}.
 $$
 
+**Замечание**: при $n = 2$, $p = 2$, $q = 0.5$ получаем функцию нормального распределения
