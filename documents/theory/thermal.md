@@ -26,10 +26,11 @@ $$\boldsymbol{q}(\boldsymbol{x}) = \mathcal{N} \left( -\widehat{\boldsymbol{\lam
 
 ## Граничные условия
 
-- $T|_{\Gamma_1} = T_{\Gamma} (\boldsymbol{x})$ &mdash; температурное граничное условие (первого рода);
-- $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_2} = f(\boldsymbol{x})$ &mdash; потоковое граничное условие (второго рода);
-- $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_3} = \alpha (T_a(\boldsymbol{x}) - T(\boldsymbol{x}))$ &mdash; условие конвективного теплообмена (третьего рода);
-- $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_4} = \varepsilon_r \sigma T^4$ &mdash; условие собственного излучения.
+Рассмотрены 4 варианта граничных условий:
+1. $T|_{\Gamma_1} = T_{\Gamma} (\boldsymbol{x})$ &mdash; температурное граничное условие (первого рода);
+2. $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_2} = f(\boldsymbol{x})$ &mdash; потоковое граничное условие (второго рода);
+3. $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_3} = \alpha (T_a(\boldsymbol{x}) - T(\boldsymbol{x}))$ &mdash; условие конвективного теплообмена (третьего рода);
+4. $\boldsymbol{n} \cdot \boldsymbol{q}|_{\Gamma_4} = \varepsilon_r \sigma T^4$ &mdash; условие собственного излучения.
 
 Здесь $\bigcup\limits_i \Gamma_i = \partial S$, $\bigcap\limits_i\Gamma_i = \varnothing$, где 
 - $\Gamma_i$ &mdash; подобласть границы тела $\partial S$;
