@@ -74,9 +74,7 @@ D =
 	d_{11} & d_{12} & 0 \\
 	d_{12} & d_{11} & 0 \\
 	     0 &      0 & d_{66}
-\end{pmatrix}
-=
-\dfrac{E}{1 - \nu^2}
+\end{pmatrix} = \dfrac{E}{1 - \nu^2}
 \begin{pmatrix}
 	  1 & \nu & 0 \\
 	\nu &   1 & 0 \\
@@ -99,9 +97,7 @@ D =
 	d_{11} & d_{12} & 0 \\
 	d_{12} & d_{22} & 0 \\
 	     0 &      0 & d_{66}
-\end{pmatrix}
-=
-\dfrac{1}{1 - \nu_{12} \nu_{21}}
+\end{pmatrix} = \dfrac{1}{1 - \nu_{12} \nu_{21}}
 \begin{pmatrix}
 	         E_1 & \nu_{12} E_1 & 0 \\
 	\nu_{21} E_2 &          E_2 & 0 \\
@@ -123,9 +119,7 @@ D =
 	d_{11} & d_{12} & d_{16} \\
 	d_{12} & d_{22} & d_{26} \\
 	d_{16} & d_{26} & d_{66}
-\end{pmatrix}
-=
-T_1^{-1}(\theta)
+\end{pmatrix} = T_1^{-1}(\theta)
 \begin{pmatrix}
 	d_{11} & d_{12} & 0 \\
 	d_{12} & d_{22} & 0 \\
