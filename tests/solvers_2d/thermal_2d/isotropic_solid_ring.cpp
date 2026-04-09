@@ -25,7 +25,7 @@ constexpr T Norm_Temperature = Outer_Temperature / (Outer_Temperature - Inner_Te
 constexpr T Inner_Radius = T{0.5};
 constexpr T Outer_Radius = T{1};
 constexpr T Norm_Radius = Inner_Radius / Outer_Radius;
-constexpr T Coeff = T{1} / std::log(T{1} / Norm_Radius);
+const T Coeff = T{1} / std::log(T{1} / Norm_Radius);
 
 const suite<"thermal_isotropic_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};

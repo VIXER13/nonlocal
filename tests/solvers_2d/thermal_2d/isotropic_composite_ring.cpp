@@ -30,7 +30,7 @@ constexpr T Contact_Radius = T{0.75};
 constexpr T Outer_Radius = T{1};
 constexpr T Norm_Radius = Inner_Radius / Outer_Radius;
 constexpr T Norm_Contact_Radius = Contact_Radius / Outer_Radius;
-constexpr T Coeff = T{1} / ((Norm_Coductivity - T{1}) * std::log(Norm_Contact_Radius) - Norm_Coductivity * std::log(Norm_Radius));
+const T Coeff = T{1} / ((Norm_Coductivity - T{1}) * std::log(Norm_Contact_Radius) - Norm_Coductivity * std::log(Norm_Radius));
 
 const suite<"thermal_isotropic_solid_ring"> _ = [] {
     std::stringstream stream{composite_ring_su2_data};
