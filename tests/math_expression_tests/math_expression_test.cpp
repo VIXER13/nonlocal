@@ -36,7 +36,7 @@ static constexpr auto sign = [](const T value) noexcept { return T((value > 0) -
         PRESETUP_EXPR(exp, __VA_ARGS__); \
         auto func = _FUNC(exp, __VA_ARGS__)
 #define CHECK_VALUE(...) \
-        expect(lt(std::abs(test({__VA_ARGS__}) - func({__VA_ARGS__})), eps)) << repr << "expression is not correctly computed at values = {" #__VA_ARGS__ "}";
+        expect(approx(test({__VA_ARGS__}), func({__VA_ARGS__}), eps)) << repr << "expression is not correctly computed at values = {" #__VA_ARGS__ "}";
 #define CHECK_NOTATION(expected) \
         expect(eq(test.to_polish(), expected ## s)) << repr << "expression is not correctly parsed"
 
@@ -82,6 +82,27 @@ const suite<"formula"> _ = [] {
             expect(eq(tokens[0], token_t{Number, ".1"}));
             expect(eq(tokens[1], token_t{Number, "1."}));
         }
+
+        {
+            const auto tokens = tokenize("0.1e2 -1.2e-3 3E+4 5e0");
+            expect(eq(tokens.size(), 5));
+            expect(eq(tokens[0], token_t{Number, "0.1e2"}));
+            expect(eq(tokens[1], token_t{Operator, "-"}));
+            expect(eq(tokens[2], token_t{Number, "1.2e-3"}));
+            expect(eq(tokens[3], token_t{Number, "3E+4"}));
+            expect(eq(tokens[4], token_t{Number, "5e0"}));
+        }
+
+        expect(throws([] { (void)tokenize("1e"); }));
+        expect(throws([] { (void)tokenize("1e+"); }));
+        expect(throws([] { (void)tokenize("1e-"); }));
+        expect(throws([] { (void)tokenize("1e."); }));
+        expect(throws([] { (void)tokenize("1e2."); }));
+        expect(throws([] { (void)tokenize("1e2.3"); }));
+        expect(throws([] { (void)tokenize("1e--2"); }));
+        expect(throws([] { (void)tokenize("1e-+2"); }));
+        expect(throws([] { (void)tokenize("1e+-2"); }));
+        expect(throws([] { (void)tokenize("1e++2"); }));
     };
 
     "math_expression_literal"_test = [] {
@@ -90,22 +111,32 @@ const suite<"formula"> _ = [] {
         expect(nothrow([&test] {test = math_expression<T>{" : 1"};})) << fatal;
         expect(eq(test.variables_count(), 0));
         expect(eq(test.to_polish(), "1.000000"s));
-        expect(lt(std::abs(test({}) - 1.0), eps));
+        expect(approx(test({}), 1.0, eps));
 
         expect(nothrow([&test] {test = math_expression<T>{" : .1"};})) << fatal;
         expect(eq(test.variables_count(), 0));
         expect(eq(test.to_polish(), "0.100000"s));
-        expect(lt(std::abs(test({}) - 0.1), eps));
+        expect(approx(test({}), 0.1, eps));
 
         expect(nothrow([&test] {test = math_expression<T>{" : 1."};})) << fatal;
         expect(eq(test.variables_count(), 0));
         expect(eq(test.to_polish(), "1.000000"s));
-        expect(lt(std::abs(test({}) - 1.0), eps));
+        expect(approx(test({}), 1.0, eps));
 
         expect(nothrow([&test] {test = math_expression<T>{" : 0.123456789"};})) << fatal;
         expect(eq(test.variables_count(), 0));
         expect(eq(test.to_polish(), "0.123457"s));
-        expect(lt(std::abs(test({}) - 0.123456789), eps));
+        expect(approx(test({}), 0.123456789, eps));
+
+        expect(nothrow([&test] {test = math_expression<T>{" : 1e2"};})) << fatal;
+        expect(eq(test.variables_count(), 0));
+        expect(eq(test.to_polish(), "100.000000"s));
+        expect(approx(test({}), 100.0, eps));
+
+        expect(nothrow([&test] {test = math_expression<T>{" : 0.1e2"};})) << fatal;
+        expect(eq(test.variables_count(), 0));
+        expect(eq(test.to_polish(), "10.000000"s));
+        expect(approx(test({}), 10.0, eps));
     };
     "math_expression_unary"_test = [] {
         auto test = math_expression<T>{" : 0"}; // dummy expression for initialization
@@ -114,7 +145,7 @@ const suite<"formula"> _ = [] {
             expect(eq(test.to_polish(), "x " + name)) << name << "operator is not correctly parsed.";
             for(auto x : {0.1, 0.2, pi/4, 1., 2., 5.})
                 if(!std::isnan(func(x)) && !std::isinf(func(x)))
-                    expect(lt(std::abs(test({x}) - func(x)), eps)) << name << "operator is not correctly computed at x =" << x;
+                    expect(approx(test({x}), func(x), eps)) << name << "operator is not correctly computed at x =" << x;
         }
     };
     "math_expression_binary"_test = [] {
@@ -125,7 +156,7 @@ const suite<"formula"> _ = [] {
             for(auto x : {0.1, 0.2, pi/4, 1., 2., 5.})
                 for(auto y : {0.1, 0.2, pi/4, 1., 2., 5.})
                 if(!std::isnan(func(x, y)) && !std::isinf(func(x, y)))
-                    expect(lt(std::abs(test({x, y}) - func(x, y)), eps)) << name << "operator is not correctly computed at x =" << x << ", y =" << y;
+                    expect(approx(test({x, y}), func(x, y), eps)) << name << "operator is not correctly computed at x =" << x << ", y =" << y;
 
             if(name.size() == 1) // skip single symbol operators
                 continue;
@@ -134,7 +165,7 @@ const suite<"formula"> _ = [] {
             for(auto x : {0.1, 0.2, pi/4, 1., 2., 5.})
                 for(auto y : {0.1, 0.2, pi/4, 1., 2., 5.})
                 if(!std::isnan(func(x, y)) && !std::isinf(func(x, y)))
-                    expect(lt(std::abs(test({x, y}) - func(x, y)), eps)) << name << "operator is not correctly computed at x =" << x << ", y =" << y;
+                    expect(approx(test({x, y}), func(x, y), eps)) << name << "operator is not correctly computed at x =" << x << ", y =" << y;
 
         }
     };
