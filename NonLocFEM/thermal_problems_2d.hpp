@@ -41,11 +41,9 @@ solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
         .max_iterations = 40,
         .energy = auxiliary.energy
     };
-    auto solution = solver_2d::thermal::stationary_heat_equation_solver_2d<I>( 
+    return solver_2d::thermal::stationary_heat_equation_solver_2d<I>( 
         mesh, parameters, boundaries_conditions, auxiliary_data
     );
-    solution.calc_flux();
-    return solution;
 }
 
 template<std::floating_point T, std::signed_integral I>

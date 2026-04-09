@@ -50,7 +50,7 @@ template<class T>
 class mesh_1d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
-    using finite_element_1d = metamath::finite_element::element_1d_integrate_base<T>;
+    using finite_element_1d = metamath::finite_element::element_1d_integrate<T>;
     using finite_element_1d_ptr = std::unique_ptr<finite_element_1d>;
 
     finite_element_1d_ptr _element;

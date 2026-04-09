@@ -136,6 +136,7 @@ void math_expression<T>::assemble_polish_notation(const std::span<utils::token_t
                             case utils::token_t::type_t::Separator:
                             case utils::token_t::type_t::ParenthesisLeft:
                                 token.str = "~";
+                            default:
                                 break;
                         }
                     }

@@ -71,6 +71,7 @@ std::vector<token_t> tokenize(std::string_view input) {
         NewToken,
         IntegerNumber,
         RealNumber,
+        ExponentNumber,
         Symbol,
         ParenthesisLeft,
         ParenthesisRight,
@@ -81,13 +82,17 @@ std::vector<token_t> tokenize(std::string_view input) {
     };
     state_t state = state_t::NewToken;
 
+    // Scientific notation parsing context. Only meaningful in state_t::ExponentNumber.
+    bool exponent_has_digit = false;
+    bool exponent_sign_allowed = false;
+
     token_t::type_t token_type = token_t::type_t::Unknown;
     size_t parenthesis_checker = 0;
     std::string_view::const_iterator token_begin = input.end();
 
     for (auto it = input.begin(); state != state_t::Terminate;) {
         if(static_cast<uint8_t>(*it) > 127)
-        throw std::domain_error{"Wrong expression format. The expression contains non-ANSI characters."};
+            throw std::domain_error{"Wrong expression format. The expression contains non-ANSI characters."};
         // If the iterator is at the end of the input we use '\0' as a sentinel value.
         const char c = (it == input.end()) ? '\0' : *it;
         // Handle incorrect implicit conversion. I think so... In any case, the app fails without this cast.
@@ -117,7 +122,11 @@ std::vector<token_t> tokenize(std::string_view input) {
                 }
             } break;
             case state_t::IntegerNumber: {
-                if (!float_chars[idx] && symbol_chars[idx]) {
+                if (c == 'e' || c == 'E') {
+                    exponent_has_digit = false;
+                    exponent_sign_allowed = true;
+                    state = state_t::ExponentNumber;
+                } else if (!float_chars[idx] && symbol_chars[idx]) {
                     throw std::domain_error{"Wrong expression format. The expression contains invalid numeric construction"};
                 } else if (!float_chars[idx]) {
                     token_type = token_t::type_t::Number;
@@ -128,9 +137,31 @@ std::vector<token_t> tokenize(std::string_view input) {
                 }
             } break;
             case state_t::RealNumber: {
-                if (!integer_chars[idx] && symbol_chars[idx]) {
+                if (c == 'e' || c == 'E') {
+                    exponent_has_digit = false;
+                    exponent_sign_allowed = true;
+                    state = state_t::ExponentNumber;
+                } else if (!integer_chars[idx] && symbol_chars[idx]) {
                     throw std::domain_error{"Wrong expression format. The expression contains invalid dots. Dots are only allowed in number representation"};
                 } else if (!integer_chars[idx]) {
+                    token_type = token_t::type_t::Number;
+                    state = state_t::CompleteToken;
+                    continue;
+                }
+            } break;
+            case state_t::ExponentNumber: {
+                // After 'e'/'E': optional sign, then require >= 1 digit.
+                if (exponent_sign_allowed && (c == '+' || c == '-')) {
+                    exponent_sign_allowed = false;
+                } else if (integer_chars[idx]) {
+                    exponent_has_digit = true;
+                    exponent_sign_allowed = false;
+                } else {
+                    if (!exponent_has_digit)
+                        throw std::domain_error{"Wrong expression format. The expression contains invalid exponent representation"};
+                    if (symbol_chars[idx])
+                        throw std::domain_error{"Wrong expression format. The expression contains invalid numeric construction"};
+
                     token_type = token_t::type_t::Number;
                     state = state_t::CompleteToken;
                     continue;

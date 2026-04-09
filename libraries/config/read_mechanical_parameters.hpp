@@ -30,6 +30,9 @@ class _mechanical_parameters_2d final {
     template<std::floating_point T>
     static solver_2d::mechanical::elastic_parameters_t<T> read_mechanical_coefficient_2d(const nlohmann::json& config, const std::string& path);
 
+    template<std::floating_point T>
+    static solver_2d::mechanical::raw_thermal_expansion_t<T> read_thermal_expansion_2d(const nlohmann::json& config, const std::string& path);
+
     explicit _mechanical_parameters_2d() noexcept = default;
 
 public:
@@ -130,6 +133,30 @@ solver_2d::mechanical::elastic_parameters_t<T> _mechanical_parameters_2d::read_m
 }
 
 template<std::floating_point T>
+solver_2d::mechanical::raw_thermal_expansion_t<T> _mechanical_parameters_2d::read_thermal_expansion_2d(const nlohmann::json& config, const std::string& path) {
+    check_optional_fields(config, { "thermal_expansion" }, path);
+    if (!config.contains("thermal_expansion"))
+        return {};
+    const auto& expansion = config["thermal_expansion"];
+    const std::string full_path = append_access_sign(path) + "thermal_expansion";
+    if (expansion.is_number())
+        return read_coefficient<T, 2u>(expansion, path);
+    if (expansion.is_array() && expansion.size() == 2)
+        return solver_2d::mechanical::raw_orthotropic_thermal_expansion_t<T>{read_coefficient<T, 2u>(expansion[X], append_access_sign(path, X)), 
+                                                                             read_coefficient<T, 2u>(expansion[Y], append_access_sign(path, Y))};
+    if (expansion.is_array() && expansion.size() == 3)
+        return solver_2d::mechanical::raw_anisotropic_thermal_expansion_t<T>{
+            read_coefficient<T, 2u>(expansion[XX], append_access_sign(path, XX)),
+            read_coefficient<T, 2u>(expansion[YY], append_access_sign(path, YY)),
+            read_coefficient<T, 2u>(expansion[XY], append_access_sign(path, XY))
+        };
+    throw std::domain_error{"The thermal expansion parameter \"" + path + "\" "
+                            "shall be either a number in the isotropic case, "
+                            "or an array of size 2 in the orthotropic case, "
+                            "or an array of size 3 in the anisotropic case."};
+}
+
+template<std::floating_point T>
 solver_2d::mechanical::raw_mechanical_parameters<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path) {
     if (!config.is_object())
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an object."};
@@ -141,7 +168,8 @@ solver_2d::mechanical::raw_mechanical_parameters<T> read_mechanical_parameters_2
         parameters[name] = {
             .model = model_field.empty() ? model_parameters<2u, T>{} : read_model_2d<T>(material[model_field], path_with_access + model_field),
             .physical = {
-                .elastic = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical")
+                .elastic = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical"),
+                .thermal_expansion = _mechanical_parameters_2d::read_thermal_expansion_2d<T>(material["physical"], path_with_access + "physical")
             }
         };
     }

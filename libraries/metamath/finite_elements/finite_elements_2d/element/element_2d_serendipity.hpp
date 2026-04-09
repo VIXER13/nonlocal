@@ -7,7 +7,7 @@
 namespace metamath::finite_element {
 
 template<class T, template<class, auto...> class Element_Type, auto...Args>
-class element_2d_serendipity : public virtual element_2d_base<T>,
+class element_2d_serendipity : public element_2d_base<T>,
                                public derivative_element_basis_2d<T, 3, Element_Type, Args...> {
     using derivative_base = derivative_element_basis_2d<T, 3, Element_Type, Args...>;
 
@@ -16,6 +16,8 @@ protected:
 
 public:
     ~element_2d_serendipity() override = default;
+
+    std::unique_ptr<element_2d_base<T>> copy() const override { return std::make_unique<element_2d_serendipity>(*this); }
 
     size_t nodes_count() const override { return derivative_base::N.size(); }
 

@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 
 project(solvers_2d)
 
-
+FileEmbedAdd(./meshes/composite_ring.su2)
 FileEmbedAdd(./meshes/plate_10x1_h0.125.su2)
+FileEmbedAdd(./meshes/solid_ring.su2)
 FileEmbedAdd(./meshes/square_1x1_16el_uniform_mesh.su2)
 
 add_subdirectory(thermal_2d)

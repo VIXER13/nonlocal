@@ -69,7 +69,7 @@ struct isotropic_elastic_parameters final {
         const T E = evaluate<T, 2zu>(young_modulus, x, {});
         const T nu = evaluate<T, 2zu>(poissons_ratio, x, {});
         const T value = E / (T{1} - nu * nu);
-        return { value, nu * value, 0.5 * value * (1 - nu) };
+        return { value, nu * value, T{0.5} * value * (T{1} - nu) };
     }
 };
 

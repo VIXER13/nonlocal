@@ -6,7 +6,7 @@ llm:
     temperature: 0.2
 
   http_client:
-    timeout: 600
+    timeout: 3600
     api_url: http://localhost:11434
 
 vcs:
@@ -15,3 +15,14 @@ vcs:
   http_client:
     timeout: 120
     api_url: https://api.github.com
+
+prompt:
+  inline_prompt_files: [ ./.github/prompts/c++/inline/strict.md ]
+  context_prompt_files: [ ./.github/prompts/c++/inline/strict.md ]
+  summary_prompt_files: [ ./.github/prompts/c++/summary/strict.md ]
+  inline_reply_prompt_files: [ ./.github/prompts/c++/inline_reply/strict.md ]
+  summary_reply_prompt_files: [ ./.github/prompts/c++/summary_reply/strict.md ]
+
+review:
+  review_added_marker: " // added"
+  review_removed_marker: " // removed"

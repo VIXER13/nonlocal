@@ -14,6 +14,7 @@ add_subdirectory(metamath)
 add_subdirectory(parallel)
 add_subdirectory(thermal_1d)
 add_subdirectory(solvers_2d)
+add_subdirectory(utils)
 
 add_executable(unit_tests nonlocal_tests.cpp)
 target_include_directories(
@@ -34,6 +35,7 @@ target_link_libraries(
         solvers_2d_test_lib
         thermal_2d_test_lib
         mechanical_2d_test_lib
+        unit_tests_utils_lib
         Boost::ut
 )
 

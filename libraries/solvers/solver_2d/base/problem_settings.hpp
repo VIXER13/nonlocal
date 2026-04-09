@@ -23,11 +23,14 @@ struct problem_settings final {
         return is_nonlinear_boundary || is_solution_dependent;
     }
 
-    bool is_symmetric() const {
-        static constexpr auto is_nonlocal = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
+    bool is_nonlocal() const {
+        static constexpr auto is_nonlocal_check = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
         const auto theories_view = theories | std::views::values;
-        const bool is_any_nonlocal = std::any_of(theories_view.begin(), theories_view.end(), is_nonlocal);
-        return !(is_any_nonlocal && is_nonconstant_parameters);
+        return std::any_of(theories_view.begin(), theories_view.end(), is_nonlocal_check);
+    }
+
+    bool is_symmetric() const {
+        return !(is_nonlocal() && is_nonconstant_parameters);
     }
 };
 

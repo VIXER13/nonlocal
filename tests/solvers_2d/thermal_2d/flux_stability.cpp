@@ -30,8 +30,7 @@ const suite<"flux_stability"> _ = [] {
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Left"]  = std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return -4 * std::abs(point[Y]); });
     boundaries_conditions["Right"] = std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return  4 * std::abs(point[Y]); });
-    auto solution = stationary_heat_equation_solver_2d<I>(mesh, parameters, boundaries_conditions, {});
-    solution.calc_flux();
+    const auto solution = stationary_heat_equation_solver_2d<I>(mesh, parameters, boundaries_conditions, {});
 
     "temperature_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;

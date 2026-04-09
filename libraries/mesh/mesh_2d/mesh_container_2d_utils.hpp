@@ -6,6 +6,14 @@
 
 namespace nonlocal::mesh::utils {
 
+template<std::floating_point T, std::integral I, class Function>
+std::vector<T> discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
+    std::vector<T> x(mesh.nodes_count());
+    for(const size_t node : mesh.nodes())
+        x[node] = function(mesh.node_coord(node));
+    return x;
+}
+
 template<class T, class I>
 std::vector<std::vector<I>> node_elements_2d(const mesh_container_2d<T, I>& mesh) {
     std::vector<std::vector<I>> node_elements(mesh.nodes_count());

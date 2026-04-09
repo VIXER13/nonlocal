@@ -114,7 +114,9 @@ heat_equation_solution_2d<T, I> stationary_heat_equation_solver_2d(const std::sh
                        << ", norm(prev - curr) = " << difference 
                        << ", residual = "          << norm_of_residual << ";" << std::endl;
     }
-    return heat_equation_solution_2d<T, I>{mesh, conductivity_parameters, temperature_curr};
+    heat_equation_solution_2d<T, I> solution{mesh, conductivity_parameters, temperature_curr};
+    solution.calc_flux();
+    return solution;
 }
 
 }

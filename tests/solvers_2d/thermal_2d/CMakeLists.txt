@@ -6,14 +6,16 @@ project(thermal_2d_test)
 add_library(
     thermal_2d_test_lib
     OBJECT
-    boundary_conditions_2d.cpp
-    flux_stability.cpp
+        boundary_conditions_2d.cpp
+        flux_stability.cpp
+        isotropic_composite_ring.cpp
+        isotropic_solid_ring.cpp
 )
 target_include_directories(
     thermal_2d_test_lib
     PUBLIC #
         ${LIBRARIES_DIR}
-        
+        ${PROJECT_ROOT}
         ${PROJECT_ROOT}/build
 )
 
