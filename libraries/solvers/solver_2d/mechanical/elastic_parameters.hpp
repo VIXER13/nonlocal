@@ -2,11 +2,13 @@
 
 #include <solvers/base/equation_parameters.hpp>
 
+#include <cmath>
+
 namespace nonlocal::solver_2d::mechanical {
 
 namespace isotropic_indices   { enum : uint8_t {_11, _12, _66}; }
-namespace orthotropic_indices { enum : uint8_t {_11, _12, _22, _66}; }
-namespace anisotropic_indices { enum : uint8_t {_11, _12, _16, _22, _26, _66}; }
+namespace orthotropic_indices { enum : uint8_t {_11, _12, _66, _22}; }
+namespace anisotropic_indices { enum : uint8_t {_11, _12, _66, _22, _16, _26}; }
 
 // d[_11] d[_12]   0
 // d[_12] d[_11]   0
@@ -90,7 +92,7 @@ struct orthotropic_elastic_parameters final {
         const auto nu = evaluate<T, 2zu>(poissons_ratio, x, {});
         const T G = evaluate<T, 2zu>(shear_modulus, x, {});
         const T value = T{1} / (T{1} - nu[0] * nu[1]);
-        return {E[X] * value, E[X] * nu[1] * value, E[Y] * value, G};
+        return {E[X] * value, E[X] * nu[1] * value, G, E[Y] * value};
     }
 };
 
@@ -104,23 +106,25 @@ struct anisotropic_elastic_parameters final {
     }
 
     static anisotropic_hook_matrix_t<T> rotate(const orthotropic_hook_matrix_t<T>& matrix, const T angle) noexcept {
-        const T sin = std::sin(angle);
-        const T cos = std::cos(angle);
-        const T sin2 = sin * sin;
-        const T cos2 = cos * cos;
-        const T sin4 = sin2 * sin2;
-        const T cos4 = cos2 * cos2;
-        const T sin2cos2 = sin2 * cos2;
-        const T sin3cos = sin2 * sin * cos;
-        const T sincos3 = sin * cos * cos2;
         using namespace orthotropic_indices;
+        const T angle_2 = 2 * angle;
+        const T sin_2 = std::sin(angle_2);
+        const T cos_2 = std::cos(angle_2);
+        const T cos_4 = T{0.125} * (cos_2 * cos_2 - sin_2 * sin_2);
+        const T stiff_diff = matrix[_11] - matrix[_22];
+        const T stiff_core = matrix[_11] + matrix[_22] - 2 * matrix[_12] - 4 * matrix[_66];
+        const T main_part_plus =  stiff_core * (cos_4 + T{0.125});
+        const T main_part_minus = stiff_core * (cos_4 - T{0.125});
+        const T cos_diff = stiff_diff * (cos_2 + T{0.5});
+        const T minor_part = stiff_core * cos_2;
+        const T sin_2_025 = 0.25 * sin_2;
         return {
-            matrix[_11] * cos4 + matrix[_22] * sin4 + (2 * matrix[_12] + 4 * matrix[_66]) * sin2cos2,
-            (matrix[_11] + matrix[_22] - 4 * matrix[_66]) * sin2cos2 + matrix[_12] * (cos4 + sin4),
-            (matrix[_11] - matrix[_12] - 2 * matrix[_66]) * sincos3 - (matrix[_22] - matrix[_12] - 2 * matrix[_66]) * sin3cos,
-            matrix[_11] * sin4 + matrix[_22] * cos4 + (2 * matrix[_12] + 4 * matrix[_66]) * sin2cos2,
-            (matrix[_11] - matrix[_12] - 2 * matrix[_66]) * sin3cos - (matrix[_22] - matrix[_12] - 2 * matrix[_66]) * sincos3,
-            (matrix[_11] + matrix[_22] - 2 * (matrix[_12] + matrix[_66])) * sin2cos2 + matrix[_66] * (cos4 + sin4)
+            main_part_plus + T{0.5} * (matrix[_12] + matrix[_22] + cos_diff) + matrix[_66],
+            main_part_minus + matrix[_12],
+            main_part_minus + matrix[_66],
+            main_part_plus + T{0.5} * (matrix[_12] + matrix[_11] - cos_diff) + matrix[_66],
+            sin_2_025 * (stiff_diff + minor_part),
+            sin_2_025 * (stiff_diff - minor_part)
         };
     }
 
