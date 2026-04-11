@@ -113,8 +113,8 @@ struct anisotropic_elastic_parameters final {
         const T cos_4 = T{0.125} * (cos_2 * cos_2 - sin_2 * sin_2);
         const T stiff_diff = matrix[_11] - matrix[_22];
         const T stiff_core = matrix[_11] + matrix[_22] - 2 * matrix[_12] - 4 * matrix[_66];
-        const T main_part_plus =  stiff_core * (cos_4 + T{0.125});
-        const T main_part_minus = stiff_core * (cos_4 - T{0.125});
+        const T main_part_plus  = stiff_core * (cos_4 + T{0.125});
+        const T main_part_minus = stiff_core * (T{0.125} - cos_4);
         const T cos_diff = stiff_diff * (cos_2 + T{0.5});
         const T minor_part = stiff_core * cos_2;
         const T sin_2_025 = 0.25 * sin_2;
