@@ -107,7 +107,7 @@ struct anisotropic_elastic_parameters final {
 
     static anisotropic_hook_matrix_t<T> rotate(const orthotropic_hook_matrix_t<T>& matrix, const T angle) noexcept {
         using namespace orthotropic_indices;
-        const T angle_2 = 2 * angle;
+        const T angle_2 = angle + angle;
         const T sin_2 = std::sin(angle_2);
         const T cos_2 = std::cos(angle_2);
         const T cos_4 = T{0.125} * (cos_2 * cos_2 - sin_2 * sin_2);
@@ -117,7 +117,7 @@ struct anisotropic_elastic_parameters final {
         const T main_part_minus = stiff_core * (T{0.125} - cos_4);
         const T cos_diff = stiff_diff * (cos_2 + T{0.5});
         const T minor_part = stiff_core * cos_2;
-        const T sin_2_025 = 0.25 * sin_2;
+        const T sin_2_025 = -0.25 * sin_2;
         return {
             main_part_plus + T{0.5} * (matrix[_12] + matrix[_22] + cos_diff) + matrix[_66],
             main_part_minus + matrix[_12],

@@ -68,9 +68,9 @@ const suite<"elastic_parameters_2d"> _ = [] {
             expect(approx(result[_12], T{0.25} * (hooke[_11] + hooke[_22] + 2 * hooke[_12]) - hooke[_66], Epsilon));
             expect(approx(result[_66], T{0.25} * (hooke[_11] + hooke[_22] - 2 * hooke[_12]), Epsilon));
             if (angle == pi / 4 || angle == -3 * pi / 4)
-                expect(approx(result[_16], T{0.25} * (hooke[_11] - hooke[_22]), Epsilon));
-            else
                 expect(approx(result[_16], T{0.25} * (hooke[_22] - hooke[_11]), Epsilon));
+            else
+                expect(approx(result[_16], T{0.25} * (hooke[_11] - hooke[_22]), Epsilon));
         }
 
         for(const auto [left_angle, right_angle] : {
