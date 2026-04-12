@@ -119,32 +119,23 @@ D =
 	d_{11} & d_{12} & d_{16} \\
 	d_{12} & d_{22} & d_{26} \\
 	d_{16} & d_{26} & d_{66}
-\end{pmatrix} = T_1^{-1}(\theta)
+\end{pmatrix} = T(\theta)
 \begin{pmatrix}
 	d_{11} & d_{12} & 0 \\
 	d_{12} & d_{22} & 0 \\
 	     0 &      0 & d_{66}
 \end{pmatrix}
-T_2(\theta),
+T^T(\theta),
 $$
 
-где матрицы поворота определены следующим образом
+где матрица поворота определена следующим образом
 
 $$
-T_1 (\theta) =
+T (\theta) =
 \begin{pmatrix}
 	\cos^2 \theta & \sin^2 \theta &  2 \sin \theta \cos \theta \\
 	\sin^2 \theta & \cos^2 \theta & -2 \sin \theta \cos \theta \\
 	-\sin \theta \cos \theta & \sin \theta \cos \theta & \cos^2 \theta - \sin^2 \theta
-\end{pmatrix}
-$$
-
-$$
-T_2 (\theta) =
-\begin{pmatrix}
-	\cos^2 \theta & \sin^2 \theta &  \sin \theta \cos \theta \\
-	\sin^2 \theta & \cos^2 \theta & -\sin \theta \cos \theta \\
-	-2 \sin \theta \cos \theta & 2 \sin \theta \cos \theta & \cos^2 \theta - \sin^2 \theta
 \end{pmatrix}
 $$
 
