@@ -178,9 +178,9 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_stress(const hooke_matrix_t<
         },
         [&strain](const anisotropic_hook_matrix_t<T>& hooke) -> std::array<T, 3> {
             using namespace anisotropic_indices;
-            return { hooke[_11] * strain[XX] + hooke[_12] * strain[YY] + hooke[_16] * strain[XY],
-                     hooke[_12] * strain[XX] + hooke[_22] * strain[YY] + hooke[_26] * strain[XY],
-                2 * (hooke[_16] * strain[XX] + hooke[_26] * strain[YY] + hooke[_66] * strain[XY])};
+            return { hooke[_11] * strain[XX] + hooke[_12] * strain[YY] + 2 * hooke[_16] * strain[XY],
+                     hooke[_12] * strain[XX] + hooke[_22] * strain[YY] + 2 * hooke[_26] * strain[XY],
+                     hooke[_16] * strain[XX] + hooke[_26] * strain[YY] + 2 * hooke[_66] * strain[XY]};
         }
     }, hooke);
 }
@@ -230,7 +230,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
                     using namespace metamath::functions;
                     const auto& hooke = hooke_matrices.index() ? std::get<Variable>(hooke_matrices)[qshiftL] : 
                                                                  std::get<Constant>(hooke_matrices);
-                    std::array<T, 3> stress = calc_stress(model.local_weight * hooke, {strains[XX][qshiftL], strains[YY][qshiftL], strains[XY][qshiftL]});
+                    std::array<T, 3> stress = model.local_weight * calc_stress(hooke, {strains[XX][qshiftL], strains[YY][qshiftL], strains[XY][qshiftL]});
                     if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
                         const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
                         const auto& qnodeL = _base::mesh().quad_coord(qshiftL);
