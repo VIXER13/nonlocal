@@ -5,6 +5,7 @@ project(mechanical_2d_test)
 
 add_library(mechanical_2d_test_lib 
     OBJECT
+        anisotropic_lame_solid_ring.cpp
         elastic_parameters.cpp
         isotropic_lame_composite_ring.cpp
         isotropic_lame_solid_ring.cpp
