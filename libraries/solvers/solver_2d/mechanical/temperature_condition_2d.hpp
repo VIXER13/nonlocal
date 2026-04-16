@@ -1,6 +1,7 @@
     #pragma once
 
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
+#include <solvers/solver_2d/mechanical/mechanical_parameters_2d.hpp>
 
 #include <Eigen/Dense>
 
@@ -83,8 +84,8 @@ class _temperature_condition final {
         for(const size_t q : el.qnodes()) {
             const auto thermal_stress = calc_stress(hooke_matrix, thermal_expansion, qshift);
             const auto wdN = el.weight(q) * _mesh.derivatives(e, i, q);
-            integral[X] += wdN[X] * (thermal_stress[XX] + thermal_stress[XY]);
-            integral[Y] += wdN[Y] * (thermal_stress[YY] + thermal_stress[XY]);
+            integral[X] += wdN[X] * thermal_stress[XX] + wdN[Y] * thermal_stress[XY];
+            integral[Y] += wdN[Y] * thermal_stress[YY] + wdN[X] * thermal_stress[XY];
             ++qshift;
         }
         return integral;
