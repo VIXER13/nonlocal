@@ -33,6 +33,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     if (right_part)
         integrate_right_part<2>(f, *mesh, *right_part);
     temperature_condition(f, *mesh, evaluated_parameters, delta_temperature);
+    boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, stiffness.matrix().bound());
     stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
     if (settings.is_nonlocal()) {
         local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
