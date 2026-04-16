@@ -30,7 +30,7 @@ constexpr T Ef = T{200};
 constexpr T nu_rf = T{0.05};
 constexpr T nu_fr = Ef * nu_rf / Er;
     
-const suite<"isotropic_lame_solid_ring"> _ = [] {
+const suite<"anisotropic_lame_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
     const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
     const anisotropic_elastic_parameters<T> elastic = {
@@ -79,12 +79,8 @@ const suite<"isotropic_lame_solid_ring"> _ = [] {
     };
 
     const auto Expected_Polar_Stress = [&Expected_Polar_Strain, &elastic](const std::array<T, 2>& point) -> std::array<T, 3> {
-        using namespace orthotropic_indices;
-        const auto hooke = elastic.hooke({T{1}, T{0}}); // angle == 0
-        const auto strain = Expected_Polar_Strain(point);
-        return { hooke[_11] * strain[RR] + hooke[_12] * strain[FF], // stress_rr
-                 hooke[_12] * strain[RR] + hooke[_22] * strain[FF], // stress_ff
-             2 * hooke[_66] * strain[RF] };                         // stress_rf
+        static constexpr std::array<T, 2> Zero_Angle_Point = {T{1}, T{0}};
+        return calc_stress<T>(elastic.hooke(Zero_Angle_Point), Expected_Polar_Strain(point));
     };
 
     "displacement_x"_test = [&mesh, &solution, &Expected_Displacement_R] {
