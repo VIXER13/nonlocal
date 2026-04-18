@@ -28,7 +28,9 @@ public:
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     template<class Vector>
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                    const evaluated_mechanical_parameters<T>& parameters, const Vector& displacement);
+                                    const evaluated_mechanical_parameters<T>& parameters, 
+                                    const Vector& displacement,
+                                    const std::vector<T>& delta_temperature = {});
     ~mechanical_solution_2d() noexcept override = default;
 
     const std::array<std::vector<T>, 2>& displacement() const noexcept;
@@ -53,9 +55,12 @@ mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh:
 template<class T, class I>
 template<class Vector>
 mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                     const evaluated_mechanical_parameters<T>& parameters, const Vector& displacement)
+                                                     const evaluated_mechanical_parameters<T>& parameters,
+                                                     const Vector& displacement,
+                                                     const std::vector<T>& delta_temperature)
     : _base{mesh, get_models(parameters)}
-    , _parameters{get_physical_parameters(parameters)} {
+    , _parameters{get_physical_parameters(parameters)}
+    , _delta_temperature{delta_temperature} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(_base::mesh().container().nodes_count(), T{0});
     for(const size_t i : std::views::iota(0u, _base::mesh().container().nodes_count())) {

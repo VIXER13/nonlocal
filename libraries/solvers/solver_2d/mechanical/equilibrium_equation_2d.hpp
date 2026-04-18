@@ -56,7 +56,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
         const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{stiffness.matrix().inner()};
         displacement = solver.solve(f);
     }
-    auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement};
+    auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement, delta_temperature};
     solution.calc_strain_and_stress();
     return solution;
 }
