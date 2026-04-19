@@ -25,7 +25,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
                                                               const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt) {
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions);
     log_problem_settings(settings);
-    const auto evaluated_parameters = evaluate_mechanical_parameters(*mesh, parameters);
+    const auto evaluated_parameters = evaluate_mechanical_parameters(*mesh, parameters, delta_temperature);
     stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
     stiffness.compute(evaluated_parameters, settings);
     Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix().inner().cols());
@@ -56,7 +56,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
         const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{stiffness.matrix().inner()};
         displacement = solver.solve(f);
     }
-    auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement, delta_temperature};
+    auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement};
     solution.calc_strain_and_stress();
     return solution;
 }

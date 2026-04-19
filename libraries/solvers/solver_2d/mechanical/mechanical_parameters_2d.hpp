@@ -8,13 +8,14 @@ namespace nonlocal::solver_2d::mechanical {
 template<std::floating_point T>
 struct raw_mechanical_parameters_t final {
     elastic_parameters_t<T> elastic;
-    raw_thermal_expansion_t<T> thermal_expansion;
+    std::optional<raw_thermal_expansion_t<T>> thermal_expansion;
 };
 
 template<std::floating_point T>
 struct evaluated_mechanical_parameters_t final {
     evaluated_hook_matrix_t<T> elastic;
     evaluated_thermal_expansion_t<T> thermal_expansion;
+    std::optional<evaluated_thermal_strain<T>> thermal_strain;
 };
 
 template<std::floating_point T>

@@ -15,7 +15,6 @@ class mechanical_solution_2d : public solution_2d<T, I> {
     std::array<std::vector<T>, 2> _displacement;
     std::array<std::vector<T>, 3> _strain, _stress;
     std::unordered_map<std::string, evaluated_mechanical_parameters_t<T>> _parameters;
-    std::vector<T> _delta_temperature;
 
     template<class Hooke_Matrix, class Influence>
     std::array<T, 3> calc_nonlocal_stress(const size_t eL, const Hooke_Matrix& hooke_matrices, 
@@ -29,8 +28,7 @@ public:
     template<class Vector>
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                     const evaluated_mechanical_parameters<T>& parameters, 
-                                    const Vector& displacement,
-                                    const std::vector<T>& delta_temperature = {});
+                                    const Vector& displacement);
     ~mechanical_solution_2d() noexcept override = default;
 
     const std::array<std::vector<T>, 2>& displacement() const noexcept;
@@ -38,7 +36,6 @@ public:
     const std::array<std::vector<T>, 3>& stress() const noexcept;
 
     const evaluated_mechanical_parameters_t<T>& parameters(const std::string& group) const;
-    const std::vector<T>& delta_temperature() const noexcept;
 
     T calc_energy() const;
     bool is_strain_and_stress_calculated() const noexcept;
@@ -56,11 +53,9 @@ template<class T, class I>
 template<class Vector>
 mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                                      const evaluated_mechanical_parameters<T>& parameters,
-                                                     const Vector& displacement,
-                                                     const std::vector<T>& delta_temperature)
+                                                     const Vector& displacement)
     : _base{mesh, get_models(parameters)}
-    , _parameters{get_physical_parameters(parameters)}
-    , _delta_temperature{delta_temperature} {
+    , _parameters{get_physical_parameters(parameters)} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(_base::mesh().container().nodes_count(), T{0});
     for(const size_t i : std::views::iota(0u, _base::mesh().container().nodes_count())) {
@@ -87,11 +82,6 @@ const std::array<std::vector<T>, 3>& mechanical_solution_2d<T, I>::stress() cons
 template<class T, class I>
 const evaluated_mechanical_parameters_t<T>& mechanical_solution_2d<T, I>::parameters(const std::string& group) const {
     return _parameters.at(group);
-}
-
-template<class T, class I>
-const std::vector<T>& mechanical_solution_2d<T, I>::delta_temperature() const noexcept {
-    return _delta_temperature;
 }
 
 template<class T, class I>
@@ -133,36 +123,17 @@ std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratur
 
 template<class T, class I>
 void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std::vector<T>, 3>& strain) const {
-    if (!_delta_temperature.empty()) {
-        const std::vector<T> temperature_in_qnodes = nonlocal::mesh::utils::nodes_to_qnodes(_base::mesh(), _delta_temperature);
-        for(const std::string& group : _base::mesh().container().groups_2d()) {
-            const auto& thermal_expansion = parameters(group).thermal_expansion;
-            if (thermal_expansion.valueless_by_exception())
-                continue;
+    for(const std::string& group : _base::mesh().container().groups_2d())
+        if (const auto& thermal_strain = parameters(group).thermal_strain; thermal_strain) {
+            const auto& temp_strain = *thermal_strain;
             for(const size_t e : _base::mesh().container().elements(group))
                 for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
-                    const auto temperature_strain = std::visit([qshift, &temperature_in_qnodes](const auto& thermal_expansion) -> std::array<T, 3> {
-                        const auto& expansion = thermal_expansion.index() ? std::get<Variable>(thermal_expansion)[qshift] : 
-                                                                            std::get<Constant>(thermal_expansion);
-                        using namespace metamath::functions;
-                        using thermal_expansion_t = std::remove_cvref_t<decltype(thermal_expansion)>;
-                        if constexpr (std::is_same_v<thermal_expansion_t, evaluated_isotropic_thermal_expansion_t<T>>) {
-                            const T temperature_strain = expansion * temperature_in_qnodes[qshift];
-                            return {temperature_strain, temperature_strain, T{0}};
-                        } else if constexpr (std::is_same_v<thermal_expansion_t, evaluated_orthotropic_thermal_expansion_t<T>>) {
-                            const auto temperature_strain = expansion * temperature_in_qnodes[qshift];
-                            return {temperature_strain[X], temperature_strain[Y], T{0}};
-                        } else if constexpr (std::is_same_v<thermal_expansion_t, evaluated_anisotropic_thermal_expansion_t<T>>) {
-                            return expansion * temperature_in_qnodes[qshift];
-                        } else
-                            static_assert(false, "Unknown linear thermal expansion coefficients type.");
-                    }, thermal_expansion);
+                    const auto temperature_strain = temp_strain[qshift];
                     strain[XX][qshift] -= temperature_strain[XX];
                     strain[YY][qshift] -= temperature_strain[YY];
                     strain[XY][qshift] -= temperature_strain[XY];
                 }
         }
-    }
 }
 
 template<class T, class I>

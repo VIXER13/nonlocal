@@ -48,4 +48,55 @@ using evaluated_thermal_expansion_t = std::variant<
     evaluated_anisotropic_thermal_expansion_t<T>
 >;
 
+template<std::floating_point T>
+using isotropic_thermal_strain_t = metamath::types::vector_with_shifted_index<T>;
+template<std::floating_point T>
+using orthotropic_thermal_strain_t = metamath::types::vector_with_shifted_index<std::array<T, 2>>;
+template<std::floating_point T>
+using anisotropic_thermal_strain_t = metamath::types::vector_with_shifted_index<std::array<T, 3>>;
+template<std::floating_point T>
+using orthotropic_constant_thermal_strain_t = std::pair<metamath::types::vector_with_shifted_index<T>, std::array<T, 2>>;
+template<std::floating_point T>
+using anisotropic_constant_thermal_strain_t = std::pair<metamath::types::vector_with_shifted_index<T>, std::array<T, 3>>;
+template<std::floating_point T>
+using evaluated_thermal_strain_t = std::variant<
+    isotropic_thermal_strain_t<T>,
+    orthotropic_thermal_strain_t<T>,
+    anisotropic_thermal_strain_t<T>,
+    orthotropic_constant_thermal_strain_t<T>,
+    anisotropic_constant_thermal_strain_t<T>
+>;
+
+template<std::floating_point T>
+struct evaluated_thermal_strain final {
+    evaluated_thermal_strain_t<T> strain = {};
+
+    std::array<T, 3> operator[](const size_t qshift) const {
+        return std::visit(metamath::types::visitor{
+            [qshift](const isotropic_thermal_strain_t<T>& strain) {
+                const T result = strain[qshift];
+                return std::array{result, result, T{0}};
+            },
+            [qshift](const orthotropic_thermal_strain_t<T>& strain) {
+                const auto& result = strain[qshift];
+                return std::array{result[XX], result[YY], T{0}};
+            },
+            [qshift](const anisotropic_thermal_strain_t<T>& strain) {
+                return strain[qshift];
+            },
+            [qshift](const orthotropic_constant_thermal_strain_t<T>& strain) {
+                using namespace metamath::functions;
+                const auto& [delta_temperature, thermal_expansion] = strain;
+                const auto result = thermal_expansion * delta_temperature[qshift];
+                return std::array{result[XX], result[YY], T{0}};
+            },
+            [qshift](const anisotropic_constant_thermal_strain_t<T>& strain) {
+                using namespace metamath::functions;
+                const auto& [delta_temperature, thermal_expansion] = strain;
+                return thermal_expansion * delta_temperature[qshift];
+            }
+        }, strain);
+    }
+};
+
 }
