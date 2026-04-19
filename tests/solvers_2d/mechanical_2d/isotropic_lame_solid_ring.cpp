@@ -100,7 +100,7 @@ const suite<"isotropic_lame_solid_ring"> _ = [] {
     "strain_xy"_test = [&mesh, &solution] {
         static constexpr auto Expected_Strain_XY = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
-            return -std::sin(2 * std::atan2(x, y)) / (T{21000} * (x * x + y * y));
+            return -std::sin(2 * std::atan2(y, x)) / (T{21000} * (x * x + y * y));
         };
         static constexpr T Epsilon = 3.2e-2;
         const T error = norm_error(solution.strain()[XY], mesh->container(), Expected_Strain_XY);
@@ -138,7 +138,7 @@ const suite<"isotropic_lame_solid_ring"> _ = [] {
     "stress_xy"_test = [&mesh, &solution] {
         static constexpr auto Expected_Stress_XY = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
-            return -std::sin(2 * std::atan2(x, y)) / (T{75} * (x * x + y * y));
+            return -std::sin(2 * std::atan2(y, x)) / (T{75} * (x * x + y * y));
         };
         static constexpr T Epsilon = 3.3e-2;
         const T error = norm_error(solution.stress()[XY], mesh->container(), Expected_Stress_XY);

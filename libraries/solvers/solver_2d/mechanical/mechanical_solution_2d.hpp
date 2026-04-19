@@ -17,7 +17,6 @@ class mechanical_solution_2d : public solution_2d<T, I> {
     std::unordered_map<std::string, evaluated_mechanical_parameters_t<T>> _parameters;
     std::vector<T> _delta_temperature;
 
-    static std::array<T, 3> calc_stress(const hooke_matrix_t<T>& hooke, const std::array<T, 3>& strain) noexcept;
     template<class Hooke_Matrix, class Influence>
     std::array<T, 3> calc_nonlocal_stress(const size_t eL, const Hooke_Matrix& hooke_matrices, 
                                           const std::array<std::vector<T>, 3>& strains, const Influence& influence) const;
@@ -29,7 +28,9 @@ public:
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
     template<class Vector>
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                    const evaluated_mechanical_parameters<T>& parameters, const Vector& displacement);
+                                    const evaluated_mechanical_parameters<T>& parameters, 
+                                    const Vector& displacement,
+                                    const std::vector<T>& delta_temperature = {});
     ~mechanical_solution_2d() noexcept override = default;
 
     const std::array<std::vector<T>, 2>& displacement() const noexcept;
@@ -54,9 +55,12 @@ mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh:
 template<class T, class I>
 template<class Vector>
 mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                     const evaluated_mechanical_parameters<T>& parameters, const Vector& displacement)
+                                                     const evaluated_mechanical_parameters<T>& parameters,
+                                                     const Vector& displacement,
+                                                     const std::vector<T>& delta_temperature)
     : _base{mesh, get_models(parameters)}
-    , _parameters{get_physical_parameters(parameters)} {
+    , _parameters{get_physical_parameters(parameters)}
+    , _delta_temperature{delta_temperature} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(_base::mesh().container().nodes_count(), T{0});
     for(const size_t i : std::views::iota(0u, _base::mesh().container().nodes_count())) {
@@ -162,30 +166,6 @@ void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std:
 }
 
 template<class T, class I>
-std::array<T, 3> mechanical_solution_2d<T, I>::calc_stress(const hooke_matrix_t<T>& hooke, const std::array<T, 3>& strain) noexcept {
-    return std::visit(metamath::types::visitor{
-        [&strain](const isotropic_hook_matrix_t<T>& hooke) -> std::array<T, 3> {
-            using namespace isotropic_indices;
-            return {hooke[_11] * strain[XX] + hooke[_12] * strain[YY],
-                    hooke[_12] * strain[XX] + hooke[_11] * strain[YY],
-                2 * hooke[_66] * strain[XY]};
-        },
-        [&strain](const orthotropic_hook_matrix_t<T>& hooke) -> std::array<T, 3> {
-            using namespace orthotropic_indices;
-            return {hooke[_11] * strain[XX] + hooke[_12] * strain[YY],
-                    hooke[_12] * strain[XX] + hooke[_22] * strain[YY],
-                2 * hooke[_66] * strain[XY]};
-        },
-        [&strain](const anisotropic_hook_matrix_t<T>& hooke) -> std::array<T, 3> {
-            using namespace anisotropic_indices;
-            return { hooke[_11] * strain[XX] + hooke[_12] * strain[YY] + hooke[_16] * strain[XY],
-                     hooke[_12] * strain[XX] + hooke[_22] * strain[YY] + hooke[_26] * strain[XY],
-                2 * (hooke[_16] * strain[XX] + hooke[_26] * strain[YY] + hooke[_66] * strain[XY])};
-        }
-    }, hooke);
-}
-
-template<class T, class I>
 template<class Hooke_Matrix, class Influence>
 std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_stress(const size_t eL,
                                                                     const Hooke_Matrix& hooke_matrices,
@@ -202,7 +182,7 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_stress(const size_t
             const T influence_weight = elNL.weight(qNL) * _base::mesh().jacobian(qshift) *
                                        influence(_base::mesh().quad_coord(qshift));
             using namespace metamath::functions;
-            nonlocal_stress += calc_stress(influence_weight * hooke, {strains[XX][qshift], strains[YY][qshift], strains[XY][qshift]});
+            nonlocal_stress += influence_weight * calc_stress<T>(hooke, {strains[XX][qshift], strains[YY][qshift], strains[XY][qshift]});
         }
     }
     return nonlocal_stress;
@@ -230,7 +210,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
                     using namespace metamath::functions;
                     const auto& hooke = hooke_matrices.index() ? std::get<Variable>(hooke_matrices)[qshiftL] : 
                                                                  std::get<Constant>(hooke_matrices);
-                    std::array<T, 3> stress = calc_stress(model.local_weight * hooke, {strains[XX][qshiftL], strains[YY][qshiftL], strains[XY][qshiftL]});
+                    std::array<T, 3> stress = model.local_weight * calc_stress<T>(hooke, {strains[XX][qshiftL], strains[YY][qshiftL], strains[XY][qshiftL]});
                     if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
                         const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
                         const auto& qnodeL = _base::mesh().quad_coord(qshiftL);

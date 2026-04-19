@@ -1,6 +1,7 @@
     #pragma once
 
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
+#include <solvers/solver_2d/mechanical/mechanical_parameters_2d.hpp>
 
 #include <Eigen/Dense>
 
@@ -26,7 +27,7 @@ class _temperature_condition final {
         using OTE = evaluated_orthotropic_thermal_expansion_t<T>;
         using ATE = evaluated_anisotropic_thermal_expansion_t<T>;
         const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift] : 
-                                                       std::get<Constant>(hooke_matrix);
+                                                   std::get<Constant>(hooke_matrix);
         const auto& expansion = thermal_expansion.index() ? std::get<Variable>(thermal_expansion)[qshift] : 
                                                             std::get<Constant>(thermal_expansion);
         const auto thermal_strain = _delta_temperature[qshift] * expansion;
@@ -82,9 +83,9 @@ class _temperature_condition final {
         const auto& el = _mesh.container().element_2d(e);
         for(const size_t q : el.qnodes()) {
             const auto thermal_stress = calc_stress(hooke_matrix, thermal_expansion, qshift);
-            const auto wdN = el.weight(q) * _mesh.derivatives(qshift);
-            integral[X] += wdN[X] * (thermal_stress[XX] + thermal_stress[XY]);
-            integral[Y] += wdN[Y] * (thermal_stress[YY] + thermal_stress[XY]);
+            const auto wdN = el.weight(q) * _mesh.derivatives(e, i, q);
+            integral[X] += wdN[X] * thermal_stress[XX] + wdN[Y] * thermal_stress[XY];
+            integral[Y] += wdN[Y] * thermal_stress[YY] + wdN[X] * thermal_stress[XY];
             ++qshift;
         }
         return integral;
@@ -104,12 +105,11 @@ class _temperature_condition final {
             size_t qshiftNL = _mesh.quad_shift(eNL);
             const std::array<T, 2>& qcoordL = _mesh.quad_coord(eL, qL);
             for(const size_t qNL : elNL.qnodes()) {
-                const auto thermal_stress = calc_stress(hooke_matrix, thermal_expansion, qshiftNL);
                 const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) * _mesh.jacobian(qshiftNL);
                 inner_integral += weight * calc_stress(hooke_matrix, thermal_expansion, qshiftNL);
                 ++qshiftNL;
             }
-            const auto wdN = elL.weight(qL) * _mesh.derivatives(qshiftL);
+            const auto wdN = elL.weight(qL) * _mesh.derivatives(eL, iL, qL);
             integral[X] += wdN[X] * (inner_integral[XX] + inner_integral[XY]);
             integral[Y] += wdN[Y] * (inner_integral[YY] + inner_integral[XY]);
             ++qshiftL;
