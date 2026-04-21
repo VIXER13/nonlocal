@@ -30,22 +30,10 @@ template<std::floating_point T>
 using raw_anisotropic_thermal_expansion_t = anisotropic_thermal_expansion_t<coefficient_t<T, 2>>;
 template<std::floating_point T>
 using raw_thermal_expansion_t = std::variant<
+    std::monostate,
     raw_isotropic_thermal_expansion_t<T>,
     raw_orthotropic_thermal_expansion_t<T>,
     raw_anisotropic_thermal_expansion_t<T>
->;
-
-template<std::floating_point T>
-using evaluated_isotropic_thermal_expansion_t = evaluated_parameters<isotropic_thermal_expansion_t<T>>;
-template<std::floating_point T>
-using evaluated_orthotropic_thermal_expansion_t = evaluated_parameters<orthotropic_thermal_expansion_t<T>>;
-template<std::floating_point T>
-using evaluated_anisotropic_thermal_expansion_t = evaluated_parameters<anisotropic_thermal_expansion_t<T>>;
-template<std::floating_point T>
-using evaluated_thermal_expansion_t = std::variant<
-    evaluated_isotropic_thermal_expansion_t<T>,
-    evaluated_orthotropic_thermal_expansion_t<T>,
-    evaluated_anisotropic_thermal_expansion_t<T>
 >;
 
 template<std::floating_point T>
@@ -60,6 +48,7 @@ template<std::floating_point T>
 using anisotropic_constant_thermal_strain_t = std::pair<metamath::types::vector_with_shifted_index<T>, std::array<T, 3>>;
 template<std::floating_point T>
 using evaluated_thermal_strain_t = std::variant<
+    std::monostate,
     isotropic_thermal_strain_t<T>,
     orthotropic_thermal_strain_t<T>,
     anisotropic_thermal_strain_t<T>,
@@ -69,32 +58,34 @@ using evaluated_thermal_strain_t = std::variant<
 
 template<std::floating_point T>
 struct evaluated_thermal_strain final {
-    evaluated_thermal_strain_t<T> strain = {};
+    evaluated_thermal_strain_t<T> strain;
 
     std::array<T, 3> operator[](const size_t qshift) const {
+        using R = std::array<T, 3>;
         return std::visit(metamath::types::visitor{
-            [qshift](const isotropic_thermal_strain_t<T>& strain) {
+            [qshift](const isotropic_thermal_strain_t<T>& strain) -> R {
                 const T result = strain[qshift];
                 return std::array{result, result, T{0}};
             },
-            [qshift](const orthotropic_thermal_strain_t<T>& strain) {
+            [qshift](const orthotropic_thermal_strain_t<T>& strain) -> R {
                 const auto& result = strain[qshift];
                 return std::array{result[XX], result[YY], T{0}};
             },
-            [qshift](const anisotropic_thermal_strain_t<T>& strain) {
+            [qshift](const anisotropic_thermal_strain_t<T>& strain) -> R {
                 return strain[qshift];
             },
-            [qshift](const orthotropic_constant_thermal_strain_t<T>& strain) {
+            [qshift](const orthotropic_constant_thermal_strain_t<T>& strain) -> R {
                 using namespace metamath::functions;
                 const auto& [delta_temperature, thermal_expansion] = strain;
                 const auto result = thermal_expansion * delta_temperature[qshift];
                 return std::array{result[XX], result[YY], T{0}};
             },
-            [qshift](const anisotropic_constant_thermal_strain_t<T>& strain) {
+            [qshift](const anisotropic_constant_thermal_strain_t<T>& strain) -> R {
                 using namespace metamath::functions;
                 const auto& [delta_temperature, thermal_expansion] = strain;
                 return thermal_expansion * delta_temperature[qshift];
-            }
+            },
+            [](auto&&) -> R { throw std::domain_error{"Calling evaluated_thermal_strain in bad variant state."}; }
         }, strain);
     }
 };

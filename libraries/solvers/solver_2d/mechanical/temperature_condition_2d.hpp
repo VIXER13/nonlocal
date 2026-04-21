@@ -93,19 +93,19 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
             using namespace metamath::functions;
             const auto& group = mesh.container().group(eL);
             const auto& [model, physical] = parameters.at(group);
-            if (!physical.thermal_strain)
+            if (std::holds_alternative<std::monostate>(physical.thermal_strain.strain))
                 continue;
             const size_t iL = mesh.global_to_local(eL, node);
             if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
                 const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
                 for(const I eNL : mesh.neighbours(eL)) {
                     const auto integrate_nonlocal = [&](const auto& hooke) {
-                        return integrator(hooke, *physical.thermal_strain, model.influence, eL, eNL, iL);
+                        return integrator(hooke, physical.thermal_strain, model.influence, eL, eNL, iL);
                     };
                     integral += nonlocal_weight * std::visit(integrate_nonlocal, physical.elastic); 
                 }
             }
-            const auto integrate_local = [&](const auto& hooke){ return integrator(hooke, *physical.thermal_strain, eL, iL); };
+            const auto integrate_local = [&](const auto& hooke){ return integrator(hooke, physical.thermal_strain, eL, iL); };
             integral += model.local_weight * std::visit(integrate_local, physical.elastic); 
         }
         f[2 * node + X] += integral[X];

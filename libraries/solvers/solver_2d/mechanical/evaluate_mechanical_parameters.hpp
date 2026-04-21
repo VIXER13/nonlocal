@@ -29,7 +29,7 @@ evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::me
             return result;
         }, parameter.physical.elastic);
 
-        if (temperature.empty() || !parameter.physical.thermal_expansion)
+        if (temperature.empty() || std::holds_alternative<std::monostate>(parameter.physical.thermal_expansion))
             continue;
 
         physical.thermal_strain = { std::visit(metamath::types::visitor{
@@ -80,8 +80,9 @@ evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::me
                 for(const size_t qshift : qshifts)
                     result[qshift] = temperature[qshift] * evaluate<T, 2u>(thermal_expansion, mesh.quad_coord(qshift), {});
                 return result;
-            }
-        }, *parameter.physical.thermal_expansion) };
+            },
+            [](auto&&) -> evaluated_thermal_strain_t<T> { throw std::domain_error{"Unexpected thermal_expansion variant state."}; }
+        }, parameter.physical.thermal_expansion) };
     }
     return result;
 }
