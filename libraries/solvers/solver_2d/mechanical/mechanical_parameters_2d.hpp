@@ -14,7 +14,6 @@ struct raw_mechanical_parameters_t final {
 template<std::floating_point T>
 struct evaluated_mechanical_parameters_t final {
     evaluated_hook_matrix_t<T> elastic;
-    evaluated_thermal_expansion_t<T> thermal_expansion;
     std::optional<evaluated_thermal_strain<T>> thermal_strain;
 };
 

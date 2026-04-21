@@ -17,72 +17,18 @@ class _temperature_condition final {
         : _delta_temperature{nonlocal::mesh::utils::nodes_to_qnodes(mesh, delta_temperature)}
         , _mesh{mesh} {}
 
-    template<class Hooke, class Expansion>
-    std::array<T, 3> calc_stress(const Hooke& hooke_matrix, const Expansion& thermal_expansion, const size_t qshift) const {
-        using namespace metamath::functions;
-        using IHM = evaluated_isotropic_hook_matrix_t<T>;
-        using OHM = evaluated_orthotropic_hook_matrix_t<T>;
-        using AHM = evaluated_anisotropic_hook_matrix_t<T>;
-        using ITE = evaluated_isotropic_thermal_expansion_t<T>;
-        using OTE = evaluated_orthotropic_thermal_expansion_t<T>;
-        using ATE = evaluated_anisotropic_thermal_expansion_t<T>;
-        const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift] : 
-                                                   std::get<Constant>(hooke_matrix);
-        const auto& expansion = thermal_expansion.index() ? std::get<Variable>(thermal_expansion)[qshift] : 
-                                                            std::get<Constant>(thermal_expansion);
-        const auto thermal_strain = _delta_temperature[qshift] * expansion;
-        if constexpr (std::is_same_v<Hooke, IHM>) {
-            using namespace isotropic_indices;
-            if constexpr (std::is_same_v<Expansion, ITE>) {
-                const auto thermal_stress = (hooke[_11] + hooke[_12]) * thermal_strain;
-                return {thermal_stress, thermal_stress};
-            } else if constexpr (std::is_same_v<Expansion, OTE>) {
-                return {hooke[_11] * thermal_strain[XX] + hooke[_12] * thermal_strain[YY],
-                        hooke[_12] * thermal_strain[XX] + hooke[_11] * thermal_strain[YY]};
-            } else if constexpr (std::is_same_v<Expansion, ATE>) {
-                return {hooke[_11] * thermal_strain[XX] + hooke[_12] * thermal_strain[YY],
-                        hooke[_12] * thermal_strain[XX] + hooke[_11] * thermal_strain[YY],
-                    2 * hooke[_66] * thermal_strain[XY]};
-            } else static_assert(false, "Unsupported Hooke matrix and thermal expansion tensor combintation.");
-        } else if constexpr (std::is_same_v<Hooke, OHM>) {
-            using namespace orthotropic_indices;
-            if constexpr (std::is_same_v<Expansion, ITE>) {
-                return {(hooke[_11] + hooke[_12]) * thermal_strain, 
-                        (hooke[_12] + hooke[_22]) * thermal_strain};
-            } else if constexpr (std::is_same_v<Expansion, OTE>) {
-                return {hooke[_11] * thermal_strain[XX] + hooke[_12] * thermal_strain[YY],
-                        hooke[_12] * thermal_strain[XX] + hooke[_22] * thermal_strain[YY]};
-            } else if constexpr (std::is_same_v<Expansion, ATE>) {
-                return {hooke[_11] * thermal_strain[XX] + hooke[_12] * thermal_strain[YY],
-                        hooke[_12] * thermal_strain[XX] + hooke[_22] * thermal_strain[YY],
-                    2 * hooke[_66] * thermal_strain[XY]};
-            } else static_assert(false, "Unsupported Hooke matrix and thermal expansion tensor combintation.");
-        } else if constexpr (std::is_same_v<Hooke, AHM>) {
-            using namespace anisotropic_indices;
-            if constexpr (std::is_same_v<Expansion, ITE>) {
-                return {(hooke[_11] + hooke[_12]) * thermal_strain,
-                        (hooke[_12] + hooke[_22]) * thermal_strain,
-                        (hooke[_16] + hooke[_26]) * thermal_strain};
-            } else if constexpr (std::is_same_v<Expansion, OTE>) {
-                return {hooke[_11] * thermal_strain[XX] + hooke[_12] * thermal_strain[YY],
-                        hooke[_12] * thermal_strain[XX] + hooke[_22] * thermal_strain[YY],
-                        hooke[_16] * thermal_strain[XX] + hooke[_26] * thermal_strain[YY]};
-            } else if constexpr (std::is_same_v<Expansion, ATE>) {
-                return {hooke[_11] * thermal_strain[XX] + 2 * hooke[_16] * thermal_strain[XY] + hooke[_12] * thermal_strain[YY],
-                        hooke[_12] * thermal_strain[XX] + 2 * hooke[_26] * thermal_strain[XY] + hooke[_22] * thermal_strain[YY],
-                        hooke[_16] * thermal_strain[XX] + 2 * hooke[_66] * thermal_strain[XY] + hooke[_26] * thermal_strain[YY]};
-            } else static_assert(false, "Unsupported Hooke matrix and thermal expansion tensor combintation.");
-        } else static_assert(false, "Unsupported Hooke matrix type");
-    }
-
-    template<class Hooke, class Expansion>
-    std::array<T, 2> operator()(const Hooke& hooke_matrix, const Expansion& thermal_expansion, const size_t e, const size_t i) const {
+    template<class Hooke>
+    std::array<T, 2> operator()(const Hooke& hooke_matrix, 
+                                const evaluated_thermal_strain<T>& thermal_strain,
+                                const size_t e, const size_t i) const {
         using namespace metamath::functions;
         std::array<T, 2> integral = {};
         size_t qshift = _mesh.quad_shift(e);
         const auto& el = _mesh.container().element_2d(e);
         for(const size_t q : el.qnodes()) {
-            const auto thermal_stress = calc_stress(hooke_matrix, thermal_expansion, qshift);
+            const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift] : 
+                                                       std::get<Constant>(hooke_matrix);
+            const auto thermal_stress = calc_stress<T>(hooke, thermal_strain[qshift]);
             const auto wdN = el.weight(q) * _mesh.derivatives(e, i, q);
             integral[X] += wdN[X] * thermal_stress[XX] + wdN[Y] * thermal_stress[XY];
             integral[Y] += wdN[Y] * thermal_stress[YY] + wdN[X] * thermal_stress[XY];
@@ -91,8 +37,8 @@ class _temperature_condition final {
         return integral;
     }
 
-    template<class Hooke, class Expansion>
-    std::array<T, 2> operator()(const Hooke& hooke_matrix, const Expansion& thermal_expansion,
+    template<class Hooke>
+    std::array<T, 2> operator()(const Hooke& hooke_matrix, const evaluated_thermal_strain<T>& thermal_strain,
                                 const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
                                 const size_t eL, const size_t eNL, const size_t iL) const {
         using namespace metamath::functions;
@@ -105,8 +51,10 @@ class _temperature_condition final {
             size_t qshiftNL = _mesh.quad_shift(eNL);
             const std::array<T, 2>& qcoordL = _mesh.quad_coord(eL, qL);
             for(const size_t qNL : elNL.qnodes()) {
+                const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshiftNL] : 
+                                                           std::get<Constant>(hooke_matrix);
                 const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) * _mesh.jacobian(qshiftNL);
-                inner_integral += weight * calc_stress(hooke_matrix, thermal_expansion, qshiftNL);
+                inner_integral += weight * calc_stress<T>(hooke, thermal_strain[qshiftNL]);
                 ++qshiftNL;
             }
             const auto wdN = elL.weight(qL) * _mesh.derivatives(eL, iL, qL);
@@ -145,23 +93,20 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
             using namespace metamath::functions;
             const auto& group = mesh.container().group(eL);
             const auto& [model, physical] = parameters.at(group);
-            if (physical.thermal_expansion.valueless_by_exception())
+            if (!physical.thermal_strain)
                 continue;
             const size_t iL = mesh.global_to_local(eL, node);
             if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
                 const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
                 for(const I eNL : mesh.neighbours(eL)) {
-                    const auto integrate_nonlocal = [&integrator, &influence = model.influence, eL, eNL, iL]
-                                                    (const auto& hooke, const auto& thermal_expansion) {
-                        return integrator(hooke, thermal_expansion, influence, eL, eNL, iL);
+                    const auto integrate_nonlocal = [&](const auto& hooke) {
+                        return integrator(hooke, *physical.thermal_strain, model.influence, eL, eNL, iL);
                     };
-                    integral += nonlocal_weight * std::visit(integrate_nonlocal, physical.elastic, physical.thermal_expansion);
+                    integral += nonlocal_weight * std::visit(integrate_nonlocal, physical.elastic); 
                 }
             }
-            const auto integrate_local = [&integrator, eL, iL](const auto& hooke, const auto& thermal_expansion) {
-                return integrator(hooke, thermal_expansion, eL, iL);
-            };
-            integral += model.local_weight * std::visit(integrate_local, physical.elastic, physical.thermal_expansion);
+            const auto integrate_local = [&](const auto& hooke){ return integrator(hooke, *physical.thermal_strain, eL, iL); };
+            integral += model.local_weight * std::visit(integrate_local, physical.elastic); 
         }
         f[2 * node + X] += integral[X];
         f[2 * node + Y] += integral[Y];
