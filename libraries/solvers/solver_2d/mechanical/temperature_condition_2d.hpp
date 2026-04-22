@@ -9,13 +9,9 @@ namespace nonlocal::solver_2d::mechanical {
 
 template<class T, class I>
 class _temperature_condition final {
-    const std::vector<T> _delta_temperature;
     const mesh::mesh_2d<T, I>& _mesh;
 
-    explicit _temperature_condition(const mesh::mesh_2d<T, I>& mesh,
-                                    const std::vector<T>& delta_temperature)
-        : _delta_temperature{nonlocal::mesh::utils::nodes_to_qnodes(mesh, delta_temperature)}
-        , _mesh{mesh} {}
+    explicit _temperature_condition(const mesh::mesh_2d<T, I>& mesh) : _mesh{mesh} {}
 
     template<class Hooke, class Thermal_Strain>
     std::array<T, 2> operator()(const Hooke& hooke_matrix, 
@@ -58,8 +54,8 @@ class _temperature_condition final {
                 ++qshiftNL;
             }
             const auto wdN = elL.weight(qL) * _mesh.derivatives(eL, iL, qL);
-            integral[X] += wdN[X] * (inner_integral[XX] + inner_integral[XY]);
-            integral[Y] += wdN[Y] * (inner_integral[YY] + inner_integral[XY]);
+            integral[X] += wdN[X] * inner_integral[XX] + wdN[Y] * inner_integral[XY];
+            integral[Y] += wdN[Y] * inner_integral[YY] + wdN[X] * inner_integral[XY];
             ++qshiftL;
         }
         return integral;
@@ -69,22 +65,14 @@ public:
     template<class U, class J>
     friend void temperature_condition(Eigen::Matrix<U, Eigen::Dynamic, 1>& f,
                                       const mesh::mesh_2d<U, J>& mesh,
-                                      const evaluated_mechanical_parameters<U>& parameters,
-                                      const std::vector<U>& delta_temperature);
+                                      const evaluated_mechanical_parameters<U>& parameters);
 };
 
 template<class T, class I>
 void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                            const mesh::mesh_2d<T, I>& mesh,
-                           const evaluated_mechanical_parameters<T>& parameters,
-                           const std::vector<T>& delta_temperature) {
-    if (delta_temperature.empty())
-        return;
-    if (delta_temperature.size() != mesh.container().nodes_count())
-        throw std::domain_error{"It is impossible to calculate temperature deformations due to "
-                                "different dimensions of the mesh and the delta temperature vector."};
-    
-    const _temperature_condition<T, I> integrator{mesh, delta_temperature};
+                           const evaluated_mechanical_parameters<T>& parameters) {
+    const _temperature_condition<T, I> integrator{mesh};
     const auto process_node = mesh.process_nodes();
 #pragma omp parallel for default(none) shared(f, mesh, parameters, integrator, process_node) schedule(dynamic)
     for(size_t node = process_node.front(); node < *process_node.end(); ++node) {
