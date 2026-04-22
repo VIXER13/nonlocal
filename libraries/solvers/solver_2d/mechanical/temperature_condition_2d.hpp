@@ -17,9 +17,9 @@ class _temperature_condition final {
         : _delta_temperature{nonlocal::mesh::utils::nodes_to_qnodes(mesh, delta_temperature)}
         , _mesh{mesh} {}
 
-    template<class Hooke>
+    template<class Hooke, class Thermal_Strain>
     std::array<T, 2> operator()(const Hooke& hooke_matrix, 
-                                const evaluated_thermal_strain<T>& thermal_strain,
+                                const Thermal_Strain& thermal_strain,
                                 const size_t e, const size_t i) const {
         using namespace metamath::functions;
         std::array<T, 2> integral = {};
@@ -37,8 +37,8 @@ class _temperature_condition final {
         return integral;
     }
 
-    template<class Hooke>
-    std::array<T, 2> operator()(const Hooke& hooke_matrix, const evaluated_thermal_strain<T>& thermal_strain,
+    template<class Hooke, class Thermal_Strain>
+    std::array<T, 2> operator()(const Hooke& hooke_matrix, const Thermal_Strain& thermal_strain,
                                 const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
                                 const size_t eL, const size_t eNL, const size_t iL) const {
         using namespace metamath::functions;
@@ -90,23 +90,21 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
     for(size_t node = process_node.front(); node < *process_node.end(); ++node) {
         std::array<T, 2> integral = {};
         for(const I eL : mesh.elements(node)) {
-            using namespace metamath::functions;
             const auto& group = mesh.container().group(eL);
             const auto& [model, physical] = parameters.at(group);
-            if (std::holds_alternative<std::monostate>(physical.thermal_strain.strain))
-                continue;
-            const size_t iL = mesh.global_to_local(eL, node);
-            if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
-                const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
-                for(const I eNL : mesh.neighbours(eL)) {
-                    const auto integrate_nonlocal = [&](const auto& hooke) {
-                        return integrator(hooke, physical.thermal_strain, model.influence, eL, eNL, iL);
-                    };
-                    integral += nonlocal_weight * std::visit(integrate_nonlocal, physical.elastic); 
+            std::visit(metamath::types::visitor{
+                [](const auto&, const std::monostate) {},
+                [&](const auto& hooke, const auto& thermal_strain) {
+                    using namespace metamath::functions;
+                    const size_t iL = mesh.global_to_local(eL, node);
+                    if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
+                        for(const I eNL : mesh.neighbours(eL))
+                            integral += integrator(hooke, thermal_strain, model.influence, eL, eNL, iL);
+                        integral *= nonlocal::nonlocal_weight(model.local_weight);
+                    }
+                    integral += model.local_weight * integrator(hooke, thermal_strain, eL, iL);
                 }
-            }
-            const auto integrate_local = [&](const auto& hooke){ return integrator(hooke, physical.thermal_strain, eL, iL); };
-            integral += model.local_weight * std::visit(integrate_local, physical.elastic); 
+            }, physical.elastic, physical.thermal_strain);
         }
         f[2 * node + X] += integral[X];
         f[2 * node + Y] += integral[Y];

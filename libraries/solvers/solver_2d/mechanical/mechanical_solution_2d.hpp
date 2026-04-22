@@ -124,15 +124,17 @@ std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratur
 template<class T, class I>
 void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std::vector<T>, 3>& strain) const {
     for(const std::string& group : _base::mesh().container().groups_2d())
-        if (const auto& thermal_strain = parameters(group).thermal_strain; !std::holds_alternative<std::monostate>(thermal_strain.strain)) {
-            for(const size_t e : _base::mesh().container().elements(group))
-                for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
+        std::visit(metamath::types::visitor{
+            [](const std::monostate) {},
+            [this, &strain, &group](const auto& thermal_strain) {
+                for(const size_t qshift : _base::mesh().quad_shifts(group)) {
                     const auto temperature_strain = thermal_strain[qshift];
                     strain[XX][qshift] -= temperature_strain[XX];
                     strain[YY][qshift] -= temperature_strain[YY];
                     strain[XY][qshift] -= temperature_strain[XY];
                 }
-        }
+            }
+        }, parameters(group).thermal_strain);
 }
 
 template<class T, class I>
