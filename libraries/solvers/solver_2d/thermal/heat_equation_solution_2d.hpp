@@ -121,7 +121,7 @@ const std::array<std::vector<T>, 2>& heat_equation_solution_2d<T, I>::calc_flux(
                             ++qshiftNL;
                         }
                     }
-                    using namespace metamath::functions;
+                    using namespace metamath::operators;
                     nonlocal_gradient *= nonlocal_weight;
                     flux[X][qshiftL] *= model.local_weight;
                     flux[Y][qshiftL] *= model.local_weight;

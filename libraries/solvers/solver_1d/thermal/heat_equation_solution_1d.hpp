@@ -177,7 +177,7 @@ heat_equation_solution_1d<T>::calc_nonlocal_flux(const std::vector<metamath::typ
 
 template<class T>
 const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     std::vector<T> flux(_base::mesh().qnodes_count(), T{0});
     auto current_flux = calc_local_flux();
     current_flux = calc_nonlocal_flux(current_flux);

@@ -153,7 +153,7 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_stress(const size_t
                                                          std::get<Constant>(hooke_matrices);
             const T influence_weight = elNL.weight(qNL) * _base::mesh().jacobian(qshift) *
                                        influence(_base::mesh().quad_coord(qshift));
-            using namespace metamath::functions;
+            using namespace metamath::operators;
             nonlocal_stress += influence_weight * calc_stress<T>(hooke, {strains[XX][qshift], strains[YY][qshift], strains[XY][qshift]});
         }
     }
@@ -179,7 +179,7 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress() {
 #pragma omp parallel for schedule(dynamic)
             for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
                 for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
-                    using namespace metamath::functions;
+                    using namespace metamath::operators;
                     const auto& hooke = hooke_matrices.index() ? std::get<Variable>(hooke_matrices)[qshiftL] : 
                                                                  std::get<Constant>(hooke_matrices);
                     std::array<T, 3> stress = model.local_weight * calc_stress<T>(hooke, {strains[XX][qshiftL], strains[YY][qshiftL], strains[XY][qshiftL]});

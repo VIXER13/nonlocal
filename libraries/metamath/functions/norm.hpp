@@ -1,8 +1,8 @@
 #pragma once
 
 #include "power.hpp"
-#include "operators.hpp"
 
+#include <metamath/utils/operators.hpp>
 #include <metamath/utils/constants.hpp>
 #include <metamath/types/traits.hpp>
 

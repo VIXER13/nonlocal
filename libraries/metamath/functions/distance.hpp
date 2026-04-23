@@ -6,11 +6,13 @@ namespace metamath::functions {
 
 template<size_t N = 2, class T, size_t D>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y) {
+    using namespace metamath::operators;
     return powered_norm<N>(x - y);
 }
 
 template<class T, size_t D, types::arithmetic Exp>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const Exp exp) {
+    using namespace metamath::operators;
     return powered_norm(x - y, exp);
 }
 
@@ -32,11 +34,13 @@ T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const s
 
 template<size_t N = 2, class T, size_t D>
 T distance(const std::array<T, D>& x, const std::array<T, D>& y) {
+    using namespace metamath::operators;
     return norm<N>(x - y);
 }
 
 template<class T, size_t D, types::arithmetic Exp>
 T distance(const std::array<T, D>& x, const std::array<T, D>& y, const Exp exp) {
+    using namespace metamath::operators;
     return norm(x - y, exp);
 }
 

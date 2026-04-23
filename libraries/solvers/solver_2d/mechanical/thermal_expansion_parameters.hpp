@@ -71,7 +71,7 @@ struct orthotropic_constant_thermal_strain final {
     std::array<T, 2> thermal_expansion;
 
     std::array<T, 3> operator[](const size_t qshift) const {
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         const auto result = thermal_expansion * delta_temperature[qshift];
         return {result[0], result[1], T{0}};
     }
@@ -83,7 +83,7 @@ struct anisotropic_constant_thermal_strain final {
     std::array<T, 3> thermal_expansion;
 
     std::array<T, 3> operator[](const size_t qshift) const {
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         return thermal_expansion * delta_temperature[qshift];
     }
 };

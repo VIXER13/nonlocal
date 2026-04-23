@@ -110,7 +110,7 @@ T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q,
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
         coord += mesh.node_coord(mesh.nodes(element)[i]) * el.qN(i, q);
@@ -120,7 +120,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const size_t q) const {
     std::array<T, 2> J = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
         J += mesh.node_coord(mesh.nodes(element)[i]) * el.qNxi(i, q);
@@ -130,7 +130,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const s
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
     std::array<T, 2> coord = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     using namespace metamath::finite_element;
     const T x0 = bool(dynamic_cast<const rectangle_element_geometry<T>*>(&element)) ? T{1} / T{3} : T{0};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
@@ -141,7 +141,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
         coord += mesh.node_coord(nodes[i]) * element.qN(i, q);
     return coord;
@@ -152,7 +152,7 @@ metamath::types::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::j
     metamath::types::square_matrix<T, 2> J = {};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()}) {
         const std::array<T, 2> derivative = {element.qNxi (i, q), element.qNeta(i, q)};
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         J[0] += mesh.node_coord(nodes[i])[0] * derivative;
         J[1] += mesh.node_coord(nodes[i])[1] * derivative;
     }

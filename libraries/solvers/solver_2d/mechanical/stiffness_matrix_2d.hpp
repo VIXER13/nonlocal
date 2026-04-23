@@ -49,7 +49,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_local(co
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes()) {
         using namespace anisotropic_indices;
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift + q] : 
                                                    std::get<Constant>(hooke_matrix);
         const auto& dNj = _base::mesh().derivatives(e, j, q);
@@ -89,7 +89,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonlocal
     const auto& elL  = _base::mesh().container().element_2d(eL );
     const auto& elNL = _base::mesh().container().element_2d(eNL);
     for(const size_t qL : elL.qnodes()) {
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         const auto& qnodeL = _base::mesh().quad_coord(eL, qL);
         const auto wdNi = elL.weight(qL) * _base::mesh().derivatives(eL, iL, qL);
         for(const size_t qNL : elNL.qnodes()) {
@@ -183,7 +183,7 @@ void stiffness_matrix<T, I, J>::compute(const evaluated_mechanical_parameters<T>
             const auto integral = std::visit([this, e, i, j](const auto& hook) {
                 return integrate_local(hook, e, i, j);
             }, physic.elastic);
-            using namespace metamath::functions;
+            using namespace metamath::operators;
             return model.local_weight * integral;
         },
         [this, &hooke](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
@@ -191,7 +191,7 @@ void stiffness_matrix<T, I, J>::compute(const evaluated_mechanical_parameters<T>
             const auto integral = std::visit([this, &model, eL, eNL, iL, jNL](const auto& hook) {
                 return integrate_nonlocal(hook, model.influence, eL, eNL, iL, jNL);
             }, physic.elastic);
-            using namespace metamath::functions;
+            using namespace metamath::operators;
             return nonlocal::nonlocal_weight(model.local_weight) * integral;
         }
     );

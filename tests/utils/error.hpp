@@ -15,7 +15,7 @@ T max_norm(const std::vector<T>& x) {
 
 template<std::floating_point T>
 T max_error(const std::vector<T>& x, const std::vector<T>& y) {
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     return max_norm(x - y);
 }
 

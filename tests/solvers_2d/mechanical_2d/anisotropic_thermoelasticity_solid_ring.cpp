@@ -83,7 +83,7 @@ const suite<"anisotropic_thermoelasticity_solid_ring"> _ = [] {
         static constexpr std::array<T, 2> Zero_Angle_Point = {T{1}, T{0}};
         static constexpr std::array<T, 3> Temperature_Strain = {a_rr * Delta_Temperature, a_ff * Delta_Temperature, T{0}};
         const auto strain = Expected_Polar_Strain(point);
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         return calc_stress<T>(elastic.hooke(Zero_Angle_Point), strain - Temperature_Strain);
     };
 

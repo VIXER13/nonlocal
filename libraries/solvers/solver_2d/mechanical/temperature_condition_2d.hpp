@@ -17,7 +17,7 @@ class _temperature_condition final {
     std::array<T, 2> operator()(const Hooke& hooke_matrix, 
                                 const Thermal_Strain& thermal_strain,
                                 const size_t e, const size_t i) const {
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         std::array<T, 2> integral = {};
         size_t qshift = _mesh.quad_shift(e);
         const auto& el = _mesh.container().element_2d(e);
@@ -37,7 +37,7 @@ class _temperature_condition final {
     std::array<T, 2> operator()(const Hooke& hooke_matrix, const Thermal_Strain& thermal_strain,
                                 const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
                                 const size_t eL, const size_t eNL, const size_t iL) const {
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         std::array<T, 2> integral = {};
         const auto& elL = _mesh.container().element_2d(eL);
         const auto& elNL = _mesh.container().element_2d(eNL);
@@ -83,7 +83,7 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
             std::visit(metamath::types::visitor{
                 [](const auto&, const std::monostate) {},
                 [&](const auto& hooke, const auto& thermal_strain) {
-                    using namespace metamath::functions;
+                    using namespace metamath::operators;
                     const size_t iL = mesh.global_to_local(eL, node);
                     if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
                         for(const I eNL : mesh.neighbours(eL))

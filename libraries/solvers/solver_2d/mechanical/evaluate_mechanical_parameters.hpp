@@ -60,7 +60,7 @@ evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::me
                         };
                         return result;
                     }
-                    using namespace metamath::functions;
+                    using namespace metamath::operators;
                     std::conditional_t<std::is_same_v<Expansion, raw_orthotropic_thermal_expansion_t<T>>,
                         orthotropic_thermal_strain<T>,
                         anisotropic_thermal_strain<T>
