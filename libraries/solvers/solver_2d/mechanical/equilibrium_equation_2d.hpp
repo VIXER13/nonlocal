@@ -9,6 +9,7 @@
 
 #include <solvers/base/utils.hpp>
 #include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/slae/stable_biconjugate_gradient.hpp>
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
@@ -48,12 +49,20 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
             if (solver.preconditioner().computation_info() != Eigen::Success) {
                 solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
                 logger::warning() << "The ILLT preconditioner could not be calculated, "
-                                << "the preconditioner was switched to Identity." << std::endl;
+                                  << "the preconditioner was switched to Identity." << std::endl;
             }
         }
         displacement = solver.solve(f);
     } else {
-        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{stiffness.matrix().inner()};
+        slae::stable_biconjugate_gradient<T, Matrix_Index> solver{stiffness.matrix().inner()};
+        if (settings.is_nonlocal()) {
+            solver.template init_preconditioner<slae::eigen_ILUT_preconditioner>(local_stiffness.matrix().inner());
+            if (solver.preconditioner().computation_info() != Eigen::Success) {
+                solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
+                logger::warning() << "The ILUT preconditioner could not be calculated, "
+                                  << "the preconditioner was switched to Identity." << std::endl;
+            }
+        }
         displacement = solver.solve(f);
     }
     auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement};

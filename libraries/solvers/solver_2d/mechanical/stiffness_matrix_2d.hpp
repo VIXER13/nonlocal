@@ -89,6 +89,7 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonlocal
     const auto& elL  = _base::mesh().container().element_2d(eL );
     const auto& elNL = _base::mesh().container().element_2d(eNL);
     for(const size_t qL : elL.qnodes()) {
+        using namespace anisotropic_indices;
         using namespace metamath::operators;
         const auto& qnodeL = _base::mesh().quad_coord(eL, qL);
         const auto wdNi = elL.weight(qL) * _base::mesh().derivatives(eL, iL, qL);
@@ -97,24 +98,25 @@ stiffness_matrix<T, I, J>::block_t stiffness_matrix<T, I, J>::integrate_nonlocal
                                                        std::get<Constant>(hooke_matrix);
             const T weight = elNL.weight(qNL) * influence(qnodeL, _base::mesh().quad_coord(eNL, qNL));
             const auto wdNj = weight * _base::mesh().derivatives(eNL, jNL, qNL);
-            if constexpr (std::is_same_v<Hooke, evaluated_isotropic_hook_matrix_t<T>>) {
-                using namespace isotropic_indices;
-                integral[X][X] += hooke[_11] * wdNi[X] * wdNj[X] + hooke[_66] * wdNi[Y] * wdNj[Y];
-                integral[X][Y] += hooke[_12] * wdNi[X] * wdNj[Y] + hooke[_66] * wdNi[Y] * wdNj[X];
-                integral[Y][X] += hooke[_12] * wdNi[Y] * wdNj[X] + hooke[_66] * wdNi[X] * wdNj[Y];
-                integral[Y][Y] += hooke[_11] * wdNi[Y] * wdNj[Y] + hooke[_66] * wdNi[X] * wdNj[X];
-            } else if constexpr (std::is_same_v<Hooke, evaluated_orthotropic_hook_matrix_t<T>>) {
-                using namespace orthotropic_indices;
-                integral[X][X] += hooke[_11] * wdNi[X] * wdNj[X] + hooke[_66] * wdNi[Y] * wdNj[Y];
-                integral[X][Y] += hooke[_12] * wdNi[X] * wdNj[Y] + hooke[_66] * wdNi[Y] * wdNj[X];
-                integral[Y][X] += hooke[_12] * wdNi[Y] * wdNj[X] + hooke[_66] * wdNi[X] * wdNj[Y];
-                integral[Y][Y] += hooke[_22] * wdNi[Y] * wdNj[Y] + hooke[_66] * wdNi[X] * wdNj[X];
+            if constexpr (std::is_same_v<Hooke, evaluated_isotropic_hook_matrix_t<T>> ||
+                          std::is_same_v<Hooke, evaluated_orthotropic_hook_matrix_t<T>>) {
+                const T shear1 = hooke[_66] * wdNi[Y];
+                const T shear2 = hooke[_66] * wdNi[X];
+                integral[X][X] += hooke[_11] * wdNi[X] * wdNj[X] + shear1 * wdNj[Y];
+                integral[X][Y] += hooke[_12] * wdNi[X] * wdNj[Y] + shear1 * wdNj[X];
+                integral[Y][X] += hooke[_12] * wdNi[Y] * wdNj[X] + shear2 * wdNj[Y];
+                integral[Y][Y] += std::is_same_v<Hooke, evaluated_isotropic_hook_matrix_t<T>> ?
+                                  hooke[_11] * wdNi[Y] * wdNj[Y] + shear2 * wdNj[X] :
+                                  hooke[_22] * wdNi[Y] * wdNj[Y] + shear2 * wdNj[X];
             } else if constexpr (std::is_same_v<Hooke, evaluated_anisotropic_hook_matrix_t<T>>) {
-                using namespace anisotropic_indices;
-                integral[X][X] += (hooke[_11] * wdNi[X] + hooke[_16] * wdNi[Y]) * wdNj[X] + (hooke[_16] * wdNi[X] + hooke[_66] * wdNi[Y]) * wdNj[Y];
-                integral[X][Y] += (hooke[_16] * wdNi[X] + hooke[_66] * wdNi[Y]) * wdNj[X] + (hooke[_12] * wdNi[X] + hooke[_26] * wdNi[Y]) * wdNj[Y];
-                integral[Y][X] += (hooke[_16] * wdNi[X] + hooke[_12] * wdNi[Y]) * wdNj[X] + (hooke[_66] * wdNi[X] + hooke[_26] * wdNi[Y]) * wdNj[Y];
-                integral[Y][Y] += (hooke[_66] * wdNi[X] + hooke[_26] * wdNi[Y]) * wdNj[X] + (hooke[_26] * wdNi[X] + hooke[_22] * wdNi[Y]) * wdNj[Y];
+                const T hooke16 = hooke[_16] * wdNi[X];
+                const T hooke26 = hooke[_26] * wdNi[Y];
+                const T shear1 = hooke[_66] * wdNi[Y] + hooke16;
+                const T shear2 = hooke[_66] * wdNi[X] + hooke26;
+                integral[X][X] += (hooke[_11] * wdNi[X] + hooke[_16] * wdNi[Y]) * wdNj[X] + shear1 * wdNj[Y];
+                integral[X][Y] += (hooke[_12] * wdNi[X] + hooke26             ) * wdNj[Y] + shear1 * wdNj[X];
+                integral[Y][X] += (hooke[_12] * wdNi[Y] + hooke16             ) * wdNj[X] + shear2 * wdNj[Y];
+                integral[Y][Y] += (hooke[_22] * wdNi[Y] + hooke[_26] * wdNi[X]) * wdNj[Y] + shear2 * wdNj[X];
             } else
                 static_assert(false, "Unsupported coefficient type.");
         }

@@ -3,8 +3,6 @@
 #include "independent_symmetric_matrix_vector_product.hpp"
 #include "unrelated_symmetric_matrix_vector_product.hpp"
 
-#include <vector>
-
 namespace nonlocal::slae {
 
 enum class product_strategy : bool {

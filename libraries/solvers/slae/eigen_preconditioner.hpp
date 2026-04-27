@@ -56,4 +56,7 @@ using eigen_diagonal_preconditioner = eigen_preconditioner<T, I, Eigen::Diagonal
 template<class T, class I>
 using eigen_ILLT_preconditioner = eigen_preconditioner<T, I, Eigen::IncompleteCholesky<T, Eigen::Upper, Eigen::NaturalOrdering<I>>>;
 
+template<class T, class I>
+using eigen_ILUT_preconditioner = eigen_preconditioner<T, I, Eigen::IncompleteLUT<T, I>>;
+
 }
