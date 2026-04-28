@@ -27,10 +27,10 @@ class elements_set {
 protected:
     std::vector<element_integrate_1d<T>> _elements_1d;
     std::vector<element_integrate_2d<T>> _elements_2d;
-    const std::unordered_map<size_t, element_1d_t> _model_to_local_1d;
-    const std::unordered_map<size_t, element_2d_t> _model_to_local_2d;
-    const std::vector<size_t> _local_to_model_1d;
-    const std::vector<size_t> _local_to_model_2d;
+    std::unordered_map<size_t, element_1d_t> _model_to_local_1d;
+    std::unordered_map<size_t, element_2d_t> _model_to_local_2d;
+    std::vector<size_t> _local_to_model_1d;
+    std::vector<size_t> _local_to_model_2d;
 
     template<class I>
     static std::vector<size_t> local_to_model(const std::unordered_map<size_t, I>& model_to_local) {
@@ -52,6 +52,11 @@ protected:
         , _local_to_model_2d{local_to_model(_model_to_local_2d)} {}
 
 public:
+    elements_set() = default;
+    elements_set(const elements_set<T>&) = default;
+    elements_set(elements_set<T>&&) = default;
+    elements_set<T>& operator=(const elements_set<T>&) = default;
+    elements_set<T>& operator=(elements_set<T>&&) = default;
     virtual ~elements_set() noexcept = default;
 
     element_integrate_1d<T>& element_1d(const element_1d_t local) {

@@ -23,7 +23,7 @@ class mesh_container_2d final {
     template<class U, class J, mesh_format Format>
     friend class mesh_parser;
 
-    std::unique_ptr<elements_set<T>> _elements_set; // TODO: make elements_set copyable
+    elements_set<T> _elements_set;
     std::vector<std::array<T, 2>> _nodes;
     std::vector<std::vector<I>> _elements;
     std::vector<uint8_t> _elements_types;
@@ -273,7 +273,7 @@ const std::array<T, 2>& mesh_container_2d<T, I>::node_coord(const size_t node) c
 
 template<class T, class I>
 const elements_set<T>& mesh_container_2d<T, I>::get_elements_set() const {
-    return *_elements_set;
+    return _elements_set;
 }
 
 template<class T, class I>
@@ -308,7 +308,7 @@ mesh_container_2d<T, I>::element_data_2d mesh_container_2d<T, I>::element_2d_dat
 
 template<class T, class I>
 void mesh_container_2d<T, I>::clear() {
-    _elements_set = nullptr;
+    _elements_set = {};
     _nodes.clear();
     _nodes.shrink_to_fit();
     _elements.clear();

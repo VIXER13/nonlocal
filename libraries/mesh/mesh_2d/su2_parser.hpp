@@ -165,7 +165,7 @@ size_t mesh_parser<T, I, mesh_format::SU2>::read_group(const std::string& group,
 template<class T, class I>
 template<class Stream>
 void mesh_parser<T, I, mesh_format::SU2>::parse(Stream& mesh_file) {
-    _mesh._elements_set = std::make_unique<vtk_elements_set<T>>();
+    _mesh._elements_set = vtk_elements_set<T>{};
     auto elements_2d = read_elements_2d(mesh_file);
     _mesh._elements_2d_count = elements_2d.size();
     _mesh._nodes = read_nodes(mesh_file);
