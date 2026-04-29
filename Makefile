@@ -1,10 +1,12 @@
-COMPILER ?= gcc
 BUILD_DIR := build
 TOOLCHAIN_FILE := $(BUILD_DIR)/conan_toolchain.cmake
 UNITTEST_FILE := $(BUILD_DIR)/tests/unit_tests
 BUILD_MAKEFILE := $(BUILD_DIR)/Makefile
-PROFILE_PATH := ./.profiles/$(COMPILER)
 COMPILER_MARKER := $(BUILD_DIR)/.compiler.stamp
+
+DEFAULT_COMPILER := gcc
+COMPILER ?= $(if $(wildcard $(COMPILER_MARKER)),$(shell cat $(COMPILER_MARKER)),$(DEFAULT_COMPILER))
+PROFILE_PATH := ./.profiles/$(COMPILER)
 
 $(COMPILER_MARKER):
 	mkdir -p $(BUILD_DIR)
@@ -18,7 +20,8 @@ $(BUILD_MAKEFILE): $(COMPILER_MARKER) $(TOOLCHAIN_FILE)
 
 .PHONY: update_compiler
 update_compiler:
-	@[ "$$(cat $(COMPILER_MARKER))" != "$(COMPILER)" ] && echo "$(COMPILER)" > $(COMPILER_MARKER) || true
+	@mkdir -p "$(BUILD_DIR)"
+	@[ "$$(cat "$(COMPILER_MARKER)" 2>/dev/null)" = "$(COMPILER)" ] || printf '%s\n' "$(COMPILER)" > "$(COMPILER_MARKER)"
 
 # Setup target
 .PHONY: setup
