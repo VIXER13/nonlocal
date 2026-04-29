@@ -8,7 +8,7 @@ namespace nonlocal::slae {
 
 template<class T, class I>
 class iterative_solver_base : public solver_base<T, I> {
-    std::unique_ptr<preconditioner_base<T, I>> _preconditioner = std::make_unique<eigen_preconditioner<T, I>>();
+    std::unique_ptr<preconditioner_base<T, I>> _preconditioner = std::make_unique<eigen_identity_preconditioner<T, I>>();
     T _tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
     uintmax_t _max_iterations = 10000;
 
@@ -26,6 +26,10 @@ public:
 
     const preconditioner_base<T, I>& preconditioner() const noexcept {
         return *_preconditioner;
+    }
+
+    void init_preconditioner(std::unique_ptr<preconditioner_base<T, I>>&& preconditioner) {
+        _preconditioner = std::move(preconditioner);
     }
 
     template<template<class, class> class Preconditioner, class... Types>
