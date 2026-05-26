@@ -44,15 +44,15 @@ void mass_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::
     const size_t cols = _base::mesh().container().nodes_count();
     _base::matrix().inner().resize(rows, cols);
     _base::matrix().bound().resize(rows, cols);
-    _base::init_shifts(theories, is_inner, SYMMETRIC);
-    _base::init_indices(theories, is_inner, SYMMETRIC);
+    _base::init_shifts(theories, is_inner, Symmetric);
+    _base::init_indices(theories, is_inner, Symmetric);
 }
 
 template<class T, class I, class J>
 void mass_matrix<T, I, J>::calc_matrix(const std::vector<bool>& is_inner) {
     const std::unordered_map<std::string, theory_t> theories = local_theories(_base::mesh().container());
     create_matrix_portrait(theories, is_inner);
-    _base::calc_coeffs(theories, is_inner, SYMMETRIC,
+    _base::calc_coeffs(theories, is_inner, Symmetric,
         [this](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const T integral = integrate_basic_pair(e, i, j);
             return block_t{integral, 0, 0, integral};

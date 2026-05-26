@@ -17,7 +17,7 @@ class motion_equation_solver final {
     std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
     mass_matrix<T, I, Matrix_Index> _mass;
     stiffness_matrix<T, I, Matrix_Index> _stiffness;
-    mechanical_boundaries_conditions_2d<T> _boundaries_conditions
+    mechanical_boundaries_conditions_2d<T> _boundaries_conditions;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _right_part;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _displacement_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _displacement_curr;
@@ -32,23 +32,23 @@ public:
 
     void compute(const raw_mechanical_parameters<T>& parameters,
                  mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
-                 const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>>& init_dist);
+                 const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist);
 
-    void calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>>& right_part);
+    void calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part);
 };
 
 template<class T, class I, class Matrix_Index>
 motion_equation_solver<T, I, Matrix_Index>::motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const T time_step)
-    : _conductivity{mesh}
-    , _mass{mesh}
+    : _mass{mesh}
+    , _stiffness{mesh} 
     , _right_part{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
-    , _temperature_prev{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
+    , _displacement_prev{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
     , _displacement_curr{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
     , _displacement_next{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
     , _time_step{time_step} {}
 
 template<class T, class I, class Matrix_Index>
-const Eigen::Matrix<T, Eigen::Dynamic, 1>& motion_equation_solver<T, I, Matrix_Index>::temperature() const noexcept {
+const Eigen::Matrix<T, Eigen::Dynamic, 1>& motion_equation_solver<T, I, Matrix_Index>::displacement() const noexcept {
     return _displacement_next;
 }
 
@@ -58,10 +58,9 @@ constexpr T motion_equation_solver<T, I, Matrix_Index>::time_step() const noexce
 }
 
 template<class T, class I, class Matrix_Index>
-template<class Init_Dist>
 void motion_equation_solver<T, I, Matrix_Index>::compute(const raw_mechanical_parameters<T>& parameters,
                                                          mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
-                                                         const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>>& init_dist) {
+                                                         const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist) {
     _boundaries_conditions = std::move(boundaries_conditions);
     const auto& mesh = _mass.mesh();
     const auto settings = init_problem_settings(mesh.container(), parameters, _boundaries_conditions);
@@ -84,10 +83,10 @@ void motion_equation_solver<T, I, Matrix_Index>::compute(const raw_mechanical_pa
 }
 
 template<class T, class I, class Matrix_Index>
-void motion_equation_solver<T, I, Matrix_Index>::calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>>& right_part) {
+void motion_equation_solver<T, I, Matrix_Index>::calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part) {
     _right_part.setZero();
     _displacement_prev.swap(_displacement_curr);
-    _displacement_curr.swap(_displacement_next)
+    _displacement_curr.swap(_displacement_next);
     const auto& mesh = _mass.mesh();
     boundary_condition_second_kind_2d(_right_part, mesh, _boundaries_conditions);
     if (right_part)
