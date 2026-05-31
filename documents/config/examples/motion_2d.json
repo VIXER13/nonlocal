@@ -1,0 +1,53 @@
+{
+    "task": {
+        "dimension": 2,
+        "problem": "mechanical",
+        "time_dependency": true
+    },
+    "save": {
+        "folder": "/home/vixer/projects/calculations/motion_test",
+        "config": "config",
+        "csv": "solution_mechanical_2d",
+        "vtk": "solution_mechanical_2d",
+        "precision": 7
+    },
+    "mesh": {
+        "path": "/home/vixer/projects/nonlocal/tests/solvers_2d/meshes/plate_10x1_h0.125.su2"
+    },
+    "time": {
+        "time_step": 0.001,
+        "steps_count": 5000,
+        "save_frequency": 100
+    },
+    "boundaries": {
+        "Left": [
+            { "pressure": -1 },
+            null
+        ],
+        "Right": [
+            { "pressure": 1 },
+            null
+        ],
+        "Horizontal": [
+            null,
+            { "displacement": 0 }
+        ],
+        "Vertical": [
+            { "displacement": 0 },
+            null
+        ]
+    },
+    "materials": {
+        "DEFAULT": {
+            "physical": {
+                "young_modulus": 1.0,
+                "poissons_ratio": 0.3
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
+            }
+        }
+    }
+}

@@ -105,9 +105,18 @@ void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const 
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     constexpr auto Boundaries_Field = "boundaries";
     const config::time_data<T> time{config["time"], "time"};
-    const auto parameters = config::read_mechanical_parameters_2d<T>(config["materials"], "materials");
-    auto boundaries_conditions = config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field);
     solver_2d::mechanical::motion_equation_solver<T, uint32_t, I> solver{mesh, time.time_step};
+    solver.compute(config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
+                   config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field));
+    for(const size_t step : std::ranges::iota_view{0zu, time.steps_count}) {
+        solver.calc_step();
+        if (step % time.save_frequency == 0) {
+            logger::info() << "saving step " << step << std::endl;
+            const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> solution = solver.solution();
+            save_csv({}, solution, save, step);
+            save_vtk({}, solution, save, step);
+        }
+    }
 }
 
 template<std::floating_point T, std::signed_integral I>
