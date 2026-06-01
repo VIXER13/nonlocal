@@ -5,6 +5,7 @@
 #include "mechanical_parameters_2d.hpp"
 #include "mechanical_solution_2d.hpp"
 
+#include <solvers/slae/init_solver_method.hpp>
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
@@ -15,7 +16,7 @@ template<class T, class I, class Matrix_Index>
 class motion_equation_solver final {
     static constexpr size_t DoF = 2;
 
-    std::unique_ptr<slae::conjugate_gradient<T, Matrix_Index>> slae_solver;
+    std::unique_ptr<slae::iterative_solver_base<T, Matrix_Index>> slae_solver;
     mass_matrix<T, I, Matrix_Index> _mass;
     stiffness_matrix<T, I, Matrix_Index> _stiffness;
     mechanical_boundaries_conditions_2d<T> _boundaries_conditions;
@@ -24,31 +25,33 @@ class motion_equation_solver final {
     Eigen::Matrix<T, Eigen::Dynamic, 1> _displacement_prev;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _displacement_curr;
     Eigen::Matrix<T, Eigen::Dynamic, 1> _displacement_next;
-    const T _time_step = 1;
+    T _time_step = T{1};
+    T _time = T{0};
 
 public:
-    explicit motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const T time_step);
+    explicit motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
 
     const Eigen::Matrix<T, Eigen::Dynamic, 1>& displacement() const noexcept;
     mechanical_solution_2d<T> solution(const bool strain_and_stress = true) const;
-    constexpr T time_step() const noexcept;
+    T time_step() const noexcept;
+    T time() const noexcept;
 
     void compute(const raw_mechanical_parameters<T>& parameters,
                  mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
+                 const T time_step, const T time = T{0},
                  const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist = std::nullopt);
 
     void calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt);
 };
 
 template<class T, class I, class Matrix_Index>
-motion_equation_solver<T, I, Matrix_Index>::motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const T time_step)
+motion_equation_solver<T, I, Matrix_Index>::motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _mass{mesh}
     , _stiffness{mesh} 
     , _right_part{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
     , _displacement_prev{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
     , _displacement_curr{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
-    , _displacement_next{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())}
-    , _time_step{time_step} {}
+    , _displacement_next{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(DoF * mesh->container().nodes_count())} {}
 
 template<class T, class I, class Matrix_Index>
 const Eigen::Matrix<T, Eigen::Dynamic, 1>& motion_equation_solver<T, I, Matrix_Index>::displacement() const noexcept {
@@ -59,19 +62,27 @@ template<class T, class I, class Matrix_Index>
 mechanical_solution_2d<T> motion_equation_solver<T, I, Matrix_Index>::solution(const bool strain_and_stress) const {
     mechanical_solution_2d<T> sol{_mass.mesh_ptr(), _parameters, displacement()};
     if (strain_and_stress)
-        sol.calc_strain_and_stress();
+        sol.calc_strain_and_stress(_parameters);
     return sol;
 }
 
 template<class T, class I, class Matrix_Index>
-constexpr T motion_equation_solver<T, I, Matrix_Index>::time_step() const noexcept {
+T motion_equation_solver<T, I, Matrix_Index>::time_step() const noexcept {
     return _time_step;
+}
+
+template<class T, class I, class Matrix_Index>
+T motion_equation_solver<T, I, Matrix_Index>::time() const noexcept {
+    return _time;
 }
 
 template<class T, class I, class Matrix_Index>
 void motion_equation_solver<T, I, Matrix_Index>::compute(const raw_mechanical_parameters<T>& parameters,
                                                          mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
+                                                         const T time_step, const T time,
                                                          const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist) {
+    _time_step = time_step;
+    _time = time;
     _boundaries_conditions = std::move(boundaries_conditions);
     const auto& mesh = _mass.mesh();
     const auto settings = init_problem_settings(mesh.container(), parameters, _boundaries_conditions);
@@ -80,8 +91,9 @@ void motion_equation_solver<T, I, Matrix_Index>::compute(const raw_mechanical_pa
     _mass.compute(settings.is_inner_nodes);
     _stiffness.compute(_parameters, settings);
 
-    _stiffness.matrix().inner() *= time_step() * time_step();
-    _stiffness.matrix().bound() *= time_step() * time_step();
+    const T factor = time_step * time_step;
+    _stiffness.matrix().inner() *= factor;
+    _stiffness.matrix().bound() *= factor;
     _stiffness.matrix().inner() += _mass.matrix().inner();
     first_kind_filler(_mass.mesh().process_nodes(), settings.is_inner_nodes, [&matrix = _stiffness.matrix().inner()](const size_t row) {
         matrix.valuePtr()[matrix.outerIndexPtr()[row]] = T{1};
@@ -96,7 +108,7 @@ void motion_equation_solver<T, I, Matrix_Index>::compute(const raw_mechanical_pa
         _displacement_curr = _displacement_next;
     }
 
-    slae_solver = std::make_unique<slae::conjugate_gradient<T, Matrix_Index>>(_stiffness.matrix().inner());
+    slae_solver = slae::init_iterative_solver(_stiffness.matrix().inner(), settings.is_symmetric());
 }
 
 template<class T, class I, class Matrix_Index>
@@ -114,6 +126,7 @@ void motion_equation_solver<T, I, Matrix_Index>::calc_step(const std::optional<s
     _right_part += T{2} * tmp;
     boundary_condition_first_kind_2d(_right_part, mesh, _boundaries_conditions, _stiffness.matrix().bound());
     _displacement_next = slae_solver->solve(_right_part, _displacement_curr);
+    _time += time_step();
 }
 
 }
