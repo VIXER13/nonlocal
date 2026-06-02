@@ -88,13 +88,14 @@ void motion_equation_solver<T, I, Matrix_Index>::compute(const raw_mechanical_pa
     const auto settings = init_problem_settings(mesh.container(), parameters, _boundaries_conditions);
     log_problem_settings(settings);
     _parameters = evaluate_mechanical_parameters(mesh, parameters);
-    _mass.compute(settings.is_inner_nodes);
+    _mass.compute(_parameters, settings.is_inner_nodes);
     _stiffness.compute(_parameters, settings);
 
-    const T factor = time_step * time_step;
-    _stiffness.matrix().inner() *= factor;
-    _stiffness.matrix().bound() *= factor;
-    _stiffness.matrix().inner() += _mass.matrix().inner();
+    _mass.matrix().inner() /= time_step * time_step;
+    if (settings.is_symmetric())
+        _stiffness.matrix().inner() += _mass.matrix().inner();
+    else
+        _stiffness.matrix().inner() += _mass.matrix().inner().template selfadjointView<Eigen::Upper>();
     first_kind_filler(_mass.mesh().process_nodes(), settings.is_inner_nodes, [&matrix = _stiffness.matrix().inner()](const size_t row) {
         matrix.valuePtr()[matrix.outerIndexPtr()[row]] = T{1};
     });
@@ -120,7 +121,6 @@ void motion_equation_solver<T, I, Matrix_Index>::calc_step(const std::optional<s
     boundary_condition_second_kind_2d(_right_part, mesh, _boundaries_conditions);
     if (right_part)
         integrate_right_part<DoF>(_right_part, mesh, *right_part);
-    _right_part *= time_step() * time_step();
     _right_part -= _mass.matrix().inner().template selfadjointView<Eigen::Upper>() * _displacement_prev;
     const Eigen::Matrix<T, Eigen::Dynamic, 1> tmp = _mass.matrix().inner().template selfadjointView<Eigen::Upper>() * _displacement_curr;
     _right_part += T{2} * tmp;
