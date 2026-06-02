@@ -1,5 +1,6 @@
 #pragma once
 
+#include "density_parameters.hpp"
 #include "elastic_parameters.hpp"
 #include "thermal_expansion_parameters.hpp"
 
@@ -9,12 +10,14 @@ template<std::floating_point T>
 struct raw_mechanical_parameters_t final {
     elastic_parameters_t<T> elastic;
     raw_thermal_expansion_t<T> thermal_expansion;
+    raw_density_t<T> density;
 };
 
 template<std::floating_point T>
 struct evaluated_mechanical_parameters_t final {
     evaluated_hook_matrix_t<T> elastic;
     evaluated_thermal_strain_t<T> thermal_strain;
+    evaluated_density_t<T> density;
 };
 
 template<std::floating_point T>

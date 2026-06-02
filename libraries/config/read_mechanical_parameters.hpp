@@ -33,6 +33,9 @@ class _mechanical_parameters_2d final {
     template<std::floating_point T>
     static solver_2d::mechanical::raw_thermal_expansion_t<T> read_thermal_expansion_2d(const nlohmann::json& config, const std::string& path);
 
+    template<std::floating_point T>
+    static solver_2d::mechanical::raw_density_t<T> read_density_2d(const nlohmann::json& config, const std::string& path);
+
     explicit _mechanical_parameters_2d() noexcept = default;
 
 public:
@@ -44,10 +47,8 @@ template<std::floating_point T>
 std::array<coefficient_t<T, 2>, 2> _mechanical_parameters_2d::read_elastic_parameter(const nlohmann::json& config,
                                                                                      const std::bitset<2> is_null,
                                                                                      const std::string& path) {
-    return {
-        is_null[0] ? coefficient_t<T, 2>{T{0}} : read_coefficient<T, 2u>(config[0], path),
-        is_null[1] ? coefficient_t<T, 2>{T{0}} : read_coefficient<T, 2u>(config[1], path)
-    };
+    return { is_null[0] ? coefficient_t<T, 2>{T{0}} : read_coefficient<T, 2u>(config[0], path),
+             is_null[1] ? coefficient_t<T, 2>{T{0}} : read_coefficient<T, 2u>(config[1], path) };
 }
 
 template<std::floating_point T>
@@ -74,10 +75,8 @@ template<std::floating_point T>
 solver_2d::mechanical::isotropic_elastic_parameters<T> _mechanical_parameters_2d::read_isotropic_coefficient_2d(
     const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
-    return {
-        .young_modulus = read_coefficient<T, 2u>(config["young_modulus"], path_with_access + "young_modulus"),
-        .poissons_ratio = read_coefficient<T, 2u>(config["poissons_ratio"], path_with_access + "poissons_ratio")
-    };
+    return { .young_modulus = read_coefficient<T, 2u>(config["young_modulus"], path_with_access + "young_modulus"),
+             .poissons_ratio = read_coefficient<T, 2u>(config["poissons_ratio"], path_with_access + "poissons_ratio") };
 }
 
 template<std::floating_point T>
@@ -113,10 +112,8 @@ solver_2d::mechanical::orthotropic_elastic_parameters<T> _mechanical_parameters_
 template<std::floating_point T>
 solver_2d::mechanical::anisotropic_elastic_parameters<T> _mechanical_parameters_2d::read_anisotropic_coefficient_2d(
     const nlohmann::json& config, const std::string& path) {
-    return {
-        .main_parameters = read_orthotropic_coefficient_2d<T>(config, path),
-        .angle = read_coefficient<T, 2u>(config["angle"], append_access_sign(path) + "angle")
-    };
+    return { .main_parameters = read_orthotropic_coefficient_2d<T>(config, path),
+             .angle = read_coefficient<T, 2u>(config["angle"], append_access_sign(path) + "angle") };
 }
 
 template<std::floating_point T>
@@ -157,6 +154,14 @@ solver_2d::mechanical::raw_thermal_expansion_t<T> _mechanical_parameters_2d::rea
 }
 
 template<std::floating_point T>
+solver_2d::mechanical::raw_density_t<T> _mechanical_parameters_2d::read_density_2d(const nlohmann::json& config, const std::string& path) {
+    check_optional_fields(config, { "density" }, path);
+    if (!config.contains("density"))
+        return {};
+    return read_coefficient<T, 2u>(config["density"], append_access_sign(path) + "density");
+}
+
+template<std::floating_point T>
 solver_2d::mechanical::raw_mechanical_parameters<T> read_mechanical_parameters_2d(const nlohmann::json& config, const std::string& path) {
     if (!config.is_object())
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an object."};
@@ -165,11 +170,14 @@ solver_2d::mechanical::raw_mechanical_parameters<T> read_mechanical_parameters_2
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_access_to_material = append_access_sign(path_with_access + name);
         const std::string model_field = get_model_field(material, path_with_access, "mechanical");
+        const std::string physical_path = path_with_access + "physical";
+        const auto& physical_config = material["physical"];
         parameters[name] = {
             .model = model_field.empty() ? model_parameters<2u, T>{} : read_model_2d<T>(material[model_field], path_with_access + model_field),
             .physical = {
-                .elastic = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(material["physical"], path_with_access + "physical"),
-                .thermal_expansion = _mechanical_parameters_2d::read_thermal_expansion_2d<T>(material["physical"], path_with_access + "physical")
+                .elastic = _mechanical_parameters_2d::read_mechanical_coefficient_2d<T>(physical_config, physical_path),
+                .thermal_expansion = _mechanical_parameters_2d::read_thermal_expansion_2d<T>(physical_config, physical_path),
+                .density = _mechanical_parameters_2d::read_density_2d<T>(physical_config, physical_path)
             }
         };
     }
