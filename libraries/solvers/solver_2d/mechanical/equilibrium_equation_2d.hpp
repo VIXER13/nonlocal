@@ -49,7 +49,7 @@ mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_
     }
     Eigen::Matrix<T, Eigen::Dynamic, 1> displacement = solver->solve(f);
     auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement};
-    solution.calc_strain_and_stress();
+    solution.calc_strain_and_stress(evaluated_parameters);
     return solution;
 }
 

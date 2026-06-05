@@ -13,6 +13,7 @@
 #include <config/thermal_auxiliary_data.hpp>
 #include <mesh/mesh_2d/find_neighbours.hpp>
 #include <solvers/solver_2d/mechanical/equilibrium_equation_2d.hpp>
+#include <solvers/solver_2d/mechanical/motion_equation_solver.hpp>
 
 #include <set>
 
@@ -36,8 +37,10 @@ class _determine_problem final {
     friend void problems_2d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task);
 
     template<std::floating_point T, std::signed_integral I>
-    friend void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config,
-                                         const config::save_data& save, const config::problem_t problem);
+    friend void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config, const config::save_data& save);
+
+    template<std::floating_point T, std::signed_integral I>
+    friend void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config, const config::save_data& save);
 
     template<std::floating_point T, std::signed_integral I>
     friend std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_stationary_2d(
@@ -83,11 +86,8 @@ std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_stationa
 }
 
 template<std::floating_point T, std::signed_integral I>
-void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config,
-                              const config::save_data& save, const config::problem_t problem) {
+void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config, const config::save_data& save) {
     using DP = _determine_problem;
-    if (problem != config::problem_t::Thermal)
-        throw std::domain_error{"Mechanical problem does not support time dependence."};
     mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     solve_thermal_2d_problem<T, I>(mesh, 
@@ -96,6 +96,28 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
         config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
         config::time_data<T>{config["time"], "time"},
         save);
+}
+
+template<std::floating_point T, std::signed_integral I>
+void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlohmann::json& config, const config::save_data& save) {
+    using DP = _determine_problem;
+    mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "mechanical")));
+    mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
+    constexpr auto Boundaries_Field = "boundaries";
+    const config::time_data<T> time{config["time"], "time"};
+    solver_2d::mechanical::motion_equation_solver<T, uint32_t, I> solver{mesh};
+    solver.compute(config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
+                   config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field),
+                   time.time_step, time.initial_time);
+    for(const size_t step : std::ranges::iota_view{0zu, time.steps_count}) {
+        solver.calc_step();
+        if (step % time.save_frequency == 0) {
+            logger::info() << "saving step " << step << std::endl;
+            const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> solution = solver.solution();
+            save_csv({}, solution, save, step);
+            save_vtk({}, solution, save, step);
+        }
+    }
 }
 
 template<std::floating_point T, std::signed_integral I>
@@ -124,9 +146,16 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
     config::check_required_fields(config, DP::get_required_fields(task));
     config::check_optional_fields(config, {"auxiliary"});
     auto mesh = config::read_mesh_2d<T, uint32_t>(config["mesh"], "mesh");
-    if (task.time_dependency)
-        thermal_nonstationary_2d<T, I>(mesh, config, save, task.problem);
-    else {
+    if (task.time_dependency) {
+        if (task.problem == config::problem_t::Thermal) {
+            thermal_nonstationary_2d<T, I>(mesh, config, save);
+            return;
+        } else if (task.problem == config::problem_t::Mechanical) {
+            mechanical_nonstationary_2d<T, I>(mesh, config, save);
+            return;
+        }
+        throw std::domain_error{"The problem does not support calculations in the nonstationary case."};
+    } else {
         const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_solution = thermal_stationary_2d<T, I>(mesh, config, task.problem);
         const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> mechanical_solution =
             mechanical_2d<T, I>(mesh, config, task.problem, thermal_solution ? thermal_solution->temperature() : std::vector<T>{});
