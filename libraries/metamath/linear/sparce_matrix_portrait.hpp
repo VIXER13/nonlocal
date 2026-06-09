@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <ranges>
 #include <stdexcept>
 #include <vector>
@@ -9,13 +10,24 @@ namespace metamath::linear {
 
 template<class I = uint32_t, class J = size_t>
 class sparce_matrix_portrait final {
+    // Sparce matrix portrait in compressed sparse row (CSR) format.
+    // Shifts vector has size (rows + 1) and contains the starting index of each row in the indices vector.
+    // The last element of shifts is equal to the size of indices vector.
+    // Indices vector contains the column indices of non-zero elements in the matrix, sorted within each row.
+    // The number of non-zero elements in the matrix is equal to the last element of shifts vector.
     std::vector<J> _shifts;
     std::vector<I> _indices;
+    size_t _cols = 0zu;
+
+    void check_row(const size_t row) const {
+        if (row >= rows())
+            throw std::out_of_range{"Row index " + std::to_string(row) + " is out of range."};
+    }
 
 public:
     sparce_matrix_portrait() = default;
-    sparce_matrix_portrait(const size_t rows)
-        : _shifts(rows + 1zu, 0zu) {}
+    sparce_matrix_portrait(const size_t rows, const size_t cols)
+        : _shifts(rows + 1zu, 0zu), _cols{cols} {}
 
     std::vector<J>& shifts() noexcept { return _shifts; }
     std::vector<I>& indices() noexcept { return _indices; }
@@ -23,40 +35,46 @@ public:
     const std::vector<I>& indices() const noexcept { return _indices; }
 
     size_t rows() const {
-        return _shifts.empty() ? 0zu : _shifts.size() - 1;
+        return shifts().empty() ? 0zu : shifts().size() - 1;
     }
 
     size_t cols() const {
-        return _indices.empty() ? 0zu : *std::ranges::max_element(_indices) + 1;
+        return shifts().empty() ? 0zu : _cols;
     }
 
     size_t non_zeros() const {
-        return _indices.empty() ? 0zu : _indices.back();
+        return shifts().empty() ? 0zu : shifts().back();
     }
 
     bool contains(const size_t row, const size_t col) const {
         if (row >= rows())
             return false;
-        return std::binary_search(&_indices[_shifts[row]], &_indices[_shifts[row + 1]], col);
+        return std::binary_search(&indices()[shifts()[row]], &indices()[shifts()[row + 1]], col);
     }
 
-    size_t index(const size_t row, const size_t col) const {
-        if (row >= rows())
-            throw std::out_of_range{"Row index is out of range."};
-        const auto it = std::lower_bound(&_indices[_shifts[row]], &_indices[_shifts[row + 1]], col);
-        if (it == &_indices[_shifts[row + 1]] || *it != col)
-            throw std::out_of_range{"Column index is out of range."};
-        return std::distance(_indices.data(), it);
+    std::ranges::iota_view<size_t, size_t> shifts(const size_t row) const {
+        check_row(row);
+        return std::ranges::iota_view{shifts()[row], shifts()[row + 1]};
     }
 
-    void set_rows_count(const size_t rows) {
-        _shifts.resize(rows + 1zu, 0zu);
+    size_t shift(const size_t row, const size_t col) const {
+        check_row(row);
+        const auto shifts_range = shifts(row);
+        const auto it = std::lower_bound(&indices()[*shifts_range.begin()], &indices()[*shifts_range.end()], col);
+        if (it == &indices()[*shifts_range.end()] || *it != col)
+            throw std::out_of_range{"Column index " + std::to_string(col) + " is out of range on the row " + std::to_string(row) + "."};
+        return std::distance(indices().data(), it);
+    }
+
+    void set_size(const size_t rows, const size_t cols) {
+        shifts().resize(rows + 1zu, 0zu);
+        _cols = cols;
     }
 
     void accumulate_shifts() {
-        if (!_shifts.empty())
-            for(const size_t row : std::ranges::iota_view{0u, _shifts.size() - 1})
-                _shifts[row + 1] += _shifts[row];
+        if (!shifts().empty())
+            for(const size_t row : std::ranges::iota_view{0u, rows()})
+                shifts()[row + 1] += shifts()[row];
     }
 
     void allocate_indices() {
@@ -64,10 +82,31 @@ public:
     }
 
     void sort_indices() {
-        if (!_shifts.empty()) {
+        if (!shifts().empty()) {
 #pragma omp parallel for schedule(dynamic)
-            for(const size_t row : std::ranges::iota_view{0u, _shifts.size() - 1})
-                std::sort(&_indices[_shifts[row]], &_indices[_shifts[row + 1]]);
+            for(const size_t row : std::ranges::iota_view{0u, rows()})
+                std::sort(&indices()[shifts()[row]], &indices()[shifts()[row + 1]]);
+        }
+    }
+
+    void validate() const {
+        if (shifts().empty())
+            return;
+        if (shifts().size() < 2)
+            throw std::logic_error{"Shifts vector shall have at least two elements."};
+        if (indices().size() != non_zeros())
+            throw std::logic_error{"The last element of shifts shall be equal to the size of indices."};
+        for(const size_t row : std::ranges::iota_view{0u, rows()})
+            if (shifts()[row] > shifts()[row + 1])
+                throw std::logic_error{"Shifts vector shall be non-decreasing."};
+        for(const size_t row : std::ranges::iota_view{0u, rows()}) {
+            const auto shifts_range = shifts(row);
+            for(const size_t shift : shifts_range) {
+                if (indices()[shift] >= cols())
+                    throw std::logic_error{"Column index in indices vector is out of range."};
+                if (shift < shifts_range.back() && indices()[shift + 1] < indices()[shift])
+                    throw std::logic_error{"Column indices in each row shall be sorted."};
+            }
         }
     }
 };
