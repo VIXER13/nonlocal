@@ -5,7 +5,7 @@ project(linear_test)
 add_library(
     linear_test_lib
     OBJECT
-        sparce_matrix.cpp
+        sparse_matrix.cpp
 )
 
 target_include_directories(

@@ -2,15 +2,16 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <concepts>
 #include <ranges>
 #include <stdexcept>
 #include <vector>
 
 namespace metamath::linear {
 
-template<class I = uint32_t, class J = size_t>
-class sparce_matrix_portrait final {
-    // Sparce matrix portrait in compressed sparse row (CSR) format.
+template<std::integral I = uint32_t, std::integral J = size_t>
+class sparse_matrix_portrait final {
+    // Sparse matrix portrait in compressed sparse row (CSR) format.
     // Shifts vector has size (rows + 1) and contains the starting index of each row in the indices vector.
     // The last element of shifts is equal to the size of indices vector.
     // Indices vector contains the column indices of non-zero elements in the matrix, sorted within each row.
@@ -25,8 +26,8 @@ class sparce_matrix_portrait final {
     }
 
 public:
-    sparce_matrix_portrait() = default;
-    sparce_matrix_portrait(const size_t rows, const size_t cols)
+    sparse_matrix_portrait() = default;
+    sparse_matrix_portrait(const size_t rows, const size_t cols)
         : _shifts(rows + 1zu, 0zu), _cols{cols} {}
 
     std::vector<J>& shifts() noexcept { return _shifts; }
@@ -52,9 +53,9 @@ public:
         return std::binary_search(&indices()[shifts()[row]], &indices()[shifts()[row + 1]], col);
     }
 
-    std::ranges::iota_view<size_t, size_t> shifts(const size_t row) const {
+    std::ranges::iota_view<J, J> shifts(const size_t row) const {
         check_row(row);
-        return std::ranges::iota_view{shifts()[row], shifts()[row + 1]};
+        return std::ranges::iota_view<J, J>{shifts()[row], shifts()[row + 1]};
     }
 
     size_t shift(const size_t row, const size_t col) const {
@@ -86,27 +87,6 @@ public:
 #pragma omp parallel for schedule(dynamic)
             for(const size_t row : std::ranges::iota_view{0u, rows()})
                 std::sort(&indices()[shifts()[row]], &indices()[shifts()[row + 1]]);
-        }
-    }
-
-    void validate() const {
-        if (shifts().empty())
-            return;
-        if (shifts().size() < 2)
-            throw std::logic_error{"Shifts vector shall have at least two elements."};
-        if (indices().size() != non_zeros())
-            throw std::logic_error{"The last element of shifts shall be equal to the size of indices."};
-        for(const size_t row : std::ranges::iota_view{0u, rows()})
-            if (shifts()[row] > shifts()[row + 1])
-                throw std::logic_error{"Shifts vector shall be non-decreasing."};
-        for(const size_t row : std::ranges::iota_view{0u, rows()}) {
-            const auto shifts_range = shifts(row);
-            for(const size_t shift : shifts_range) {
-                if (indices()[shift] >= cols())
-                    throw std::logic_error{"Column index in indices vector is out of range."};
-                if (shift < shifts_range.back() && indices()[shift + 1] < indices()[shift])
-                    throw std::logic_error{"Column indices in each row shall be sorted."};
-            }
         }
     }
 };

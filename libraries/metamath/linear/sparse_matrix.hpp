@@ -1,22 +1,22 @@
 #pragma once
 
-#include "sparce_matrix_portrait.hpp"
+#include "sparse_matrix_portrait.hpp"
 
 namespace metamath::linear {
 
-template<class T, class I = uint32_t, class J = size_t>
-class sparce_matrix final {
-    sparce_matrix_portrait<I, J> _portrait;
+template<class T, std::integral I = uint32_t, std::integral J = size_t>
+class sparse_matrix final {
+    sparse_matrix_portrait<I, J> _portrait;
     std::vector<T> _values;
 
 public:
-    sparce_matrix() = default;
-    explicit sparce_matrix(const size_t rows, const size_t cols)
+    sparse_matrix() = default;
+    explicit sparse_matrix(const size_t rows, const size_t cols)
         : _portrait{rows, cols} {}
 
-    sparce_matrix_portrait<I, J>& portrait() noexcept { return _portrait; }
+    sparse_matrix_portrait<I, J>& portrait() noexcept { return _portrait; }
     std::vector<T>& values() noexcept { return _values; }
-    const sparce_matrix_portrait<I, J>& portrait() const noexcept { return _portrait; }
+    const sparse_matrix_portrait<I, J>& portrait() const noexcept { return _portrait; }
     const std::vector<T>& values() const noexcept { return _values; }
 
     size_t rows() const {
@@ -41,12 +41,6 @@ public:
 
     const T& operator()(const size_t row, const size_t col) const {
         return values()[portrait().shift(row, col)];
-    }
-
-    void validate() const {
-        portrait().validate();
-        if (values().size() != portrait().non_zeros())
-            throw std::logic_error{"Values vector size shall be equal to the number of non-zero elements in the portrait."};
     }
 };
 
