@@ -74,11 +74,11 @@ void _read_thermal_parameters::check_conductivity(const solver_2d::thermal::raw_
         },
         [&](const solver_2d::thermal::raw_anisotropic_conductivity_t<T>& conductivity) {
             if (std::holds_alternative<T>(conductivity[X]) && std::holds_alternative<T>(conductivity[Y]) && std::holds_alternative<T>(conductivity[XY])) {
-                const metamath::types::square_matrix<T, 2u> matrix = {
+                const metamath::linear::square_matrix<T, 2u> matrix = {
                     std::get<T>(conductivity[ X]), std::get<T>(conductivity[XY]),
                     std::get<T>(conductivity[XY]), std::get<T>(conductivity[ Y])
                 };
-                if (!metamath::types::is_positive(matrix))
+                if (!metamath::linear::is_positive(matrix))
                     throw std::domain_error{"Parameter \"" + path_with_access + "conductivity\" shall be positive matrix."};
             }
         }

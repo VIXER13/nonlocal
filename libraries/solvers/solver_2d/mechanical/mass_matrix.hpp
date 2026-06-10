@@ -7,7 +7,7 @@ namespace nonlocal::solver_2d::mechanical {
 template<class T, class I, class J>
 class mass_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using _base = matrix_assembler_2d<T, I, J, 2>;
-    using block_t = metamath::types::square_matrix<T, 2>;
+    using block_t = metamath::linear::square_matrix<T, 2>;
 
     static constexpr bool Symmetric = true;
     static constexpr size_t DoF = 2zu;

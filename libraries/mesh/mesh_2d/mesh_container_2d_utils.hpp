@@ -79,18 +79,18 @@ std::vector<std::array<T, 2>> approx_all_quad_nodes(const mesh_container_2d<T, I
 }
 
 template<class T, class I>
-std::vector<metamath::types::square_matrix<T, 2>> approx_all_jacobi_matrices(const mesh_container_2d<T, I>& mesh, const std::vector<I>& qshifts) {
-    return approx_in_all_quad_nodes<metamath::types::square_matrix>(mesh, qshifts, 
+std::vector<metamath::linear::square_matrix<T, 2>> approx_all_jacobi_matrices(const mesh_container_2d<T, I>& mesh, const std::vector<I>& qshifts) {
+    return approx_in_all_quad_nodes<metamath::linear::square_matrix>(mesh, qshifts, 
         [](const auto& element_data, const size_t q) { return element_data.jacobi_matrix(q); });
 }
 
 template<class T>
-constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
+constexpr T jacobian(const metamath::linear::square_matrix<T, 2>& J) noexcept {
     return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
 }
 
 template<class T>
-std::vector<T> calculate_jacobians(const std::vector<metamath::types::square_matrix<T, 2>>& jacobi_matrices) {
+std::vector<T> calculate_jacobians(const std::vector<metamath::linear::square_matrix<T, 2>>& jacobi_matrices) {
     std::vector<T> jacobians(jacobi_matrices.size());
     std::transform(jacobi_matrices.begin(), jacobi_matrices.end(), jacobians.begin(), jacobian<T>);
     return jacobians;
@@ -101,7 +101,7 @@ template<class T, class I>
 std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>& mesh,
                                                   const std::vector<I>& quad_element_shifts,
                                                   const std::vector<I>& quad_nodes_shifts,
-                                                  const std::vector<metamath::types::square_matrix<T, 2>>& jacobi_matrices) {
+                                                  const std::vector<metamath::linear::square_matrix<T, 2>>& jacobi_matrices) {
     if (mesh.elements_2d_count() + 1 != quad_element_shifts.size() || mesh.elements_2d_count() + 1 != quad_nodes_shifts.size())
         throw std::logic_error{"The number of quadrature shifts and elements does not match."};
     if (quad_element_shifts.back() != jacobi_matrices.size())
@@ -112,7 +112,7 @@ std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>&
         const auto& el = mesh.element_2d(e);
         for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
             for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-                const metamath::types::square_matrix<T, 2>& J = jacobi_matrices[quad_element_shifts[e] + q];
+                const metamath::linear::square_matrix<T, 2>& J = jacobi_matrices[quad_element_shifts[e] + q];
                 derivatives[quad_nodes_shifts[e] + i * el.qnodes_count() + q] = {
                      el.qNxi(i, q) * J[1][1] - el.qNeta(i, q) * J[1][0],
                     -el.qNxi(i, q) * J[0][1] + el.qNeta(i, q) * J[0][0]

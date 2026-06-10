@@ -12,7 +12,7 @@ class stiffness_matrix : public matrix_assembler_2d<T, I, J, 2> {
     using _base = matrix_assembler_2d<T, I, J, 2>;
     using hooke_parameter = equation_parameters<2, T, evaluated_hook_matrix_t>;
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
-    using block_t = metamath::types::square_matrix<T, 2>;
+    using block_t = metamath::linear::square_matrix<T, 2>;
 
     static constexpr bool NEUMANN = false;
     static constexpr bool SYMMETRIC = true;

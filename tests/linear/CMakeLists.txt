@@ -5,6 +5,7 @@ project(linear_test)
 add_library(
     linear_test_lib
     OBJECT
+        fixed_matrix.cpp
         sparse_matrix.cpp
 )
 
