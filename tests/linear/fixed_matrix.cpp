@@ -81,7 +81,7 @@ suite<"fixed_matrix"> _ = [] {
         static constexpr auto Inverse_3x3 = inverse(Matrix_3x3);
         for (const size_t row : std::ranges::iota_view{0zu, 3zu})
             for (const size_t col : std::ranges::iota_view{0zu, 3zu})
-                expect(approx(Inverse_3x3[row][col] - Expected_3x3_Inverse[row][col], 0.0, Epsilon)) << " at element (" << row << ", " << col << ")";
+                expect(approx(Inverse_3x3[row][col], Expected_3x3_Inverse[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
     };
 
     "multiplication"_test = [] {
@@ -116,7 +116,6 @@ suite<"fixed_matrix"> _ = [] {
             for (const size_t col : std::ranges::iota_view{0zu, 2zu})
                 expect(approx(Product_AB[row][col], Expected_Product[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
     };
-    
 };
 
 }
