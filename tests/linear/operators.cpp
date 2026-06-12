@@ -115,6 +115,57 @@ suite<"sparse_matrix_operators"> _ = [] {
         expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Upper>() * invalid_vector; }));
         expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Lower>() * invalid_vector; }));
     };
+
+    "sparse_matrix_addition_4x4"_test = [] {
+        // [1 0 3 0]   [0 2 0 1]   [1 2 3 1]
+        // [0 2 4 0] + [2 0 3 0] = [2 2 7 0]
+        // [5 0 0 0]   [0 5 0 2]   [5 5 0 2]
+        // [0 0 0 6]   [1 0 4 0]   [1 0 4 6]
+        sparse_matrix<T> matrix_a{4, 4};
+        matrix_a.portrait.shifts = {0, 2, 4, 5, 6};
+        matrix_a.portrait.indices = {0, 2, 1, 2, 0, 3};
+        matrix_a.values = {1.0, 3.0, 2.0, 4.0, 5.0, 6.0};
+
+        sparse_matrix<T> matrix_b{4, 4};
+        matrix_b.portrait.shifts = {0, 2, 4, 6, 8};
+        matrix_b.portrait.indices = {1, 3, 0, 2, 1, 3, 0, 2};
+        matrix_b.values = {2.0, 1.0, 2.0, 3.0, 5.0, 2.0, 1.0, 4.0};
+
+        matrix_a += matrix_b;
+        expect(eq(matrix_a.rows(), 4));
+        expect(eq(matrix_a.cols(), 4));
+        expect(eq(matrix_a.non_zeros(), 13));
+        expect(approx(matrix_a(0, 0), 1.0, Epsilon));
+        expect(approx(matrix_a(0, 1), 2.0, Epsilon));
+        expect(approx(matrix_a(0, 2), 3.0, Epsilon));
+        expect(approx(matrix_a(0, 3), 1.0, Epsilon));
+        expect(approx(matrix_a(1, 0), 2.0, Epsilon));
+        expect(approx(matrix_a(1, 1), 2.0, Epsilon));
+        expect(approx(matrix_a(1, 2), 7.0, Epsilon));
+        expect(!matrix_a.portrait.contains(1, 3));
+        expect(approx(matrix_a(2, 0), 5.0, Epsilon));
+        expect(approx(matrix_a(2, 1), 5.0, Epsilon));
+        expect(!matrix_a.portrait.contains(2, 2));
+        expect(approx(matrix_a(2, 3), 2.0, Epsilon));
+        expect(approx(matrix_a(3, 0), 1.0, Epsilon));
+        expect(!matrix_a.portrait.contains(3, 1));
+        expect(approx(matrix_a(3, 2), 4.0, Epsilon));
+        expect(approx(matrix_a(3, 3), 6.0, Epsilon));
+    };
+
+    "sparse_matrix_addition_invalid_size"_test = [] {
+        sparse_matrix<T> matrix_a{3, 3};
+        matrix_a.portrait.shifts = {0, 2, 4, 5};
+        matrix_a.portrait.indices = {0, 2, 1, 2, 0};
+        matrix_a.values = {1.0, 3.0, 2.0, 4.0, 5.0};
+
+        sparse_matrix<T> matrix_b{4, 4};
+        matrix_b.portrait.shifts = {0, 2, 4, 6, 8};
+        matrix_b.portrait.indices = {1, 3, 0, 2, 1, 3, 0, 2};
+        matrix_b.values = {2.0, 1.0, 2.0, 3.0, 5.0, 2.0, 1.0, 4.0};
+
+        expect(throws<std::invalid_argument>([&matrix_a, &matrix_b] { matrix_a += matrix_b; }));
+    };
 };
 
 }
