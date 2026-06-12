@@ -7,6 +7,20 @@
 namespace metamath::linear {
 
 template<class T, class U, std::integral I, std::integral J>
+sparse_matrix<T, I, J>& operator*=(sparse_matrix<T, I, J>& matrix, const U scalar) {
+    for(T& value : matrix.values)
+         value *= scalar;
+     return matrix;
+}
+
+template<class T, class U, std::integral I, std::integral J>
+sparse_matrix<T, I, J>& operator/=(sparse_matrix<T, I, J>& matrix, const U scalar) {
+    for(T& value : matrix.values)
+        value /= scalar;
+    return matrix;
+}
+
+template<class T, class U, std::integral I, std::integral J>
 std::vector<U> operator*(const sparse_matrix<T, I, J>& matrix, const std::vector<U>& vector) {
     if (matrix.cols() != vector.size())
         throw std::invalid_argument{"Matrix columns count must match vector size for multiplication."};
