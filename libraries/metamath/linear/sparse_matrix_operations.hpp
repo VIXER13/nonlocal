@@ -15,8 +15,8 @@ std::vector<U> operator*(const sparse_matrix<T, I, J>& matrix, const std::vector
     std::vector<U> result(matrix.rows(), U{});
 #pragma omp parallel for
     for(size_t row = 0; row < matrix.rows(); ++row)
-        for(const size_t shift : matrix.portrait().shifts(row))
-            result[row] += matrix.values()[shift] * vector[matrix.portrait().indices()[shift]];
+        for(const size_t shift : matrix.portrait.shifts_range(row))
+            result[row] += matrix.values[shift] * vector[matrix.portrait.indices[shift]];
     return result;
 }
 
@@ -29,12 +29,12 @@ std::vector<U> operator*(const self_adjoint_view<Part, T, I, J>& view, const std
     static constexpr std::conditional_t<Part == matrix_part::Upper, std::greater<>, std::less<>> comparator{};
     std::vector<U> result(view.matrix.rows(), U{});
     for(const size_t row : std::ranges::iota_view{0zu, view.matrix.rows()})
-        for(const size_t shift : view.matrix.portrait().shifts(row))
-            if (const size_t col = view.matrix.portrait().indices()[shift]; row == col)
-                result[row] += view.matrix.values()[shift] * vector[col];
+        for(const size_t shift : view.matrix.portrait.shifts_range(row))
+            if (const size_t col = view.matrix.portrait.indices[shift]; row == col)
+                result[row] += view.matrix.values[shift] * vector[col];
             else if (comparator(col, row)) {
-                result[row] += view.matrix.values()[shift] * vector[col];
-                result[col] += view.matrix.values()[shift] * vector[row];
+                result[row] += view.matrix.values[shift] * vector[col];
+                result[col] += view.matrix.values[shift] * vector[row];
             }
     return result;
 }
