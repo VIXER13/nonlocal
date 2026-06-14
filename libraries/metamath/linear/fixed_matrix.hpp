@@ -94,4 +94,21 @@ constexpr fixed_matrix<T, Rows, Cols> operator*(const fixed_matrix<T, Rows, K>& 
     return result;
 }
 
+template<std::floating_point T, size_t Rows, size_t Cols>
+constexpr fixed_matrix<T, Rows, Cols>& operator*=(fixed_matrix<T, Rows, Cols>& lhs, const fixed_matrix<T, Cols, Cols>& rhs) noexcept {
+    lhs = lhs * rhs;
+    return lhs;
+}
+
+template<std::floating_point T, size_t N>
+constexpr fixed_matrix<T, N, N> operator/(const fixed_matrix<T, N, N>& lhs, const fixed_matrix<T, N, N>& rhs) noexcept {
+    return lhs * inverse(rhs);
+}
+
+template<std::floating_point T, size_t N>
+constexpr fixed_matrix<T, N, N>& operator/=(fixed_matrix<T, N, N>& lhs, const fixed_matrix<T, N, N>& rhs) noexcept {
+    lhs *= inverse(rhs);
+    return lhs;
+}
+
 }

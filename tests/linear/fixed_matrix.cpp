@@ -9,10 +9,10 @@ using namespace metamath::linear;
 
 using T = double;
 
+constexpr T Epsilon = std::numeric_limits<T>::epsilon();
+
 suite<"fixed_matrix"> _ = [] {
     "determinant"_test = [] {
-        static constexpr T Epsilon = std::numeric_limits<T>::epsilon();
-
         static constexpr square_matrix<T, 1> Matrix_1x1 = {5.0};
         expect(eq(determinant(Matrix_1x1), 5.0));
 
@@ -56,8 +56,6 @@ suite<"fixed_matrix"> _ = [] {
     };
 
     "inverse"_test = [] {
-        static constexpr T Epsilon = std::numeric_limits<T>::epsilon();
-
         static constexpr square_matrix<T, 1> Matrix_1x1 = {5.0};
         static constexpr square_matrix<T, 1> Expected_1x1_Inverse = {0.2};
         const auto inverse_1x1 = inverse(Matrix_1x1);
@@ -85,8 +83,6 @@ suite<"fixed_matrix"> _ = [] {
     };
 
     "multiplication"_test = [] {
-        static constexpr T Epsilon = std::numeric_limits<T>::epsilon();
-
         static constexpr fixed_matrix<T, 2, 3> Matrix_2x3 = {1.0, 2.0, 3.0,
                                                              4.0, 5.0, 6.0};
         static constexpr std::array<T, 3> Vector_3 = {7.0, 8.0, 9.0};
@@ -115,6 +111,45 @@ suite<"fixed_matrix"> _ = [] {
         for (const size_t row : std::ranges::iota_view{0zu, 2zu})
             for (const size_t col : std::ranges::iota_view{0zu, 2zu})
                 expect(approx(Product_AB[row][col], Expected_Product[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "multiplication_assignment"_test = [] {
+        fixed_matrix<T, 2, 2> Matrix = {1.0, 2.0,
+                                        3.0, 4.0};
+        static constexpr fixed_matrix<T, 2, 2> Multiplier = {5.0, 6.0,
+                                                             7.0, 8.0};
+        static constexpr fixed_matrix<T, 2, 2> Expected_Product = {19.0, 22.0,
+                                                                   43.0, 50.0};
+        Matrix *= Multiplier;
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(approx(Matrix[row][col], Expected_Product[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "matrix_division"_test = [] {
+        static constexpr fixed_matrix<T, 2, 2> Matrix = {2.0, 4.0,
+                                                         6.0, 8.0};
+        static constexpr fixed_matrix<T, 2, 2> Divisor = {1.0, 2.0,
+                                                          3.0, 4.0};
+        static constexpr fixed_matrix<T, 2, 2> Expected_Quotient = {2.0, 0.0,
+                                                                    0.0, 2.0};
+        const auto Quotient = Matrix / Divisor;
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(approx(Quotient[row][col], Expected_Quotient[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "division_assignment"_test = [] {
+        fixed_matrix<T, 2, 2> Matrix = {2.0, 4.0,
+                                        6.0, 8.0};
+        static constexpr fixed_matrix<T, 2, 2> Divisor = {1.0, 2.0,
+                                                          3.0, 4.0};
+        static constexpr fixed_matrix<T, 2, 2> Expected_Quotient = {2.0, 0.0,
+                                                                    0.0, 2.0};
+        Matrix /= Divisor;
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(approx(Matrix[row][col], Expected_Quotient[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
     };
 };
 
