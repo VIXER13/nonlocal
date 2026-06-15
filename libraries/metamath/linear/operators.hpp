@@ -25,7 +25,7 @@ std::vector<U> operator*(const sparse_matrix<T, I, J>& matrix, const std::vector
     if (matrix.cols() != vector.size())
         throw std::invalid_argument{"Matrix columns count must match vector size for multiplication."};
 
-    using namespace operators;
+    using metamath::operators::operator+=;
     std::vector<U> result(matrix.rows(), U{});
 #pragma omp parallel for
     for(size_t row = 0; row < matrix.rows(); ++row)
@@ -39,7 +39,7 @@ std::vector<U> operator*(const self_adjoint_view<Part, T, I, J>& view, const std
     if (view.matrix.cols() != vector.size())
         throw std::invalid_argument{"Matrix columns count must match vector size for multiplication."};
 
-    using namespace operators;
+    using metamath::operators::operator+=;
     static constexpr std::conditional_t<Part == matrix_part::Upper, std::greater<>, std::less<>> comparator{};
     std::vector<U> result(view.matrix.rows(), U{});
     for(const size_t row : std::ranges::iota_view{0zu, view.matrix.rows()})
@@ -66,7 +66,6 @@ sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const sparse_mat
             const size_t rhs_col = rhs.portrait.indices[rhs_shift];
             if (lhs_col == rhs_col) {
                 // both matrices have a non-zero element at the same row and col
-                using namespace operators;
                 lhs.values[lhs_shift] += rhs.values[rhs_shift];
                 ++lhs_shift;
                 ++rhs_shift;

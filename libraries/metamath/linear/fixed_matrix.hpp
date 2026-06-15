@@ -67,6 +67,22 @@ constexpr square_matrix<T, N> inverse(const square_matrix<T, N>& matrix) noexcep
 }
 
 template<std::floating_point T, size_t Rows, size_t Cols>
+constexpr fixed_matrix<T, Rows, Cols> operator+=(fixed_matrix<T, Rows, Cols>& lhs, const fixed_matrix<T, Rows, Cols>& rhs) noexcept {
+    for (const size_t row : std::ranges::iota_view{0zu, Rows})
+        for (const size_t col : std::ranges::iota_view{0zu, Cols})
+            lhs[row][col] += rhs[row][col];
+    return lhs;
+}
+
+template<std::floating_point T, size_t Rows, size_t Cols>
+constexpr fixed_matrix<T, Rows, Cols> operator-=(fixed_matrix<T, Rows, Cols>& lhs, const fixed_matrix<T, Rows, Cols>& rhs) noexcept {
+    for (const size_t row : std::ranges::iota_view{0zu, Rows})
+        for (const size_t col : std::ranges::iota_view{0zu, Cols})
+            lhs[row][col] -= rhs[row][col];
+    return lhs;
+}
+
+template<std::floating_point T, size_t Rows, size_t Cols>
 constexpr std::array<T, Rows> operator*(const fixed_matrix<T, Rows, Cols>& matrix, const std::array<T, Cols>& vector) noexcept {
     std::array<T, Rows> result{};
     for (const size_t row : std::ranges::iota_view{0zu, Rows})
@@ -100,6 +116,14 @@ constexpr fixed_matrix<T, Rows, Cols>& operator*=(fixed_matrix<T, Rows, Cols>& l
     return lhs;
 }
 
+template<std::floating_point T, size_t Rows, size_t Cols>
+constexpr fixed_matrix<T, Rows, Cols>& operator*=(fixed_matrix<T, Rows, Cols>& lhs, const T value) noexcept {
+    for (const size_t row : std::ranges::iota_view{0zu, Rows})
+        for (const size_t col : std::ranges::iota_view{0zu, Cols})
+            lhs[row][col] *= value;
+    return lhs;
+}
+
 template<std::floating_point T, size_t N>
 constexpr fixed_matrix<T, N, N> operator/(const fixed_matrix<T, N, N>& lhs, const fixed_matrix<T, N, N>& rhs) noexcept {
     return lhs * inverse(rhs);
@@ -108,6 +132,14 @@ constexpr fixed_matrix<T, N, N> operator/(const fixed_matrix<T, N, N>& lhs, cons
 template<std::floating_point T, size_t N>
 constexpr fixed_matrix<T, N, N>& operator/=(fixed_matrix<T, N, N>& lhs, const fixed_matrix<T, N, N>& rhs) noexcept {
     lhs *= inverse(rhs);
+    return lhs;
+}
+
+template<std::floating_point T, size_t Rows, size_t Cols>
+constexpr fixed_matrix<T, Rows, Cols>& operator/=(fixed_matrix<T, Rows, Cols>& lhs, const T value) noexcept {
+    for (const size_t row : std::ranges::iota_view{0zu, Rows})
+        for (const size_t col : std::ranges::iota_view{0zu, Cols})
+            lhs[row][col] /= value;
     return lhs;
 }
 

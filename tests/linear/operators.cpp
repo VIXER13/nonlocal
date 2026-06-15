@@ -44,6 +44,61 @@ suite<"sparse_matrix_operators"> _ = [] {
         expect(approx(matrix.values[2], 3.0, Epsilon));
     };
 
+    "sparse_matrix_scalar_multiplication_block"_test = [] {
+        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
+        block_matrix.portrait.shifts = {0, 2, 4, 5};
+        block_matrix.portrait.indices = {0, 1, 0, 2, 1};
+        block_matrix.values = {{1.0, 2.0, 3.0, 4.0}, 
+                               {5.0, 6.0, 7.0, 8.0},
+                               {9.0, 10.0, 11.0, 12.0},
+                               {13.0, 14.0, 15.0, 16.0},
+                               {17.0, 18.0, 19.0, 20.0}};
+
+        block_matrix *= 2.0;
+        expect(approx(block_matrix.values[0][0][0], 2.0, Epsilon));
+        expect(approx(block_matrix.values[0][0][1], 4.0, Epsilon));
+        expect(approx(block_matrix.values[0][1][0], 6.0, Epsilon));
+        expect(approx(block_matrix.values[0][1][1], 8.0, Epsilon));
+        expect(approx(block_matrix.values[1][0][0], 10.0, Epsilon));
+        expect(approx(block_matrix.values[1][0][1], 12.0, Epsilon));
+        expect(approx(block_matrix.values[1][1][0], 14.0, Epsilon));
+        expect(approx(block_matrix.values[1][1][1], 16.0, Epsilon));
+        expect(approx(block_matrix.values[2][0][0], 18.0, Epsilon));
+        expect(approx(block_matrix.values[2][0][1], 20.0, Epsilon));
+        expect(approx(block_matrix.values[2][1][0], 22.0, Epsilon));
+        expect(approx(block_matrix.values[2][1][1], 24.0, Epsilon));
+        expect(approx(block_matrix.values[3][0][0], 26.0, Epsilon));
+        expect(approx(block_matrix.values[3][0][1], 28.0, Epsilon));
+        expect(approx(block_matrix.values[3][1][0], 30.0, Epsilon));
+        expect(approx(block_matrix.values[3][1][1], 32.0, Epsilon));
+        expect(approx(block_matrix.values[4][0][0], 34.0, Epsilon));
+        expect(approx(block_matrix.values[4][0][1], 36.0, Epsilon));
+        expect(approx(block_matrix.values[4][1][0], 38.0, Epsilon));
+        expect(approx(block_matrix.values[4][1][1], 40.0, Epsilon));
+
+        block_matrix /= 2.0;
+        expect(approx(block_matrix.values[0][0][0], 1.0, Epsilon));
+        expect(approx(block_matrix.values[0][0][1], 2.0, Epsilon));
+        expect(approx(block_matrix.values[0][1][0], 3.0, Epsilon));
+        expect(approx(block_matrix.values[0][1][1], 4.0, Epsilon));
+        expect(approx(block_matrix.values[1][0][0], 5.0, Epsilon));
+        expect(approx(block_matrix.values[1][0][1], 6.0, Epsilon));
+        expect(approx(block_matrix.values[1][1][0], 7.0, Epsilon));
+        expect(approx(block_matrix.values[1][1][1], 8.0, Epsilon));
+        expect(approx(block_matrix.values[2][0][0], 9.0, Epsilon));
+        expect(approx(block_matrix.values[2][0][1], 10.0, Epsilon));
+        expect(approx(block_matrix.values[2][1][0], 11.0, Epsilon));
+        expect(approx(block_matrix.values[2][1][1], 12.0, Epsilon));
+        expect(approx(block_matrix.values[3][0][0], 13.0, Epsilon));
+        expect(approx(block_matrix.values[3][0][1], 14.0, Epsilon));
+        expect(approx(block_matrix.values[3][1][0], 15.0, Epsilon));
+        expect(approx(block_matrix.values[3][1][1], 16.0, Epsilon));
+        expect(approx(block_matrix.values[4][0][0], 17.0, Epsilon));
+        expect(approx(block_matrix.values[4][0][1], 18.0, Epsilon));
+        expect(approx(block_matrix.values[4][1][0], 19.0, Epsilon));
+        expect(approx(block_matrix.values[4][1][1], 20.0, Epsilon));
+    };
+
     "sparse_matrix_vector_multiplication"_test = [] {
         // [1 0 3]   [1]   [10]
         // [0 2 4] * [2] = [16]
@@ -116,7 +171,7 @@ suite<"sparse_matrix_operators"> _ = [] {
         expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Lower>() * invalid_vector; }));
     };
 
-    "sparse_matrix_addition_4x4"_test = [] {
+    "sparse_matrix_addition"_test = [] {
         // [1 0 3 0]   [0 2 0 1]   [1 2 3 1]
         // [0 2 4 0] + [2 0 3 0] = [2 2 7 0]
         // [5 0 0 0]   [0 5 0 2]   [5 5 0 2]
@@ -151,6 +206,65 @@ suite<"sparse_matrix_operators"> _ = [] {
         expect(!matrix_a.portrait.contains(3, 1));
         expect(approx(matrix_a(3, 2), 4.0, Epsilon));
         expect(approx(matrix_a(3, 3), 6.0, Epsilon));
+    };
+
+    "sparse_matrix_addition_block"_test = [] {
+        // [1 2|0 0|0 0]   [0 2|0 0|0 1]   [1 4|0 0|0 1]
+        // [2 2|0 0|0 0]   [2 0|0 0|0 2] = [4 2|0 0|0 2]
+        // [-----------]   [-----------]   [-----------]
+        // [2 0|1 2|0 0] + [2 0|0 4|0 0]   [4 0|1 6|0 0]
+        // [0 5|2 3|0 0]   [1 0|4 5|0 0]   [1 5|6 8|0 0]
+        // [-----------]   [-----------]   [-----------]
+        // [0 0|1 5|0 0]   [0 0|8 2|1 2]   [0 0|9 7|1 2]
+        // [0 0|6 7|0 0]   [0 0|1 2|3 4]   [0 0|7 9|3 4]
+        sparse_matrix<square_matrix<T, 2>> block_matrix_a{3, 3};
+        block_matrix_a.portrait.shifts = {0, 1, 3, 4};
+        block_matrix_a.portrait.indices = {0, 0, 1, 1};
+        block_matrix_a.values = {{1.0, 2.0, 2.0, 2.0}, 
+                                 {2.0, 0.0, 0.0, 5.0}, 
+                                 {1.0, 2.0, 2.0, 3.0},
+                                 {1.0, 5.0, 6.0, 7.0}};
+        sparse_matrix<square_matrix<T, 2>> block_matrix_b{3, 3};
+        block_matrix_b.portrait.shifts = {0, 2, 4, 6};
+        block_matrix_b.portrait.indices = {0, 2, 0, 1, 1, 2};
+        block_matrix_b.values = {{0.0, 2.0, 2.0, 0.0}, 
+                                 {0.0, 1.0, 0.0, 2.0}, 
+                                 {2.0, 0.0, 1.0, 0.0},
+                                 {0.0, 4.0, 4.0, 5.0},
+                                 {8.0, 2.0, 1.0, 2.0},
+                                 {1.0, 2.0, 3.0, 4.0}};
+
+        block_matrix_a += block_matrix_b;
+        expect(eq(block_matrix_a.rows(), 3));
+        expect(eq(block_matrix_a.cols(), 3));
+        expect(eq(block_matrix_a.non_zeros(), 6));
+        expect(approx(block_matrix_a(0, 0)[0][0], 1.0, Epsilon));
+        expect(approx(block_matrix_a(0, 0)[0][1], 4.0, Epsilon));
+        expect(approx(block_matrix_a(0, 0)[1][0], 4.0, Epsilon));
+        expect(approx(block_matrix_a(0, 0)[1][1], 2.0, Epsilon));
+        expect(!block_matrix_a.portrait.contains(0, 1));
+        expect(approx(block_matrix_a(0, 2)[0][0], 0.0, Epsilon));
+        expect(approx(block_matrix_a(0, 2)[0][1], 1.0, Epsilon));
+        expect(approx(block_matrix_a(0, 2)[1][0], 0.0, Epsilon));
+        expect(approx(block_matrix_a(0, 2)[1][1], 2.0, Epsilon));
+        expect(approx(block_matrix_a(1, 0)[0][0], 4.0, Epsilon));
+        expect(approx(block_matrix_a(1, 0)[0][1], 0.0, Epsilon));
+        expect(approx(block_matrix_a(1, 0)[1][0], 1.0, Epsilon));
+        expect(approx(block_matrix_a(1, 0)[1][1], 5.0, Epsilon));
+        expect(approx(block_matrix_a(1, 1)[0][0], 1.0, Epsilon));
+        expect(approx(block_matrix_a(1, 1)[0][1], 6.0, Epsilon));
+        expect(approx(block_matrix_a(1, 1)[1][0], 6.0, Epsilon));
+        expect(approx(block_matrix_a(1, 1)[1][1], 8.0, Epsilon));
+        expect(!block_matrix_a.portrait.contains(1, 2));
+        expect(!block_matrix_a.portrait.contains(2, 0));
+        expect(approx(block_matrix_a(2, 1)[0][0], 9.0, Epsilon));
+        expect(approx(block_matrix_a(2, 1)[0][1], 7.0, Epsilon));
+        expect(approx(block_matrix_a(2, 1)[1][0], 7.0, Epsilon));
+        expect(approx(block_matrix_a(2, 1)[1][1], 9.0, Epsilon));
+        expect(approx(block_matrix_a(2, 2)[0][0], 1.0, Epsilon));
+        expect(approx(block_matrix_a(2, 2)[0][1], 2.0, Epsilon));
+        expect(approx(block_matrix_a(2, 2)[1][0], 3.0, Epsilon));
+        expect(approx(block_matrix_a(2, 2)[1][1], 4.0, Epsilon));
     };
 
     "sparse_matrix_addition_invalid_size"_test = [] {

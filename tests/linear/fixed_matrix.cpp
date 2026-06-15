@@ -82,6 +82,50 @@ suite<"fixed_matrix"> _ = [] {
                 expect(approx(Inverse_3x3[row][col], Expected_3x3_Inverse[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
     };
 
+    "addition_assignment"_test = [] {
+        fixed_matrix<T, 2, 3> matrix_a = {1.0, 2.0, 3.0,
+                                          4.0, 5.0, 6.0};
+        static constexpr fixed_matrix<T, 2, 3> matrix_b = {6.0, 5.0, 4.0,
+                                                           3.0, 2.0, 1.0};
+        static constexpr fixed_matrix<T, 2, 3> Expected_Sum = {7.0, 7.0, 7.0,
+                                                               7.0, 7.0, 7.0};
+        matrix_a += matrix_b;
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 3zu})
+                expect(approx(matrix_a[row][col], Expected_Sum[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "subtraction_assignment"_test = [] {
+        fixed_matrix<T, 2, 3> matrix_a = {6.0, 5.0, 4.0,
+                                          3.0, 2.0, 1.0};
+        static constexpr fixed_matrix<T, 2, 3> matrix_b = {1.0, 2.0, 3.0,
+                                                           4.0, 5.0, 6.0};
+        static constexpr fixed_matrix<T, 2, 3> Expected_Difference = {5.0,  3.0,  1.0,
+                                                                     -1.0, -3.0, -5.0};
+        matrix_a -= matrix_b;
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 3zu})
+                expect(approx(matrix_a[row][col], Expected_Difference[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "multiplication_and_division_with_scalar"_test = [] {
+        fixed_matrix<T, 2, 3> matrix = {1.0, 2.0, 3.0,
+                                        4.0, 5.0, 6.0};
+        matrix *= 2.0;
+        static constexpr fixed_matrix<T, 2, 3> Expected_Product = {2.0, 4.0, 6.0,
+                                                                   8.0, 10.0, 12.0};
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 3zu})
+                expect(approx(matrix[row][col], Expected_Product[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+
+        matrix /= 2.0;
+        static constexpr fixed_matrix<T, 2, 3> Expected_Quotient = {1.0, 2.0, 3.0,
+                                                                    4.0, 5.0, 6.0};
+        for (const size_t row : std::ranges::iota_view{0zu, 2zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 3zu})
+                expect(approx(matrix[row][col], Expected_Quotient[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
     "multiplication"_test = [] {
         static constexpr fixed_matrix<T, 2, 3> Matrix_2x3 = {1.0, 2.0, 3.0,
                                                              4.0, 5.0, 6.0};
