@@ -55,48 +55,31 @@ suite<"sparse_matrix_operators"> _ = [] {
                                {17.0, 18.0, 19.0, 20.0}};
 
         block_matrix *= 2.0;
-        expect(approx(block_matrix.values[0][0][0], 2.0, Epsilon));
-        expect(approx(block_matrix.values[0][0][1], 4.0, Epsilon));
-        expect(approx(block_matrix.values[0][1][0], 6.0, Epsilon));
-        expect(approx(block_matrix.values[0][1][1], 8.0, Epsilon));
-        expect(approx(block_matrix.values[1][0][0], 10.0, Epsilon));
-        expect(approx(block_matrix.values[1][0][1], 12.0, Epsilon));
-        expect(approx(block_matrix.values[1][1][0], 14.0, Epsilon));
-        expect(approx(block_matrix.values[1][1][1], 16.0, Epsilon));
-        expect(approx(block_matrix.values[2][0][0], 18.0, Epsilon));
-        expect(approx(block_matrix.values[2][0][1], 20.0, Epsilon));
-        expect(approx(block_matrix.values[2][1][0], 22.0, Epsilon));
-        expect(approx(block_matrix.values[2][1][1], 24.0, Epsilon));
-        expect(approx(block_matrix.values[3][0][0], 26.0, Epsilon));
-        expect(approx(block_matrix.values[3][0][1], 28.0, Epsilon));
-        expect(approx(block_matrix.values[3][1][0], 30.0, Epsilon));
-        expect(approx(block_matrix.values[3][1][1], 32.0, Epsilon));
-        expect(approx(block_matrix.values[4][0][0], 34.0, Epsilon));
-        expect(approx(block_matrix.values[4][0][1], 36.0, Epsilon));
-        expect(approx(block_matrix.values[4][1][0], 38.0, Epsilon));
-        expect(approx(block_matrix.values[4][1][1], 40.0, Epsilon));
+        sparse_matrix<square_matrix<T, 2>> expected_block_matrix{3, 3};
+        expected_block_matrix.portrait.shifts = {0, 2, 4, 5};
+        expected_block_matrix.portrait.indices = {0, 1, 0, 2, 1};
+        expected_block_matrix.values = {{2.0, 4.0, 6.0, 8.0}, 
+                                        {10.0, 12.0, 14.0, 16.0},
+                                        {18.0, 20.0, 22.0, 24.0},
+                                        {26.0, 28.0, 30.0, 32.0},
+                                        {34.0, 36.0, 38.0, 40.0}};
+        for(const size_t block : std::ranges::iota_view{0u, block_matrix.values.size()})
+            for(const size_t row : std::ranges::iota_view{0u, 2u})
+                for(const size_t col : std::ranges::iota_view{0u, 2u})
+                    expect(approx(block_matrix.values[block][row][col], expected_block_matrix.values[block][row][col], Epsilon)) << 
+                        " at block " << block << ", element (" << row << ", " << col << ")";
 
         block_matrix /= 2.0;
-        expect(approx(block_matrix.values[0][0][0], 1.0, Epsilon));
-        expect(approx(block_matrix.values[0][0][1], 2.0, Epsilon));
-        expect(approx(block_matrix.values[0][1][0], 3.0, Epsilon));
-        expect(approx(block_matrix.values[0][1][1], 4.0, Epsilon));
-        expect(approx(block_matrix.values[1][0][0], 5.0, Epsilon));
-        expect(approx(block_matrix.values[1][0][1], 6.0, Epsilon));
-        expect(approx(block_matrix.values[1][1][0], 7.0, Epsilon));
-        expect(approx(block_matrix.values[1][1][1], 8.0, Epsilon));
-        expect(approx(block_matrix.values[2][0][0], 9.0, Epsilon));
-        expect(approx(block_matrix.values[2][0][1], 10.0, Epsilon));
-        expect(approx(block_matrix.values[2][1][0], 11.0, Epsilon));
-        expect(approx(block_matrix.values[2][1][1], 12.0, Epsilon));
-        expect(approx(block_matrix.values[3][0][0], 13.0, Epsilon));
-        expect(approx(block_matrix.values[3][0][1], 14.0, Epsilon));
-        expect(approx(block_matrix.values[3][1][0], 15.0, Epsilon));
-        expect(approx(block_matrix.values[3][1][1], 16.0, Epsilon));
-        expect(approx(block_matrix.values[4][0][0], 17.0, Epsilon));
-        expect(approx(block_matrix.values[4][0][1], 18.0, Epsilon));
-        expect(approx(block_matrix.values[4][1][0], 19.0, Epsilon));
-        expect(approx(block_matrix.values[4][1][1], 20.0, Epsilon));
+        expected_block_matrix.values = {{1.0, 2.0, 3.0, 4.0}, 
+                                        {5.0, 6.0, 7.0, 8.0},
+                                        {9.0, 10.0, 11.0, 12.0},
+                                        {13.0, 14.0, 15.0, 16.0},
+                                        {17.0, 18.0, 19.0, 20.0}};
+         for(const size_t block : std::ranges::iota_view{0u, block_matrix.values.size()})
+            for(const size_t row : std::ranges::iota_view{0u, 2u})
+                for(const size_t col : std::ranges::iota_view{0u, 2u})
+                    expect(approx(block_matrix.values[block][row][col], expected_block_matrix.values[block][row][col], Epsilon)) << 
+                        " at block " << block << ", element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_vector_multiplication"_test = [] {
@@ -154,13 +137,11 @@ suite<"sparse_matrix_operators"> _ = [] {
                                {4.0, 5.0, 6.0, 7.0}};
         const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
         const auto block_result = block_matrix * block_vector;
+        const std::vector<std::array<T, 2>> Expected_Block_Result = {{24.0, 18.0}, {17.0, 38.0}, {32.0, 46.0}};
         expect(eq(block_result.size(), 3));
-        expect(approx(block_result[0][0], 24.0, Epsilon));
-        expect(approx(block_result[0][1], 18.0, Epsilon));
-        expect(approx(block_result[1][0], 17.0, Epsilon));
-        expect(approx(block_result[1][1], 38.0, Epsilon));
-        expect(approx(block_result[2][0], 32.0, Epsilon));
-        expect(approx(block_result[2][1], 46.0, Epsilon));
+        for(const size_t row : std::ranges::iota_view{0zu, block_result.size()})
+            for(const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(approx(block_result[row][col], Expected_Block_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_vector_multiplication_invalid_size"_test = [] {
