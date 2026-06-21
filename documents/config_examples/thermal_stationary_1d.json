@@ -2,7 +2,7 @@
     "task": {
         "dimension": 1,
         "problem": "thermal",
-        "time_dependency": false
+        "analysis_type": "stationary"
     },
     "save": {
         "folder": "./test",

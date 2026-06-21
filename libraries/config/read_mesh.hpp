@@ -23,7 +23,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM(order_t, {
     {order_t::Unknown, nullptr},
     {order_t::Linear, "linear"},
     {order_t::Quadratic, "quadratic"},
-    {order_t::Сubic, "сubic"},
+    {order_t::Сubic, "cubic"},
     {order_t::Quartic, "quartic"},
     {order_t::Quintic, "quintic"}
 })

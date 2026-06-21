@@ -1,4 +1,5 @@
 **.vscode
+**.vs/
 **.idea
 **Makefile
 **CMakeFiles
@@ -15,4 +16,5 @@ calculations
 a.out
 README.html
 
-results
+results/
+test/

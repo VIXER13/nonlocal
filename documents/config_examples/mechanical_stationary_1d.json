@@ -1,0 +1,46 @@
+{
+    "task": {
+        "dimension": 1,
+        "problem": "mechanical",
+        "analysis_type": "stationary"
+    },
+    "save": {
+        "folder": "./test",
+        "config": "config",
+        "csv": "solution_mechanical_stationary_1d",
+        "precision": 7
+    },
+    "mesh": {
+        "element_order": "linear",
+        "quadrature_order": "linear"
+    },
+    "auxiliary": {
+        "right_part": "x : x + 3",
+        "initial_distribution": 0
+    },
+    "boundaries": {
+        "left": {
+            "kind": "displacement",
+			"displacement": 0.0
+        },
+        "right": {
+            "kind": "force",
+			"force": 200.0
+        }
+    },
+    "materials": [
+        {
+            "elements_count": 200,
+            "length": 1.0,
+            "physical": {
+                "youngs_modulus": 20.0,
+                "density": 30.0
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
+            }
+        }
+    ]
+}

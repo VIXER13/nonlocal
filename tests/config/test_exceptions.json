@@ -148,6 +148,41 @@
         }
     ],
 
+    "mechanical_parameters_1d_not_array_fail": {},
+    "mechanical_parameters_1d_missed_physical_fail": [
+        {
+            "model": {
+                "nonlocal_radius": 0.1,
+                "local_weight": 0.5
+            }
+        }
+    ],
+    "mechanical_parameters_1d_missed_youngs_modulus_fail": [
+        { "physical": { "density": 1.0 } }
+    ],
+    "mechanical_parameters_1d_missed_negative_youngs_modulus_fail": [
+        { "physical": { "youngs_modulus": -0.01 } }
+    ],
+    "mechanical_parameters_1d_missed_negative_density_fail": [
+        { 
+            "physical": {
+                "youngs_modulus": 200,
+                "density": -0.01
+            }
+        }
+    ],
+    "mechanical_parameters_1d_ok": [
+        { "physical": { "youngs_modulus": 1 } }
+    ],
+    "mechanical_parameters_1d_full_ok": [
+        { 
+            "physical": {
+                "youngs_modulus": 1,
+                "density": 2
+            } 
+        }
+    ],
+
     "thermal_boundaries_conditions_empty_fail": {},
     "thermal_boundaries_conditions_missed_left_fail": {
         "right": {
@@ -309,6 +344,130 @@
         }
     },
 
+    "mechanical_boundaries_conditions_empty_fail": {},
+    "mechanical_boundaries_conditions_missed_left_fail": {
+        "right": {
+            "kind": "displacement",
+            "displacement": 1
+        }
+    },
+    "mechanical_boundaries_conditions_missed_right_fail": {
+        "left": {
+            "kind": "displacement",
+            "displacement": 1
+        }
+    },
+    "mechanical_boundaries_conditions_missed_kind_fail": {
+        "left": { "displacement": 2 },
+        "right": { 
+            "kind": "displacement",
+            "displacement": 1
+        }
+    },
+    "mechanical_boundaries_conditions_missed_displacement_fail": {
+        "left": { "kind": "displacement" },
+        "right": { 
+            "kind": "displacement",
+            "displacement": 1
+        }
+    },
+    "mechanical_boundaries_conditions_missed_force_fail": {
+        "left": { "kind": "force" },
+        "right": { 
+            "kind": "force",
+            "force": 1
+        }
+    },
+    "mechanical_boundaries_conditions_third_kind_missed_displacement_fail": {
+        "left": { 
+            "kind": "spring",
+            "stiffness": 1
+        },
+        "right": { 
+            "kind": "force",
+            "force": 1
+        }
+    },
+    "mechanical_boundaries_conditions_third_kind_missed_stiffness_fail": {
+        "left": { 
+            "kind": "spring",
+            "displacement": 1
+        },
+        "right": { 
+            "kind": "force",
+            "force": 1
+        }
+    },
+    "mechanical_boundaries_conditions_third_kind_negative_stiffness_fail": {
+        "left": { 
+            "kind": "spring",
+            "stiffness": -0.01,
+            "displacement": 1
+        },
+        "right": { 
+            "kind": "force",
+            "force": 1
+        }
+    },
+    "mechanical_boundaries_conditions_combined_missed_displacement_fail": {
+        "left": { 
+            "kind": "combined",
+            "stiffness": 1,
+            "force" : 2
+        },
+        "right": { 
+            "kind": "force",
+            "force": 1
+        }
+    },
+    "mechanical_boundaries_conditions_combined_negative_stiffness_fail": {
+        "left": { 
+            "kind": "combined",
+            "displacement" : 1,
+            "stiffness": -0.01,
+            "force" : 2
+        },
+        "right": { 
+            "kind": "force",
+            "force": 1
+        }
+    },
+    "mechanical_boundaries_conditions_displacement_and_force_ok": {
+        "left": {
+            "kind": "displacement",
+            "displacement": 1
+        },
+        "right": {
+            "kind": "force",
+            "force": 2
+        }
+    },
+    "mechanical_boundaries_conditions_spring_and_displacement_ok": {
+        "left": { 
+            "kind": "spring",
+            "stiffness": 1,
+            "displacement": 2
+        },
+        "right": {
+            "kind": "displacement",
+            "displacement": 1
+        }
+    },
+    "mechanical_boundaries_conditions_combined_ok": {
+        "left": {
+            "kind": "combined",
+            "displacement" : 1,
+            "stiffness": 2,
+            "force" : 3
+        },
+        "right": {
+            "kind": "combined",
+            "displacement" : 1,
+            "stiffness": 2,
+            "force" : 3
+        }
+    },
+
     "mechanical_boundaries_conditions_2d_empty_ok": {},
     "mechanical_boundaries_conditions_2d_empty_condition_fail": {
         "condition": {}
@@ -376,5 +535,48 @@
                 }
             }
         ]
+    },
+    
+    "read_frequency_missed_all_parameters_fail": {},
+    "read_frequency_only_units_fail": {
+        "units": "Hz"
+    },
+    "read_frequency_negative_min_fail": {
+        "units": "Hz",
+        "min_value": -0.01,
+        "max_value": 1.0,
+        "number_of_points" : 1
+    },
+    "read_frequency_negative_max_fail": {
+        "units": "Hz",
+        "min_value": 1.0,
+        "max_value": -0.01,
+        "number_of_points" : 1
+    },
+    "read_frequency_min_greater_then_max_fail": {
+        "units": "Hz",
+        "min_value": 20.0,
+        "max_value": 10.0,
+        "number_of_points" : 1
+    },
+    "read_frequency_unknown_units_fail": {
+        "units": "MegaHz",
+        "min_value": 10.0,
+        "max_value": 20.0,
+        "number_of_points" : 2
+    },
+    "read_frequency_negative_range_value_fail": {
+        "units": "Hz",
+        "range": [-1, 0, 1]
+    },
+    "read_frequency_ok_1": {
+        "units": "MHz",
+        "min_value": 1.0,
+        "max_value": 200.0,
+        "number_of_points" : 100
+    },
+    "read_frequency_ok_2": {
+        "units": "KHz",
+        "range": [0, 1, 10, 100, 1000, 2, 5, 1e-4]
     }
 }

@@ -111,8 +111,8 @@ const boost::ut::suite<"thermal_stationary_1d"> _ = [] {
                 solution.calc_flux();
                 const auto expected_temperature_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Temperature);
                 const auto expected_flux_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Flux);
-                const T temperature_error = max_error(solution.temperature(), expected_temperature_discrete) / max_norm(expected_temperature_discrete);
-                const T flux_error = max_error(solution.flux(), expected_flux_discrete) / max_norm(expected_flux_discrete);
+                const T temperature_error = L2_norm(solution.temperature(), expected_temperature_discrete);
+                const T flux_error = L2_norm(solution.flux(), expected_flux_discrete);
                 expect(lt(temperature_error, prev_temperature_error));
                 expect(lt(flux_error, prev_flux_error));
                 prev_temperature_error = temperature_error;

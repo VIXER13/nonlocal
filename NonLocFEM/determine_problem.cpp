@@ -13,8 +13,10 @@ std::vector<std::string> _determine_problem::get_required_fields(const config::t
     auto required_fields = task.problem == nonlocal::config::problem_t::Thermomechanical ? 
         std::vector<std::string>{"thermal_boundaries", "mechanical_boundaries", "materials", "mesh"} :
         std::vector<std::string>{"boundaries", "materials", "mesh"};
-    if (task.time_dependency)
+    if (task.analysis_type == config::analysis_type_t::TimeDependent)
         required_fields.push_back("time");
+    if (task.analysis_type == config::analysis_type_t::TimeHarmonic)
+        required_fields.push_back("frequency");
     return required_fields;
 }
 
