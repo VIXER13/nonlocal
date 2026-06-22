@@ -58,13 +58,13 @@ struct powered_distance {
     template<size_t N>
     T calculate(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) const {
         if constexpr (N == metamath::constants::Infinity<size_t>)
-            return metamath::functions::distance<N, T, 2zu>(x, y, r);
-        return metamath::functions::powered_distance<N, T, 2zu>(x, y, r);
+            return metamath::linear::distance<N, T, 2zu>(x, y, r);
+        return metamath::linear::powered_distance<N, T, 2zu>(x, y, r);
     }
 
     template<class U>
     T calculate_with_exp(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) const {
-        return metamath::functions::powered_distance<T, 2zu>(x, y, r, std::get<U>(n));
+        return metamath::linear::powered_distance<T, 2zu>(x, y, r, std::get<U>(n));
     }
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) const {
@@ -81,7 +81,7 @@ struct powered_distance_with_rotation {
 
     static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) {
         using metamath::functions::power;
-        using metamath::functions::powered_norm;
+        using metamath::linear::powered_norm;
         return (power<2>(r[0] * (x[0] * y[1] - x[1] * y[0])) +
                 power<2>(r[1] * (x[0] * (x[0] - y[0]) + x[1] * (x[1] - y[1])))) /
                (power<2>(r[0] * r[1]) * powered_norm<2>(x));

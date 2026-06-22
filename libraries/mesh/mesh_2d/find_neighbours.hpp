@@ -58,7 +58,7 @@ T diameter_between_elements_centers(const mesh_2d<T, I>& mesh,
     for (const size_t element : mesh.container().elements(group))
         for (const size_t node : mesh.container().nodes(element))
             for (const size_t adjacent_element : mesh.elements(node)) {
-                const T distance = metamath::functions::powered_distance<2zu>(centers[element], centers[adjacent_element]);
+                const T distance = metamath::linear::powered_distance<2zu>(centers[element], centers[adjacent_element]);
                 if (strategy == diameter_expanding_strategy::MAX)
                     diameter = std::max(diameter, distance);
                 else if (strategy == diameter_expanding_strategy::MIN)

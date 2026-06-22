@@ -6,6 +6,7 @@ add_library(
     linear_test_lib
     OBJECT
         fixed_matrix.cpp
+        norm.cpp
         operators.cpp
         sparse_matrix.cpp
 )

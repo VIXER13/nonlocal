@@ -2,7 +2,7 @@
 
 #include "config_utils.hpp"
 
-#include <metamath/functions/norm.hpp>
+#include <metamath/linear/norm.hpp>
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/influence_functions_1d.hpp>
