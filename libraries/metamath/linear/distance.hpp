@@ -2,6 +2,8 @@
 
 #include "norm.hpp"
 
+#include <metamath/utils/operators.hpp>
+
 namespace metamath::linear {
 
 template<size_t N = 2, class T, size_t D>
