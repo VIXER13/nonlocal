@@ -50,7 +50,6 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(const 
     init_matrix_portrait(stiffness.inner, *mesh, settings);
     stiffness_assembler_1d<T, I> stiffness_assembler{stiffness, mesh};
     stiffness_assembler.calc_matrix(parameters, settings);
-    spring_condition_1d(stiffness.inner, boundaries_conditions);
 
     finite_element_matrix_1d<T, I> mass;
     init_matrix_portrait(mass.inner, *mesh, settings);
@@ -72,6 +71,7 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(const 
         stiffness.inner.coeffRef(last_node, last_node) = T{1};
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, false);
+    spring_condition_1d(stiffness.inner, boundaries_conditions);
     boundary_condition_first_kind_1d(right_part, stiffness.bound, boundaries_conditions);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> displacement;

@@ -46,9 +46,9 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
             save_solution(solution, save);
             break;
         }
-        case config::analysis_type_t::TimeHarmonic: 
-            throw std::domain_error{"TimeHarmonic analysis type for thermal 1d problem is not supported."};
-        case config::analysis_type_t::TimeDependent: {
+        case config::analysis_type_t::Time_Harmonic: 
+            throw std::domain_error{"Time_Harmonic analysis type for thermal 1d problem is not supported."};
+        case config::analysis_type_t::Time_Dependent: {
             config::check_required_fields(config, {"time"});
             const config::time_data<T> time{config["time"], "time"};
             nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};

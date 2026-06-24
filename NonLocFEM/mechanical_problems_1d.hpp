@@ -56,9 +56,9 @@ void solve_mechanical_1d_problem(const nlohmann::json& config, const config::sav
             save_solution(solution, save);
             break;
         }
-        case config::analysis_type_t::TimeDependent: 
-            throw std::domain_error{"TimeDependent analysis type for mechanical one-dimensional problem is not supported."};
-        case config::analysis_type_t::TimeHarmonic: { 
+        case config::analysis_type_t::Time_Dependent: 
+            throw std::domain_error{"Time_Dependent analysis type for mechanical one-dimensional problem is not supported."};
+        case config::analysis_type_t::Time_Harmonic: { 
             config::check_required_fields(config, {"frequency"});
             const config::frequency_data<T> sweep{config["frequency"], "frequency"};
             for (size_t i = 0; i < sweep.frequencies.size(); ++i) {

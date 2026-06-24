@@ -144,10 +144,10 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
             save_vtk(thermal_solution, mechanical_solution, save);
             break;
         }
-        case config::analysis_type_t::TimeHarmonic: {
-            throw std::domain_error{"TimeHarmonic analysis type for two-dimensional problem is not supported."};
+        case config::analysis_type_t::Time_Harmonic: {
+            throw std::domain_error{"Time_Harmonic analysis type for two-dimensional problem is not supported."};
         }
-        case config::analysis_type_t::TimeDependent: { 
+        case config::analysis_type_t::Time_Dependent: { 
             thermal_nonstationary_2d<T, I>(mesh, config, save, task.problem);
             break;
         }

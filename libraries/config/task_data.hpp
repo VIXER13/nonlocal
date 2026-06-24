@@ -20,15 +20,15 @@ NLOHMANN_JSON_SERIALIZE_ENUM(problem_t, {
 
 enum class analysis_type_t : uint8_t {
     Stationary,
-    TimeHarmonic,
-    TimeDependent,
+    Time_Harmonic,
+    Time_Dependent,
     Unknown
 };
 
 NLOHMANN_JSON_SERIALIZE_ENUM(analysis_type_t, {
     {analysis_type_t::Stationary, "stationary"},
-    {analysis_type_t::TimeHarmonic, "time_harmonic"},
-    {analysis_type_t::TimeDependent, "time_dependent"},
+    {analysis_type_t::Time_Harmonic, "time_harmonic"},
+    {analysis_type_t::Time_Dependent, "time_dependent"},
     {analysis_type_t::Unknown, nullptr}
 })
 

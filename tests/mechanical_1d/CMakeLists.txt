@@ -7,6 +7,7 @@ add_library(
     mechanical_1d_test_lib
     OBJECT
     stationary.cpp
+    time_harmonic.cpp
 )
 target_include_directories(
     mechanical_1d_test_lib
