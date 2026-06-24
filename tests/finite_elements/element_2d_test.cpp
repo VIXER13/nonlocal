@@ -3,6 +3,10 @@
 #include <boost/ut.hpp>
 
 #include <numeric>
+#include <cstddef>
+#include <memory>
+#include <ranges>
+#include <type_traits>
 
 namespace {
 
@@ -11,15 +15,15 @@ using namespace metamath::finite_element;
 using T = double;
 
 template<template<class, auto...> class Element_Type, size_t Quadrature_Order_X1, size_t Quadrature_Order_X2, size_t... Element_Order>
-std::unique_ptr<element_2d_integrate_base<T>> make_element() {
-    return std::make_unique<element_2d_integrate<T, Element_Type, Element_Order...>>(
+std::unique_ptr<element_2d_integrate<T>> make_element() {
+    return std::make_unique<element_2d_integrate<T>>(
+        std::make_unique<element_2d<T, Element_Type, Element_Order...>>(),
         quadrature_1d<T, gauss, Quadrature_Order_X1>{},
-        quadrature_1d<T, gauss, Quadrature_Order_X2>{}
-    );
+        quadrature_1d<T, gauss, Quadrature_Order_X2>{});
 }
 
-std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_lagrangian_elements_2d() {
-    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+std::vector<std::unique_ptr<element_2d_integrate<T>>> init_lagrangian_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate<T>>> result;
     result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 0, 0>());
     result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 0, 1>());
     result.emplace_back(make_element<lagrangian_element_2d, 1, 1, 1, 0>());
@@ -33,20 +37,26 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_lagrangian_eleme
     return result;
 }
 
-std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_serendipity_elements_2d() {
-    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+std::vector<std::unique_ptr<element_2d_integrate<T>>> init_serendipity_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate<T>>> result;
     result.emplace_back(make_element<serendipity, 1, 1, 0>());
     result.emplace_back(make_element<serendipity, 1, 1, 1>());
     // Second and third order shall be created manually, due to a bug in compiling specialized templates
-    result.emplace_back(std::make_unique<element_2d_integrate<T, serendipity, 2>>(quadrature_1d<T, gauss, 2>{}, quadrature_1d<T, gauss, 2>{}));
-    result.emplace_back(std::make_unique<element_2d_integrate<T, serendipity, 3>>(quadrature_1d<T, gauss, 2>{}, quadrature_1d<T, gauss, 2>{}));
+    result.emplace_back(std::make_unique<element_2d_integrate<T>>(
+        std::make_unique<element_2d<T, serendipity, 2>>(),
+        quadrature_1d<T, gauss, 2>{},
+        quadrature_1d<T, gauss, 2>{}));
+    result.emplace_back(std::make_unique<element_2d_integrate<T>>(
+        std::make_unique<element_2d<T, serendipity, 3>>(),
+        quadrature_1d<T, gauss, 2>{},
+        quadrature_1d<T, gauss, 2>{}));
     result.emplace_back(make_element<serendipity, 3, 3, 4>());
     result.emplace_back(make_element<serendipity, 3, 3, 5>());
     return result;
 }
 
-std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_triangle_elements_2d() {
-    std::vector<std::unique_ptr<element_2d_integrate_base<T>>> result;
+std::vector<std::unique_ptr<element_2d_integrate<T>>> init_triangle_elements_2d() {
+    std::vector<std::unique_ptr<element_2d_integrate<T>>> result;
     result.emplace_back(make_element<triangle, 1, 1, 0>());
     result.emplace_back(make_element<triangle, 1, 1, 1>());
     result.emplace_back(make_element<triangle, 2, 2, 2>());
@@ -55,7 +65,7 @@ std::vector<std::unique_ptr<element_2d_integrate_base<T>>> init_triangle_element
 }
 
 struct basis_summator final {
-    const element_2d_integrate_base<T>& element;
+    const element_2d_integrate<T>& element;
     std::array<T, 2> point = {};
 
     std::array<T, 3> operator()(const std::array<T, 3>& sum, const size_t i) const {
@@ -142,6 +152,33 @@ const suite<"element_2d"> _ = [] {
                     expect(lt(std::abs(Neta_sum), Epsilon_Derivative)) << 
                         "Unexpected Neta sum in point = " + to_string(point);
                 }
+            };
+
+            test("copy" + suffix) = [&element] {
+                auto cloned_base = element->copy();
+                expect(cloned_base != nullptr);
+                expect(cloned_base.get() != element.get());
+
+                auto* cloned = dynamic_cast<element_2d_integrate<T>*>(cloned_base.get());
+                expect(cloned != nullptr);
+
+                expect(eq(cloned->nodes_count(), element->nodes_count()));
+                expect(eq(cloned->qnodes_count(), element->qnodes_count()));
+
+                for(const size_t i : element->nodes()) {
+                    expect(eq(cloned->nearest_qnode(i), element->nearest_qnode(i)));
+                    expect(cloned->node(i) == element->node(i));
+                }
+
+                for(const size_t q : element->qnodes())
+                    expect(eq(cloned->weight(q), element->weight(q)));
+
+                for(const size_t i : element->nodes())
+                    for(const size_t q : element->qnodes()) {
+                        expect(eq(cloned->qN(i, q), element->qN(i, q)));
+                        expect(eq(cloned->qNxi(i, q), element->qNxi(i, q)));
+                        expect(eq(cloned->qNeta(i, q), element->qNeta(i, q)));
+                    }
             };
 
             ++order;

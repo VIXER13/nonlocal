@@ -40,9 +40,8 @@ class nonstationary_heat_equation_solver_1d final {
     T _time = T{0};
     // The first half stores only values obtained from even segments, the second from odd segments.
     std::array<finite_element_matrix_1d<T, I>, 2> _relaxation_matrix;
-    // The vector accumulating the relaxation term on the right part. 
-    // The structure is similar, the first half is the values ​​obtained from even segments, the second from odd segments.
-    std::array<Eigen::Matrix<T, Eigen::Dynamic, 1>, 2> _relaxation;
+    // The vector accumulating the relaxation term on the right part.
+    std::vector<metamath::types::vector_with_shifted_index<T>> _relaxation;
 
     static coefficient_t<T, 1u> update_conductivity(const coefficient_t<T, 1u>& conductivity, const T relaxation_factor);
     static std::array<T, 2> get_initial_values(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
@@ -79,21 +78,20 @@ nonstationary_heat_equation_solver_1d<T, I>::nonstationary_heat_equation_solver_
     , _temperature_curr{Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count())}
     , _parameters{parameters}
     , _time_step{time_step}
-    , _time{initial_time} {
-        for(const size_t segment : mesh->segments()) {
-            auto& phys = _parameters[segment].physical;
-            if (phys.relaxation_time > T{0}) {
-                if (const size_t parity = segment % 2; _relaxation[parity].size() == 0)
-                    _relaxation[parity] = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count());
+    , _time{initial_time}
+    , _relaxation(mesh->segments_count()) {
+        for(const size_t segment : mesh->segments())
+            if (auto& phys = _parameters[segment].physical; phys.relaxation_time > T{0}) {
+                _relaxation[segment].container.resize(mesh->nodes_count(segment));
+                _relaxation[segment].shift = mesh->nodes(segment).front();
                 const T relaxation_factor = T{1} - std::exp(-time_step / phys.relaxation_time);
                 phys.conductivity = update_conductivity(phys.conductivity, relaxation_factor);
             }
-        }
     }
 
 template<class T, class I>
 coefficient_t<T, 1u> nonstationary_heat_equation_solver_1d<T, I>::update_conductivity(const coefficient_t<T, 1u>& conductivity, const T relaxation_factor) {
-    return std::visit(metamath::visitor{
+    return std::visit(metamath::types::visitor{
         [relaxation_factor](const T value) -> coefficient_t<T, 1u> { return relaxation_factor * value; },
         [relaxation_factor](const spatial_dependency<T, 1u>& value) -> coefficient_t<T, 1u> { 
             return [value, relaxation_factor](const point<T, 1u>& x) { return relaxation_factor * value(x); };
@@ -143,7 +141,7 @@ const std::shared_ptr<mesh::mesh_1d<T>>& nonstationary_heat_equation_solver_1d<T
 
 template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::initialize_temperature(const temperature_function<T>& temperature) {
-    std::visit(metamath::visitor{
+    std::visit(metamath::types::visitor{
         [this](const std::function<T(const T)>& temperature) {
             for(const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
                 _temperature_curr[i] = temperature(mesh().node_coord(i));
@@ -214,16 +212,15 @@ template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::accumulate_relaxation_vector() {
     for(const size_t segment : mesh().segments())
         if (auto& phys = _parameters[segment].physical; phys.relaxation_time > T{0}) {
-            const size_t parity = segment % 2;
             const T value = std::exp(time() / phys.relaxation_time);
-            const auto& matrix = _relaxation_matrix[parity].inner;
+            const auto& matrix = _relaxation_matrix[segment % 2].inner;
             for(const size_t row : mesh().nodes(segment)) {
                 const size_t ind = matrix.outerIndexPtr()[row];
-                _relaxation[parity][row] += value * matrix.valuePtr()[ind] * _temperature_prev[matrix.innerIndexPtr()[ind]];
+                _relaxation[segment][row] += value * matrix.valuePtr()[ind] * _temperature_prev[matrix.innerIndexPtr()[ind]];
                 for(const size_t i : std::ranges::iota_view{ind + 1, size_t(matrix.outerIndexPtr()[row + 1])}) {
                     const T factor = value * matrix.valuePtr()[i];
-                    _relaxation[parity][row] += factor * _temperature_prev[matrix.innerIndexPtr()[i]];
-                    _relaxation[parity][matrix.innerIndexPtr()[i]] += factor * _temperature_prev[row];
+                    _relaxation[segment][row] += factor * _temperature_prev[matrix.innerIndexPtr()[i]];
+                    _relaxation[segment][matrix.innerIndexPtr()[i]] += factor * _temperature_prev[row];
                 }
             }
         }
@@ -233,10 +230,9 @@ template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::add_relaxation_vector() {
     for(const size_t segment : mesh().segments())
         if (auto& phys = _parameters[segment].physical; phys.relaxation_time > T{0}) {
-            const size_t parity = segment % 2;
             const T value = std::exp(-time() / phys.relaxation_time );
             for(const size_t node : mesh().nodes(segment))
-                _right_part[node] -= value * _relaxation[parity][node];
+                _right_part[node] -= value * _relaxation[segment][node];
         }
 }
 

@@ -5,37 +5,12 @@
 
 namespace nonlocal {
 
-inline constexpr auto EMPTY_FUNCTION = []() constexpr noexcept {};
-
-enum axis : uint8_t {
-    X,
-    Y,
-    Z
-};
-
-enum class material_t : uint8_t {
-    ISOTROPIC,
-    ORTHOTROPIC,
-    ANISOTROPIC
-};
+enum axis : uint8_t { X, Y, Z };
+enum : uint8_t { XX, YY, XY, YX = XY };
 
 enum class physics_t : uint8_t {
     THERMAL,
     MECHANICAL
-};
-
-enum class coefficients_t : uint8_t {
-    CONSTANTS,
-    SPACE_DEPENDENT,
-    SOLUTION_DEPENDENT
-};
-
-enum class boundary_condition_t : uint8_t {
-    FIRST_KIND = 1,
-    SECOND_KIND,
-    THIRD_KIND,
-    FOURTH_KIND,
-    FIFTH_KIND
 };
 
 enum class theory_t : bool {
@@ -49,6 +24,16 @@ constexpr T Nonlocal_Threshold = T{0.999};
 template<std::floating_point T>
 constexpr theory_t theory_type(const T local_weight) noexcept {
     return local_weight < Nonlocal_Threshold<T> ? theory_t::NONLOCAL : theory_t::LOCAL;
+}
+
+template<std::floating_point T>
+constexpr bool is_local(const T local_weight) noexcept {
+    return theory_type(local_weight) == theory_t::LOCAL;
+}
+
+template<std::floating_point T>
+constexpr bool is_nonlocal(const T local_weight) noexcept {
+    return theory_type(local_weight) == theory_t::NONLOCAL;
 }
 
 template<std::floating_point T>

@@ -34,7 +34,7 @@ void solve_mechanical_1d_problem(const nlohmann::json& config, const config::sav
     const auto auxiliary = config::mechanical_auxiliary_data_1d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
     const auto boundaries_conditions = config::read_mechanical_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
     const auto right_part_input = [right_part = auxiliary.right_part](T x) {
-        return std::visit(metamath::visitor{
+        return std::visit(metamath::types::visitor{
             [](const T value) { return value; },
             [&x](const spatial_dependency<T, 1>& value) { return value(x); },
             [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }

@@ -13,6 +13,7 @@ target_include_directories(
     mechanical_1d_test_lib
     PUBLIC #
         ${LIBRARIES_DIR}
+        ${PROJECT_ROOT}
         
 )
 

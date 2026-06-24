@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace metamath::functions {
+namespace metamath::operators {
 
 class _operators final {
     constexpr explicit _operators() noexcept = default;

@@ -23,7 +23,7 @@ class mesh_container_2d final {
     template<class U, class J, mesh_format Format>
     friend class mesh_parser;
 
-    std::unique_ptr<elements_set<T>> _elements_set; // TODO: make elements_set copyable
+    elements_set<T> _elements_set;
     std::vector<std::array<T, 2>> _nodes;
     std::vector<std::vector<I>> _elements;
     std::vector<uint8_t> _elements_types;
@@ -110,7 +110,7 @@ T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q,
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
         coord += mesh.node_coord(mesh.nodes(element)[i]) * el.qN(i, q);
@@ -120,7 +120,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const size_t q) const {
     std::array<T, 2> J = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     const auto& el = mesh.element_1d(element);
     for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
         J += mesh.node_coord(mesh.nodes(element)[i]) * el.qNxi(i, q);
@@ -130,7 +130,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const s
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
     std::array<T, 2> coord = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     using namespace metamath::finite_element;
     const T x0 = bool(dynamic_cast<const rectangle_element_geometry<T>*>(&element)) ? T{1} / T{3} : T{0};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
@@ -141,7 +141,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
 template<class T, class I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
         coord += mesh.node_coord(nodes[i]) * element.qN(i, q);
     return coord;
@@ -152,7 +152,7 @@ metamath::types::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::j
     metamath::types::square_matrix<T, 2> J = {};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()}) {
         const std::array<T, 2> derivative = {element.qNxi (i, q), element.qNeta(i, q)};
-        using namespace metamath::functions;
+        using namespace metamath::operators;
         J[0] += mesh.node_coord(nodes[i])[0] * derivative;
         J[1] += mesh.node_coord(nodes[i])[1] * derivative;
     }
@@ -273,7 +273,7 @@ const std::array<T, 2>& mesh_container_2d<T, I>::node_coord(const size_t node) c
 
 template<class T, class I>
 const elements_set<T>& mesh_container_2d<T, I>::get_elements_set() const {
-    return *_elements_set;
+    return _elements_set;
 }
 
 template<class T, class I>
@@ -308,7 +308,7 @@ mesh_container_2d<T, I>::element_data_2d mesh_container_2d<T, I>::element_2d_dat
 
 template<class T, class I>
 void mesh_container_2d<T, I>::clear() {
-    _elements_set = nullptr;
+    _elements_set = {};
     _nodes.clear();
     _nodes.shrink_to_fit();
     _elements.clear();

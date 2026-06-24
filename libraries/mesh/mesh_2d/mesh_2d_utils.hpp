@@ -8,7 +8,7 @@
 
 namespace nonlocal::mesh::utils {
 
-enum class balancing_t : uint8_t { NO, MEMORY, SPEED };
+enum class balancing_t : uint8_t { No, Memory, Speed };
 
 template<std::floating_point T, std::integral I, class Nodes, class Runner>
 void mesh_run(const mesh_2d<T, I>& mesh,
@@ -65,7 +65,7 @@ std::array<std::vector<T>, 2> gradient_in_qnodes(const mesh_2d<T, I>& mesh, cons
 template<class T, class I, class Vector>
 std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.container().nodes_count() != size_t(x.size()))
-        throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
+        throw std::logic_error{"Cannot approximate quadratures nodes values because vector size does not match number of mesh nodes."};
     const size_t quadratures_count = mesh.quad_shift(mesh.container().elements_2d_count());
     std::vector<T> values(quadratures_count, T{0});
 #pragma parallel for default(none) shared(gradient, mesh, x, values)
@@ -82,7 +82,7 @@ std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
 template<class T, class I, class Vector>
 std::vector<T> qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.quad_shift(mesh.container().elements_2d_count()) != size_t(x.size()))
-        throw std::logic_error{"Cannot approximate node values because vector size does not match number of quadrature nodes"};
+        throw std::logic_error{"Cannot approximate node values because vector size does not match number of quadrature nodes."};
     std::vector<T> approximation(mesh.container().nodes_count(), T{0});
 #pragma parallel for default(none) shared(approximation, mesh, x)
     for(size_t node = 0; node < mesh.container().nodes_count(); ++node) {
@@ -101,30 +101,35 @@ std::vector<T> qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
 }
 
 template<class T, class I>
-std::unordered_map<std::string, theory_t> theories(const mesh_2d<T, I>& mesh, const bool only_local) {
+std::unordered_map<std::string, theory_t> theories(const mesh_2d<T, I>& mesh, const bool only_local = false) {
     std::unordered_map<std::string, theory_t> theories;
-    for(const std::string& group : mesh.container().groups_2d())
-        theories[group] = only_local             ? theory_t::LOCAL :
-                          mesh.radius(group) > 0 ? theory_t::NONLOCAL :
-                                                   theory_t::LOCAL;
+    for(const std::string& group : mesh.container().groups_2d()) {
+        if (only_local)
+            theories[group] = theory_t::LOCAL;
+        else {
+            const auto& radius = mesh.get_influences().at(group).radius;
+            theories[group] = radius[0] > T{0} && radius[1] > T{0} ? theory_t::NONLOCAL : theory_t::LOCAL;
+        }
+    }
     return theories;
 }
 
 template<class T, class I>
 void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_local, const bool is_symmetric) {
-    if (balance == balancing_t::NO || parallel::MPI_size() == 1)
+    if (balance == balancing_t::No || parallel::MPI_size() == 1)
         return;
     std::vector<size_t> nonzero_elements_count(mesh.container().nodes_count(), 0);
-    if (balance == balancing_t::MEMORY)
+    if (balance == balancing_t::Memory)
         mesh_run(mesh, mesh.process_nodes(), theories(mesh, only_local),
             nonzero_counter{nonzero_elements_count, mesh.container(), is_symmetric});
-    else if (balance == balancing_t::SPEED)
+    else if (balance == balancing_t::Speed)
         mesh_run(mesh, mesh.process_nodes(), theories(mesh, only_local),
             integral_counter{nonzero_elements_count, mesh.container(), is_symmetric});
-    else throw std::domain_error{"Unsupported balancing type"};
+    else 
+        throw std::domain_error{"Unsupported balancing type"};
     nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
     mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
-    mesh.neighbours(find_neighbours(mesh, mesh.radii(), diam_adding::NO));
+    mesh.neighbours(find_neighbours(mesh, mesh.get_influences(), diameter_expanding_strategy::NO));
 }
 
 template<class T, class I, std::ranges::random_access_range Vector>

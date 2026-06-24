@@ -10,7 +10,7 @@ namespace nonlocal {
 template<std::floating_point T, std::integral I>
 void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
               const std::optional<solver_2d::mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
-              const config::save_data& save) {
+              const config::save_data& save, const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0 || !save.contains("csv")) // Only the master process saves data
         return;
     std::vector<std::pair<std::string, const std::vector<T>&>> data;
@@ -36,18 +36,22 @@ void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
     if (data.empty())
         throw std::logic_error{"Nothig to save."};
     const auto& container = thermal_solution ? thermal_solution->mesh().container() : mechanical_solution->mesh().container();
-    mesh::utils::save_as_csv(save.path("csv", "csv"), container, data, save.precision());
+    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + "_" + save.get_name("csv"), "csv") : 
+                                              save.path("csv", "csv");
+    mesh::utils::save_as_csv(path, container, data, save.precision());
 }
 
 template<std::floating_point T, std::integral I>
 void save_vtk(const std::optional<solver_2d::thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
               const std::optional<solver_2d::mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
-              const config::save_data& save) {
+              const config::save_data& save, const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0 || !save.contains("vtk")) // Only the master process saves data
         return;
     if (!thermal_solution && !mechanical_solution)
         throw std::logic_error{"Nothig to save."};
-    std::ofstream vtk{save.path("vtk", "vtk")};
+    const std::filesystem::path path = step ? save.make_path(std::to_string(*step) + "_" + save.get_name("vtk"), "vtk") : 
+                                              save.path("vtk", "vtk", "solution");
+    std::ofstream vtk{path};
     vtk.precision(save.precision() ? *save.precision() : vtk.precision());
     const auto& container = thermal_solution ? thermal_solution->mesh().container() : mechanical_solution->mesh().container();
     mesh::utils::save_as_vtk(vtk, container);

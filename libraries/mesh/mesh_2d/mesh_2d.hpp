@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mesh_container_2d_utils.hpp"
+#include "search_function.hpp"
 
 #include <parallel/MPI_utils.hpp>
 #include <parallel/uniform_ranges.hpp>
@@ -8,9 +9,6 @@
 #include <set>
 
 namespace nonlocal::mesh {
-
-template<class T, class I>
-using neighbours_t = std::pair<std::unordered_map<std::string, T>, std::vector<std::vector<I>>>;
 
 template<class T>
 constexpr T jacobian(const std::array<T, 2>& J) noexcept {
@@ -33,7 +31,7 @@ class mesh_2d final {
 
     parallel::MPI_ranges _MPI_ranges;
 
-    std::unordered_map<std::string, T> _radii;
+    influences<T> _influences;
     std::vector<std::vector<I>> _elements_neighbors;
 
     void init();
@@ -69,11 +67,9 @@ public:
 
     void MPI_ranges(const parallel::MPI_ranges& ranges);
 
-    const std::unordered_map<std::string, T>& radii() const noexcept;
-    T radius(const std::string& group) const;
-
     void neighbours(neighbours_t<T, I>&& data);
     const std::vector<I>& neighbours(const size_t e) const;
+    const influences<T>& get_influences() const noexcept;
 
     T area(const size_t e) const;
     T area(const std::string& element_group) const;
@@ -207,28 +203,22 @@ void mesh_2d<T, I>::MPI_ranges(const parallel::MPI_ranges& ranges) {
 }
 
 template<class T, class I>
-const std::unordered_map<std::string, T>& mesh_2d<T, I>::radii() const noexcept {
-    return _radii;
-}
-
-template<class T, class I>
-T mesh_2d<T, I>::radius(const std::string& group) const {
-    if(_radii.contains(group))
-        return _radii.at(group);
-    return T{0};
-}
-
-template<class T, class I>
 void mesh_2d<T, I>::neighbours(neighbours_t<T, I>&& data) {
-    if (data.second.size() != container().elements_2d_count())
+    auto&& [influences, elements_neighbors] = data;
+    if (elements_neighbors.size() != container().elements_2d_count())
         throw std::domain_error{"The neighbor list length does not match the number of 2D mesh elements."};
-    _radii = std::move(data.first);
-    _elements_neighbors = std::move(data.second);
+    _influences = std::move(influences);
+    _elements_neighbors = std::move(elements_neighbors);
 }
 
 template<class T, class I>
 const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
+}
+
+template<class T, class I>
+const influences<T>& mesh_2d<T, I>::get_influences() const noexcept {
+    return _influences;
 }
 
 template<class T, class I>

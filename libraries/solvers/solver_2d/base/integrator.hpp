@@ -74,7 +74,7 @@ void integrator<T, I, J, DoF, Local_Integrator, Nonlocal_Integrator>::operator()
                 if (!block) {
                     block = {_nonlocal_integrator(group, eL, eNL, iL, jNL)};
                     if (eL == eNL) {
-                        using namespace metamath::functions;
+                        using namespace metamath::operators;
                         (*block) += block_t{_local_integrator(group, eL, iL, jNL)};
                     }
                 }

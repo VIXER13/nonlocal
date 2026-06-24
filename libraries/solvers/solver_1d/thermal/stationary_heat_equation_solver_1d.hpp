@@ -32,10 +32,11 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::
     boundary_condition_second_kind_1d(right_part, boundaries_conditions, is_neumann);
     if (additional_parameters.right_part)
         integrate_right_part(right_part, *mesh, *additional_parameters.right_part);
-    if (is_neumann && std::abs(std::reduce(right_part.begin(), right_part.end(), T{0})) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
-        throw std::domain_error{"It's unsolvable Neumann problem."};
-    if (is_neumann)
+    if (is_neumann) {
+        if (std::abs(std::reduce(right_part.begin(), right_part.end(), T{0})) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
+            throw std::domain_error{"It's unsolvable Neumann problem."};
         right_part[right_part.size() - 1] = additional_parameters.energy;
+    }
     return right_part;
 }
 
@@ -86,7 +87,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
         } else {
             convection_condition_1d(conductivity.inner, boundaries_conditions);
             boundary_condition_first_kind_1d(right_part, conductivity.bound, boundaries_conditions);
-            if (settings.is_radiation_boundary) {
+            if (settings.is_nonlinear_boundary) {
                 if (settings.is_symmetric())
                     residual = conductivity.inner.template selfadjointView<Eigen::Upper>() * temperature_prev - right_part;
                 else
@@ -98,7 +99,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                 const Eigen::SimplicialCholesky<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper, Eigen::NaturalOrdering<I>
                 > solver{conductivity.inner};
-                if (settings.is_radiation_boundary)
+                if (settings.is_nonlinear_boundary)
                     temperature_curr = temperature_prev - solver.solve(residual);
                 else
                     temperature_curr = solver.solve(right_part);
@@ -106,7 +107,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(const std::share
                 const Eigen::SparseLU<
                     Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::NaturalOrdering<I>
                 > solver{conductivity.inner};
-                if (settings.is_radiation_boundary)
+                if (settings.is_nonlinear_boundary)
                     temperature_curr = temperature_prev - solver.solve(residual);
                 else
                     temperature_curr = solver.solve(right_part);

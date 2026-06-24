@@ -16,6 +16,8 @@ public:
 
     virtual T node(const size_t i) const = 0;
 
+    virtual std::unique_ptr<element_1d_base> copy() const = 0;
+
     virtual T N  (const size_t i, const T xi) const = 0;
     virtual T Nxi(const size_t i, const T xi) const = 0;
 

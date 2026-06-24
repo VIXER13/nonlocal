@@ -3,12 +3,20 @@ cmake_minimum_required(VERSION 3.16)
 project(mechanical_2d_test)
 
 
-add_library(mechanical_2d_test_lib OBJECT saint_venant.cpp)
+add_library(mechanical_2d_test_lib 
+    OBJECT
+        anisotropic_lame_solid_ring.cpp
+        anisotropic_thermoelasticity_solid_ring.cpp
+        elastic_parameters.cpp
+        isotropic_lame_composite_ring.cpp
+        isotropic_lame_solid_ring.cpp
+        saint_venant.cpp
+)
 target_include_directories(
     mechanical_2d_test_lib
     PUBLIC #
         ${LIBRARIES_DIR}
-        
+        ${PROJECT_ROOT}
         ${PROJECT_ROOT}/build
 )
 

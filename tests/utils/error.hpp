@@ -1,6 +1,6 @@
 #pragma once
 
-#include <mesh/mesh_1d/mesh_1d.hpp>
+#include <mesh/mesh_2d/mesh_container_2d_utils.hpp>
 
 #include <concepts>
 #include <functional>
@@ -15,8 +15,14 @@ T max_norm(const std::vector<T>& x) {
 
 template<std::floating_point T>
 T max_error(const std::vector<T>& x, const std::vector<T>& y) {
-    using namespace metamath::functions;
+    using namespace metamath::operators;
     return max_norm(x - y);
+}
+
+template<std::floating_point T, std::integral I, class Expected>
+T norm_error(const std::vector<T>& actual, const mesh::mesh_container_2d<T, I>& mesh, const Expected& function) {
+    const auto discrete_function = nonlocal::mesh::utils::discrete(mesh, function);
+    return max_error(actual, discrete_function) / max_norm(discrete_function);
 }
 
 template<std::floating_point T>
@@ -29,5 +35,6 @@ T L2_norm(const std::vector<T>& x, const std::vector<T>& y) {
     });
     return std::sqrt(norm);
 }
+
 
 }

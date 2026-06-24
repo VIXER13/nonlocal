@@ -11,7 +11,6 @@ target_include_directories(
 target_link_libraries(
     math_expression_lib
     PUBLIC #
-        logger_lib
 )
 
 if(ENABLE_OMP)

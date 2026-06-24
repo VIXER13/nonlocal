@@ -67,7 +67,7 @@ bool mechanical_equation_solution_1d<T>::is_stress_calculated() const noexcept {
 
 template<std::floating_point T>
 T mechanical_equation_solution_1d<T>::evaluate(const coefficient_t<T, 1>& youngs_modulus, const std::vector<T>& solution, const size_t e, const size_t q) const {
-    return std::visit(metamath::visitor{
+    return std::visit(metamath::types::visitor{
         [](const T value) noexcept { return value; },
         [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
         [this, &solution, e, q](const solution_dependency<T, 1u>& value) { 

@@ -31,7 +31,7 @@ mass_assembler_1d<T, I>::mass_assembler_1d(finite_element_matrix_1d<T, I>& matri
 
 template<std::floating_point T, std::integral I>
 T mass_assembler_1d<T, I>::evaluate(const coefficient_t<T, 1>& density, const size_t e, const size_t q) const {
-    return std::visit(metamath::visitor{
+    return std::visit(metamath::types::visitor{
         [](const T value) noexcept { return value; },
         [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
         [this, e, q](const solution_dependency<T, 1u>& value) {

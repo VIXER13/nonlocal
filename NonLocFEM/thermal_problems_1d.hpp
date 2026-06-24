@@ -29,7 +29,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
     const auto mesh = config::read_mesh_1d<T>(config, {});
     const auto parameters = config::read_thermal_parameters_1d<T>(config["materials"], "materials");
     const auto auxiliary = config::thermal_auxiliary_data_1d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"};
-    const auto boundaries_conditions = config::read_thermal_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
+    auto boundaries_conditions = config::read_thermal_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
 
     using namespace solver_1d::thermal;
     switch (analysis_type) {
@@ -49,26 +49,28 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         case config::analysis_type_t::Time_Harmonic: 
             throw std::domain_error{"Time_Harmonic analysis type for thermal 1d problem is not supported."};
         case config::analysis_type_t::Time_Dependent: {
+           //const auto flux = [](const T t) { return 1048576. / 315. * std::exp(-8 * t) * metamath::functions::power<8>(t); };
+            //boundaries_conditions.front() = std::make_unique<solver_1d::thermal::flux_1d<T>>(flux(0));
+
             config::check_required_fields(config, {"time"});
             const config::time_data<T> time{config["time"], "time"};
-            nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
+            solver_1d::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
             solver.initialize_temperature(std::vector(mesh->nodes_count(), auxiliary.initial_distribution));
             solver.compute(boundaries_conditions);
-            {   // Step 0
-                auto solution = heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()};
-                solution.calc_flux();
-                save_solution(solution, save, 0u);
-            }
+            solver_1d::thermal::heat_equation_solution_1d<T> solution{mesh, parameters, solver.temperature(), time.time_step};
+            solution.calc_flux();
+            save_solution(solution, save, 0u);
             for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+                //boundaries_conditions.front() = std::make_unique<solver_1d::thermal::flux_1d<T>>(flux(step * time.time_step));
                 solver.calc_step(boundaries_conditions,
-                                [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
-                auto solution = heat_equation_solution_1d<T>{mesh, parameters, solver.temperature()};
+                    [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
+                solution.temperature(solver.temperature());
+                solution.time(solver.time());
+                solution.calc_flux();
                 if (step % time.save_frequency == 0) {
-                    solution.calc_flux();
                     save_solution(solution, save, step);
                 }
             }
-            break;
         }
         case config::analysis_type_t::Unknown: 
         default: 

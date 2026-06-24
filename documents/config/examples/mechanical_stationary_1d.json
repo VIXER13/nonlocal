@@ -11,11 +11,11 @@
         "precision": 7
     },
     "mesh": {
-        "element_order": "linear",
-        "quadrature_order": "linear"
+        "element_order": 1,
+        "quadrature_order": 2
     },
     "auxiliary": {
-        "right_part": "x : x + 3",
+        "right_part": 0,
         "initial_distribution": 0
     },
     "boundaries": {
@@ -30,7 +30,7 @@
     },
     "materials": [
         {
-            "elements_count": 200,
+            "elements_count": 20,
             "length": 1.0,
             "physical": {
                 "youngs_modulus": 20.0,

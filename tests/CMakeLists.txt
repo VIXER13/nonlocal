@@ -10,10 +10,12 @@ FileEmbedSetup()
 add_subdirectory(config)
 add_subdirectory(finite_elements)
 add_subdirectory(math_expression_tests)
+add_subdirectory(metamath)
 add_subdirectory(parallel)
 add_subdirectory(thermal_1d)
 add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
+add_subdirectory(utils)
 
 add_executable(unit_tests nonlocal_tests.cpp)
 target_include_directories(
@@ -27,6 +29,7 @@ target_link_libraries(
         embedded_files
         finite_elements_test_lib
         math_expression_test_lib
+        metamath_test_lib
         parallel_test_lib
         config_test_lib
         thermal_1d_test_lib
@@ -34,6 +37,7 @@ target_link_libraries(
         solvers_2d_test_lib
         thermal_2d_test_lib
         mechanical_2d_test_lib
+        unit_tests_utils_lib
         Boost::ut
 )
 

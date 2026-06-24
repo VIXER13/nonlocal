@@ -15,7 +15,7 @@ void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
         std::conditional_t<DoF == 1, T, std::array<T, DoF>> integral = {};
         const auto& el = mesh.container().element_2d(e);
         for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-            using namespace metamath::functions;
+            using namespace metamath::operators;
             integral += el.weight(q) * el.qN(i, q) * mesh.jacobian(e, q) * functor(mesh.quad_coord(e, q));
         }
         return integral;

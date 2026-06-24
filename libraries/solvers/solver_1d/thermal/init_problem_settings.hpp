@@ -19,8 +19,7 @@ problem_settings init_problem_settings(const parameters_1d<T>& parameters,
         return bool(dynamic_cast<const radiation_1d<T>*>(condition.get()));
     };
     static constexpr auto is_nonconstant_parameters = [](const auto& parameter) noexcept {
-        return std::holds_alternative<spatial_dependency<T, 1>>(parameter.physical.conductivity) ||
-               std::holds_alternative<solution_dependency<T, 1>>(parameter.physical.conductivity);
+        return !is_constant<T, 1>(parameter.physical.conductivity);
     };
     static constexpr auto is_solution_dependent = [](const auto& parameter) noexcept {
         return std::holds_alternative<solution_dependency<T, 1>>(parameter.physical.conductivity);
@@ -28,8 +27,8 @@ problem_settings init_problem_settings(const parameters_1d<T>& parameters,
     return {
         .theories = theories_types(parameters),
         .is_neumann = is_stationary_problem ? std::all_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_flux) : false,
+        .is_nonlinear_boundary = std::any_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_radiation_boundary),
         .is_nonconstant_parameters = std::any_of(parameters.begin(), parameters.end(), is_nonconstant_parameters),
-        .is_radiation_boundary = std::any_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_radiation_boundary),
         .is_solution_dependent = std::any_of(parameters.begin(), parameters.end(), is_solution_dependent),
         .is_first_kind = { 
             bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),

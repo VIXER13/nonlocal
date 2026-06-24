@@ -12,4 +12,4 @@ jobs:
     uses: ./.github/workflows/common.yml
     with:
       compiler: clang
-      deps: clang-18 libomp-18-dev
+      deps: clang-20 libomp-20-dev

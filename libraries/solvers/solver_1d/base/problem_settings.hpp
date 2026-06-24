@@ -12,19 +12,17 @@ namespace nonlocal::solver_1d {
 struct problem_settings final {
     std::vector<theory_t> theories;
     bool is_neumann = false;
+    bool is_nonlinear_boundary = false;
     bool is_nonconstant_parameters = false;
-    bool is_radiation_boundary = false;
     bool is_solution_dependent = false;
     std::array<bool, 2> is_first_kind = {false, false};
 
     constexpr bool is_nonlinear() const noexcept {
-        return is_radiation_boundary || is_solution_dependent;
+        return is_nonlinear_boundary || is_solution_dependent;
     }
 
     bool is_symmetric() const {
-        static constexpr auto is_nonlocal = [](const theory_t theory) noexcept {
-            return theory == theory_t::NONLOCAL;
-        };
+        static constexpr auto is_nonlocal = [](const theory_t theory) noexcept { return theory == theory_t::NONLOCAL; };
         const bool is_any_nonlocal = std::any_of(theories.begin(), theories.end(), is_nonlocal);
         return !(is_any_nonlocal && is_nonconstant_parameters);
     }

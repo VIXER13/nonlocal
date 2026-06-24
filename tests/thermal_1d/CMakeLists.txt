@@ -14,7 +14,7 @@ target_include_directories(
     thermal_1d_test_lib
     PUBLIC #
         ${LIBRARIES_DIR}
-        
+        ${PROJECT_ROOT}
 )
 
 target_link_libraries(
