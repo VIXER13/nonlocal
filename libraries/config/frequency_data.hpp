@@ -62,7 +62,7 @@ public:
             const uint64_t number_of_points = config["number_of_points"].get<uint64_t>();
             const T frequency_step = (max_frequency - min_frequency) / number_of_points;
             frequencies.resize(number_of_points);
-            for(uint64_t i = 0; i < number_of_points; ++i)
+            for(const size_t i : std::ranges::iota_view{0zu, number_of_points})
                 frequencies[i] = static_cast<T>(i) * frequency_step + min_frequency;
         } else if (config.contains("range")) {
             frequencies = config["range"].get<std::vector<T>>();
