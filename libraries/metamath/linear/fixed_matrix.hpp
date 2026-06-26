@@ -13,6 +13,20 @@ using fixed_matrix = std::array<std::array<T, Cols>, Rows>;
 template<std::floating_point T, size_t N>
 using square_matrix = fixed_matrix<T, N, N>;
 
+template<std::floating_point T>
+constexpr T transpose(const T value) noexcept {
+    return value;
+}
+
+template<std::floating_point T, size_t Rows, size_t Cols>
+constexpr fixed_matrix<T, Cols, Rows> transpose(const fixed_matrix<T, Rows, Cols>& matrix) noexcept {
+    fixed_matrix<T, Cols, Rows> transposed{};
+    for (const size_t row : std::ranges::iota_view{0zu, Rows})
+        for (const size_t col : std::ranges::iota_view{0zu, Cols})
+            transposed[col][row] = transpose(matrix[row][col]);
+    return transposed;
+}
+
 template<std::floating_point T, size_t N>
 constexpr T determinant(const square_matrix<T, N>& matrix) noexcept {
     if constexpr (N == 1)

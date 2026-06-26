@@ -13,6 +13,7 @@ add_subdirectory(linear)
 add_subdirectory(math_expression_tests)
 add_subdirectory(metamath)
 add_subdirectory(parallel)
+add_subdirectory(slae)
 add_subdirectory(thermal_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
@@ -32,6 +33,7 @@ target_link_libraries(
         math_expression_test_lib
         metamath_test_lib
         parallel_test_lib
+        slae_test_lib
         config_test_lib
         thermal_1d_test_lib
         solvers_2d_test_lib

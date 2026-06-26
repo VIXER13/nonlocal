@@ -48,7 +48,7 @@ std::vector<U> operator*(const self_adjoint_view<Part, T, I, J>& view, const std
                 result[row] += view.matrix.values[shift] * vector[col];
             else if (comparator(col, row)) {
                 result[row] += view.matrix.values[shift] * vector[col];
-                result[col] += view.matrix.values[shift] * vector[row];
+                result[col] += transpose(view.matrix.values[shift]) * vector[row];
             }
     return result;
 }
