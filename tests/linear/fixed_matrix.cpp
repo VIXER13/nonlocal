@@ -12,6 +12,46 @@ using T = double;
 constexpr T Epsilon = std::numeric_limits<T>::epsilon();
 
 suite<"fixed_matrix"> _ = [] {
+    "transpose"_test = [] {
+        static constexpr T value = 5.0;
+        expect(eq(transpose(value), value));
+
+        static constexpr fixed_matrix<T, 2, 3> Matrix_2x3 = {1.0, 2.0, 3.0,
+                                                             4.0, 5.0, 6.0};
+        static constexpr fixed_matrix<T, 3, 2> Expected_Transposed_2x3 = {1.0, 4.0,
+                                                                          2.0, 5.0,
+                                                                          3.0, 6.0};
+        static constexpr fixed_matrix<T, 3, 2> Transposed_2x3 = transpose(Matrix_2x3);
+        for (const size_t row : std::ranges::iota_view{0zu, 3zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(eq(Transposed_2x3[row][col], Expected_Transposed_2x3[row][col])) << " at element (" << row << ", " << col << ")";
+    };
+
+    "self_adjoint"_test = [] {
+        static constexpr T value = 5.0;
+        expect(eq(self_adjoint<matrix_part::Upper>(value), value));
+        expect(eq(self_adjoint<matrix_part::Lower>(value), value));
+
+        static constexpr square_matrix<T, 3> Matrix_3x3 = {1.0, 2.0, 3.0,
+                                                           4.0, 5.0, 6.0,
+                                                           7.0, 8.0, 9.0};
+        static constexpr square_matrix<T, 3> Expected_Self_Adjoint_Upper_3x3 = {1.0, 2.0, 3.0,
+                                                                                2.0, 5.0, 6.0,
+                                                                                3.0, 6.0, 9.0};
+        static constexpr square_matrix<T, 3> Self_Adjoint_Upper_3x3 = self_adjoint<matrix_part::Upper>(Matrix_3x3);
+        for (const size_t row : std::ranges::iota_view{0zu, 3zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 3zu})
+                expect(eq(Self_Adjoint_Upper_3x3[row][col], Expected_Self_Adjoint_Upper_3x3[row][col])) << " at element (" << row << ", " << col << ")";
+
+        static constexpr square_matrix<T, 3> Expected_Self_Adjoint_Lower_3x3 = {1.0, 4.0, 7.0,
+                                                                                4.0, 5.0, 8.0,
+                                                                                7.0, 8.0, 9.0};
+        static constexpr square_matrix<T, 3> Self_Adjoint_Lower_3x3 = self_adjoint<matrix_part::Lower>(Matrix_3x3);
+        for (const size_t row : std::ranges::iota_view{0zu, 3zu})
+            for (const size_t col : std::ranges::iota_view{0zu, 3zu})
+                expect(eq(Self_Adjoint_Lower_3x3[row][col], Expected_Self_Adjoint_Lower_3x3[row][col])) << " at element (" << row << ", " << col << ")";
+    };
+
     "determinant"_test = [] {
         static constexpr square_matrix<T, 1> Matrix_1x1 = {5.0};
         expect(eq(determinant(Matrix_1x1), 5.0));

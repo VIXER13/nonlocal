@@ -122,26 +122,81 @@ suite<"sparse_matrix_operators"> _ = [] {
         // [1 2|1 4|0 0]   [1]   [24]
         // [2 2|0 3|0 0]   [2]   [18]
         // [-----------]
-        // [2 0|0 0|3 0] * [3] = [17]
-        // [0 5|0 0|2 3]   [4]   [38]
+        // [1 4|1 2|3 0] * [3] = [35]
+        // [3 0|6 7|2 3]   [4]   [77]
         // [-----------]
         // [0 0|4 5|0 0]   [5]   [32]
         // [0 0|6 7|0 0]   [6]   [46]
         sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
-        block_matrix.portrait.shifts = {0, 2, 4, 5};
-        block_matrix.portrait.indices = {0, 1, 0, 2, 1};
+        block_matrix.portrait.shifts = {0, 2, 5, 6};
+        block_matrix.portrait.indices = {0, 1, 0, 1, 2, 1};
         block_matrix.values = {{1.0, 2.0, 2.0, 2.0}, 
                                {1.0, 4.0, 0.0, 3.0}, 
-                               {2.0, 0.0, 0.0, 5.0},
+                               {1.0, 4.0, 3.0, 0.0},
+                               {1.0, 2.0, 6.0, 7.0},
                                {3.0, 0.0, 2.0, 3.0},
                                {4.0, 5.0, 6.0, 7.0}};
         const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
         const auto block_result = block_matrix * block_vector;
-        const std::vector<std::array<T, 2>> Expected_Block_Result = {{24.0, 18.0}, {17.0, 38.0}, {32.0, 46.0}};
+        const std::vector<std::array<T, 2>> Expected_Block_Result = {{24.0, 18.0}, {35.0, 77.0}, {32.0, 46.0}};
         expect(eq(block_result.size(), 3));
         for(const size_t row : std::ranges::iota_view{0zu, block_result.size()})
             for(const size_t col : std::ranges::iota_view{0zu, 2zu})
                 expect(approx(block_result[row][col], Expected_Block_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "sparse_matrix_upper_self_adjoint_vector_multiplication_block"_test = [] {
+        // [1 2|1 4|0 0]   [1]   [24]
+        // [2 2|0 3|0 0]   [2]   [18]
+        // [-----------]
+        // [1 0|1 2|3 0] * [3] = [27]
+        // [4 3|2 7|2 3]   [4]   [72]
+        // [-----------]
+        // [0 0|3 2|0 0]   [5]   [17]
+        // [0 0|0 3|0 0]   [6]   [12]
+        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
+        block_matrix.portrait.shifts = {0, 2, 5, 6};
+        block_matrix.portrait.indices = {0, 1, 0, 1, 2, 1};
+        block_matrix.values = {{1.0, 2.0, 2.0, 2.0}, 
+                               {1.0, 4.0, 0.0, 3.0}, 
+                               {1.0, 4.0, 3.0, 0.0},
+                               {1.0, 2.0, 6.0, 7.0},
+                               {3.0, 0.0, 2.0, 3.0},
+                               {4.0, 5.0, 6.0, 7.0}};
+        const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+        const auto result = block_matrix.self_adjoint<matrix_part::Upper>() * block_vector;
+        const std::vector<std::array<T, 2>> Expected_Result = {{24.0, 18.0}, {27.0, 72.0}, {17.0, 12.0}};
+        expect(eq(result.size(), 3));
+        for(const size_t row : std::ranges::iota_view{0zu, result.size()})
+            for(const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(approx(result[row][col], Expected_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+    };
+
+    "sparse_matrix_lower_self_adjoint_vector_multiplication_block"_test = [] {
+        // [1 2|1 3|0 0]   [1]   [ 20]
+        // [2 2|4 0|0 0]   [2]   [ 18]
+        // [-----------]
+        // [1 4|1 6|4 6] * [3] = [ 92]
+        // [3 0|6 7|5 7]   [4]   [116]
+        // [-----------]
+        // [0 0|4 5|0 0]   [5]   [ 32]
+        // [0 0|6 7|0 0]   [6]   [ 46]
+        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
+        block_matrix.portrait.shifts = {0, 2, 5, 6};
+        block_matrix.portrait.indices = {0, 1, 0, 1, 2, 1};
+        block_matrix.values = {{1.0, 2.0, 2.0, 2.0}, 
+                               {1.0, 4.0, 0.0, 3.0}, 
+                               {1.0, 4.0, 3.0, 0.0},
+                               {1.0, 2.0, 6.0, 7.0},
+                               {3.0, 0.0, 2.0, 3.0},
+                               {4.0, 5.0, 6.0, 7.0}};
+        const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+        const auto result = block_matrix.self_adjoint<matrix_part::Lower>() * block_vector;
+        const std::vector<std::array<T, 2>> Expected_Result = {{20.0, 18.0}, {92.0, 116.0}, {32.0, 46.0}};
+        expect(eq(result.size(), 3));
+        for(const size_t row : std::ranges::iota_view{0zu, result.size()})
+            for(const size_t col : std::ranges::iota_view{0zu, 2zu})
+                expect(approx(result[row][col], Expected_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_vector_multiplication_invalid_size"_test = [] {

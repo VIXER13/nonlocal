@@ -45,7 +45,7 @@ std::vector<U> operator*(const self_adjoint_view<Part, T, I, J>& view, const std
     for(const size_t row : std::ranges::iota_view{0zu, view.matrix.rows()})
         for(const size_t shift : view.matrix.portrait.shifts_range(row))
             if (const size_t col = view.matrix.portrait.indices[shift]; row == col)
-                result[row] += view.matrix.values[shift] * vector[col];
+                result[row] += self_adjoint<Part>(view.matrix.values[shift]) * vector[col];
             else if (comparator(col, row)) {
                 result[row] += view.matrix.values[shift] * vector[col];
                 result[col] += transpose(view.matrix.values[shift]) * vector[row];

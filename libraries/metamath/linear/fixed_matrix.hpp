@@ -1,5 +1,7 @@
 #pragma once
 
+#include "self_adjoint_view.hpp"
+
 #include <array>
 #include <ranges>
 #include <cstddef>
@@ -25,6 +27,23 @@ constexpr fixed_matrix<T, Cols, Rows> transpose(const fixed_matrix<T, Rows, Cols
         for (const size_t col : std::ranges::iota_view{0zu, Cols})
             transposed[col][row] = transpose(matrix[row][col]);
     return transposed;
+}
+
+template<matrix_part Part, std::floating_point T>
+constexpr T self_adjoint(const T value) noexcept {
+    return value;
+}
+
+template<matrix_part Part, std::floating_point T, size_t N>
+constexpr square_matrix<T, N> self_adjoint(const square_matrix<T, N>& matrix) noexcept {
+    square_matrix<T, N> result;
+    for (const size_t row : std::ranges::iota_view{0zu, N})
+        for (const size_t col : std::ranges::iota_view{0zu, N})
+            if constexpr (Part == matrix_part::Upper)
+                result[row][col] = row <= col ? matrix[row][col] : transpose(matrix[col][row]);
+            else
+                result[row][col] = row >= col ? matrix[row][col] : transpose(matrix[col][row]);
+    return result;
 }
 
 template<std::floating_point T, size_t N>
