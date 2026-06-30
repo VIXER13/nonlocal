@@ -9,7 +9,7 @@
 namespace metamath::linear {
 
 template<std::ranges::random_access_range Container>
-auto scalar_production(const Container& x, const Container& y) {
+auto scalar_product(const Container& x, const Container& y) {
     using RT = std::ranges::range_value_t<Container>;
     using T = types::container_type_t<RT>;
     if constexpr (!types::is_array_v<Container>)

@@ -51,18 +51,18 @@ public:
         r = matrix().template self_adjoint<matrix_part::Upper>() * x;
         r = z - r;
         std::vector<entity_t> p = r; //std::vector<T> p = preconditioner().solve(r);
-        floating_point_t r_squared_norm = scalar_production(r, p);
+        floating_point_t r_squared_norm = scalar_product(r, p);
         const floating_point_t b_norm = norm(z);
         _iterations = 0;
         _residual = std::sqrt(r_squared_norm) / b_norm;
         while(_iterations < max_iterations() && _residual > tolerance()) {
             z = matrix().template self_adjoint<matrix_part::Upper>() * p;
-            const floating_point_t nu = r_squared_norm / scalar_production(p, z);
+            const floating_point_t nu = r_squared_norm / scalar_product(p, z);
             x += nu * p;
             z *= nu;
             r -= z;
             z = r; // z = preconditioner().solve(r);
-            const floating_point_t r_squared_norm_prev = std::exchange(r_squared_norm, scalar_production(r, z));
+            const floating_point_t r_squared_norm_prev = std::exchange(r_squared_norm, scalar_product(r, z));
             const floating_point_t mu = r_squared_norm / r_squared_norm_prev;
             p *= mu;
             p += z;

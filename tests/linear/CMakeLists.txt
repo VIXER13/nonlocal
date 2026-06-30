@@ -8,7 +8,7 @@ add_library(
         fixed_matrix.cpp
         norm.cpp
         operators.cpp
-        scalar_production.cpp
+        scalar_product.cpp
         sparse_matrix.cpp
 )
 
