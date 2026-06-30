@@ -35,9 +35,8 @@ public:
     explicit conjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix)
         : _base{matrix} {}
 
-    std::vector<entity_t> solve(
-        const std::vector<entity_t>& b,
-        const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const override {
+    std::vector<entity_t> solve(const std::vector<entity_t>& b,
+                                const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const override {
         using namespace metamath::linear;
         using metamath::operators::operator-;
         using metamath::operators::operator*;

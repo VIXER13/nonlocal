@@ -6,6 +6,7 @@ target_sources(
     slae_solver_metamath_powered_lib
     INTERFACE #
         conjugate_gradient.hpp
+        stable_biconjugate_gradient.hpp
 )
 target_include_directories(
     slae_solver_metamath_powered_lib

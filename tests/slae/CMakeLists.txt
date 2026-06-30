@@ -6,6 +6,7 @@ add_library(
     slae_test_lib
     OBJECT
         conjugate_gradient.cpp
+        stable_biconjugate_gradient.cpp
 )
 
 target_include_directories(
