@@ -56,6 +56,7 @@ public:
         _iterations = 0;
         _residual = std::sqrt(r_squared_norm) / b_norm;
         while(_iterations < max_iterations() && _residual > tolerance()) {
+            // TODO: optimize vector operations
             z = matrix().template self_adjoint<matrix_part::Upper>() * p;
             const floating_point_t nu = r_squared_norm / scalar_product(p, z);
             x += nu * p;

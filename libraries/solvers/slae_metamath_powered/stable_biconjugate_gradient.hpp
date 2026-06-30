@@ -78,6 +78,7 @@ public:
                     _iterations = 0;
             }
 
+            // TODO: optimize vector operations
             const floating_point_t beta = (rho / rho_old) * (alpha / w);
             p = r + beta * (p - w * v);
             y = p; // y = preconditioner().solve(p);

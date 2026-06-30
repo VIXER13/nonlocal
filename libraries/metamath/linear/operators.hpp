@@ -74,6 +74,7 @@ sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const sparse_mat
                 ++lhs_shift;
             } else {
                 // Insert non-zero element from rhs into lhs
+                // TODO: Optimize insertion
                 lhs.portrait.indices.insert(lhs.portrait.indices.begin() + lhs_shift, rhs_col);
                 lhs.values.insert(lhs.values.begin() + lhs_shift, rhs.values[rhs_shift]);
                 ++lhs_shift;
