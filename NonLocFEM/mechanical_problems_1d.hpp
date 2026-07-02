@@ -40,7 +40,13 @@ void solve_mechanical_1d_problem(const nlohmann::json& config, const config::sav
             [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
         }, right_part);
     };
-    const auto initial_distribution_input = [value = auxiliary.initial_distribution](const T x) constexpr noexcept { return value; };
+    const auto initial_distribution_input = [initial_distribution_input = auxiliary.initial_distribution](T x) {
+        return std::visit(metamath::types::visitor{
+            [](const T value) { return value; },
+            [&x](const spatial_dependency<T, 1>& value) { return value(x); },
+            [](const auto&) { throw std::domain_error{"Unsuported initial distribution format."}; return T{0}; }
+        }, initial_distribution_input);
+    };
 
     using namespace solver_1d::mechanical;
     switch (analysis_type) {

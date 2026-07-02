@@ -14,7 +14,7 @@ namespace nonlocal::config {
 enum class mechanical_boundary_condition_t : uint8_t {
     Undefined,
     Displacement,
-    Force,
+    Pressure,
     Spring,
     Combined
 };
@@ -22,7 +22,7 @@ enum class mechanical_boundary_condition_t : uint8_t {
 NLOHMANN_JSON_SERIALIZE_ENUM(mechanical_boundary_condition_t, {
     {mechanical_boundary_condition_t::Undefined, nullptr},
     {mechanical_boundary_condition_t::Displacement, "displacement"},
-    {mechanical_boundary_condition_t::Force,        "force"},
+    {mechanical_boundary_condition_t::Pressure,     "pressure"},
     {mechanical_boundary_condition_t::Spring,       "spring"},
     {mechanical_boundary_condition_t::Combined,     "combined"}
 })
@@ -67,9 +67,9 @@ _mechanical_boundary_conditions::read_mechanical_boundary_condition_1d(const nlo
         check_required_fields(config, { "displacement" }, path_with_access);
         return std::make_unique<displacement_1d<T>>(config["displacement"].get<T>());
 
-    case mechanical_boundary_condition_t::Force:
-        check_required_fields(config, { "force" }, path_with_access);
-        return std::make_unique<normal_force_1d<T>>(config["force"].get<T>());
+    case mechanical_boundary_condition_t::Pressure:
+        check_required_fields(config, { "pressure" }, path_with_access);
+        return std::make_unique<pressure_1d<T>>(config["pressure"].get<T>());
 
     case mechanical_boundary_condition_t::Spring: {
         check_required_fields(config, { "displacement", "stiffness" }, path_with_access);
@@ -80,15 +80,15 @@ _mechanical_boundary_conditions::read_mechanical_boundary_condition_1d(const nlo
 
     case mechanical_boundary_condition_t::Combined: {
         if (!config.contains("stiffness"))
-            check_optional_fields(config, {"force", "stiffness"}, path_with_access);
+            check_optional_fields(config, {"pressure", "stiffness"}, path_with_access);
         else {
             check_required_fields(config, {"displacement"}, path_with_access);
-            check_optional_fields(config, {"force"}, path_with_access);
+            check_optional_fields(config, {"pressure"}, path_with_access);
         }
         const T stiffness = config.value("stiffness", T{0});
         check_parameters(stiffness, path_with_access);
         return std::make_unique<combined_loading_1d<T>>(
-            config.value("force", T{0}),
+            config.value("pressure", T{0}),
             stiffness, config.value("displacement", T{0}));
     }
 

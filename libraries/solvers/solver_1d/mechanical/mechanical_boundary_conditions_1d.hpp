@@ -20,16 +20,16 @@ public:
 };
 
 template<std::floating_point T>
-class normal_force_1d : public virtual second_kind_1d<T, physics_t::MECHANICAL> {
-    T _normal_force = T{0};
+class pressure_1d : public virtual second_kind_1d<T, physics_t::MECHANICAL> {
+    T _pressure = T{0};
 
 public:
-    explicit normal_force_1d(const T normal_force) noexcept
-        : _normal_force{normal_force} {}
-    ~normal_force_1d() noexcept override = default;
+    explicit pressure_1d(const T pressure) noexcept
+        : _pressure{pressure} {}
+    ~pressure_1d() noexcept override = default;
 
     T operator()() const override {
-        return _normal_force;
+        return _pressure;
     }
 };
 
@@ -54,17 +54,17 @@ public:
 };
 
 template<class T>
-class combined_loading_1d : public normal_force_1d<T>
+class combined_loading_1d : public pressure_1d<T>
                           , public spring_1d<T> {
 public:
-    explicit combined_loading_1d(const T normal_force,
+    explicit combined_loading_1d(const T pressure,
                                  const T stiffness, const T displacement) noexcept
-        : normal_force_1d<T>{normal_force}
+        : pressure_1d<T>{pressure}
         , spring_1d<T>{stiffness, displacement} {}
     ~combined_loading_1d() noexcept override = default;
 
     T operator()() const override {
-        return normal_force_1d<T>::operator()() + spring_1d<T>::operator()();
+        return pressure_1d<T>::operator()() + spring_1d<T>::operator()();
     }
 };
 

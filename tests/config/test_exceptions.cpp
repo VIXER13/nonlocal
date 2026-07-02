@@ -110,13 +110,13 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_right_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_kind_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_displacement_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_force_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_pressure_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_third_kind_missed_displacement_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_third_kind_missed_stiffness_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_third_kind_negative_stiffness_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_combined_missed_displacement_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_combined_negative_stiffness_fail");
-        expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_displacement_and_force_ok");
+        expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_displacement_and_pressure_ok");
         expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_spring_and_displacement_ok");
         expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_combined_ok");
     };

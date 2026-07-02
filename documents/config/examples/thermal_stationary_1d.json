@@ -12,7 +12,7 @@
     },
     "mesh": {
         "element_order": 1,
-        "quadrature_order": 2
+        "quadrature_order": 1
     },
     "auxiliary": {
         "energy": 0,
@@ -26,15 +26,15 @@
         },
         "right": {
             "kind": "flux",
-            "flux": 200.0
+            "flux": 1
         }
     },
     "materials": [
         {
-            "elements_count": 20,
+            "elements_count": 100, 
             "length": 1.0,
             "physical": {
-                "conductivity": 20.0,
+                "conductivity": 1.0,
                 "capacity": 1.0,
                 "density": 1.0
             },
@@ -42,6 +42,20 @@
                 "local_weight": 1.0,
                 "nonlocal_radius": 0,
                 "search_radius": 0
+            }
+        },
+        {
+            "elements_count": 100,
+            "length": 2.0,
+            "physical": {
+                "conductivity": 10.0,
+                "capacity": 1.0,
+                "density": 1.0
+            },
+            "model": {
+                "local_weight": 0.1,
+                "nonlocal_radius": 0.1,
+                "search_radius": 0.1
             }
         }
     ]

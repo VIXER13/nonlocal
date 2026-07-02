@@ -49,9 +49,6 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
         case config::analysis_type_t::Time_Harmonic: 
             throw std::domain_error{"Time_Harmonic analysis type for thermal 1d problem is not supported."};
         case config::analysis_type_t::Time_Dependent: {
-           //const auto flux = [](const T t) { return 1048576. / 315. * std::exp(-8 * t) * metamath::functions::power<8>(t); };
-            //boundaries_conditions.front() = std::make_unique<solver_1d::thermal::flux_1d<T>>(flux(0));
-
             config::check_required_fields(config, {"time"});
             const config::time_data<T> time{config["time"], "time"};
             solver_1d::thermal::nonstationary_heat_equation_solver_1d<T, I> solver{mesh, parameters, time.time_step};
@@ -61,7 +58,6 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
             solution.calc_flux();
             save_solution(solution, save, 0u);
             for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-                //boundaries_conditions.front() = std::make_unique<solver_1d::thermal::flux_1d<T>>(flux(step * time.time_step));
                 solver.calc_step(boundaries_conditions,
                     [right_part = auxiliary.right_part](const T x) constexpr noexcept { return right_part; });
                 solution.temperature(solver.temperature());

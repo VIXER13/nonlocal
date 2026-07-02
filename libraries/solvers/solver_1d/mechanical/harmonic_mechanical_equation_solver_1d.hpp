@@ -12,6 +12,30 @@
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 
+#include <iostream>
+
+namespace {
+    template <typename T, typename I>
+        void printSparseMatrix(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& mat) {
+            for (I i = 0; i < mat.rows(); ++i) {
+                for (I j = 0; j < mat.cols(); ++j) {
+                    std::cout << mat.coeff(i, j);
+                    if (j + 1 < mat.cols()) std::cout << " ";
+                }
+                std::cout << "\n";
+            }
+        }
+
+    template <typename T>
+    void printVector(const Eigen::Matrix<T, Eigen::Dynamic, 1>& vec) {
+        for (Eigen::Index i = 0; i < vec.size(); ++i) {
+            std::cout << vec(i);
+            if (i + 1 < vec.size()) std::cout << " ";
+        }
+        std::cout << "\n";
+    }
+}
+
 namespace nonlocal::solver_1d::mechanical {
 
 template<std::floating_point T>
@@ -51,16 +75,46 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(const 
     stiffness_assembler_1d<T, I> stiffness_assembler{stiffness, mesh};
     stiffness_assembler.calc_matrix(parameters, settings);
 
+    // std::cout << "Inner Stiffness : " << std::endl;
+    // printSparseMatrix(stiffness.inner);
+
+    // std::cout << "Bound Stiffness: " << std::endl;
+    // for(const size_t b : std::ranges::iota_view{0u, 2u}) {
+    //     std::cout << " b = " << b << std::endl;
+    //     for(const auto& [col, value] : stiffness.bound[b]) 
+    //         std::cout << " col = " << col << "; value = " << value << std::endl;
+    // }
+
     finite_element_matrix_1d<T, I> mass;
     init_matrix_portrait(mass.inner, *mesh, settings);
     mass_assembler_1d<T, I> mass_assembler{mass, mesh};
     mass_assembler.calc_matrix(parameters, settings.is_first_kind);
+
+    // std::cout << "Inner Mass  : " << std::endl;
+    // printSparseMatrix(mass.inner);
+
+    // std::cout << "Bound Mass: " << std::endl;
+    // for(const size_t b : std::ranges::iota_view{0u, 2u}) {
+    //     std::cout << " b = " << b << std::endl;
+    //     for(const auto& [col, value] : mass.bound[b]) 
+    //         std::cout << " col = " << col << "; value = " << value << std::endl;
+    // }
 
     const T omega_square = additional_parameters.frequency * additional_parameters.frequency;
     stiffness.inner -= omega_square * mass.inner;
     for(const size_t b : std::ranges::iota_view{0u, 2u})
         for(const auto& [col, value] : mass.bound[b])
             stiffness.bound[b][col] -= omega_square * value;
+
+    // std::cout << "Inner Stiffness - omega^2 Mass : " << std::endl;
+    // printSparseMatrix(stiffness.inner);  
+
+    // std::cout << "Bound Stiffness - omega^2 Mass: " << std::endl;
+    // for(const size_t b : std::ranges::iota_view{0u, 2u}) {
+    //     std::cout << " b = " << b <<  std::endl;
+    //     for(const auto& [col, value] : stiffness.bound[b]) 
+    //         std::cout << " col = " << col << "; value = " << value << std::endl;
+    // }
 
     // The first kind rows of both K and M carry a unit diagonal; after the
     // subtraction the Dirichlet diagonal becomes (1 - w^2). Reset it to 1.
@@ -70,9 +124,14 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(const 
     if (settings.is_first_kind.back())
         stiffness.inner.coeffRef(last_node, last_node) = T{1};
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, false);
+
+    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, false);  
     spring_condition_1d(stiffness.inner, boundaries_conditions);
     boundary_condition_first_kind_1d(right_part, stiffness.bound, boundaries_conditions);
+    // std::cout << "Inner Stiffness - omega^2 Mass after = 1 : " << std::endl;
+    // printSparseMatrix(stiffness.inner);  
+    // std::cout << "Right part: " << std::endl;
+    // printVector(right_part);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> displacement;
     if (settings.is_symmetric()) {

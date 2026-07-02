@@ -371,11 +371,11 @@
             "displacement": 1
         }
     },
-    "mechanical_boundaries_conditions_missed_force_fail": {
-        "left": { "kind": "force" },
+    "mechanical_boundaries_conditions_missed_pressure_fail": {
+        "left": { "kind": "pressure" },
         "right": { 
-            "kind": "force",
-            "force": 1
+            "kind": "pressure",
+            "pressure": 1
         }
     },
     "mechanical_boundaries_conditions_third_kind_missed_displacement_fail": {
@@ -384,8 +384,8 @@
             "stiffness": 1
         },
         "right": { 
-            "kind": "force",
-            "force": 1
+            "kind": "pressure",
+            "pressure": 1
         }
     },
     "mechanical_boundaries_conditions_third_kind_missed_stiffness_fail": {
@@ -394,8 +394,8 @@
             "displacement": 1
         },
         "right": { 
-            "kind": "force",
-            "force": 1
+            "kind": "pressure",
+            "pressure": 1
         }
     },
     "mechanical_boundaries_conditions_third_kind_negative_stiffness_fail": {
@@ -405,19 +405,19 @@
             "displacement": 1
         },
         "right": { 
-            "kind": "force",
-            "force": 1
+            "kind": "pressure",
+            "pressure": 1
         }
     },
     "mechanical_boundaries_conditions_combined_missed_displacement_fail": {
         "left": { 
             "kind": "combined",
             "stiffness": 1,
-            "force" : 2
+            "pressure" : 2
         },
         "right": { 
-            "kind": "force",
-            "force": 1
+            "kind": "pressure",
+            "pressure": 1
         }
     },
     "mechanical_boundaries_conditions_combined_negative_stiffness_fail": {
@@ -425,21 +425,21 @@
             "kind": "combined",
             "displacement" : 1,
             "stiffness": -0.01,
-            "force" : 2
+            "pressure" : 2
         },
         "right": { 
-            "kind": "force",
-            "force": 1
+            "kind": "pressure",
+            "pressure": 1
         }
     },
-    "mechanical_boundaries_conditions_displacement_and_force_ok": {
+    "mechanical_boundaries_conditions_displacement_and_pressure_ok": {
         "left": {
             "kind": "displacement",
             "displacement": 1
         },
         "right": {
-            "kind": "force",
-            "force": 2
+            "kind": "pressure",
+            "pressure": 2
         }
     },
     "mechanical_boundaries_conditions_spring_and_displacement_ok": {
@@ -458,13 +458,13 @@
             "kind": "combined",
             "displacement" : 1,
             "stiffness": 2,
-            "force" : 3
+            "pressure" : 3
         },
         "right": {
             "kind": "combined",
             "displacement" : 1,
             "stiffness": 2,
-            "force" : 3
+            "pressure" : 3
         }
     },
 

@@ -12,7 +12,7 @@ problem_settings init_problem_settings(const parameters_1d<T>& parameters,
                                        const mechanical_boundaries_conditions_1d<T>& boundaries_conditions,
                                        const bool is_stationary_problem) {
     static constexpr auto is_force = [](const auto& condition) noexcept {
-        return  bool(dynamic_cast<const normal_force_1d<T>*>(condition.get())) &&
+        return  bool(dynamic_cast<const pressure_1d<T>*>(condition.get())) &&
                !bool(dynamic_cast<const combined_loading_1d<T>*>(condition.get()));
     };
     static constexpr auto is_nonconstant_parameters = [](const auto& parameter) noexcept {

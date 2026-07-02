@@ -40,10 +40,10 @@ private:
 
     T frequency_units_multiplier(const frequency_units_t units) {
         switch (units) {
-        case frequency_units_t::Hz:  return static_cast<T>(1e0);
-        case frequency_units_t::KHz: return static_cast<T>(1e3);
-        case frequency_units_t::MHz: return static_cast<T>(1e6);
-        case frequency_units_t::GHz: return static_cast<T>(1e9);
+        case frequency_units_t::Hz:  return T{1e0};
+        case frequency_units_t::KHz: return T{1e3};
+        case frequency_units_t::MHz: return T{1e6};
+        case frequency_units_t::GHz: return T{1e9};
         case frequency_units_t::Unknown:
         default: throw std::domain_error{"Unsupported frequency units."};
         }
@@ -59,17 +59,22 @@ public:
             const T min_frequency = config["min_value"].get<T>() * multiplier;
             const T max_frequency = config["max_value"].get<T>() * multiplier;
             check_min_max_frequencies(min_frequency, max_frequency);
-            const uint64_t number_of_points = config["number_of_points"].get<uint64_t>();
+            const size_t number_of_points = config["number_of_points"].get<size_t>();
             const T frequency_step = (max_frequency - min_frequency) / number_of_points;
-            frequencies.resize(number_of_points);
-            for(uint64_t i = 0; i < number_of_points; ++i)
-                frequencies[i] = static_cast<T>(i) * frequency_step + min_frequency;
+            frequencies.reserve(number_of_points);
+            T current_value = min_frequency;
+            std::generate_n(std::back_inserter(frequencies), number_of_points + 1, [&current_value, &frequency_step]() {
+                double val = current_value;
+                current_value += frequency_step;
+                return val;
+            });
         } else if (config.contains("range")) {
             frequencies = config["range"].get<std::vector<T>>();
-            for(const T frequency : frequencies) check_frequency(frequency);
+            for(const T frequency : frequencies) 
+                check_frequency(frequency);
         } else {
-            throw std::domain_error{"Unsupported frequency parameters in \"" + path +
-                                    "\". Specify either {units, min_value, max_value, number_of_points} or {range}."};
+            throw std::domain_error{"Unsupported frequency parameters in \"" + path + "\". " + 
+                                    "Specify either {units, min_value, max_value, number_of_points} or {range}."};
         }
     }
 
