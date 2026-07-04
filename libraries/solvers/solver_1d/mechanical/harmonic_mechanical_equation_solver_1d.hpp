@@ -70,7 +70,6 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(const 
     if (settings.is_first_kind.back())
         stiffness.inner.coeffRef(last_node, last_node) = T{1};
 
-
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, false);  
     spring_condition_1d(stiffness.inner, boundaries_conditions);
     boundary_condition_first_kind_1d(right_part, stiffness.bound, boundaries_conditions);

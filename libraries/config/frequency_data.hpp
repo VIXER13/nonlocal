@@ -62,11 +62,9 @@ public:
             const size_t number_of_points = config["number_of_points"].get<size_t>();
             const T frequency_step = (max_frequency - min_frequency) / number_of_points;
             frequencies.reserve(number_of_points);
-            T current_value = min_frequency;
-            std::generate_n(std::back_inserter(frequencies), number_of_points + 1, [&current_value, &frequency_step]() {
-                double val = current_value;
-                current_value += frequency_step;
-                return val;
+            std::generate_n(std::back_inserter(frequencies), number_of_points + 1, 
+                [current = min_frequency, frequency_step]() mutable {
+                    return std::exchange(current, current + frequency_step);
             });
         } else if (config.contains("range")) {
             frequencies = config["range"].get<std::vector<T>>();
