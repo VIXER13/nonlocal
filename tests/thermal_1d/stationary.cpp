@@ -95,8 +95,10 @@ const boost::ut::suite<"thermal_stationary_1d"> _ = [] {
 
     for(const auto& [test_name, conditions] : boundaries_conditions) {
         boost::ut::test(test_name) = [&parameters, &conditions, &additional_parameters] {
-            T prev_temperature_error = std::numeric_limits<T>::max();
-            T prev_flux_error = std::numeric_limits<T>::max();
+            constexpr size_t number_of_metrics = 4;
+            std::array<T, number_of_metrics> prev_errors{};
+            std::array<T, number_of_metrics> curr_errors{};
+            std::fill(prev_errors.begin(), prev_errors.end(), std::numeric_limits<T>::max());
             for(const size_t elements : {10, 20, 40}) {
                 static constexpr size_t Order = 1;
                 using quadrature = quadrature_1d<T, gauss, Order>;
@@ -110,12 +112,13 @@ const boost::ut::suite<"thermal_stationary_1d"> _ = [] {
                 solution.calc_flux();
                 const auto expected_temperature_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Temperature);
                 const auto expected_flux_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Flux);
-                const T temperature_error = max_error(solution.temperature(), expected_temperature_discrete) / max_norm(expected_temperature_discrete);
-                const T flux_error = max_error(solution.flux(), expected_flux_discrete) / max_norm(expected_flux_discrete);
-                expect(lt(temperature_error, prev_temperature_error));
-                expect(lt(flux_error, prev_flux_error));
-                prev_temperature_error = temperature_error;
-                prev_flux_error = flux_error;
+                curr_errors[0] = L2_norm  (solution.temperature(), expected_temperature_discrete);
+                curr_errors[1] = L2_norm  (solution.flux(),        expected_flux_discrete);
+                curr_errors[2] = max_error(solution.temperature(), expected_temperature_discrete);
+                curr_errors[3] = max_error(solution.flux(),        expected_flux_discrete);
+                for (size_t i = 0; i < number_of_metrics; ++i)
+                    expect(lt(curr_errors[i], prev_errors[i]));
+                std::swap(curr_errors, prev_errors);
             }
         };
     }

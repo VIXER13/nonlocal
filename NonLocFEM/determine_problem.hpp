@@ -2,7 +2,7 @@
 
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
-
+#include "mechanical_problems_1d.hpp"
 #include <config/read_mechanical_boundary_conditions.hpp>
 #include <config/read_mechanical_parameters.hpp>
 #include <config/read_mesh.hpp>
@@ -57,6 +57,9 @@ public:
 
 template<std::floating_point T, std::signed_integral I>
 void problems_1d(const nlohmann::json& config, const config::save_data& save, const config::task_data& task) {
+    if (task.problem == config::problem_t::Unknown)
+        throw std::domain_error{"Unknown task. In the one-dimensional case, the following problems are available: "
+                                "\"thermal\" and \"mechanical\""};
     if (parallel::MPI_rank() != 0) {
         logger::warning() << "Calculations are available only on the master process. "
                              "The current process has completed its work." << std::endl;
@@ -64,9 +67,17 @@ void problems_1d(const nlohmann::json& config, const config::save_data& save, co
     }
     config::check_required_fields(config, {"boundaries", "materials"});
     config::check_optional_fields(config, {"mesh", "auxiliary"});
-    if (task.problem == config::problem_t::Thermal)
-        solve_thermal_1d_problem<T, I>(config, save, task.time_dependency);
-    else throw std::domain_error{"Unsupported task. In the one-dimensional case, the following problems are available: \"thermal\""};
+    switch (task.problem) {
+        case config::problem_t::Thermal: {
+            solve_thermal_1d_problem<T, I>(config, save, task.analysis_type);
+            break;
+        }
+        case config::problem_t::Mechanical: {
+            solve_mechanical_1d_problem<T, I>(config, save, task.analysis_type);
+            break;
+        }
+        default: break;
+    }
 }
 
 template<std::floating_point T, std::signed_integral I>
@@ -146,21 +157,25 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
     config::check_required_fields(config, DP::get_required_fields(task));
     config::check_optional_fields(config, {"auxiliary"});
     auto mesh = config::read_mesh_2d<T, uint32_t>(config["mesh"], "mesh");
-    if (task.time_dependency) {
-        if (task.problem == config::problem_t::Thermal) {
-            thermal_nonstationary_2d<T, I>(mesh, config, save);
-            return;
-        } else if (task.problem == config::problem_t::Mechanical) {
-            mechanical_nonstationary_2d<T, I>(mesh, config, save);
-            return;
-        }
-        throw std::domain_error{"The problem does not support calculations in the nonstationary case."};
-    } else {
-        const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_solution = thermal_stationary_2d<T, I>(mesh, config, task.problem);
-        const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> mechanical_solution =
+    switch (task.analysis_type) {
+        case config::analysis_type_t::Stationary: {
+            const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_solution = thermal_stationary_2d<T, I>(mesh, config, task.problem);
+            const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> mechanical_solution =
             mechanical_2d<T, I>(mesh, config, task.problem, thermal_solution ? thermal_solution->temperature() : std::vector<T>{});
-        save_csv(thermal_solution, mechanical_solution, save);
-        save_vtk(thermal_solution, mechanical_solution, save);
+            save_csv(thermal_solution, mechanical_solution, save);
+            save_vtk(thermal_solution, mechanical_solution, save);
+            break;
+        }
+        case config::analysis_type_t::Time_Harmonic: {
+            throw std::domain_error{"Time_Harmonic analysis type for two-dimensional problem is not supported."};
+        }
+        case config::analysis_type_t::Time_Dependent: { 
+            thermal_nonstationary_2d<T, I>(mesh, config, save);
+            break;
+        }
+        case config::analysis_type_t::Unknown: 
+        default: 
+            throw std::domain_error{"Unknown analysis type for two-dimensional problem."};
     }
 }
 

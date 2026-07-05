@@ -2,7 +2,7 @@
     "task": {
         "dimension": 1,
         "problem": "thermal",
-        "time_dependency": false
+        "analysis_type": "stationary"
     },
     "save": {
         "folder": "./test",
@@ -11,8 +11,8 @@
         "precision": 7
     },
     "mesh": {
-        "element_order": "linear",
-        "quadrature_order": "linear"
+        "element_order": 1,
+        "quadrature_order": 1
     },
     "auxiliary": {
         "energy": 0,
@@ -31,7 +31,7 @@
     },
     "materials": [
         {
-            "elements_count": 100,
+            "elements_count": 100, 
             "length": 1.0,
             "physical": {
                 "conductivity": 1.0,

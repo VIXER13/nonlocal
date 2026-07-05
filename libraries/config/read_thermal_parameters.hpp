@@ -141,7 +141,7 @@ solver_1d::thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an nonempty array."};
 
     solver_1d::thermal::parameters_1d<T> parameters(config.size());
-    for(const size_t i : std::ranges::iota_view{0u, parameters.capacity()}) {
+    for(const size_t i : std::ranges::iota_view{0u, parameters.size()}) {
         const nlohmann::json& config_material = config[i];
         const std::string path_with_access = append_access_sign(append_access_sign(path, i));
         check_required_fields(config_material, {"physical"}, path_with_access);

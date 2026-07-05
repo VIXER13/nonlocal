@@ -3,6 +3,7 @@ project(finite_element_solver_1d)
 
 add_subdirectory(base)
 add_subdirectory(thermal)
+add_subdirectory(mechanical)
 
 add_library(finite_element_solver_1d_lib INTERFACE)
 target_sources(
@@ -20,4 +21,5 @@ target_link_libraries(
     INTERFACE #
         finite_element_solver_1d_base_lib
         heat_equation_solver_1d_lib
+        mechanical_equation_solver_1d_lib
 )

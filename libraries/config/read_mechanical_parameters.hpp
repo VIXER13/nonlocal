@@ -3,12 +3,72 @@
 #include "read_model.hpp"
 #include "read_coefficient.hpp"
 
+#include <solvers/solver_1d/mechanical/mechanical_parameters_1d.hpp>
 #include <solvers/solver_2d/mechanical/mechanical_parameters_2d.hpp>
 
 #include <bitset>
 #include <optional>
 
 namespace nonlocal::config {
+
+class _mechanical_parameters_1d final {
+
+    explicit _mechanical_parameters_1d() noexcept = default;
+
+    template<std::floating_point T>
+    static void check_parameters(const nonlocal::coefficient_t<T, 1>& youngs_modulus,
+                                 const nonlocal::coefficient_t<T, 1>& density, const std::string& path_with_access);
+
+
+    template<std::floating_point T>
+    static solver_1d::mechanical::parameter_1d<T> read_mechanical_coefficient_1d(const nlohmann::json& config, const std::string& path);
+
+public:
+    template<std::floating_point T>
+    friend solver_1d::mechanical::parameters_1d<T> read_mechanical_parameters_1d(const nlohmann::json& config, const std::string& path);
+};
+
+template<std::floating_point T>
+void _mechanical_parameters_1d::check_parameters(const nonlocal::coefficient_t<T, 1>& youngs_modulus,
+                                                 const nonlocal::coefficient_t<T, 1>& density, const std::string& path_with_access) {
+    if (std::holds_alternative<T>(youngs_modulus) && std::get<T>(youngs_modulus) <= T{0})
+        throw std::domain_error{"Parameter \"" + path_with_access + "youngs_modulus\" shall be greater than 0."};
+    if (std::holds_alternative<T>(density) && std::get<T>(density) <= T{0})
+        throw std::domain_error{"Parameter \"" + path_with_access + "density\" shall be greater than 0."};
+}
+
+template<std::floating_point T>
+solver_1d::mechanical::parameter_1d<T>
+_mechanical_parameters_1d::read_mechanical_coefficient_1d(const nlohmann::json& config, const std::string& path) {
+    const std::string path_with_access = append_access_sign(path);
+    check_required_fields(config, { "youngs_modulus" }, path);
+    check_optional_fields(config, { "density" }, path);
+    const auto youngs_modulus = read_coefficient<T, 1>(config["youngs_modulus"], path_with_access + "youngs_modulus");
+    const auto density = config.contains("density")
+        ? read_coefficient<T, 1>(config["density"], path_with_access + "density")
+        : nonlocal::coefficient_t<T, 1>{T{1}};
+    check_parameters(youngs_modulus, density, path_with_access);
+    return {youngs_modulus, density};
+}
+
+template<std::floating_point T>
+solver_1d::mechanical::parameters_1d<T> read_mechanical_parameters_1d(const nlohmann::json& config, const std::string& path) {
+    if (!config.is_array())
+        throw std::domain_error{"\"materials\" initialization requires the initializing config to be a non-empty array."};
+    const std::string path_with_access = append_access_sign(path);
+    solver_1d::mechanical::parameters_1d<T> parameters(config.size());
+    for(const size_t i : std::ranges::iota_view{0u, parameters.size()}) {
+        const nlohmann::json& config_material = config[i];
+        const std::string path_with_access = append_access_sign(append_access_sign(path, i));
+        check_required_fields(config_material, {"physical"}, path_with_access);
+        const std::string model_field = get_model_field(config_material, path_with_access, "mechanical");
+        parameters[i] = {
+            .model = model_field.empty() ? model_parameters<1u, T>{} : read_model_1d<T>(config_material[model_field], path_with_access + model_field),
+            .physical = _mechanical_parameters_1d::read_mechanical_coefficient_1d<T>(config_material["physical"], path_with_access + "physical")
+        };
+    }
+    return parameters;
+}
 
 class _mechanical_parameters_2d final {
     // throw an error if parameter specified in wrong way.

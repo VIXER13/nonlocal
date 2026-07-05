@@ -25,4 +25,16 @@ T norm_error(const std::vector<T>& actual, const mesh::mesh_container_2d<T, I>& 
     return max_error(actual, discrete_function) / max_norm(discrete_function);
 }
 
+template<std::floating_point T>
+T L2_norm(const std::vector<T>& x, const std::vector<T>& y) {
+    if (x.size() != y.size()) throw std::invalid_argument("Vectors must be the same size.");
+    T norm = std::transform_reduce(x.begin(), x.end(), y.begin(), static_cast<T>(0.0), std::plus<>(),
+    [](T x, T y) {
+        T diff = x - y;
+        return diff * diff;
+    });
+    return std::sqrt(norm);
+}
+
+
 }
