@@ -7,6 +7,7 @@ add_library(
     OBJECT
         conjugate_gradient.cpp
         stable_biconjugate_gradient.cpp
+        preconditioners.cpp
 )
 
 target_include_directories(
