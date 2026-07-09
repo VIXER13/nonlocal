@@ -18,8 +18,7 @@ public:
     using _base::matrix;
     using _base::tolerance;
     using _base::max_iterations;
-    //using _base::preconditioner;
-    //using _base::init_preconditioner;
+    using _base::preconditioner;
     using _base::processes_ranges;
 
     explicit stable_biconjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix)
@@ -81,12 +80,12 @@ public:
             // TODO: optimize vector operations
             const floating_point_t beta = (rho / rho_old) * (alpha / w);
             p = r + beta * (p - w * v);
-            y = p; // y = preconditioner().solve(p);
+            y = preconditioner().solve(p);
             v = matrix() * y;
 
             alpha = rho / scalar_product(r0, v);
             s = r - alpha * v;
-            z = s; // z = preconditioner().solve(s);
+            z = preconditioner().solve(s);
             t = matrix() * z;
 
             const floating_point_t t_squared_norm = powered_norm(t);

@@ -96,6 +96,9 @@ suite<"fixed_matrix"> _ = [] {
     };
 
     "inverse"_test = [] {
+        static constexpr T value = 5.0;
+        expect(approx(inverse(value), 0.2, Epsilon));
+
         static constexpr square_matrix<T, 1> Matrix_1x1 = {5.0};
         static constexpr square_matrix<T, 1> Expected_1x1_Inverse = {0.2};
         const auto inverse_1x1 = inverse(Matrix_1x1);

@@ -74,6 +74,11 @@ constexpr bool is_positive(const square_matrix<T, N>& matrix) noexcept {
         static_assert(N < 4, "Positive definiteness check is only implemented for 1x1, 2x2, and 3x3 matrices.");
 }
 
+template<std::floating_point T>
+constexpr T inverse(const T value) noexcept {
+    return T{1} / value;
+}
+
 template<std::floating_point T, size_t N>
 constexpr square_matrix<T, N> inverse(const square_matrix<T, N>& matrix) noexcept {
     if constexpr (N == 1)

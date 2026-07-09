@@ -28,8 +28,7 @@ public:
     using _base::matrix;
     using _base::tolerance;
     using _base::max_iterations;
-    //using _base::preconditioner;
-    //using _base::init_preconditioner;
+    using _base::preconditioner;
     using _base::processes_ranges;
 
     explicit conjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix)
@@ -50,7 +49,7 @@ public:
         std::vector<entity_t> x = x0.template value_or(std::vector<entity_t>(matrix().cols(), entity_t{}));
         r = matrix().template self_adjoint<matrix_part::Upper>() * x;
         r = z - r;
-        std::vector<entity_t> p = r; //std::vector<T> p = preconditioner().solve(r);
+        std::vector<entity_t> p = preconditioner().solve(r);
         floating_point_t r_squared_norm = scalar_product(r, p);
         const floating_point_t b_norm = norm(z);
         _iterations = 0;
@@ -62,7 +61,7 @@ public:
             x += nu * p;
             z *= nu;
             r -= z;
-            z = r; // z = preconditioner().solve(r);
+            z = preconditioner().solve(r);
             const floating_point_t r_squared_norm_prev = std::exchange(r_squared_norm, scalar_product(r, z));
             const floating_point_t mu = r_squared_norm / r_squared_norm_prev;
             p *= mu;
