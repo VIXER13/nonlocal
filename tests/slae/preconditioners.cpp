@@ -88,15 +88,13 @@ sparse_matrix<square_matrix<T, 2>> make_block_general() {
 
 suite<"identity_preconditioner"> _identity = [] {
     "scalar"_test = [] {
-        auto p = identity_preconditioner<T, uint32_t, size_t>{};
-        p.compute(make_scalar_symmetric());
+        identity_preconditioner<T> p;
         const std::vector<T> r = {1., 2., 3., 4., 5.};
         expect(p.solve(r) == r) << "identity preconditioner must return input unchanged";
     };
 
     "block"_test = [] {
-        auto p = identity_preconditioner<square_matrix<T, 2>, uint32_t, size_t>{};
-        p.compute(make_block_symmetric());
+        identity_preconditioner<square_matrix<T, 2>> p;
         const std::vector<std::array<T, 2>> r = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}};
         expect(p.solve(r) == r) << "block identity preconditioner must return input unchanged";
     };
@@ -107,8 +105,7 @@ suite<"identity_preconditioner"> _identity = [] {
 suite<"diagonal_preconditioner"> _diagonal = [] {
     "scalar"_test = [] {
         // Diagonal of make_scalar_symmetric: [4, 4, 4, 4, 4]
-        auto p = diagonal_preconditioner<T, uint32_t, size_t>{};
-        p.compute(make_scalar_symmetric());
+        diagonal_preconditioner<T> p{make_scalar_symmetric()};
         const std::vector<T> r = {4., 8., 12., 16., 20.};
         const std::vector<T> x = p.solve(r);
         const std::vector<T> expected = {1., 2., 3., 4., 5.};
@@ -118,8 +115,7 @@ suite<"diagonal_preconditioner"> _diagonal = [] {
 
     "block"_test = [] {
         // Diagonal blocks of make_block_symmetric: [{4,-1,-1,4}, {4,-1,-1,4}, {4,0,0,4}]
-        auto p = diagonal_preconditioner<square_matrix<T, 2>, uint32_t, size_t>{};
-        p.compute(make_block_symmetric());
+        diagonal_preconditioner<square_matrix<T, 2>> p{make_block_symmetric()};
         // rhs = diag_block * x for known x
         const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}};
         const square_matrix<T, 2> d0 = {4., -1., -1., 4.};
@@ -137,8 +133,7 @@ suite<"ildlt_preconditioner"> _ildlt = [] {
     "scalar_factorization"_test = [] {
         // For a tridiagonal symmetric positive-definite matrix the ILDLT
         // factorization is exact (no fill-in exists) so (L D L^T)^{-1} b = A^{-1} b.
-        auto p = ildlt_preconditioner<T, uint32_t, size_t>{};
-        p.compute(make_scalar_symmetric());
+        auto p = ildlt_preconditioner{make_scalar_symmetric()};
         const std::vector<T> expected = {1., 2., 3., 4., 5.};
         const std::vector<T> b = make_scalar_symmetric().self_adjoint<matrix_part::Upper>() * expected;
         const std::vector<T> x = p.solve(b);
@@ -149,9 +144,8 @@ suite<"ildlt_preconditioner"> _ildlt = [] {
     "scalar_symmetry"_test = [] {
         // For a symmetric problem and exact factorization: L D L^T x = b => x = A^{-1} b.
         // Verify the solution is self-consistent: A*(ILDLT^{-1} b) ≈ b.
-        auto p = ildlt_preconditioner<T, uint32_t, size_t>{};
+        auto p = ildlt_preconditioner{make_scalar_symmetric()};
         const auto m = make_scalar_symmetric();
-        p.compute(make_scalar_symmetric());
         const std::vector<T> b = {1., 2., 3., 4., 5.};
         const std::vector<T> x = p.solve(b);
         const std::vector<T> Ax = m.self_adjoint<matrix_part::Upper>() * x;
@@ -160,8 +154,7 @@ suite<"ildlt_preconditioner"> _ildlt = [] {
     };
 
     "block_factorization"_test = [] {
-        auto p = ildlt_preconditioner<square_matrix<T, 2>, uint32_t, size_t>{};
-        p.compute(make_block_symmetric());
+        auto p = ildlt_preconditioner{make_block_symmetric()};
         const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}};
         const std::vector<std::array<T, 2>> b = make_block_symmetric().self_adjoint<matrix_part::Upper>() * expected;
         const std::vector<std::array<T, 2>> x = p.solve(b);
@@ -170,9 +163,8 @@ suite<"ildlt_preconditioner"> _ildlt = [] {
     };
 
     "block_symmetry"_test = [] {
-        auto p = ildlt_preconditioner<square_matrix<T, 2>, uint32_t, size_t>{};
+        auto p = ildlt_preconditioner{make_block_symmetric()};
         const auto m = make_block_symmetric();
-        p.compute(make_block_symmetric());
         const std::vector<std::array<T, 2>> b = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}};
         const std::vector<std::array<T, 2>> x = p.solve(b);
         const std::vector<std::array<T, 2>> Ax = m.self_adjoint<matrix_part::Upper>() * x;
@@ -186,8 +178,7 @@ suite<"ildlt_preconditioner"> _ildlt = [] {
 suite<"ilu0_preconditioner"> _ilu0 = [] {
     "scalar_factorization"_test = [] {
         // For tridiagonal general matrix the ILU0 factorization is exact.
-        auto p = ilu0_preconditioner<T, uint32_t, size_t>{};
-        p.compute(make_scalar_general());
+        auto p = ilu0_preconditioner{make_scalar_general()};
         const std::vector<T> expected = {1., 2., 3., 4., 5.};
         const std::vector<T> b = make_scalar_general() * expected;
         const std::vector<T> x = p.solve(b);
@@ -196,9 +187,8 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
     };
 
     "scalar_residual"_test = [] {
-        auto p = ilu0_preconditioner<T, uint32_t, size_t>{};
+        auto p = ilu0_preconditioner{make_scalar_general()};
         const auto m = make_scalar_general();
-        p.compute(make_scalar_general());
         const std::vector<T> b = {1., 2., 3., 4., 5.};
         const std::vector<T> x = p.solve(b);
         const std::vector<T> Ax = m * x;
@@ -207,8 +197,7 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
     };
 
     "block_factorization"_test = [] {
-        auto p = ilu0_preconditioner<square_matrix<T, 2>, uint32_t, size_t>{};
-        p.compute(make_block_general());
+        auto p = ilu0_preconditioner{make_block_general()};
         const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}};
         const std::vector<std::array<T, 2>> b = make_block_general() * expected;
         const std::vector<std::array<T, 2>> x = p.solve(b);
@@ -217,9 +206,8 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
     };
 
     "block_residual"_test = [] {
-        auto p = ilu0_preconditioner<square_matrix<T, 2>, uint32_t, size_t>{};
+        auto p = ilu0_preconditioner{make_block_general()};
         const auto m = make_block_general();
-        p.compute(make_block_general());
         const std::vector<std::array<T, 2>> b = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}};
         const std::vector<std::array<T, 2>> x = p.solve(b);
         const std::vector<std::array<T, 2>> Ax = m * x;

@@ -16,7 +16,7 @@ public:
     using typename _base::floating_point_t;
 
 private:
-    std::unique_ptr<preconditioner_base<T, I, J>> _preconditioner = std::make_unique<identity_preconditioner<T, I, J>>();
+    std::unique_ptr<preconditioner_base<T>> _preconditioner = std::make_unique<identity_preconditioner<T>>();
     floating_point_t _tolerance = std::numeric_limits<floating_point_t>::epsilon();
     uintmax_t _max_iterations = 10000;
 
@@ -28,15 +28,15 @@ public:
     using solver_base<T, I, J>::solver_base;
     virtual ~iterative_solver_base() noexcept = default;
 
-    preconditioner_base<T, I, J>& preconditioner() noexcept {
+    preconditioner_base<T>& preconditioner() noexcept {
         return *_preconditioner;
     }
 
-    const preconditioner_base<T, I, J>& preconditioner() const noexcept {
+    const preconditioner_base<T>& preconditioner() const noexcept {
         return *_preconditioner;
     }
 
-    void preconditioner(std::unique_ptr<preconditioner_base<T, I, J>>&& preconditioner) {
+    void preconditioner(std::unique_ptr<preconditioner_base<T>>&& preconditioner) {
         _preconditioner = std::move(preconditioner);
     }
 

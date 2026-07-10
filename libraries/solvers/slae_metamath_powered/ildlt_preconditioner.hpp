@@ -16,65 +16,52 @@ namespace nonlocal::slae {
 // Upper entries store U_{ij} = L_{ji}^T (transpose of lower factor L).
 // Diagonal stores D_i (block diagonal factors).
 template<class T, std::integral I, std::integral J>
-class ildlt_preconditioner final : public preconditioner_base<T, I, J> {
-    metamath::linear::sparse_matrix_portrait<I, J> _portrait;
-    std::vector<T> _values;
-    std::vector<T> _d_values;
+class ildlt_preconditioner final : public preconditioner_base<T> {
+    metamath::linear::sparse_matrix<T, I, J> _matrix;
     std::vector<T> _inv_d;
     std::vector<std::vector<size_t>> _col_preds;
 
-    static T invert(const T& val) {
-        if constexpr (metamath::types::is_array_v<T>)
-            return metamath::linear::inverse(val);
-        else
-            return T{1} / val;
+    // Computes incomplete LDLT factorization of the upper symmetric sparse matrix.
+    // Sparsity pattern is preserved (ILU0: zero fill-in).
+    void compute() {
+        using namespace metamath::linear;
+        const size_t n = _matrix.cols();
+        // col_preds[j] = rows k < j such that (k, j) is in the upper pattern
+        _col_preds.assign(n, {});
+        for(const size_t k : std::ranges::iota_view{0zu, n})
+            for(const size_t s : _matrix.portrait.shifts_range(k))
+                if (const size_t j = _matrix.portrait.indices[s]; j > k)
+                    _col_preds[j].push_back(k);
+
+        std::vector<T> d_values(n);
+        for(const size_t i : std::ranges::iota_view{0zu, n}) {
+            // D_i = A_{ii} - sum_{k in col_preds[i]} transpose(U_{ki}) * D_k * U_{ki}
+            d_values[i] = _matrix(i, i);
+            for (const size_t k : _col_preds[i]) {
+                const T& uki = _matrix(k, i);
+                d_values[i] -= transpose(uki) * d_values[k] * uki;
+            }
+            _inv_d[i] = metamath::linear::inverse(d_values[i]);
+
+            // U_{ij} = inv(D_i) * (A_{ij} - sum_{k in col_preds[i] with (k,j) in pattern} transpose(U_{ki}) * D_k * U_{kj})
+            for (const size_t s : _matrix.portrait.shifts_range(i))
+                if (const size_t j = _matrix.portrait.indices[s]; j > i) {
+                    for (const size_t k : _col_preds[i])
+                        if (_matrix.portrait.contains(k, j))
+                            _matrix.values[s] -= transpose(_matrix(k, i)) * d_values[k] * _matrix(k, j);
+                    _matrix.values[s] = _inv_d[i] * _matrix.values[s];
+                }
+        }
     }
 
 public:
-    using typename preconditioner_base<T, I, J>::entity_t;
+    using typename preconditioner_base<T>::entity_t;
 
-    // Computes incomplete LDLT factorization of the upper symmetric sparse matrix.
-    // Sparsity pattern is preserved (ILU0: zero fill-in).
-    void compute(metamath::linear::sparse_matrix<T, I, J>&& matrix) override {
-        using namespace metamath::linear;
-        const size_t n = matrix.rows();
-        _portrait = std::move(matrix.portrait);
-        _values = std::move(matrix.values);
-        _d_values.resize(n);
-        _inv_d.resize(n);
-
-        // col_preds[j] = rows k < j such that (k, j) is in the upper pattern
-        _col_preds.assign(n, {});
-        for (size_t k = 0; k < n; ++k)
-            for (J s = _portrait.shifts[k]; s < _portrait.shifts[k + 1]; ++s)
-                if (const size_t j = _portrait.indices[s]; j > k)
-                    _col_preds[j].push_back(k);
-
-        for (size_t i = 0; i < n; ++i) {
-            // D_i = A_{ii} - sum_{k in col_preds[i]} transpose(U_{ki}) * D_k * U_{ki}
-            T diag = _values[_portrait.shift(i, i)];
-            for (const size_t k : _col_preds[i]) {
-                const T& uki = _values[_portrait.shift(k, i)];
-                diag -= transpose(uki) * _d_values[k] * uki;
-            }
-            _d_values[i] = diag;
-            _inv_d[i] = invert(diag);
-
-            // U_{ij} = inv(D_i) * (A_{ij} - sum_{k in col_preds[i] with (k,j) in pattern} transpose(U_{ki}) * D_k * U_{kj})
-            for (J s = _portrait.shifts[i]; s < _portrait.shifts[i + 1]; ++s) {
-                const size_t j = _portrait.indices[s];
-                if (j <= i)
-                    continue;
-                T val = _values[s];
-                for (const size_t k : _col_preds[i])
-                    if (_portrait.contains(k, j)) {
-                        const T& uki = _values[_portrait.shift(k, i)];
-                        const T& ukj = _values[_portrait.shift(k, j)];
-                        val -= transpose(uki) * _d_values[k] * ukj;
-                    }
-                _values[s] = _inv_d[i] * val;
-            }
-        }
+    explicit ildlt_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix)
+        : _matrix{std::move(matrix)}, _inv_d(_matrix.cols()) {
+        if (_matrix.rows() != _matrix.cols())
+            throw std::invalid_argument{"Incomplete LDLT preconditioner requires a square matrix."};
+        compute();
     }
 
     // Solves (L D L^T) x = rhs via three triangular sweeps.
@@ -87,22 +74,20 @@ public:
         // Forward substitution: L y = rhs
         // y[i] = rhs[i] - sum_{k in col_preds[i]} L_{ik} * y[k]
         //      = rhs[i] - sum_{k in col_preds[i]} transpose(U_{ki}) * y[k]
-        for (size_t i = 0; i < n; ++i)
+        for(const size_t i : std::ranges::iota_view{0zu, n})
             for (const size_t k : _col_preds[i])
-                result[i] -= transpose(_values[_portrait.shift(k, i)]) * result[k];
+                result[i] -= transpose(_matrix(k, i)) * result[k];
 
         // Diagonal solve: D z = y  ->  z[i] = inv(D_i) * y[i]
-        for (size_t i = 0; i < n; ++i)
+        for (const size_t i : std::ranges::iota_view{0zu, n})
             result[i] = _inv_d[i] * result[i];
 
         // Backward substitution: L^T x = z
         // x[i] = z[i] - sum_{j > i, (i,j) in upper pattern} U_{ij} * x[j]
-        for (size_t i = n; i-- > 0;)
-            for (J s = _portrait.shifts[i]; s < _portrait.shifts[i + 1]; ++s) {
-                const size_t j = _portrait.indices[s];
-                if (j > i)
-                    result[i] -= _values[s] * result[j];
-            }
+        for (const size_t i : std::ranges::iota_view{0zu, n} | std::views::reverse)
+            for(const size_t s : _matrix.portrait.shifts_range(i))
+                if (const size_t j = _matrix.portrait.indices[s]; j > i)
+                    result[i] -= _matrix.values[s] * result[j];
 
         return result;
     }

@@ -15,52 +15,41 @@ namespace nonlocal::slae {
 // Factorization: A ≈ L U, sparsity pattern preserved.
 // L is stored in the lower triangle (unit diagonal implicit), U in the upper triangle including the diagonal.
 template<class T, std::integral I, std::integral J>
-class ilu0_preconditioner final : public preconditioner_base<T, I, J> {
-    metamath::linear::sparse_matrix_portrait<I, J> _portrait;
-    std::vector<T> _values;
-    std::vector<T> _inv_diag;
-
-    static T invert(const T& val) {
-        if constexpr (metamath::types::is_array_v<T>)
-            return metamath::linear::inverse(val);
-        else
-            return T{1} / val;
-    }
-
-public:
-    using typename preconditioner_base<T, I, J>::entity_t;
+class ilu0_preconditioner final : public preconditioner_base<T> {
+    metamath::linear::sparse_matrix<T, I, J> _matrix;
 
     // Computes ILU0 factorization in-place on the sparsity pattern of the matrix.
-    void compute(metamath::linear::sparse_matrix<T, I, J>&& matrix) override {
+    void compute() {
         using namespace metamath::linear;
-        const size_t n = matrix.rows();
-        _portrait = std::move(matrix.portrait);
-        _values = std::move(matrix.values);
-        _inv_diag.resize(n);
-
-        for (size_t i = 0; i < n; ++i) {
+        const size_t n = _matrix.cols();
+        for(const size_t i : std::ranges::iota_view{0zu, n}) {
             // Process lower entries of row i: for each k < i with (i,k) in pattern
-            for (J s = _portrait.shifts[i]; s < _portrait.shifts[i + 1]; ++s) {
-                const size_t k = _portrait.indices[s];
+            for(const size_t s : _matrix.portrait.shifts_range(i)) {
+                const size_t k = _matrix.portrait.indices[s];
                 if (k >= i)
                     break; // entries are sorted; once we reach diagonal, stop
 
                 // l[i,k] = a[i,k] * inv(u[k,k])
-                _values[s] *= _inv_diag[k];
-                const T& lik = _values[s];
+                _matrix.values[s] *= _matrix(k, k);
+                const T& lik = _matrix.values[s];
 
                 // Update all remaining entries in row i after position k
-                for (J si = _portrait.shifts[i]; si < _portrait.shifts[i + 1]; ++si) {
-                    const size_t j = _portrait.indices[si];
-                    if (j <= k)
-                        continue;
-                    if (_portrait.contains(k, j))
-                        _values[si] -= lik * _values[_portrait.shift(k, j)];
-                }
+                for (const size_t si : _matrix.portrait.shifts_range(i))
+                    if (const size_t j = _matrix.portrait.indices[si]; j > k && _matrix.portrait.contains(k, j))
+                        _matrix.values[si] -= lik * _matrix(k, j);
             }
-
-            _inv_diag[i] = invert(_values[_portrait.shift(i, i)]);
+            _matrix(i, i) = metamath::linear::inverse(_matrix(i, i));
         }
+    }
+
+public:
+    using typename preconditioner_base<T>::entity_t;
+
+    explicit ilu0_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix)
+        : _matrix{std::move(matrix)} {
+        if (_matrix.rows() != _matrix.cols())
+            throw std::invalid_argument{"ILU0 preconditioner requires a square matrix."};
+        compute();
     }
 
     // Solves (L U) x = rhs via forward and backward substitution.
@@ -72,23 +61,18 @@ public:
 
         // Forward substitution: L z = rhs  (L has implicit unit diagonal)
         // z[i] = rhs[i] - sum_{k < i, (i,k) in pattern} l[i,k] * z[k]
-        for (size_t i = 0; i < n; ++i)
-            for (J s = _portrait.shifts[i]; s < _portrait.shifts[i + 1]; ++s) {
-                const size_t k = _portrait.indices[s];
-                if (k >= i)
-                    break;
-                result[i] -= _values[s] * result[k];
-            }
+        for(const size_t i : std::ranges::iota_view{0zu, n})
+            for (const size_t s : _matrix.portrait.shifts_range(i))
+                if (const size_t k = _matrix.portrait.indices[s]; k < i)
+                    result[i] -= _matrix.values[s] * result[k];
 
         // Backward substitution: U x = z
         // x[i] = inv(u[i,i]) * (z[i] - sum_{j > i, (i,j) in pattern} u[i,j] * x[j])
-        for (size_t i = n; i-- > 0;) {
-            for (J s = _portrait.shifts[i]; s < _portrait.shifts[i + 1]; ++s) {
-                const size_t j = _portrait.indices[s];
-                if (j > i)
-                    result[i] -= _values[s] * result[j];
-            }
-            result[i] = _inv_diag[i] * result[i];
+        for(const size_t i : std::ranges::iota_view{0zu, n} | std::views::reverse) {
+            for (const size_t s : _matrix.portrait.shifts_range(i))
+                if (const size_t j = _matrix.portrait.indices[s]; j > i)
+                    result[i] -= _matrix.values[s] * result[j];
+            result[i] = _matrix(i, i) * result[i];
         }
 
         return result;
