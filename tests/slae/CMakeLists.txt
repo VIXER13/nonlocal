@@ -6,8 +6,11 @@ add_library(
     slae_test_lib
     OBJECT
         conjugate_gradient.cpp
+        diagonal_preconditioner.cpp
+        identity_preconditioner.cpp
+        ildlt_preconditioner.cpp
+        ilu0_preconditioner.cpp
         stable_biconjugate_gradient.cpp
-        preconditioners.cpp
 )
 
 target_include_directories(
