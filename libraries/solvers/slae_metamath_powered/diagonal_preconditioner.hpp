@@ -25,6 +25,8 @@ public:
 
     std::vector<entity_t> solve(const std::vector<entity_t>& rhs) const override {
         using namespace metamath::linear;
+        if (rhs.size() != _inverse_diagonal.size())
+            throw std::invalid_argument{"Diagonal preconditioner requires rhs vector of the same size as the matrix."};
         std::vector<entity_t> result(rhs.size());
         for (const size_t i : std::ranges::iota_view{0zu, rhs.size()})
             result[i] = _inverse_diagonal[i] * rhs[i];
