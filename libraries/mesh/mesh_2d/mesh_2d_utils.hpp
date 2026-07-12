@@ -130,6 +130,7 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
     nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
     mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
     mesh.neighbours(find_neighbours(mesh, mesh.get_influences(), diameter_expanding_strategy::NO));
+    // TODO: add sorting rules for elements, for example, by distance from main element or numbers for more efficient cache usage
 }
 
 template<class T, class I, std::ranges::random_access_range Vector>

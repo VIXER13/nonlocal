@@ -3,6 +3,7 @@
 #include "element_2d_base.hpp"
 #include "element_2d_serendipity.hpp"
 
+#include <metamath/linear/distance.hpp>
 #include <metamath/finite_elements/base/finite_element_integrate_base.hpp>
 #include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
 #include <metamath/types/copyable_ptrs.hpp>
@@ -96,7 +97,7 @@ public:
                     _qN   [i*qnodes_count() + j*quadrature_y.nodes_count() + k] = N   (i, {x[j], y[k]});
                     _qNxi [i*qnodes_count() + j*quadrature_y.nodes_count() + k] = Nxi (i, {x[j], y[k]});
                     _qNeta[i*qnodes_count() + j*quadrature_y.nodes_count() + k] = Neta(i, {x[j], y[k]});
-                    if (const T curr_length = functions::distance(node(i), {x[j], y[k]}); length > curr_length) {
+                    if (const T curr_length = linear::distance(node(i), {x[j], y[k]}); length > curr_length) {
                         length = curr_length;
                         nearest_quadrature = j*quadrature_y.nodes_count() + k;
                     }

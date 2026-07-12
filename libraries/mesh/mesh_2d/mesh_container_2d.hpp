@@ -50,7 +50,7 @@ public:
         
         std::array<T, 2> center() const;
         std::array<T, 2> quad_coord(const size_t q) const;
-        metamath::types::square_matrix<T, 2> jacobi_matrix(const size_t q) const;
+        metamath::linear::square_matrix<T, 2> jacobi_matrix(const size_t q) const;
     };
 
     explicit mesh_container_2d(const std::filesystem::path& path_to_mesh);
@@ -148,8 +148,8 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size
 }
 
 template<class T, class I>
-metamath::types::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::jacobi_matrix(const size_t q) const {
-    metamath::types::square_matrix<T, 2> J = {};
+metamath::linear::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::jacobi_matrix(const size_t q) const {
+    metamath::linear::square_matrix<T, 2> J = {};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()}) {
         const std::array<T, 2> derivative = {element.qNxi (i, q), element.qNeta(i, q)};
         using namespace metamath::operators;

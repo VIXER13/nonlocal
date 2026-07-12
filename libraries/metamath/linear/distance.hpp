@@ -2,7 +2,9 @@
 
 #include "norm.hpp"
 
-namespace metamath::functions {
+#include <metamath/utils/operators.hpp>
+
+namespace metamath::linear {
 
 template<size_t N = 2, class T, size_t D>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y) {

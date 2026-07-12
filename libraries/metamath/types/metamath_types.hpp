@@ -1,7 +1,6 @@
 #pragma once
 
 #include "matrix.hpp"
-#include "fixed_matrix.hpp"
 #include "optional_integer.hpp"
 #include "copyable_ptrs.hpp"
 #include "size_t_or.hpp"

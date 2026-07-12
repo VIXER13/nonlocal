@@ -5,3 +5,4 @@
 #include "functions/metamath_functions.hpp"
 #include "symbolic/symbolic.hpp"
 #include "finite_elements/finite_elements.hpp"
+#include "linear/linear.hpp"

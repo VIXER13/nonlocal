@@ -9,9 +9,11 @@ FileEmbedSetup()
 
 add_subdirectory(config)
 add_subdirectory(finite_elements)
+add_subdirectory(linear)
 add_subdirectory(math_expression_tests)
 add_subdirectory(metamath)
 add_subdirectory(parallel)
+add_subdirectory(slae)
 add_subdirectory(thermal_1d)
 add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
@@ -28,9 +30,11 @@ target_link_libraries(
     PRIVATE #
         embedded_files
         finite_elements_test_lib
+        linear_test_lib
         math_expression_test_lib
         metamath_test_lib
         parallel_test_lib
+        slae_test_lib
         config_test_lib
         thermal_1d_test_lib
         mechanical_1d_test_lib

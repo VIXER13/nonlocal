@@ -7,7 +7,7 @@ namespace nonlocal::solver_2d {
 template<class T, class I, class J, size_t DoF, class Local_Integrator, class Nonlocal_Integrator>
 class integrator final : public matrix_separator_base<T, J>  {
     using _base = matrix_separator_base<T, J>;
-    using block_t = metamath::types::square_matrix<T, DoF>;
+    using block_t = metamath::linear::square_matrix<T, DoF>;
 
     const mesh::mesh_container_2d<T, I>& _mesh;
     const Local_Integrator& _local_integrator;
