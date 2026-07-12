@@ -167,7 +167,8 @@ void mechanical_solution_2d<T, I>::calc_strain_and_stress(const evaluated_mechan
     for(const auto& [group, parameter] : parameters) {
         const auto& [model, physics] = parameter;
         const auto elements = _base::mesh().container().elements(group);
-        std::visit([this, &model, &elements, &strains](const auto& hooke_matrices) {
+        // This ugly assignment is used to avoid 'capturing a structured binding is not yet supported in OpenMP' problem
+        std::visit([this, &model = parameter.model, &elements, &strains](const auto& hooke_matrices) {
 #pragma omp parallel for schedule(dynamic)
             for(size_t eL = elements.front(); eL < *elements.end(); ++eL)
                 for(const size_t qshiftL : std::ranges::iota_view{_base::mesh().quad_shift(eL), _base::mesh().quad_shift(eL + 1)}) {
