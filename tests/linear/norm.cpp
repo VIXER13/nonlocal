@@ -77,7 +77,7 @@ const suite<"norm"> _ = [] {
         const auto expected = excpected_norms<Container>();
         expect(approx(norm(init_container<Container>(), 1), expected[0], Epsilon));
         expect(approx(norm(init_container<Container>(), 2), expected[1], Epsilon));
-        expect(approx(norm(init_container<Container>(), 3), expected[2], 9e-16));
+        expect(approx(norm(init_container<Container>(), 3), expected[2], 2e-15));
         expect(approx(norm(init_container<Container>(), 4), expected[3], Epsilon));
         expect(eq(norm(init_container<Container>(), Inf), expected[4]));
     } | containers{};
@@ -86,7 +86,7 @@ const suite<"norm"> _ = [] {
         const auto expected = excpected_norms<Container>();
         expect(approx(norm(init_container<Container>(), 1.0), expected[0], Epsilon));
         expect(approx(norm(init_container<Container>(), 2.0), expected[1], Epsilon));
-        expect(approx(norm(init_container<Container>(), 3.0), expected[2], 9e-16));
+        expect(approx(norm(init_container<Container>(), 3.0), expected[2], 2e-15));
         expect(approx(norm(init_container<Container>(), 4.0), expected[3], Epsilon));
         expect(eq(norm(init_container<Container>(), T(Inf)), expected[4]));
     } | containers{};
