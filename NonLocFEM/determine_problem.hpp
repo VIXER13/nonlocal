@@ -3,6 +3,7 @@
 #include "thermal_problems_1d.hpp"
 #include "thermal_problems_2d.hpp"
 #include "mechanical_problems_1d.hpp"
+
 #include <config/read_mechanical_boundary_conditions.hpp>
 #include <config/read_mechanical_parameters.hpp>
 #include <config/read_mesh.hpp>

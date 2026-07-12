@@ -160,6 +160,12 @@ suite<"sparse_matrix"> _ = [] {
         matrix.values = {1.0, 3.0, 2.0, 4.0, 5.0};
         expect(nothrow([&matrix] { validate_sparse_matrix(matrix); }));
     };
+
+    "self_adjoint_view_invalid_size"_test = [] {
+        sparse_matrix<T> matrix{3, 4};
+        expect(throws<std::invalid_argument>([&matrix] { matrix.self_adjoint<matrix_part::Upper>(); }));
+        expect(throws<std::invalid_argument>([&matrix] { matrix.self_adjoint<matrix_part::Lower>(); }));
+    };
 };
 
 }

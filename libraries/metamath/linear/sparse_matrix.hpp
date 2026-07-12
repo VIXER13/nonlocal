@@ -15,8 +15,8 @@ struct sparse_matrix final {
         : portrait{rows, cols} {}
 
     template<matrix_part Part>
-    self_adjoint_view<Part, T, I, J> self_adjoint() const noexcept {
-        return {*this};
+    self_adjoint_view<Part, T, I, J> self_adjoint() const {
+        return self_adjoint_view<Part, T, I, J>{*this};
     }
 
     size_t rows() const {
