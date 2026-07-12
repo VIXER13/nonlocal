@@ -16,7 +16,7 @@ using metamath::linear::square_matrix;
 // [ 0  0    0    0    0    0    0   10   -1 -0.5]
 // [ 0  0    0    0    0    0    0    0   10   -1]
 // [ 0  0    0    0    0    0    0    0    0   10]
-template<std::floating_point T = double>
+template<std::floating_point T>
 sparse_matrix<T> scalar_symmetric_matrix() {
     sparse_matrix<T> matrix{10, 10};
     matrix.portrait.shifts  = {0, 3, 6, 9, 12, 15, 18, 21, 24, 26, 27};
@@ -40,7 +40,7 @@ sparse_matrix<T> scalar_symmetric_matrix() {
 // [ 0  0    0    0    0    1    2   10   -1 -0.5]
 // [ 0  0    0    0    0    0    1    2   10   -1]
 // [ 0  0    0    0    0    0    0    1    2   10]
-template<std::floating_point T = double>
+template<std::floating_point T>
 sparse_matrix<T> scalar_general_matrix() {
     sparse_matrix<T> matrix{10, 10};
     matrix.portrait.shifts  = {0, 3, 7, 12, 17, 22, 27, 32, 37, 41, 44};
@@ -74,7 +74,7 @@ sparse_matrix<T> scalar_general_matrix() {
 // ---------------------------------------------------
 // [  0    0 |  0    0 |  0    0 |  0    0 | 10    0 ]
 // [  0    0 |  0    0 |  0    0 |  0    0 |  0   10 ]
-template<std::floating_point T = double>
+template<std::floating_point T>
 sparse_matrix<square_matrix<T, 2>> block_symmetric_matrix() {
     sparse_matrix<square_matrix<T, 2>> matrix{5, 5};
     matrix.portrait.shifts  = {0, 3, 6, 9, 11, 12};
@@ -102,7 +102,7 @@ sparse_matrix<square_matrix<T, 2>> block_symmetric_matrix() {
 // ---------------------------------------------------
 // [  0    0 |   0    0 | 0.5    0 |  0    2 | 10    0 ]
 // [  0    0 |   0    0 |   0    0 |  0    0 |  0   10 ]
-template<std::floating_point T = double>
+template<std::floating_point T>
 sparse_matrix<square_matrix<T, 2>> block_general_matrix() {
     sparse_matrix<square_matrix<T, 2>> matrix{5, 5};
     matrix.portrait.shifts  = {0, 3, 7, 12, 16, 19};
