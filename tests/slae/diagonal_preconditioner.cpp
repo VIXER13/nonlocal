@@ -1,6 +1,6 @@
 #include "create_matrix.hpp"
 
-#include <solvers/slae_metamath_powered/diagonal_preconditioner.hpp>
+#include <solvers/slae/diagonal_preconditioner.hpp>
 
 #include <boost/ut.hpp>
 

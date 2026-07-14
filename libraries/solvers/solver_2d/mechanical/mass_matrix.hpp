@@ -4,9 +4,9 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T, class I, class J>
-class mass_matrix : public matrix_assembler_2d<T, I, J, 2> {
-    using _base = matrix_assembler_2d<T, I, J, 2>;
+template<class T, std::integral I>
+class mass_matrix : public matrix_assembler_2d<T, I, 2> {
+    using _base = matrix_assembler_2d<T, I, 2>;
     using block_t = metamath::linear::square_matrix<T, 2>;
 
     static constexpr bool Symmetric = true;
@@ -33,12 +33,12 @@ public:
     void compute(const evaluated_mechanical_parameters<T>& parameters, const std::vector<bool>& is_inner);
 };
 
-template<class T, class I, class J>
-mass_matrix<T, I, J>::mass_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<class T, std::integral I>
+mass_matrix<T, I>::mass_matrix(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _base{mesh} {}
 
-template<class T, class I, class J>
-T mass_matrix<T, I, J>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
+template<class T, std::integral I>
+T mass_matrix<T, I>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
@@ -46,9 +46,9 @@ T mass_matrix<T, I, J>::integrate_basic_pair(const size_t e, const size_t i, con
     return integral;
 }
 
-template<class T, class I, class J>
-T mass_matrix<T, I, J>::integrate_basic_pair(const metamath::types::vector_with_shifted_index<T>& density,
-                                             const size_t e, const size_t i, const size_t j) const {
+template<class T, std::integral I>
+T mass_matrix<T, I>::integrate_basic_pair(const metamath::types::vector_with_shifted_index<T>& density,
+                                          const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     const size_t qshift = _base::mesh().quad_shift(e);
@@ -57,9 +57,9 @@ T mass_matrix<T, I, J>::integrate_basic_pair(const metamath::types::vector_with_
     return integral;
 }
 
-template<class T, class I, class J>
-void mass_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories,
-                                                  const std::vector<bool>& is_inner) {
+template<class T, std::integral I>
+void mass_matrix<T, I>::create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories,
+                                               const std::vector<bool>& is_inner) {
     const size_t rows = DoF * _base::mesh().process_nodes().size();
     const size_t cols = DoF * _base::mesh().container().nodes_count();
     _base::matrix().inner().resize(rows, cols);
@@ -68,8 +68,8 @@ void mass_matrix<T, I, J>::create_matrix_portrait(const std::unordered_map<std::
     _base::init_indices(theories, is_inner, Symmetric);
 }
 
-template<class T, class I, class J>
-void mass_matrix<T, I, J>::compute(const evaluated_mechanical_parameters<T>& parameters, const std::vector<bool>& is_inner) {
+template<class T, std::integral I>
+void mass_matrix<T, I>::compute(const evaluated_mechanical_parameters<T>& parameters, const std::vector<bool>& is_inner) {
     logger::info() << "Mass matrix assembly started" << std::endl;
     throw_if_monostate_density(parameters);
     const std::unordered_map<std::string, theory_t> theories = local_theories(_base::mesh().container());

@@ -1,13 +1,11 @@
-    #pragma once
+#pragma once
 
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <solvers/solver_2d/mechanical/mechanical_parameters_2d.hpp>
 
-#include <Eigen/Dense>
-
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T, class I>
+template<class T, std::integral I>
 class _temperature_condition final {
     const mesh::mesh_2d<T, I>& _mesh;
 
@@ -62,15 +60,13 @@ class _temperature_condition final {
     }
 
 public:
-    template<class U, class J>
-    friend void temperature_condition(Eigen::Matrix<U, Eigen::Dynamic, 1>& f,
-                                      const mesh::mesh_2d<U, J>& mesh,
+    template<class U, std::integral J>
+    friend void temperature_condition(std::vector<U>& f, const mesh::mesh_2d<U, J>& mesh,
                                       const evaluated_mechanical_parameters<U>& parameters);
 };
 
-template<class T, class I>
-void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                           const mesh::mesh_2d<T, I>& mesh,
+template<class T, std::integral I>
+void temperature_condition(std::vector<T>& f, const mesh::mesh_2d<T, I>& mesh,
                            const evaluated_mechanical_parameters<T>& parameters) {
     const _temperature_condition<T, I> integrator{mesh};
     const auto process_node = mesh.process_nodes();

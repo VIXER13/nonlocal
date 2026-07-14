@@ -18,7 +18,7 @@ enum class assemble_part : uint8_t {
     FULL
 };
 
-template<class T, class I>
+template<class T, std::integral I>
 std::unordered_map<std::string, theory_t> local_theories(const mesh::mesh_container_2d<T, I>& mesh) {
     const auto theroires_setter = std::views::all(mesh.groups_2d()) |
                                   std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
@@ -34,7 +34,7 @@ void first_kind_filler(const std::ranges::iota_view<size_t, size_t> rows,
             callback(row);
 }
 
-template<class T, class I, class J, size_t DoF>
+template<class T, std::integral I, size_t DoF>
 class matrix_assembler_2d {
     static_assert(DoF > 0, "DoF must be greater than 0.");
 
@@ -43,7 +43,7 @@ class matrix_assembler_2d {
         std::vector<size_t>
     >;
 
-    finite_element_matrix<T, J> _matrix;
+    finite_element_matrix<T> _matrix;
     std::shared_ptr<mesh::mesh_2d<T, I>> _mesh;
     nodes_sequence _nodes_for_processing;
 
@@ -68,8 +68,8 @@ public:
 
     const mesh::mesh_2d<T, I>& mesh() const;
     const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh_ptr() const noexcept;
-    finite_element_matrix<T, J>& matrix() noexcept;
-    const finite_element_matrix<T, J>& matrix() const noexcept;
+    finite_element_matrix<T>& matrix() noexcept;
+    const finite_element_matrix<T>& matrix() const noexcept;
     const nodes_sequence& nodes_for_processing() const noexcept;
 
     void nodes_for_processing(const nodes_sequence& nodes);
@@ -77,114 +77,115 @@ public:
     void clear();
 };
 
-template<class T, class I, class J, size_t DoF>
-matrix_assembler_2d<T, I, J, DoF>::matrix_assembler_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<class T, std::integral I, size_t DoF>
+matrix_assembler_2d<T, I, DoF>::matrix_assembler_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _mesh{mesh}
     , _nodes_for_processing{mesh->process_nodes()} {}
 
-template<class T, class I, class J, size_t DoF>
-size_t matrix_assembler_2d<T, I, J, DoF>::cols() const noexcept {
+template<class T, std::integral I, size_t DoF>
+size_t matrix_assembler_2d<T, I, DoF>::cols() const noexcept {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         return DoF * mesh().container().nodes_count();
     return matrix().inner().cols();
 }
 
-template<class T, class I, class J, size_t DoF>
-size_t matrix_assembler_2d<T, I, J, DoF>::rows() const noexcept {
+template<class T, std::integral I, size_t DoF>
+size_t matrix_assembler_2d<T, I, DoF>::rows() const noexcept {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         return DoF * std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing).size();
     return matrix().inner().rows();
 }
 
-template<class T, class I, class J, size_t DoF>
-const mesh::mesh_2d<T, I>& matrix_assembler_2d<T, I, J, DoF>::mesh() const {
+template<class T, std::integral I, size_t DoF>
+const mesh::mesh_2d<T, I>& matrix_assembler_2d<T, I, DoF>::mesh() const {
     return *mesh_ptr();
 }
 
-template<class T, class I, class J, size_t DoF>
-const std::shared_ptr<mesh::mesh_2d<T, I>>& matrix_assembler_2d<T, I, J, DoF>::mesh_ptr() const noexcept {
+template<class T, std::integral I, size_t DoF>
+const std::shared_ptr<mesh::mesh_2d<T, I>>& matrix_assembler_2d<T, I, DoF>::mesh_ptr() const noexcept {
     return _mesh;
 }
 
-template<class T, class I, class J, size_t DoF>
-finite_element_matrix<T, J>& matrix_assembler_2d<T, I, J, DoF>::matrix() noexcept {
+template<class T, std::integral I, size_t DoF>
+finite_element_matrix<T>& matrix_assembler_2d<T, I, DoF>::matrix() noexcept {
     return _matrix;
 }
 
-template<class T, class I, class J, size_t DoF>
-const finite_element_matrix<T, J>& matrix_assembler_2d<T, I, J, DoF>::matrix() const noexcept {
+template<class T, std::integral I, size_t DoF>
+const finite_element_matrix<T>& matrix_assembler_2d<T, I, DoF>::matrix() const noexcept {
     return _matrix;
 }
 
-template<class T, class I, class J, size_t DoF>
-const matrix_assembler_2d<T, I, J, DoF>::nodes_sequence& matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing() const noexcept {
+template<class T, std::integral I, size_t DoF>
+const matrix_assembler_2d<T, I, DoF>::nodes_sequence& matrix_assembler_2d<T, I, DoF>::nodes_for_processing() const noexcept {
     return _nodes_for_processing;
 }
 
-template<class T, class I, class J, size_t DoF>
-void matrix_assembler_2d<T, I, J, DoF>::nodes_for_processing(const nodes_sequence& nodes) {
+template<class T, std::integral I, size_t DoF>
+void matrix_assembler_2d<T, I, DoF>::nodes_for_processing(const nodes_sequence& nodes) {
     _nodes_for_processing = nodes;
 }
 
-template<class T, class I, class J, size_t DoF>
-void matrix_assembler_2d<T, I, J, DoF>::clear() {
-    _matrix.inner() = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
-    _matrix.bound() = Eigen::SparseMatrix<T, Eigen::RowMajor, J>{};
+template<class T, std::integral I, size_t DoF>
+void matrix_assembler_2d<T, I, DoF>::clear() {
+    _matrix.clear();
 }
 
-template<class T, class I, class J, size_t DoF>
+template<class T, std::integral I, size_t DoF>
 template<class Runner>
-void matrix_assembler_2d<T, I, J, DoF>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, Runner&& runner) {
+void matrix_assembler_2d<T, I, DoF>::mesh_run(const std::unordered_map<std::string, theory_t>& theories, Runner&& runner) {
     if (std::holds_alternative<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing))
         mesh::utils::mesh_run(mesh(), std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
     else
         mesh::utils::mesh_run(mesh(), std::get<std::vector<size_t>>(_nodes_for_processing), theories, std::forward<Runner>(runner));
 }
 
-template<class T, class I, class J, size_t DoF>
-void matrix_assembler_2d<T, I, J, DoF>::init_shifts(
+template<class T, std::integral I, size_t DoF>
+void matrix_assembler_2d<T, I, DoF>::init_shifts(
     const std::unordered_map<std::string, theory_t>& theories, 
     const std::vector<bool>& is_inner, const bool is_symmetric) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    mesh_run(theories, shift_initializer<T, I, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
-    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix.inner().outerIndexPtr()[row + 1]; });
-    utils::accumulate_shifts(matrix().inner());
-    utils::accumulate_shifts(matrix().bound());
+    mesh_run(theories, shift_initializer<T, I, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
+    first_kind_filler(process_rows, is_inner, [this](const size_t row) { ++_matrix.inner().portrait.shifts[row + 1]; });
+    matrix().inner().portrait.accumulate_shifts();
+    matrix().bound().portrait.accumulate_shifts();
     logger::info() << "Non-zero elements count: " << 
-        matrix().inner().nonZeros() + matrix().bound().nonZeros() << std::endl;
+        matrix().inner().non_zeros() + matrix().bound().non_zeros() << std::endl;
 }
 
-template<class T, class I, class J, size_t DoF>
-void matrix_assembler_2d<T, I, J, DoF>::init_indices(
+template<class T, std::integral I, size_t DoF>
+void matrix_assembler_2d<T, I, DoF>::init_indices(
     const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, 
     const bool is_symmetric, const bool sort_indices) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    utils::allocate_matrix(matrix().inner());
-    utils::allocate_matrix(matrix().bound());
+    matrix().inner().portrait.allocate_indices();
+    matrix().bound().portrait.allocate_indices();
+    matrix().inner().allocate_values();
+    matrix().bound().allocate_values();
     logger::info() << "Matrix allocated successfully" << std::endl;
-    mesh_run(theories, matrix_index_initializer<T, I, J, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
+    mesh_run(theories, matrix_index_initializer<T, I, DoF>{_matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric});
     first_kind_filler(process_rows, is_inner, [this, shift = process_rows.front()](const size_t row) { 
-        matrix().inner().innerIndexPtr()[matrix().inner().outerIndexPtr()[row]] = row + shift; 
+        matrix().inner().portrait.indices[matrix().inner().portrait.shifts[row]] = row + shift; 
     });
     if (sort_indices) {
-        utils::sort_indices(matrix().inner());
-        utils::sort_indices(matrix().bound());
+        matrix().inner().portrait.sort_indices();
+        matrix().bound().portrait.sort_indices();
     }
 }
 
-template<class T, class I, class J, size_t DoF>
+template<class T, std::integral I, size_t DoF>
 template<class Local_Integrator, class Nonlocal_Integrator>
-void matrix_assembler_2d<T, I, J, DoF>::calc_coeffs(
+void matrix_assembler_2d<T, I, DoF>::calc_coeffs(
     const std::unordered_map<std::string, theory_t>& theories, const std::vector<bool>& is_inner, const bool is_symmetric,
     Local_Integrator&& local_integrator, Nonlocal_Integrator&& nonlocal_integrator) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_nodes_for_processing);
     const auto process_rows = std::ranges::iota_view{DoF * process_nodes.front(), DoF * *process_nodes.end()};
-    mesh_run(theories, integrator<T, I, J, DoF, Local_Integrator, Nonlocal_Integrator>{
+    mesh_run(theories, integrator<T, I, DoF, Local_Integrator, Nonlocal_Integrator>{
         _matrix, mesh().container(), is_inner, process_nodes.front(), is_symmetric, local_integrator, nonlocal_integrator});
     first_kind_filler(process_rows, is_inner, [this](const size_t row) { 
-        matrix().inner().valuePtr()[matrix().inner().outerIndexPtr()[row]] = T{1};
+        matrix().inner().values[matrix().inner().portrait.shifts[row]] = T{1};
     });
 }
 

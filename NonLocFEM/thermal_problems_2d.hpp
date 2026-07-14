@@ -54,7 +54,7 @@ void solve_thermal_2d_problem(
     const config::thermal_auxiliary_data_2d<T>& auxiliary,
     const config::time_data<T>& time,
     const config::save_data& save) {
-    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
+    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T, uint32_t> solver{mesh, time.time_step};
     const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });

@@ -5,13 +5,10 @@
 
 #include <mesh/mesh_2d/mesh_2d.hpp>
 
-#include <Eigen/Dense>
-
 namespace nonlocal::solver_2d {
 
-template<class T, class I, physics_t Physics, size_t DoF>
-void boundary_condition_second_kind_2d(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                                       const mesh::mesh_2d<T, I>& mesh,
+template<class T, std::integral I, physics_t Physics, size_t DoF>
+void boundary_condition_second_kind_2d(std::vector<T>& f, const mesh::mesh_2d<T, I>& mesh,
                                        const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
     static constexpr auto integrate = [](const second_kind_2d<T, Physics>& condition, const auto& element, const size_t i) {
         T integral = T{0};

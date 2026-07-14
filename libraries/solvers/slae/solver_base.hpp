@@ -3,24 +3,29 @@
 #include "MPI_utils.hpp"
 #include "OMP_utils.hpp"
 
-#include <Eigen/Sparse>
+#include <metamath/linear/linear.hpp>
+
 #include <optional>
 
 namespace nonlocal::slae {
 
-template<class T, class I>
+template<class T, std::integral I, std::integral J>
 class solver_base {
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& _matrix;
+    const metamath::linear::sparse_matrix<T, I, J>& _matrix;
     parallel::MPI_ranges _process_rows;
     size_t _threads_count = parallel::threads_count();
 
 public:
-    explicit solver_base(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix)
+    using entity_t = metamath::types::container_type_t<T>;
+    using floating_point_t = metamath::types::container_type_t<entity_t>;
+    static_assert(std::is_floating_point_v<floating_point_t>, "Solver base class requires floating point type for calculations.");
+
+    explicit solver_base(const metamath::linear::sparse_matrix<T, I, J>& matrix)
         : _matrix{matrix}
         , _process_rows{parallel::rows_distribution(matrix.rows())} {}
     virtual ~solver_base() noexcept = default;
 
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix() const noexcept {
+    const metamath::linear::sparse_matrix<T, I, J>& matrix() const noexcept {
         return _matrix;
     }
 
@@ -40,9 +45,9 @@ public:
         _threads_count = threads_count;
     }
 
-    virtual Eigen::Matrix<T, Eigen::Dynamic, 1> solve(
-        const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
-        const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0 = std::nullopt) const = 0;
+    virtual std::vector<entity_t> solve(
+        const std::vector<entity_t>& b,
+        const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const = 0;
 };
 
 }

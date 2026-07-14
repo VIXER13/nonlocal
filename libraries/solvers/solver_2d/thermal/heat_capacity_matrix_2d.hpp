@@ -4,9 +4,9 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T, class I, class J>
-class heat_capacity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {
-    using _base = matrix_assembler_2d<T, I, J, 1>;
+template<class T, std::integral I>
+class heat_capacity_matrix_2d : public matrix_assembler_2d<T, I, 1> {
+    using _base = matrix_assembler_2d<T, I, 1>;
 
     static constexpr bool Symmetric = true;
 
@@ -23,12 +23,12 @@ public:
     void calc_matrix(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner);
 };
 
-template<class T, class I, class J>
-heat_capacity_matrix_2d<T, I, J>::heat_capacity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<class T, std::integral I>
+heat_capacity_matrix_2d<T, I>::heat_capacity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _base{mesh} {}
 
-template<class T, class I, class J>
-T heat_capacity_matrix_2d<T, I, J>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
+template<class T, std::integral I>
+T heat_capacity_matrix_2d<T, I>::integrate_basic_pair(const size_t e, const size_t i, const size_t j) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
@@ -36,19 +36,19 @@ T heat_capacity_matrix_2d<T, I, J>::integrate_basic_pair(const size_t e, const s
     return integral;
 }
 
-template<class T, class I, class J>
-void heat_capacity_matrix_2d<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories,
-                                                              const std::vector<bool>& is_inner) {
+template<class T, std::integral I>
+void heat_capacity_matrix_2d<T, I>::create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories,
+                                                           const std::vector<bool>& is_inner) {
     const size_t rows = _base::mesh().process_nodes().size();
     const size_t cols = _base::mesh().container().nodes_count();
-    _base::matrix().inner().resize(rows, cols);
-    _base::matrix().bound().resize(rows, cols);
+    _base::matrix().inner().portrait.set_size(rows, cols);
+    _base::matrix().bound().portrait.set_size(rows, cols);
     _base::init_shifts(theories, is_inner, Symmetric);
     _base::init_indices(theories, is_inner, Symmetric);
 }
 
-template<class T, class I, class J>
-void heat_capacity_matrix_2d<T, I, J>::calc_matrix(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner) {
+template<class T, std::integral I>
+void heat_capacity_matrix_2d<T, I>::calc_matrix(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner) {
     const std::unordered_map<std::string, theory_t> theories = local_theories(_base::mesh().container());
     create_matrix_portrait(theories, is_inner);
     _base::calc_coeffs(theories, is_inner, Symmetric,

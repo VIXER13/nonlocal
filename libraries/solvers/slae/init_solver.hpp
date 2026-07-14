@@ -17,7 +17,7 @@ std::unique_ptr<iterative_solver_base<T, I, J>> init_iterative_solver(const meta
 }
 
 template<std::floating_point T, std::integral I, std::integral J>
-std::unique_ptr<preconditioner_base<T, I, J>> init_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix, const bool is_symmetric) {
+std::unique_ptr<preconditioner_base<T>> init_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix, const bool is_symmetric) {
     if (is_symmetric)
         return std::make_unique<ildlt_preconditioner<T, I, J>>(std::move(matrix));
     return std::make_unique<ilu0_preconditioner<T, I, J>>(std::move(matrix));

@@ -1,6 +1,6 @@
 #include "create_matrix.hpp"
 
-#include <solvers/slae_metamath_powered/stable_biconjugate_gradient.hpp>
+#include <solvers/slae/stable_biconjugate_gradient.hpp>
 
 #include <boost/ut.hpp>
 

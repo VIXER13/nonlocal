@@ -117,7 +117,7 @@ void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const 
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     constexpr auto Boundaries_Field = "boundaries";
     const config::time_data<T> time{config["time"], "time"};
-    solver_2d::mechanical::motion_equation_solver<T, uint32_t, I> solver{mesh};
+    solver_2d::mechanical::motion_equation_solver<T, uint32_t> solver{mesh};
     solver.compute(config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
                    config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field),
                    time.time_step, time.initial_time);

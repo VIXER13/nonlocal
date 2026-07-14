@@ -8,9 +8,9 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<std::floating_point T, std::integral I, std::integral J>
-class conductivity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {
-    using _base = matrix_assembler_2d<T, I, J, 1>;
+template<std::floating_point T, std::integral I>
+class conductivity_matrix_2d : public matrix_assembler_2d<T, I, 1> {
+    using _base = matrix_assembler_2d<T, I, 1>;
 
     void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
                                 const std::vector<bool>& is_inner, const bool is_symmetric, const bool is_neumann);
@@ -21,7 +21,7 @@ class conductivity_matrix_2d : public matrix_assembler_2d<T, I, J, 1> {
     template<class Conductivity>
     T integrate_local(const Conductivity& conductivity, const size_t e, const size_t i, const size_t j) const;
     template<class Conductivity>
-    T integrate_nonlocal(const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>)>& influence,
+    T integrate_nonlocal(const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
                          const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
 public:
@@ -32,47 +32,46 @@ public:
                  const bool is_symmetric = true, const bool is_neumann = false, const assemble_part part = assemble_part::FULL);
 };
 
-template<std::floating_point T, std::integral I, std::integral J>
-conductivity_matrix_2d<T, I, J>::conductivity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<std::floating_point T, std::integral I>
+conductivity_matrix_2d<T, I>::conductivity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
     : _base{mesh} {}
 
-template<std::floating_point T, std::integral I, std::integral J>
-void conductivity_matrix_2d<T, I, J>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories, 
-                                                             const std::vector<bool>& is_inner,
-                                                             const bool is_symmetric,
-                                                             const bool is_neumann) {
+template<std::floating_point T, std::integral I>
+void conductivity_matrix_2d<T, I>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories, 
+                                                          const std::vector<bool>& is_inner,
+                                                          const bool is_symmetric,
+                                                          const bool is_neumann) {
     const size_t cols = _base::cols() + is_neumann;
-    const size_t rows = _base::rows() == _base::cols() ?
-                        cols : _base::rows() + (is_neumann && parallel::is_last_process());
-    _base::matrix().inner().resize(rows, cols);
-    _base::matrix().bound().resize(rows, cols);
+    const size_t rows = _base::rows() == _base::cols() ?cols : _base::rows() + (is_neumann && parallel::is_last_process());
+    _base::matrix().inner().portrait.set_size(rows, cols);
+    _base::matrix().bound().portrait.set_size(rows, cols);
     if (is_neumann) {
         for(const size_t row : std::views::iota(0u, rows))
-            _base::matrix().inner().outerIndexPtr()[row + 1] = 1;
+            _base::matrix().inner().portrait.shifts[row + 1] = 1;
         if (!is_symmetric && parallel::is_last_process())
-            _base::matrix().inner().outerIndexPtr()[rows] = cols - 1;
+            _base::matrix().inner().portrait.shifts[rows] = cols - 1;
     }
     _base::init_shifts(theories, is_inner, is_symmetric);
     static constexpr bool SORT_INDICES = false;
     _base::init_indices(theories, is_inner, is_symmetric, SORT_INDICES);
     if (is_neumann) {
         for(const size_t row : std::ranges::iota_view{0u, rows}) {
-            const size_t index = _base::matrix().inner().outerIndexPtr()[row + 1] - 1;
-            _base::matrix().inner().innerIndexPtr()[index] = _base::mesh().container().nodes_count();
+            const size_t index = _base::matrix().inner().portrait.indices[row + 1] - 1;
+            _base::matrix().inner().portrait.indices[index] = _base::mesh().container().nodes_count();
         }
         if (!is_symmetric && parallel::is_last_process()) 
             for(const size_t col : std::ranges::iota_view{0u, cols}) {
-                const size_t index = _base::matrix().inner().outerIndexPtr()[rows - 1] + col;
-                _base::matrix().inner().innerIndexPtr()[index] = col;
+                const size_t index = _base::matrix().inner().portrait.indices[rows - 1] + col;
+                _base::matrix().inner().portrait.indices[index] = col;
             }
     }
-    utils::sort_indices(_base::matrix().inner());
-    utils::sort_indices(_base::matrix().bound());
+    _base::matrix().inner().portrait.sort_indices();
+    _base::matrix().bound().portrait.sort_indices();
     logger::info() << "Matrix portrait is formed" << std::endl;
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
-T conductivity_matrix_2d<T, I, J>::integrate_basic(const size_t e, const size_t i) const {
+template<std::floating_point T, std::integral I>
+T conductivity_matrix_2d<T, I>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes())
@@ -80,32 +79,32 @@ T conductivity_matrix_2d<T, I, J>::integrate_basic(const size_t e, const size_t 
     return integral;
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
-void conductivity_matrix_2d<T, I, J>::integral_condition(const bool is_symmetric) {
+template<std::floating_point T, std::integral I>
+void conductivity_matrix_2d<T, I>::integral_condition(const bool is_symmetric) {
     const auto process_nodes = _base::rows() == _base::cols() ?
                                std::ranges::iota_view<size_t, size_t>{0u, size_t(_base::matrix().inner().cols()) - 1} :
                                std::get<std::ranges::iota_view<size_t, size_t>>(_base::nodes_for_processing());
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        T& val = _base::matrix().inner().coeffRef(node - process_nodes.front(), _base::mesh().container().nodes_count());
+        T& val = _base::matrix().inner()(node - process_nodes.front(), _base::mesh().container().nodes_count());
         for(const I e : _base::mesh().elements(node))
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         if (!is_symmetric && parallel::is_last_process())
-            _base::matrix().inner().coeffRef(_base::matrix().inner().rows() - 1, node) = val;
+            _base::matrix().inner()(_base::matrix().inner().rows() - 1, node) = val;
     }
     if (!is_symmetric && parallel::MPI_size() > 1 && parallel::is_last_process()) {
 #pragma omp parallel for default(none) shared(process_nodes, is_symmetric)
         for(size_t node = 0; node < process_nodes.front(); ++node) {
-            T& val = _base::matrix().inner().coeffRef(_base::matrix().inner().rows() - 1, node);
+            T& val = _base::matrix().inner()(_base::matrix().inner().rows() - 1, node);
             for(const I e : _base::mesh().elements(node))
                 val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         }
     }
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
+template<std::floating_point T, std::integral I>
 template<class Conductivity>
-T conductivity_matrix_2d<T, I, J>::integrate_local(const Conductivity& conductivity, const size_t e, const size_t i, const size_t j) const {
+T conductivity_matrix_2d<T, I>::integrate_local(const Conductivity& conductivity, const size_t e, const size_t i, const size_t j) const {
     T integral = T{0};
     const size_t qshift = _base::mesh().quad_shift(e);
     const auto& el = _base::mesh().container().element_2d(e);
@@ -129,10 +128,10 @@ T conductivity_matrix_2d<T, I, J>::integrate_local(const Conductivity& conductiv
     return integral;
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
+template<std::floating_point T, std::integral I>
 template<class Conductivity>
-T conductivity_matrix_2d<T, I, J>::integrate_nonlocal(const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>)>& influence,
-                                                      const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
+T conductivity_matrix_2d<T, I>::integrate_nonlocal(const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
+                                                   const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
     T integral = T{0};
     const auto& elL  = _base::mesh().container().element_2d(eL );
     const auto& elNL = _base::mesh().container().element_2d(eNL);
@@ -163,9 +162,9 @@ T conductivity_matrix_2d<T, I, J>::integrate_nonlocal(const Conductivity& conduc
     return integral;
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
-void conductivity_matrix_2d<T, I, J>::compute(const evaluated_conductivity_2d<T>& conductivity, const std::vector<bool>& is_inner,
-                                              const bool is_symmetric, const bool is_neumann, const assemble_part part) {
+template<std::floating_point T, std::integral I>
+void conductivity_matrix_2d<T, I>::compute(const evaluated_conductivity_2d<T>& conductivity, const std::vector<bool>& is_inner,
+                                           const bool is_symmetric, const bool is_neumann, const assemble_part part) {
     logger::info() << "Thermal conductivity matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                 local_theories(_base::mesh().container()) : 

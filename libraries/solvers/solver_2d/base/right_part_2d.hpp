@@ -2,15 +2,10 @@
 
 #include <mesh/mesh_2d/mesh_2d.hpp>
 
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-
 namespace nonlocal::solver_2d {
 
-template<size_t DoF, class T, class I, class Functor>
-void integrate_right_part(Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
-                          const mesh::mesh_2d<T, I>& mesh,
-                          const Functor& functor) {
+template<size_t DoF, class T, std::integral I, class Functor>
+void integrate_right_part(std::vector<T>& right_part, const mesh::mesh_2d<T, I>& mesh, const Functor& functor) {
     const auto integrate = [&mesh, &functor](const size_t e, const size_t i) {
         std::conditional_t<DoF == 1, T, std::array<T, DoF>> integral = {};
         const auto& el = mesh.container().element_2d(e);

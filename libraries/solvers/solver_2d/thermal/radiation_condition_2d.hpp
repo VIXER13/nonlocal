@@ -2,18 +2,17 @@
 
 #include "thermal_boundary_conditions_2d.hpp"
 
+#include <metamath/linear/linear.hpp>
 #include <solvers/base/utils.hpp>
-
-#include <Eigen/Sparse>
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T, class I, class Matrix_Index>
-void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
-                            Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
+template<class T, std::integral I>
+void radiation_condition_2d(metamath::linear::sparse_matrix<T>& K,
+                            std::vector<T>& f,
                             const mesh::mesh_2d<T, I>& mesh,
                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                            const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature_prev,
+                            const std::vector<T>& temperature_prev,
                             const T time_step) {
     const auto integrate_matrix = [&temperature_prev](const radiation_2d<T>& condition, const auto& element, const size_t i, const size_t j) {
         T integral = T{0};
@@ -49,19 +48,19 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
                 const size_t i = mesh.global_to_local(be, row);
                 for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})
                     if (const size_t col = mesh.container().node_number(be, j); col >= row)
-                        K.coeffRef(row, col) += time_step * integrate_matrix(condition, element, i, j);
+                        K(row, col) += time_step * integrate_matrix(condition, element, i, j);
                 f[row] += integrate_vector(condition, element, i);
             }
         });
 }
 
 
-template<class T, class I, class Matrix_Index>
-void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
-                            Eigen::Matrix<T, Eigen::Dynamic, 1>& residual,
+template<class T, std::integral I>
+void radiation_condition_2d(metamath::linear::sparse_matrix<T>& K,
+                            std::vector<T>& residual,
                             const mesh::mesh_2d<T, I>& mesh,
                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                            const Eigen::Matrix<T, Eigen::Dynamic, 1>& temperature_prev) {
+                            const std::vector<T>& temperature_prev) {
     const auto integrate_matrix = [&temperature_prev](const radiation_2d<T>& condition, const auto& element, const size_t i, const size_t j) {
         T integral = T{0};
         const auto& [mesh, be] = element;
@@ -95,7 +94,7 @@ void radiation_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index
                 const size_t i = mesh.global_to_local(be, row);
                 for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})
                     if (const size_t col = mesh.container().node_number(be, j); col >= row) 
-                        K.coeffRef(row, col) -= integrate_matrix(condition, element, i, j);
+                        K(row, col) -= integrate_matrix(condition, element, i, j);
                 residual[row] -= integrate_vector(condition, element, i);
             }
         });

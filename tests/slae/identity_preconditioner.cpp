@@ -1,5 +1,5 @@
 #include <metamath/linear/fixed_matrix.hpp>
-#include <solvers/slae_metamath_powered/identity_preconditioner.hpp>
+#include <solvers/slae/identity_preconditioner.hpp>
 
 #include <boost/ut.hpp>
 

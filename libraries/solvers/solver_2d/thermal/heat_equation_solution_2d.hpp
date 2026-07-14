@@ -19,10 +19,9 @@ class heat_equation_solution_2d : public solution_2d<T, I> {
 
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
-    template<class Vector>
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                        const evaluated_conductivity_2d<T>& conductivity,
-                                       const Vector& temperature);
+                                       const std::vector<T>& temperature);
     ~heat_equation_solution_2d() noexcept override = default;
 
     const std::vector<T>& temperature() const noexcept;
@@ -39,10 +38,9 @@ heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr
     , _temperature(mesh->container().nodes_count(), T{0}) {}
 
 template<std::floating_point T, std::integral I>
-template<class Vector>
 heat_equation_solution_2d<T, I>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
                                                            const evaluated_conductivity_2d<T>& conductivity,
-                                                           const Vector& temperature)
+                                                           const std::vector<T>& temperature)
     : _base{mesh, get_models(conductivity)}
     , _temperature{temperature.cbegin(), std::next(temperature.cbegin(), mesh->container().nodes_count())}
     , _conductivity{get_physical_parameters(conductivity)} {}

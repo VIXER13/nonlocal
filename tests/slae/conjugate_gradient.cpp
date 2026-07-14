@@ -1,6 +1,6 @@
 #include "create_matrix.hpp"
 
-#include <solvers/slae_metamath_powered/conjugate_gradient.hpp>
+#include <solvers/slae/conjugate_gradient.hpp>
 
 #include <boost/ut.hpp>
 

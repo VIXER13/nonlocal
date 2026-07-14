@@ -2,55 +2,57 @@
 
 #include "solver_base.hpp"
 #include "preconditioner_base.hpp"
-#include "eigen_preconditioner.hpp"
+#include "identity_preconditioner.hpp"
+
+#include <memory>
 
 namespace nonlocal::slae {
 
-template<class T, class I>
-class iterative_solver_base : public solver_base<T, I> {
-    std::unique_ptr<preconditioner_base<T, I>> _preconditioner = std::make_unique<eigen_identity_preconditioner<T, I>>();
-    T _tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
+template<class T, std::integral I = uint32_t, std::integral J = size_t>
+class iterative_solver_base : public solver_base<T, I, J> {
+    using _base = solver_base<T, I, J>;
+
+public:
+    using typename _base::floating_point_t;
+
+private:
+    std::unique_ptr<preconditioner_base<T>> _preconditioner = std::make_unique<identity_preconditioner<T>>();
+    floating_point_t _tolerance = std::numeric_limits<floating_point_t>::epsilon();
     uintmax_t _max_iterations = 10000;
 
 protected:
     mutable uintmax_t _iterations = 0;
-    mutable T _residual = 0;
+    mutable floating_point_t _residual = 0;
 
 public:
-    using solver_base<T, I>::solver_base;
+    using solver_base<T, I, J>::solver_base;
     virtual ~iterative_solver_base() noexcept = default;
 
-    preconditioner_base<T, I>& preconditioner() noexcept {
+    preconditioner_base<T>& preconditioner() noexcept {
         return *_preconditioner;
     }
 
-    const preconditioner_base<T, I>& preconditioner() const noexcept {
+    const preconditioner_base<T>& preconditioner() const noexcept {
         return *_preconditioner;
     }
 
-    void init_preconditioner(std::unique_ptr<preconditioner_base<T, I>>&& preconditioner) {
+    void preconditioner(std::unique_ptr<preconditioner_base<T>>&& preconditioner) {
         _preconditioner = std::move(preconditioner);
     }
 
-    template<template<class, class> class Preconditioner, class... Types>
-    preconditioner_base<T, I>& init_preconditioner(Types&... args) {
-        _preconditioner = std::make_unique<Preconditioner<T, I>>(std::forward<Types>(args)...);
-        return preconditioner();
+    floating_point_t tolerance() const noexcept {
+        return _tolerance;
     }
 
-    T tolerance() const noexcept {
-        return _tolerance;
+    void tolerance(const floating_point_t tolerance) noexcept {
+        _tolerance = tolerance;
     }
 
     uintmax_t max_iterations() const noexcept {
         return _max_iterations;
     }
 
-    void set_tolerance(const T tolerance) noexcept {
-        _tolerance = tolerance;
-    }
-
-    void set_max_interations(const uintmax_t max_iterations) noexcept {
+    void max_iterations(const uintmax_t max_iterations) noexcept {
         _max_iterations = max_iterations;
     }
 
@@ -58,7 +60,7 @@ public:
         return _iterations;
     }
 
-    T residual() const noexcept {
+    floating_point_t residual() const noexcept {
         return _residual;
     }
 };
