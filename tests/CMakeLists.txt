@@ -38,8 +38,7 @@ target_link_libraries(
         config_test_lib
         thermal_1d_test_lib
         mechanical_1d_test_lib
-        # solvers_2d_test_lib
-        # thermal_2d_test_lib
+        thermal_2d_test_lib
         mechanical_2d_test_lib
         unit_tests_utils_lib
         Boost::ut

@@ -42,7 +42,7 @@ void conductivity_matrix_2d<T, I>::create_matrix_portrait(const std::unordered_m
                                                           const bool is_symmetric,
                                                           const bool is_neumann) {
     const size_t cols = _base::cols() + is_neumann;
-    const size_t rows = _base::rows() == _base::cols() ?cols : _base::rows() + (is_neumann && parallel::is_last_process());
+    const size_t rows = _base::rows() == _base::cols() ? cols : _base::rows() + (is_neumann && parallel::is_last_process());
     _base::matrix().inner().portrait.set_size(rows, cols);
     _base::matrix().bound().portrait.set_size(rows, cols);
     if (is_neumann) {
@@ -56,7 +56,7 @@ void conductivity_matrix_2d<T, I>::create_matrix_portrait(const std::unordered_m
     _base::init_indices(theories, is_inner, is_symmetric, SORT_INDICES);
     if (is_neumann) {
         for(const size_t row : std::ranges::iota_view{0u, rows}) {
-            const size_t index = _base::matrix().inner().portrait.indices[row + 1] - 1;
+            const size_t index = _base::matrix().inner().portrait.shifts[row + 1] - 1;
             _base::matrix().inner().portrait.indices[index] = _base::mesh().container().nodes_count();
         }
         if (!is_symmetric && parallel::is_last_process()) 
@@ -167,8 +167,8 @@ void conductivity_matrix_2d<T, I>::compute(const evaluated_conductivity_2d<T>& c
                                            const bool is_symmetric, const bool is_neumann, const assemble_part part) {
     logger::info() << "Thermal conductivity matrix assembly started" << std::endl;
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
-                                                                local_theories(_base::mesh().container()) : 
-                                                                theories_types(conductivity);
+                                                               local_theories(_base::mesh().container()) : 
+                                                               theories_types(conductivity);
     create_matrix_portrait(theories, is_inner, is_symmetric, is_neumann);
     if (is_neumann)
         integral_condition(is_symmetric);

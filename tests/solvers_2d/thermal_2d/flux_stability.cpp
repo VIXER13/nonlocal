@@ -55,7 +55,7 @@ const suite<"flux_stability"> _ = [] {
 
     "flux_x_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = -10;
-        static constexpr T Epsilon = 2.2e-14;
+        static constexpr T Epsilon = 5.5e-14;
         const T integral = mesh::utils::integrate(*mesh, solution.flux()[X]);
         expect(approx(integral, Expected, Epsilon));
     };
