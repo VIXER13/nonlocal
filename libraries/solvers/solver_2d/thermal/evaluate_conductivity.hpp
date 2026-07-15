@@ -23,8 +23,13 @@ evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& me
                     .container = std::vector<Type>(qshifts.size()),
                     .shift = qshifts.front()
                 };
-                for(size_t q = qshifts.front(); q <= qshifts.back(); ++q)
-                    result[q] = evaluate<T, 2u>(conductivity, mesh.quad_coord(q), solution[q]);
+                if (is_spatial(conductivity)) {
+                    for(size_t q = qshifts.front(); q <= qshifts.back(); ++q)
+                        result[q] = evaluate<T, 2u>(conductivity, mesh.quad_coord(q), {});
+                } else {
+                    for(size_t q = qshifts.front(); q <= qshifts.back(); ++q)
+                        result[q] = evaluate<T, 2u>(conductivity, mesh.quad_coord(q), solution[q]);
+                }
                 return result;
             }, parameter.physical.conductivity)
         };

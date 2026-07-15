@@ -166,6 +166,7 @@ template<std::floating_point T, std::integral I>
 void conductivity_matrix_2d<T, I>::compute(const evaluated_conductivity_2d<T>& conductivity, const std::vector<bool>& is_inner,
                                            const bool is_symmetric, const bool is_neumann, const assemble_part part) {
     logger::info() << "Thermal conductivity matrix assembly started" << std::endl;
+    _base::clear();
     const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
                                                                local_theories(_base::mesh().container()) : 
                                                                theories_types(conductivity);
