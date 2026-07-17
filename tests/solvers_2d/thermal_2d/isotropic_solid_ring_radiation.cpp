@@ -21,14 +21,15 @@ using namespace solver_2d::thermal;
 constexpr T Expected_Error = T{0};
 constexpr T Inner_Radius = T{0.5};
 constexpr T Outer_Radius = T{1};
-constexpr T Inner_Temperature = T{1};
-constexpr T Outer_Temperature = T{1.5};
-constexpr T A = T{2};
-constexpr T B = T{-2};
-constexpr T Outer_Flux = metamath::functions::power<4>(Outer_Temperature);
-constexpr T Emmisivity = T{0.8};
+constexpr T A = T{100};
+constexpr T B = T{-50};
+constexpr T Inner_Temperature = T{100};
+constexpr T Outer_Temperature = Inner_Temperature + A * (Outer_Radius - Inner_Radius) + B * metamath::functions::power<2>(Outer_Radius - Inner_Radius);
+constexpr T Emissivity = T{0.8};
 constexpr T Heat_Transfer = T{0};
 constexpr T Ambient_Temperature = T{0};
+constexpr T Outer_Flux = Emissivity * metamath::constants::Stefan_Boltzmann_Constant<T> * metamath::functions::power<4>(Outer_Temperature) +
+                         (A + 2 * B * (Outer_Radius - Inner_Radius));
 
 const suite<"thermal_isotropic_solid_ring_radiation"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
@@ -36,19 +37,19 @@ const suite<"thermal_isotropic_solid_ring_radiation"> _ = [] {
     const parameters_2d<T> parameters = {{"DEFAULT", {.physical = {.conductivity = T{1}}}}};
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>(Inner_Temperature);
-    boundaries_conditions["Outer"] = std::make_unique<combined_flux_2d<T>>(Outer_Flux, Heat_Transfer, Ambient_Temperature, Emmisivity);
+    boundaries_conditions["Outer"] = std::make_unique<combined_flux_2d<T>>(Outer_Flux, Heat_Transfer, Ambient_Temperature, Emissivity);
     const stationary_equation_parameters_2d<T> auxiliary_data = {
-        .right_part = [](const std::array<T, 2>& point) { return T{4} / std::hypot(point[X], point[Y]) - T{8}; },
-        .initial_distribution = [](const std::array<T, 2>& point) { return Inner_Temperature; },
+        .right_part = [](const std::array<T, 2>& point) { return -4 * B + (2 * B * Inner_Radius - A) / std::hypot(point[X], point[Y]); },
+        .initial_distribution = [](const std::array<T, 2>& point) { return 0.5 * (Inner_Temperature + Outer_Temperature); },
     };
-    const auto solution = stationary_heat_equation_solver_2d<I>(mesh, parameters, boundaries_conditions, {});
+    const auto solution = stationary_heat_equation_solver_2d<I>(mesh, parameters, boundaries_conditions, auxiliary_data);
 
     "temperature"_test = [&mesh, &solution] {
         static constexpr auto Expected_Temperature = [](const std::array<T, 2>& point) {
             const T r = std::hypot(point[X], point[Y]);
             return Inner_Temperature + A * (r - Inner_Radius) + B * metamath::functions::power<2>(r - Inner_Radius);
         };
-        static constexpr T Epsilon = 1.4e-3;
+        static constexpr T Epsilon = 4e-4;
         const T error = norm_error(solution.temperature(), mesh->container(), Expected_Temperature);
         expect(approx(error, Expected_Error, Epsilon));
     };

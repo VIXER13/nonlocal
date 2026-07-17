@@ -39,7 +39,7 @@ class vtk_elements_set final : public elements_set<T> {
     static std::vector<element_integrate_1d<T>> make_default_1d_elements() {
         return {
             element_integrate_1d<T>{std::make_unique<element_1d<T, 1>>(), quadrature<T, gauss, 1>{}},
-            element_integrate_1d<T>{std::make_unique<element_1d<T, 2>>(), quadrature<T, gauss, 2>{} }
+            element_integrate_1d<T>{std::make_unique<element_1d<T, 2>>(), quadrature<T, gauss, 3>{} }
         };
     }
 

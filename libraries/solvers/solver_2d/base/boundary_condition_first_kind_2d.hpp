@@ -56,6 +56,18 @@ void boundary_condition_first_kind_2d(std::vector<T>& f,
 }
 
 template<class T, std::integral I, physics_t Physics, size_t DoF>
+void first_kind_fill_2d(std::vector<T>& right_part, const mesh::mesh_2d<T, I>& mesh,
+                        const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions,
+                        const bool include_value) {
+    utils::run_by_boundaries<first_kind_2d, Physics>(mesh.container(), boundaries_conditions,
+        [&mesh = mesh.container(), &right_part, process_nodes = mesh.process_nodes(), include_value]
+        (const  first_kind_2d<T, Physics>& condition, const size_t, const size_t row, const size_t) {
+            if (row >= process_nodes.front() && row <= process_nodes.back())
+                right_part[row] = include_value ? condition(mesh.node_coord(row)) : T{0};
+        });
+}
+
+template<class T, std::integral I, physics_t Physics, size_t DoF>
 void first_kind_matrix_fill_2d(metamath::linear::sparse_matrix<T>& K, std::vector<T>& residual, const mesh::mesh_2d<T, I>& mesh,
                                const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
     utils::run_by_boundaries<first_kind_2d, Physics>(mesh.container(), boundaries_conditions,
@@ -68,7 +80,6 @@ void first_kind_matrix_fill_2d(metamath::linear::sparse_matrix<T>& K, std::vecto
                 residual[row] = T(0);
             }
         });
-}
-    
+} 
     
 }
