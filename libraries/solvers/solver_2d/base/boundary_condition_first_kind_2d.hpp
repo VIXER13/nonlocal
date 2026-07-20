@@ -11,8 +11,8 @@ namespace nonlocal::solver_2d {
 class _boundary_condition_first_kind_2d final {
     explicit constexpr _boundary_condition_first_kind_2d() noexcept = default;
 
-    template<class T, std::integral I, physics_t Physics, size_t DoF>
-    static std::vector<T> calc_vector(const mesh::mesh_container_2d<T, I>& mesh,
+    template<class T, physics_t Physics, size_t DoF>
+    static std::vector<T> calc_vector(const mesh::mesh_container_2d<T>& mesh,
                                       const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
         std::vector<T> x(DoF * mesh.nodes_count(), T{0});
         utils::run_by_boundaries<first_kind_2d, Physics>(mesh, boundaries_conditions,

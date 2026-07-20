@@ -10,8 +10,8 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<std::floating_point T, std::integral I>
-problem_settings init_problem_settings(const mesh::mesh_container_2d<T, I>& mesh,
+template<std::floating_point T>
+problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh,
                                        const parameters_2d<T>& parameters,
                                        const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                        const bool is_stationary_problem) {

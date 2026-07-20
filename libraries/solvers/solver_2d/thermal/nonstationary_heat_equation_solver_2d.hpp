@@ -13,20 +13,20 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T, std::integral I>
+template<class T>
 class nonstationary_heat_equation_solver_2d final {
     static constexpr size_t DoF = 1;
 
     std::unique_ptr<slae::conjugate_gradient<T>> slae_solver;
-    heat_capacity_matrix_2d<T, I> _capacity;
-    conductivity_matrix_2d<T, I> _conductivity;
+    heat_capacity_matrix_2d<T> _capacity;
+    conductivity_matrix_2d<T> _conductivity;
     std::vector<T> _right_part;
     std::vector<T> _temperature_prev;
     std::vector<T> _temperature_curr;
     const T _time_step = 1;
 
 public:
-    explicit nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const T time_step);
+    explicit nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh, const T time_step);
 
     const std::vector<T>& temperature() const noexcept;
     constexpr T time_step() const noexcept;
@@ -41,8 +41,8 @@ public:
                    const Right_Part& right_part);
 };
 
-template<class T, std::integral I>
-nonstationary_heat_equation_solver_2d<T, I>::nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh, const T time_step)
+template<class T>
+nonstationary_heat_equation_solver_2d<T>::nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh, const T time_step)
     : _conductivity{mesh}
     , _capacity{mesh}
     , _right_part(mesh->container().nodes_count(), T{0})
@@ -50,21 +50,21 @@ nonstationary_heat_equation_solver_2d<T, I>::nonstationary_heat_equation_solver_
     , _temperature_curr(mesh->container().nodes_count(), T{0})
     , _time_step{time_step} {}
 
-template<class T, std::integral I>
-const std::vector<T>& nonstationary_heat_equation_solver_2d<T, I>::temperature() const noexcept {
+template<class T>
+const std::vector<T>& nonstationary_heat_equation_solver_2d<T>::temperature() const noexcept {
     return _temperature_curr;
 }
 
-template<class T, std::integral I>
-constexpr T nonstationary_heat_equation_solver_2d<T, I>::time_step() const noexcept {
+template<class T>
+constexpr T nonstationary_heat_equation_solver_2d<T>::time_step() const noexcept {
     return _time_step;
 }
 
-template<class T, std::integral I>
+template<class T>
 template<class Init_Dist>
-void nonstationary_heat_equation_solver_2d<T, I>::compute(const parameters_2d<T>& parameters,
-                                                          const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                                                          const Init_Dist& init_dist) {
+void nonstationary_heat_equation_solver_2d<T>::compute(const parameters_2d<T>& parameters,
+                                                       const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+                                                       const Init_Dist& init_dist) {
     std::vector<T> solution(_conductivity.mesh().quad_shift(_conductivity.mesh().container().elements_2d_count()), T{0});
     const auto conductivity_parameters = evaluate_conductivity(_conductivity.mesh(), parameters, solution);
     solution = {};
@@ -87,10 +87,10 @@ void nonstationary_heat_equation_solver_2d<T, I>::compute(const parameters_2d<T>
     slae_solver = std::make_unique<slae::conjugate_gradient<T>>(_conductivity.matrix().inner());
 }
 
-template<class T, std::integral I>
+template<class T>
 template<class Right_Part>
-void nonstationary_heat_equation_solver_2d<T, I>::calc_step(const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                                                            const Right_Part& right_part) {
+void nonstationary_heat_equation_solver_2d<T>::calc_step(const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+                                                         const Right_Part& right_part) {
     std::fill(_right_part.begin(), _right_part.end(), T{0});
     _temperature_prev.swap(_temperature_curr);
     radiation_condition_2d(_conductivity.matrix().inner(), _right_part, _conductivity.mesh(), boundaries_conditions, 

@@ -8,9 +8,9 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T, class I = uint32_t>
-class mechanical_solution_2d : public solution_2d<T, I> {
-    using _base = solution_2d<T, I>;
+template<class T>
+class mechanical_solution_2d : public solution_2d<T> {
+    using _base = solution_2d<T>;
 
     std::array<std::vector<T>, 2> _displacement;
     std::array<std::vector<T>, 3> _strain, _stress;
@@ -24,8 +24,8 @@ class mechanical_solution_2d : public solution_2d<T, I> {
                                        const evaluated_mechanical_parameters<T>& parameters) const;
 
 public:
-    explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
-    explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
+    explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
+    explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                     const evaluated_mechanical_parameters<T>& parameters, 
                                     const std::vector<T>& displacement);
     ~mechanical_solution_2d() noexcept override = default;
@@ -39,17 +39,17 @@ public:
     void calc_strain_and_stress(const evaluated_mechanical_parameters<T>& parameters);
 };
 
-template<class T, class I>
-mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<class T>
+mechanical_solution_2d<T>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh)
     : _base{mesh} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(mesh->container().nodes_count(), T{0});
 }
 
-template<class T, class I>
-mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                     const evaluated_mechanical_parameters<T>& parameters,
-                                                     const std::vector<T>& displacement)
+template<class T>
+mechanical_solution_2d<T>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
+                                                  const evaluated_mechanical_parameters<T>& parameters,
+                                                  const std::vector<T>& displacement)
     : _base{mesh, {}} {
     for(std::vector<T>& displacement : _displacement)
         displacement.resize(_base::mesh().container().nodes_count(), T{0});
@@ -59,23 +59,23 @@ mechanical_solution_2d<T, I>::mechanical_solution_2d(const std::shared_ptr<mesh:
     }
 }
 
-template<class T, class I>
-const std::array<std::vector<T>, 2>& mechanical_solution_2d<T, I>::displacement() const noexcept {
+template<class T>
+const std::array<std::vector<T>, 2>& mechanical_solution_2d<T>::displacement() const noexcept {
     return _displacement;
 }
 
-template<class T, class I>
-const std::array<std::vector<T>, 3>& mechanical_solution_2d<T, I>::strain() const noexcept {
+template<class T>
+const std::array<std::vector<T>, 3>& mechanical_solution_2d<T>::strain() const noexcept {
     return _strain;
 }
 
-template<class T, class I>
-const std::array<std::vector<T>, 3>& mechanical_solution_2d<T, I>::stress() const noexcept {
+template<class T>
+const std::array<std::vector<T>, 3>& mechanical_solution_2d<T>::stress() const noexcept {
     return _stress;
 }
 
-template<class T, class I>
-T mechanical_solution_2d<T, I>::calc_energy() const {
+template<class T>
+T mechanical_solution_2d<T>::calc_energy() const {
     T integral = 0;
     // if(is_strain_and_stress_calculated()) {
     //     for(size_t e = 0; e < _base::mesh_proxy()->mesh().elements_count(); ++e) {
@@ -96,14 +96,14 @@ T mechanical_solution_2d<T, I>::calc_energy() const {
     return 0.5 * integral;
 }
 
-template<class T, class I>
-bool mechanical_solution_2d<T, I>::is_strain_and_stress_calculated() const noexcept {
+template<class T>
+bool mechanical_solution_2d<T>::is_strain_and_stress_calculated() const noexcept {
     return !strain()[XX].empty() && !strain()[YY].empty() && !strain()[XY].empty() &&
            !stress()[XX].empty() && !stress()[YY].empty() && !stress()[XY].empty();
 }
 
-template<class T, class I>
-std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratures() const {
+template<class T>
+std::array<std::vector<T>, 3> mechanical_solution_2d<T>::strains_in_quadratures() const {
     auto [strain11_in_quad, strain12_in_quad] = mesh::utils::gradient_in_qnodes(_base::mesh(), displacement()[X]);
     auto [strain21_in_quad, strain22_in_quad] = mesh::utils::gradient_in_qnodes(_base::mesh(), displacement()[Y]);
     for(const size_t q : std::ranges::iota_view{0zu, strain12_in_quad.size()})
@@ -111,9 +111,9 @@ std::array<std::vector<T>, 3> mechanical_solution_2d<T, I>::strains_in_quadratur
     return {std::move(strain11_in_quad), std::move(strain22_in_quad), std::move(strain12_in_quad)};
 }
 
-template<class T, class I>
-void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std::vector<T>, 3>& strain,
-                                                                 const evaluated_mechanical_parameters<T>& parameters) const {
+template<class T>
+void mechanical_solution_2d<T>::substract_temperature_strains(std::array<std::vector<T>, 3>& strain,
+                                                              const evaluated_mechanical_parameters<T>& parameters) const {
     for(const auto& [group, parameter] : parameters)
         std::visit(metamath::types::visitor{
             [](const std::monostate) {},
@@ -128,12 +128,12 @@ void mechanical_solution_2d<T, I>::substract_temperature_strains(std::array<std:
         }, parameter.physical.thermal_strain);
 }
 
-template<class T, class I>
+template<class T>
 template<class Hooke_Matrix, class Influence>
-std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_stress(const size_t eL,
-                                                                    const Hooke_Matrix& hooke_matrices,
-                                                                    const std::array<std::vector<T>, 3>& strains,
-                                                                    const Influence& influence) const {
+std::array<T, 3> mechanical_solution_2d<T>::calc_nonlocal_stress(const size_t eL,
+                                                                 const Hooke_Matrix& hooke_matrices,
+                                                                 const std::array<std::vector<T>, 3>& strains,
+                                                                 const Influence& influence) const {
     std::array<T, 3> nonlocal_stress = {};
     for(const size_t eNL : _base::mesh().neighbours(eL)) {
         const auto& elNL = _base::mesh().container().element_2d(eNL);
@@ -151,8 +151,8 @@ std::array<T, 3> mechanical_solution_2d<T, I>::calc_nonlocal_stress(const size_t
     return nonlocal_stress;
 }
 
-template<class T, class I>
-void mechanical_solution_2d<T, I>::calc_strain_and_stress(const evaluated_mechanical_parameters<T>& parameters) {
+template<class T>
+void mechanical_solution_2d<T>::calc_strain_and_stress(const evaluated_mechanical_parameters<T>& parameters) {
     if (is_strain_and_stress_calculated())
         return;
 

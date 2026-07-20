@@ -11,7 +11,6 @@
 namespace {
 
 using T = double;
-using I = int64_t;
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace unit_tests;
@@ -33,7 +32,7 @@ constexpr T Delta_Temperature = T{1};
 
 const suite<"anisotropic_thermoelasticity_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
-    const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
+    const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const anisotropic_elastic_parameters<T> elastic = {
         .main_parameters = {
             .young_modulus = {Er, Ef},
@@ -57,8 +56,8 @@ const suite<"anisotropic_thermoelasticity_solid_ring"> _ = [] {
         std::make_unique<displacement_2d<T>>(T{0}),
         nullptr
     };
-    const auto solution = equilibrium_equation<I>(mesh, parameters, boundaries_conditions, 
-                                                  std::vector<T>(mesh->container().nodes_count(), Delta_Temperature));
+    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions, 
+                                               std::vector<T>(mesh->container().nodes_count(), Delta_Temperature));
 
     const T k = std::sqrt(Ef / Er);
     const T B = ((T{1} - nu_fr) * a_rr + (nu_fr - k * k) * a_ff) * Delta_Temperature;

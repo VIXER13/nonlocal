@@ -7,8 +7,8 @@
 
 namespace nonlocal::solver_2d {
 
-template<class T, std::integral I, physics_t Physics, size_t DoF>
-void boundary_condition_second_kind_2d(std::vector<T>& f, const mesh::mesh_2d<T, I>& mesh,
+template<class T, physics_t Physics, size_t DoF>
+void boundary_condition_second_kind_2d(std::vector<T>& f, const mesh::mesh_2d<T>& mesh,
                                        const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
     static constexpr auto integrate = [](const second_kind_2d<T, Physics>& condition, const auto& element, const size_t i) {
         T integral = T{0};

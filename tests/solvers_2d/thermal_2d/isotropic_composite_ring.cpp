@@ -11,7 +11,6 @@
 namespace {
 
 using T = double;
-using I = int64_t;
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace unit_tests;
@@ -34,7 +33,7 @@ const T Coeff = T{1} / ((Norm_Coductivity - T{1}) * std::log(Norm_Contact_Radius
 
 const suite<"thermal_isotropic_solid_ring"> _ = [] {
     std::stringstream stream{composite_ring_su2_data};
-    const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
+    const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const parameters_2d<T> parameters = {
         {"Inner_Material", {.physical = {.conductivity = Inner_Conductivity}}},
         {"Outer_Material", {.physical = {.conductivity = Outer_Conductivity}}}

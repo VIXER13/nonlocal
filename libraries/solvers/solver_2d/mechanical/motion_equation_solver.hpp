@@ -12,13 +12,13 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T, std::integral I>
+template<class T>
 class motion_equation_solver final {
     static constexpr size_t DoF = 2;
 
     std::unique_ptr<slae::iterative_solver_base<T>> slae_solver;
-    mass_matrix<T, I> _mass;
-    stiffness_matrix<T, I> _stiffness;
+    mass_matrix<T> _mass;
+    stiffness_matrix<T> _stiffness;
     mechanical_boundaries_conditions_2d<T> _boundaries_conditions;
     evaluated_mechanical_parameters<T> _parameters;
     std::vector<T> _right_part;
@@ -29,7 +29,7 @@ class motion_equation_solver final {
     T _time = T{0};
 
 public:
-    explicit motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh);
+    explicit motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
 
     const std::vector<T>& displacement() const noexcept;
     mechanical_solution_2d<T> solution(const bool strain_and_stress = true) const;
@@ -44,8 +44,8 @@ public:
     void calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt);
 };
 
-template<class T, std::integral I>
-motion_equation_solver<T, I>::motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh)
+template<class T>
+motion_equation_solver<T>::motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T>>& mesh)
     : _mass{mesh}
     , _stiffness{mesh} 
     , _right_part(DoF * mesh->container().nodes_count(), T{0})
@@ -53,34 +53,34 @@ motion_equation_solver<T, I>::motion_equation_solver(const std::shared_ptr<mesh:
     , _displacement_curr(DoF * mesh->container().nodes_count(), T{0})
     , _displacement_next(DoF * mesh->container().nodes_count(), T{0}) {}
 
-template<class T, std::integral I>
-const std::vector<T>& motion_equation_solver<T, I>::displacement() const noexcept {
+template<class T>
+const std::vector<T>& motion_equation_solver<T>::displacement() const noexcept {
     return _displacement_next;
 }
 
-template<class T, std::integral I>
-mechanical_solution_2d<T> motion_equation_solver<T, I>::solution(const bool strain_and_stress) const {
+template<class T>
+mechanical_solution_2d<T> motion_equation_solver<T>::solution(const bool strain_and_stress) const {
     mechanical_solution_2d<T> sol{_mass.mesh_ptr(), _parameters, displacement()};
     if (strain_and_stress)
         sol.calc_strain_and_stress(_parameters);
     return sol;
 }
 
-template<class T, std::integral I>
-T motion_equation_solver<T, I>::time_step() const noexcept {
+template<class T>
+T motion_equation_solver<T>::time_step() const noexcept {
     return _time_step;
 }
 
-template<class T, std::integral I>
-T motion_equation_solver<T, I>::time() const noexcept {
+template<class T>
+T motion_equation_solver<T>::time() const noexcept {
     return _time;
 }
 
-template<class T, std::integral I>
-void motion_equation_solver<T, I>::compute(const raw_mechanical_parameters<T>& parameters,
-                                           mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
-                                           const T time_step, const T time,
-                                           const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist) {
+template<class T>
+void motion_equation_solver<T>::compute(const raw_mechanical_parameters<T>& parameters,
+                                        mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
+                                        const T time_step, const T time,
+                                        const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist) {
     _time_step = time_step;
     _time = time;
     _boundaries_conditions = std::move(boundaries_conditions);
@@ -112,8 +112,8 @@ void motion_equation_solver<T, I>::compute(const raw_mechanical_parameters<T>& p
     slae_solver = slae::init_iterative_solver(_stiffness.matrix().inner(), settings.is_symmetric());
 }
 
-template<class T, std::integral I>
-void motion_equation_solver<T, I>::calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part) {
+template<class T>
+void motion_equation_solver<T>::calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part) {
     std::fill(_right_part.begin(), _right_part.end(), T{0});
     _displacement_prev.swap(_displacement_curr);
     _displacement_curr.swap(_displacement_next);

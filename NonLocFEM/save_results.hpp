@@ -7,9 +7,9 @@
 
 namespace nonlocal {
 
-template<std::floating_point T, std::integral I>
-void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
-              const std::optional<solver_2d::mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
+template<std::floating_point T>
+void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>>& thermal_solution,
+              const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>>& mechanical_solution,
               const config::save_data& save, const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0 || !save.contains("csv")) // Only the master process saves data
         return;
@@ -41,9 +41,9 @@ void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
     mesh::utils::save_as_csv(path, container, data, save.precision());
 }
 
-template<std::floating_point T, std::integral I>
-void save_vtk(const std::optional<solver_2d::thermal::heat_equation_solution_2d<T, I>>& thermal_solution,
-              const std::optional<solver_2d::mechanical::mechanical_solution_2d<T, I>>& mechanical_solution,
+template<std::floating_point T>
+void save_vtk(const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>>& thermal_solution,
+              const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>>& mechanical_solution,
               const config::save_data& save, const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0 || !save.contains("vtk")) // Only the master process saves data
         return;

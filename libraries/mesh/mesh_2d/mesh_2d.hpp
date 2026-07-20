@@ -10,12 +10,12 @@
 
 namespace nonlocal::mesh {
 
-template<class T>
+template<std::floating_point T>
 constexpr T jacobian(const std::array<T, 2>& J) noexcept {
     return std::sqrt(J[X] * J[X] + J[Y] * J[Y]);
 }
 
-template<class T, class I = uint32_t>
+template<std::floating_point T, std::integral I = uint32_t>
 class mesh_2d final {
     mesh_container_2d<T, I> _mesh;
 
@@ -80,20 +80,20 @@ public:
     void clear();
 };
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh)
     : _mesh{path_to_mesh} {
         init();
     }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 template<class Stream>
 mesh_2d<T, I>::mesh_2d(Stream& stream, const mesh_format format)
     : _mesh{stream, format} {
         init();
     }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::init() {
     _node_elements = utils::node_elements_2d(container());
     _global_to_local = utils::global_to_local(container());
@@ -107,88 +107,88 @@ void mesh_2d<T, I>::init() {
     _elements_neighbors.resize(container().elements_2d_count());
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const mesh_container_2d<T, I>& mesh_2d<T, I>::container() const {
     return _mesh;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::vector<I>& mesh_2d<T, I>::elements(const size_t node) const {
     return _node_elements[node];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_2d<T, I>::global_to_local(const size_t e, const size_t node) const {
     return _global_to_local[e].at(node);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_2d<T, I>::quad_shift(const size_t e) const {
     return _quad_shifts[e];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::quad_shifts(const std::string& group) const {
     const auto elements = container().elements(group);
     return {quad_shift(elements.front()), quad_shift(elements.back() + 1)};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::quad_shifts_count(const size_t e) const {
     return {quad_shift(e), quad_shift(e + 1)};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<T, 2>& mesh_2d<T, I>::quad_coord(const size_t qshift) const {
     return _quad_coords[qshift];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<T, 2>& mesh_2d<T, I>::quad_coord(const size_t e, const size_t q) const {
     return quad_coord(quad_shift(e) + q);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::jacobian(const size_t qshift) const {
     return _jacobians[qshift];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::jacobian(const size_t e, const size_t q) const {
     return jacobian(quad_shift(e) + q);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_2d<T, I>::quad_node_shift(const size_t e, const size_t i) const {
     return _quad_node_shift[e] + i * container().element_2d(e).qnodes_count();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t qshift) const {
     return _derivatives[qshift];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t qnode_shift, const size_t q) const {
     return derivatives(qnode_shift + q);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<T, 2>& mesh_2d<T, I>::derivatives(const size_t e, const size_t i, const size_t q) const {
     return derivatives(quad_node_shift(e, i), q);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const parallel::MPI_ranges& mesh_2d<T, I>::MPI_ranges() const noexcept {
     return _MPI_ranges;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::process_nodes(const size_t process) const {
     return _MPI_ranges.get(process);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::unordered_set<I> mesh_2d<T, I>::process_elements(const size_t process) const {
     std::unordered_set<I> proc_elements;
     for(const size_t node : process_nodes(process))
@@ -197,12 +197,12 @@ std::unordered_set<I> mesh_2d<T, I>::process_elements(const size_t process) cons
     return proc_elements;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::MPI_ranges(const parallel::MPI_ranges& ranges) {
     _MPI_ranges = ranges;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::neighbours(neighbours_t<T, I>&& data) {
     auto&& [influences, elements_neighbors] = data;
     if (elements_neighbors.size() != container().elements_2d_count())
@@ -211,17 +211,17 @@ void mesh_2d<T, I>::neighbours(neighbours_t<T, I>&& data) {
     _elements_neighbors = std::move(elements_neighbors);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::vector<I>& mesh_2d<T, I>::neighbours(const size_t e) const {
     return _elements_neighbors[e];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const influences<T>& mesh_2d<T, I>::get_influences() const noexcept {
     return _influences;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area(const size_t e) const {
     T area = T{0};
     const auto& el = container().element_2d(e);
@@ -233,13 +233,13 @@ T mesh_2d<T, I>::area(const size_t e) const {
     return area;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area(const std::ranges::iota_view<size_t, size_t> elements) const {
     const auto summator = [this](const T sum, const size_t e) { return sum + area(e); };
     return std::reduce(elements.begin(), elements.end(), T{0}, summator);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area(const std::string& element_group) const {
     if (!container().groups_names_2d().contains(element_group))
         throw std::domain_error{
@@ -249,19 +249,19 @@ T mesh_2d<T, I>::area(const std::string& element_group) const {
     return area(container().elements(element_group));
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area() const {
     return area(container().elements_2d());
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::renumbering(const std::vector<size_t>& permutation) {
     _mesh.renumbering(permutation);
     _node_elements = utils::node_elements_2d(container());
     _global_to_local = utils::global_to_local(container());
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::clear() {
     _mesh.clear();
     _node_elements.clear();

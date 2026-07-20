@@ -7,9 +7,9 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T, std::integral I>
+template<class T>
 void convection_condition_2d(metamath::linear::sparse_matrix<T>& K,
-                             const mesh::mesh_2d<T, I>& mesh,
+                             const mesh::mesh_2d<T>& mesh,
                              const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                              const std::vector<bool>& is_inner_nodes) {
     static constexpr auto integrate = [](const convection_2d<T>& condition, const auto& element, const size_t i, const size_t j) {

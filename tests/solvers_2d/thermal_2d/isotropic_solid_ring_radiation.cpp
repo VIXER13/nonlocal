@@ -11,7 +11,6 @@
 namespace {
 
 using T = double;
-using I = int64_t;
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace unit_tests;
@@ -45,7 +44,7 @@ const suite<"thermal_isotropic_solid_ring_radiation"> _ = [] {
     const T Outer_Flux = Emissivity * Stefan_Boltzmann_Constant<T> * power<4>(Outer_Temperature) - flux({T{0}, Outer_Radius});
 
     std::stringstream stream{solid_ring_su2_data};
-    const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
+    const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const parameters_2d<T> parameters = {{"DEFAULT", {.physical = {.conductivity = T{1}}}}};
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>(Inner_Temperature);

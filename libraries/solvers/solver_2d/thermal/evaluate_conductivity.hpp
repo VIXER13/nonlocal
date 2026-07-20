@@ -6,8 +6,8 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<std::floating_point T, std::integral I>
-evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T, I>& mesh, 
+template<std::floating_point T>
+evaluated_conductivity_2d<T> evaluate_conductivity(const mesh::mesh_2d<T>& mesh, 
                                                    const parameters_2d<T>& parameters,
                                                    const std::vector<T>& solution) {
     evaluated_conductivity_2d<T> conductivity;

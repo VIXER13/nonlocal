@@ -7,10 +7,10 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T, std::integral I>
+template<class T>
 void radiation_condition_2d(metamath::linear::sparse_matrix<T>& K,
                             std::vector<T>& f,
-                            const mesh::mesh_2d<T, I>& mesh,
+                            const mesh::mesh_2d<T>& mesh,
                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                             const std::vector<T>& temperature_prev,
                             const T time_step) {
@@ -54,9 +54,9 @@ void radiation_condition_2d(metamath::linear::sparse_matrix<T>& K,
         });
 }
 
-template<class T, std::integral I>
+template<class T>
 void radiation_condition_2d(metamath::linear::sparse_matrix<T>& matrix,
-                            const mesh::mesh_2d<T, I>& mesh,
+                            const mesh::mesh_2d<T>& mesh,
                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                             const std::vector<T>& temperature_prev,
                             const std::vector<bool>& is_inner_nodes) {
@@ -86,9 +86,9 @@ void radiation_condition_2d(metamath::linear::sparse_matrix<T>& matrix,
         });
 }
 
-template<class T, std::integral I>
+template<class T>
 void radiation_condition_2d(std::vector<T>& right_part,
-                            const mesh::mesh_2d<T, I>& mesh,
+                            const mesh::mesh_2d<T>& mesh,
                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                             const std::vector<T>& temperature_prev,
                             const std::vector<bool>& is_inner_nodes) {
