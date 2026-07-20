@@ -41,7 +41,7 @@ solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
         .max_iterations = 40,
         .energy = auxiliary.energy
     };
-    return solver_2d::thermal::stationary_heat_equation_solver_2d<I>( 
+    return solver_2d::thermal::stationary_heat_equation_solver_2d( 
         mesh, parameters, boundaries_conditions, auxiliary_data
     );
 }

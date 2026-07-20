@@ -42,7 +42,7 @@ const suite<"thermal_isotropic_solid_ring"> _ = [] {
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Inner_Temperature; });
     boundaries_conditions["Outer"] = std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Outer_Temperature; });
-    const auto solution = stationary_heat_equation_solver_2d<I>(mesh, parameters, boundaries_conditions, {});
+    const auto solution = stationary_heat_equation_solver_2d(mesh, parameters, boundaries_conditions, {});
 
     "temperature"_test = [&mesh, &solution] {
         static constexpr auto Expected_Temperature = [](const std::array<T, 2>& point) {
