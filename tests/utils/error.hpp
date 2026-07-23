@@ -9,20 +9,19 @@
 namespace nonlocal::unit_tests {
 
 template<std::floating_point T>
-T max_norm(const std::vector<T>& x) {
-    return std::abs(*std::max_element(x.begin(), x.end(), [](const T a, const T b) { return std::abs(a) < std::abs(b); }));
-}
-
-template<std::floating_point T>
 T max_error(const std::vector<T>& x, const std::vector<T>& y) {
     using namespace metamath::operators;
-    return max_norm(x - y);
+    static constexpr auto Inf = metamath::constants::Infinity<size_t>;
+    return metamath::linear::norm<Inf>(x - y);
 }
 
-template<std::floating_point T, std::integral I, class Expected>
-T norm_error(const std::vector<T>& actual, const mesh::mesh_container_2d<T, I>& mesh, const Expected& function) {
+template<class Vector, std::floating_point T, std::integral I, class Expected>
+T norm_error(const Vector& actual, const mesh::mesh_container_2d<T, I>& mesh, const Expected& function) {
+    using metamath::linear::norm;
+    using namespace metamath::operators;
+    static constexpr auto Inf = metamath::constants::Infinity<size_t>;
     const auto discrete_function = nonlocal::mesh::utils::discrete(mesh, function);
-    return max_error(actual, discrete_function) / max_norm(discrete_function);
+    return norm<Inf>(actual - discrete_function) / norm<Inf>(discrete_function);
 }
 
 template<std::floating_point T>

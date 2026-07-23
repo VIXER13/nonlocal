@@ -16,10 +16,15 @@ void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
     std::vector<std::pair<std::string, const std::vector<T>&>> data;
     if (thermal_solution) {
         data.push_back({"temperature", thermal_solution->temperature()});
-        if (thermal_solution->is_flux_calculated()) {
-            data.push_back({"flux_x", thermal_solution->flux()[X]});
-            data.push_back({"flux_y", thermal_solution->flux()[Y]});
+        // TODO: rework csv saver
+        std::vector<T> flux_x(thermal_solution->flux().size());
+        std::vector<T> flux_y(thermal_solution->flux().size());
+        for (size_t i = 0; i < thermal_solution->flux().size(); ++i) {
+            flux_x[i] = thermal_solution->flux()[i][X];
+            flux_y[i] = thermal_solution->flux()[i][Y];
         }
+        data.push_back({"flux_x", flux_x});
+        data.push_back({"flux_y", flux_y});
     }
     if (mechanical_solution) {
         data.push_back({"displacement_x", mechanical_solution->displacement()[X]});
@@ -62,7 +67,8 @@ void save_vtk(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
             mesh::utils::save_vectors_to_vtk(vtk, "flux", thermal_solution->flux());
     }
     if (mechanical_solution) {
-        mesh::utils::save_vectors_to_vtk(vtk, "displacement", mechanical_solution->displacement());
+        mesh::utils::save_scalars_to_vtk(vtk, "displacement_x", mechanical_solution->displacement()[X]);
+        mesh::utils::save_scalars_to_vtk(vtk, "displacement_y", mechanical_solution->displacement()[Y]);
         if (mechanical_solution->is_strain_and_stress_calculated()) {
             mesh::utils::save_tensors_to_vtk(vtk, "strain", mechanical_solution->strain());
             mesh::utils::save_tensors_to_vtk(vtk, "stress", mechanical_solution->stress());

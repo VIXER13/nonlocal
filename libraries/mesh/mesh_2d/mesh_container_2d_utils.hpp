@@ -7,8 +7,9 @@
 namespace nonlocal::mesh::utils {
 
 template<std::floating_point T, std::integral I, class Function>
-std::vector<T> discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
-    std::vector<T> x(mesh.nodes_count());
+auto discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
+    using vector_t = decltype(function(mesh.node_coord(0)));
+    std::vector<vector_t> x(mesh.nodes_count());
     for(const size_t node : mesh.nodes())
         x[node] = function(mesh.node_coord(node));
     return x;
@@ -202,11 +203,17 @@ void save_scalars_to_vtk(std::ofstream& output, const std::string_view name, con
         output << val << '\n';
 }
 
-template<class T>
-void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 2>& vector) {
+template<class T, size_t Dimension>
+void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, Dimension>>& vector) {
     output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()})
-        output << vector[X][i] << ' ' << vector[Y][i] << " 0\n";
+    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()}) {
+        if constexpr (Dimension == 2)
+            output << vector[i][X] << ' ' << vector[i][Y] << " 0\n";
+        else if constexpr (Dimension == 3)
+            output << vector[i][X] << ' ' << vector[i][Y] << ' ' << vector[i][Z] << '\n';
+        else
+            static_assert(false, "Only 2D and 3D vectors are supported.");
+    } 
 }
 
 template<class T>

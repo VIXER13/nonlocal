@@ -37,26 +37,18 @@ void mesh_run(const mesh_2d<T, I>& mesh,
 }
 
 template<class T, class I, class Vector>
-std::array<std::vector<T>, 2> gradient_in_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
+std::vector<std::array<T, 2>> gradient_in_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.container().nodes_count() != size_t(x.size()))
         throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
-    const size_t quadratures_count = mesh.quad_shift(mesh.container().elements_2d_count());
-    std::array<std::vector<T>, 2> gradient{
-        std::vector<T>(quadratures_count, T{0}),
-        std::vector<T>(quadratures_count, T{0})
-    };
-#pragma parallel for default(none) shared(gradient, mesh, x)
+    std::vector<std::array<T, 2>> gradient(mesh.quad_shift(mesh.container().elements_2d_count()), std::array<T, 2>{});
+#pragma omp parallel for default(none) shared(gradient, mesh, x)
     for(size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
         const auto& el = mesh.container().element_2d(e);
         for(size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
-            for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()}) {
-                const std::array<T, 2>& derivatives = mesh.derivatives(e, i, q);
-                const T& val = x[mesh.container().node_number(e, i)];
-                gradient[X][qshift] += val * derivatives[X];
-                gradient[Y][qshift] += val * derivatives[Y];
-            }
-            gradient[X][qshift] /= mesh.jacobian(qshift);
-            gradient[Y][qshift] /= mesh.jacobian(qshift);
+            using namespace metamath::operators;
+            for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+                gradient[qshift] += x[mesh.container().node_number(e, i)] * mesh.derivatives(e, i, q);
+            gradient[qshift] /= mesh.jacobian(qshift);
         }
     }
     return gradient;
@@ -68,7 +60,7 @@ std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
         throw std::logic_error{"Cannot approximate quadratures nodes values because vector size does not match number of mesh nodes."};
     const size_t quadratures_count = mesh.quad_shift(mesh.container().elements_2d_count());
     std::vector<T> values(quadratures_count, T{0});
-#pragma parallel for default(none) shared(gradient, mesh, x, values)
+#pragma omp parallel for default(none) shared(mesh, x, values)
     for(size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
         const auto& el = mesh.container().element_2d(e);
         for(size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
@@ -80,13 +72,15 @@ std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
 }
 
 template<class T, class I, class Vector>
-std::vector<T> qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
+Vector qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.quad_shift(mesh.container().elements_2d_count()) != size_t(x.size()))
         throw std::logic_error{"Cannot approximate node values because vector size does not match number of quadrature nodes."};
-    std::vector<T> approximation(mesh.container().nodes_count(), T{0});
-#pragma parallel for default(none) shared(approximation, mesh, x)
+    using vector_t = typename Vector::value_type;
+    Vector approximation(mesh.container().nodes_count(), vector_t{});
+#pragma omp parallel for default(none) shared(approximation, mesh, x)
     for(size_t node = 0; node < mesh.container().nodes_count(); ++node) {
         T node_area = T{0};
+        using namespace metamath::operators;
         for(const I e : mesh.elements(node)) {
             const T area = mesh.area(e);
             const size_t i = mesh.global_to_local(e, node);
@@ -134,10 +128,12 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
 }
 
 template<class T, class I, std::ranges::random_access_range Vector>
-T integrate(const mesh_2d<T, I>& mesh, const Vector& x) {
+auto integrate(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.container().nodes_count() != size_t(x.size()))
         throw std::logic_error{"The integral cannot be found because the vector size does not match the number of nodes."};
-    T integral = 0;
+    using namespace metamath::operators;
+    using integral_t = typename Vector::value_type;
+    integral_t integral = {};
     for(const size_t e : mesh.container().elements_2d()) {
         const auto& el = mesh.container().element_2d(e);
         for(const size_t q : el.qnodes())

@@ -104,10 +104,19 @@ bool mechanical_solution_2d<T>::is_strain_and_stress_calculated() const noexcept
 
 template<class T>
 std::array<std::vector<T>, 3> mechanical_solution_2d<T>::strains_in_quadratures() const {
-    auto [strain11_in_quad, strain12_in_quad] = mesh::utils::gradient_in_qnodes(_base::mesh(), displacement()[X]);
-    auto [strain21_in_quad, strain22_in_quad] = mesh::utils::gradient_in_qnodes(_base::mesh(), displacement()[Y]);
-    for(const size_t q : std::ranges::iota_view{0zu, strain12_in_quad.size()})
+    auto tmp1 = mesh::utils::gradient_in_qnodes(_base::mesh(), displacement()[X]);
+    auto tmp2 = mesh::utils::gradient_in_qnodes(_base::mesh(), displacement()[Y]);
+    std::vector<T> strain11_in_quad(tmp1.size(), T{0});
+    std::vector<T> strain12_in_quad(tmp1.size(), T{0});
+    std::vector<T> strain21_in_quad(tmp2.size(), T{0});
+    std::vector<T> strain22_in_quad(tmp2.size(), T{0});
+    for(const size_t q : std::ranges::iota_view{0zu, strain12_in_quad.size()}) {
+        strain11_in_quad[q] = tmp1[q][X];
+        strain12_in_quad[q] = tmp1[q][Y];
+        strain21_in_quad[q] = tmp2[q][X];
+        strain22_in_quad[q] = tmp2[q][Y];
         strain12_in_quad[q] = T{0.5} * (strain12_in_quad[q] + strain21_in_quad[q]);
+    }
     return {std::move(strain11_in_quad), std::move(strain22_in_quad), std::move(strain12_in_quad)};
 }
 
