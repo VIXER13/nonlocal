@@ -6,8 +6,8 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<std::floating_point T, std::integral I>
-evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::mesh_2d<T, I>& mesh, 
+template<std::floating_point T>
+evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::mesh_2d<T>& mesh, 
                                                                   const raw_mechanical_parameters<T>& parameters,
                                                                   const std::vector<T>& delta_temperature = {}) {
     evaluated_mechanical_parameters<T> result;

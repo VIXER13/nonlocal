@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Eigen/Sparse>
+#include <metamath/linear/linear.hpp>
 
 #include <array>
 
@@ -12,23 +12,20 @@ enum class matrix_part : size_t {
     NO
 };
 
-template<class T, class I>
+template<class T>
 class finite_element_matrix final {
-    std::array<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, 2> _part;
+    std::array<metamath::linear::sparse_matrix<T>, 2> _part;
 
 public:
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& inner() noexcept { return _part[size_t(matrix_part::INNER)]; }
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& bound() noexcept { return _part[size_t(matrix_part::BOUND)]; }
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& inner() const noexcept { return _part[size_t(matrix_part::INNER)]; }
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& bound() const noexcept { return _part[size_t(matrix_part::BOUND)]; }
+    metamath::linear::sparse_matrix<T>& inner() noexcept { return _part[size_t(matrix_part::INNER)]; }
+    metamath::linear::sparse_matrix<T>& bound() noexcept { return _part[size_t(matrix_part::BOUND)]; }
+    const metamath::linear::sparse_matrix<T>& inner() const noexcept { return _part[size_t(matrix_part::INNER)]; }
+    const metamath::linear::sparse_matrix<T>& bound() const noexcept { return _part[size_t(matrix_part::BOUND)]; }
 
-    void clear() {
-        _part.front() = Eigen::SparseMatrix<T, Eigen::RowMajor, I>{};
-        _part.back() = Eigen::SparseMatrix<T, Eigen::RowMajor, I>{};
-    }
+    void clear() { _part = {}; }
 
-    Eigen::SparseMatrix<T, Eigen::RowMajor, I>& operator[](const matrix_part part) { return _part[size_t(part)]; }
-    const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& operator[](const matrix_part part) const { return _part[size_t(part)]; }
+    metamath::linear::sparse_matrix<T>& operator[](const matrix_part part) { return _part[size_t(part)]; }
+    const metamath::linear::sparse_matrix<T>& operator[](const matrix_part part) const { return _part[size_t(part)]; }
 };
 
 }

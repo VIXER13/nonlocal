@@ -11,7 +11,6 @@
 namespace {
 
 using T = double;
-using I = int64_t;
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace unit_tests;
@@ -29,12 +28,12 @@ const T Coeff = T{1} / std::log(T{1} / Norm_Radius);
 
 const suite<"thermal_isotropic_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
-    const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
+    const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const parameters_2d<T> parameters = {{"DEFAULT", {.physical = {.conductivity = T{1}}}}};
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Inner_Temperature; });
     boundaries_conditions["Outer"] = std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Outer_Temperature; });
-    const auto solution = stationary_heat_equation_solver_2d<I>(mesh, parameters, boundaries_conditions, {});
+    const auto solution = stationary_heat_equation_solver_2d(mesh, parameters, boundaries_conditions, {});
 
     "temperature"_test = [&mesh, &solution] {
         static constexpr auto Expected_Temperature = [](const std::array<T, 2>& point) {

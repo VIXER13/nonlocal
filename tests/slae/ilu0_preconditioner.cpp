@@ -1,6 +1,6 @@
 #include "create_matrix.hpp"
 
-#include <solvers/slae_metamath_powered/ilu0_preconditioner.hpp>
+#include <solvers/slae/ilu0_preconditioner.hpp>
 
 #include <boost/ut.hpp>
 

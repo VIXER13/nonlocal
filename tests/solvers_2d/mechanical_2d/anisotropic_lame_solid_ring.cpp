@@ -11,7 +11,6 @@
 namespace {
 
 using T = double;
-using I = int64_t;
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace unit_tests;
@@ -32,7 +31,7 @@ constexpr T nu_fr = Ef * nu_rf / Er;
     
 const suite<"anisotropic_lame_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
-    const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
+    const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const anisotropic_elastic_parameters<T> elastic = {
         .main_parameters = {
             .young_modulus = {Er, Ef},
@@ -59,7 +58,7 @@ const suite<"anisotropic_lame_solid_ring"> _ = [] {
         std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return -Outer_Pressure * std::cos(std::atan2(point[Y], point[X])); }),
         std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return -Outer_Pressure * std::sin(std::atan2(point[Y], point[X])); })
     };
-    const auto solution = equilibrium_equation<I>(mesh, parameters, boundaries_conditions);
+    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions);
 
     const T k = std::sqrt(Ef / Er);
     const T Delta = (T{1} - nu_rf * nu_fr) / (std::pow(Outer_Radius, 2 * k) - std::pow(Inner_Radius, 2 * k));

@@ -2,16 +2,16 @@
 
 #include "thermal_boundary_conditions_2d.hpp"
 
+#include <metamath/linear/linear.hpp>
 #include <solvers/solver_2d/base/solvers_utils.hpp>
-
-#include <Eigen/Sparse>
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T, class I, class Matrix_Index>
-void convection_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>& K,
-                             const mesh::mesh_2d<T, I>& mesh,
-                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions) {
+template<class T>
+void convection_condition_2d(metamath::linear::sparse_matrix<T>& K,
+                             const mesh::mesh_2d<T>& mesh,
+                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+                             const std::vector<bool>& is_inner_nodes) {
     static constexpr auto integrate = [](const convection_2d<T>& condition, const auto& element, const size_t i, const size_t j) {
         T integral = T{0};
         const auto& [mesh, be] = element;
@@ -22,11 +22,11 @@ void convection_condition_2d(Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Inde
     };
 
     utils::run_by_boundaries<convection_2d>(mesh.container(), boundaries_conditions,
-        [&K, &mesh, process_nodes = mesh.process_nodes()](const convection_2d<T>& condition, const size_t be, const size_t row, const size_t) {
-            if (row >= process_nodes.front() && row <= process_nodes.back())
+        [&K, &mesh, &is_inner_nodes, process_nodes = mesh.process_nodes()](const convection_2d<T>& condition, const size_t be, const size_t row, const size_t) {
+            if (row >= process_nodes.front() && row <= process_nodes.back() && is_inner_nodes[row])
                 for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})
-                    if (const size_t col = mesh.container().node_number(be, j); col >= row)
-                        K.coeffRef(row, col) += integrate(condition, mesh.container().element_1d_data(be), mesh.global_to_local(be, row), j);
+                    if (const size_t col = mesh.container().node_number(be, j); col >= row && is_inner_nodes[col])
+                        K(row, col) += integrate(condition, mesh.container().element_1d_data(be), mesh.global_to_local(be, row), j);
         });
 }
 

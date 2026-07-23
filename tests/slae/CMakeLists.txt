@@ -23,6 +23,6 @@ target_link_libraries(
     slae_test_lib
     PRIVATE #
         linear_lib
-        slae_solver_metamath_powered_lib
+        slae_solver_lib
         Boost::ut
 )

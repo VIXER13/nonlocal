@@ -1,17 +1,15 @@
-    #pragma once
+#pragma once
 
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <solvers/solver_2d/mechanical/mechanical_parameters_2d.hpp>
 
-#include <Eigen/Dense>
-
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T, class I>
+template<class T>
 class _temperature_condition final {
-    const mesh::mesh_2d<T, I>& _mesh;
+    const mesh::mesh_2d<T>& _mesh;
 
-    explicit _temperature_condition(const mesh::mesh_2d<T, I>& mesh) : _mesh{mesh} {}
+    explicit _temperature_condition(const mesh::mesh_2d<T>& mesh) : _mesh{mesh} {}
 
     template<class Hooke, class Thermal_Strain>
     std::array<T, 2> operator()(const Hooke& hooke_matrix, 
@@ -62,22 +60,20 @@ class _temperature_condition final {
     }
 
 public:
-    template<class U, class J>
-    friend void temperature_condition(Eigen::Matrix<U, Eigen::Dynamic, 1>& f,
-                                      const mesh::mesh_2d<U, J>& mesh,
+    template<class U>
+    friend void temperature_condition(std::vector<U>& f, const mesh::mesh_2d<U>& mesh,
                                       const evaluated_mechanical_parameters<U>& parameters);
 };
 
-template<class T, class I>
-void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
-                           const mesh::mesh_2d<T, I>& mesh,
+template<class T>
+void temperature_condition(std::vector<T>& f, const mesh::mesh_2d<T>& mesh,
                            const evaluated_mechanical_parameters<T>& parameters) {
-    const _temperature_condition<T, I> integrator{mesh};
+    const _temperature_condition<T> integrator{mesh};
     const auto process_node = mesh.process_nodes();
 #pragma omp parallel for default(none) shared(f, mesh, parameters, integrator, process_node) schedule(dynamic)
     for(size_t node = process_node.front(); node < *process_node.end(); ++node) {
         std::array<T, 2> integral = {};
-        for(const I eL : mesh.elements(node)) {
+        for(const size_t eL : mesh.elements(node)) {
             const auto& group = mesh.container().group(eL);
             const auto& [model, physical] = parameters.at(group);
             std::visit(metamath::types::visitor{
@@ -86,7 +82,7 @@ void temperature_condition(Eigen::Matrix<T, Eigen::Dynamic, 1>& f,
                     using namespace metamath::operators;
                     const size_t iL = mesh.global_to_local(eL, node);
                     if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
-                        for(const I eNL : mesh.neighbours(eL))
+                        for(const size_t eNL : mesh.neighbours(eL))
                             integral += integrator(hooke, thermal_strain, model.influence, eL, eNL, iL);
                         integral *= nonlocal::nonlocal_weight(model.local_weight);
                     }

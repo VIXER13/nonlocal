@@ -2,99 +2,105 @@
 
 #include "iterative_solver_base.hpp"
 
+#include <logger/logger.hpp>
+
 namespace nonlocal::slae {
 
-template<class T, class I>
-class stable_biconjugate_gradient final : public iterative_solver_base<T, I> {
-    using _base = iterative_solver_base<T, I>;
+template<class T, std::integral I = uint32_t, std::integral J = size_t>
+class stable_biconjugate_gradient final : public iterative_solver_base<T, I, J> {
+    using _base = iterative_solver_base<T, I, J>;
     using _base::_iterations;
     using _base::_residual;
 
 public:
+    using typename _base::entity_t;
+    using typename _base::floating_point_t;
     using _base::matrix;
     using _base::tolerance;
     using _base::max_iterations;
     using _base::preconditioner;
-    using _base::init_preconditioner;
     using _base::processes_ranges;
 
-    explicit stable_biconjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix);
+    explicit stable_biconjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix)
+        : _base{matrix} {}
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> solve(
-        const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
-        const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0 = std::nullopt) const override;
-};
+    std::vector<entity_t> solve(const std::vector<entity_t>& b,
+                                const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const override {
+        using namespace metamath::linear;
+        using metamath::operators::operator+;
+        using metamath::operators::operator-;
+        using metamath::operators::operator*;
+        using metamath::operators::operator+=;
+        using metamath::operators::operator-=;
+        using metamath::operators::operator*=;
+        logger::info() << "Stable BiConjugate gradient slae solver started" << std::endl;
 
-template<class T, class I>
-stable_biconjugate_gradient<T, I>::stable_biconjugate_gradient(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix)
-    : _base{matrix} {}
+        const J n = matrix().cols();
+        std::vector<entity_t> x = x0.template value_or(std::vector<entity_t>(matrix().cols(), entity_t{}));
+        std::vector<entity_t> r = matrix() * x;
+        r *= floating_point_t{-1};
+        r += b;
+        std::vector<entity_t> r0 = r;
+        std::vector<entity_t> v(n, entity_t{});
+        std::vector<entity_t> p(n, entity_t{});
+        std::vector<entity_t> y(n, entity_t{});
+        std::vector<entity_t> z(n, entity_t{});
+        std::vector<entity_t> s(n, entity_t{});
+        std::vector<entity_t> t(n, entity_t{});
+        floating_point_t r0_sqnorm = powered_norm(r0);
+        floating_point_t rhs_norm = norm(b);
+        if(rhs_norm == 0) {
+            x = std::vector<entity_t>(n, entity_t{});
+            return x;
+        }
+        auto rho   = floating_point_t{1};
+        auto alpha = floating_point_t{1};
+        auto w     = floating_point_t{1};
+        const auto eps2 = metamath::functions::power<2>(std::numeric_limits<floating_point_t>::epsilon());
+        uintmax_t restarts = 0;
 
-template<class T, class I>
-Eigen::Matrix<T, Eigen::Dynamic, 1> stable_biconjugate_gradient<T, I>::solve(
-    const Eigen::Matrix<T, Eigen::Dynamic, 1>& b,
-    const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0) const {
-    logger::info() << "Stable BiConjugate gradient slae solver started" << std::endl;
+        _iterations = 0;
+        _residual = norm(r) / rhs_norm;
+        while (_iterations < max_iterations() && _residual > tolerance()) {
+            const floating_point_t rho_old = rho;
+            rho = scalar_product(r0, r);
+            if (std::abs(rho) < eps2) {
+                // The new residual vector became too orthogonal to the arbitrarily chosen direction r0
+                // Let's restart with a new r0:
+                r  = matrix() * x;
+                r *= floating_point_t{-1};
+                r += b;
+                r0 = r;
+                rho = powered_norm(r);
+                r0_sqnorm = rho;
+                if(restarts++ == 0)
+                    _iterations = 0;
+            }
 
-    const I n = matrix().cols();
-    Eigen::Matrix<T, Eigen::Dynamic, 1> x = x0.template value_or(Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(n));
-    Eigen::Matrix<T, Eigen::Dynamic, 1> r  = b - matrix() * x;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> r0 = r;
-    Eigen::Matrix<T, Eigen::Dynamic, 1> v = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(n);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> p = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(n);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> y(n);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> z(n);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> s(n);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> t(n);
-    T r0_sqnorm = r0.squaredNorm();
-    T rhs_sqnorm = b.squaredNorm();
-    if(rhs_sqnorm == 0) {
-        x.setZero();
-        return x;
-    }
-    T rho   = 1;
-    T alpha = 1;
-    T w     = 1;
-    T eps2 = std::numeric_limits<T>::epsilon() * std::numeric_limits<T>::epsilon() * r0_sqnorm;
-    I restarts = 0;
+            // TODO: optimize vector operations
+            const floating_point_t beta = (rho / rho_old) * (alpha / w);
+            p = r + beta * (p - w * v);
+            y = preconditioner().solve(p);
+            v = matrix() * y;
 
-    _iterations = 0;
-    _residual = std::sqrt(r.squaredNorm()) / rhs_sqnorm;
-    while (_iterations < max_iterations() && _residual > tolerance()) {
-        const T rho_old = rho;
-        rho = r0.dot(r);
-        if (std::abs(rho) < eps2) {
-            // The new residual vector became too orthogonal to the arbitrarily chosen direction r0
-            // Let's restart with a new r0:
-            r  = b - matrix() * x;
-            r0 = r;
-            rho = r.squaredNorm();
-            r0_sqnorm = rho;
-            if(restarts++ == 0)
-                _iterations = 0;
+            alpha = rho / scalar_product(r0, v);
+            s = r - alpha * v;
+            z = preconditioner().solve(s);
+            t = matrix() * z;
+
+            const floating_point_t t_squared_norm = powered_norm(t);
+            w = t_squared_norm > floating_point_t{0} ? scalar_product(t, s) / t_squared_norm : floating_point_t{0};
+            x += alpha * y + w * z;
+            r = s - w * t;
+
+            _residual = norm(r) / rhs_norm;
+            ++_iterations;
         }
 
-        const T beta = (rho / rho_old) * (alpha / w);
-        p = r + beta * (p - w * v);
-        y = preconditioner().solve(p);
-        v.noalias() = matrix() * y;
-
-        alpha = rho / r0.dot(v);
-        s = r - alpha * v;
-        z = preconditioner().solve(s);
-        t.noalias() = matrix() * z;
-
-        const T t_squared_norm = t.squaredNorm();
-        w = t_squared_norm > T{0} ? t.dot(s) / t_squared_norm : T{0};
-        x += alpha * y + w * z;
-        r = s - w * t;
-
-        _residual = std::sqrt(r.squaredNorm() / rhs_sqnorm);
-        ++_iterations;
+        logger::info() << "iterations = " << _iterations << '\n'
+                       << "residual = "   << _residual << std::endl;
+        return x;
     }
-
-    logger::info() << "iterations = " << _iterations << '\n'
-                   << "residual = "   << _residual << std::endl;
-    return x;
-}
+};
 
 }

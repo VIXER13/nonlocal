@@ -11,7 +11,6 @@
 namespace {
 
 using T = double;
-using I = int64_t;
 using namespace boost::ut;
 using namespace nonlocal;
 using namespace unit_tests;
@@ -22,7 +21,7 @@ constexpr T Expected_Error = T{0};
     
 const suite<"isotropic_lame_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
-    const auto mesh = std::make_shared<mesh_2d<T, I>>(stream, mesh_format::SU2);
+    const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const raw_mechanical_parameters<T> parameters = { 
         {"DEFAULT", { .physical = { .elastic = isotropic_elastic_parameters<T>{ .young_modulus = 350., .poissons_ratio = 0.25 } } }}
     };
@@ -45,7 +44,7 @@ const suite<"isotropic_lame_solid_ring"> _ = [] {
         std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return -Outer_Pressure * point[X] / std::hypot(point[X], point[Y]); }),
         std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return -Outer_Pressure * point[Y] / std::hypot(point[X], point[Y]); })
     };
-    const auto solution = equilibrium_equation<I>(mesh, parameters, boundaries_conditions);
+    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions);
 
     "displacement_x"_test = [&mesh, &solution] {
         static constexpr auto Expected_Displacement_X = [](const std::array<T, 2>& point) {

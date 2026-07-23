@@ -64,7 +64,7 @@ std::array<std::vector<T>, 2> gradient_in_qnodes(const mesh_2d<T, I>& mesh, cons
 
 template<class T, class I, class Vector>
 std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
-    if (mesh.container().nodes_count() != size_t(x.size()))
+    if (mesh.container().nodes_count() > size_t(x.size()))
         throw std::logic_error{"Cannot approximate quadratures nodes values because vector size does not match number of mesh nodes."};
     const size_t quadratures_count = mesh.quad_shift(mesh.container().elements_2d_count());
     std::vector<T> values(quadratures_count, T{0});

@@ -10,8 +10,8 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<std::floating_point T, std::integral I>
-problem_settings init_problem_settings(const mesh::mesh_container_2d<T, I>& mesh,
+template<std::floating_point T>
+problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh,
                                        const raw_mechanical_parameters<T>& parameters,
                                        const mechanical_boundaries_conditions_2d<T>& boundaries_conditions) {
     static constexpr auto is_nonconstant_parameters = [](const auto& parameter) { return !is_constant(parameter.physical.elastic); };

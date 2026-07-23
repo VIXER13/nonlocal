@@ -5,6 +5,7 @@
 
 #include <logger/logger.hpp>
 
+#include <concepts>
 #include <filesystem>
 #include <fstream>
 #include <ranges>
@@ -15,10 +16,8 @@ namespace nonlocal::mesh {
 
 constexpr std::string_view Default_Group_Name = "DEFAULT";
 
-template<class T, class I>
+template<std::floating_point T, std::integral I = uint32_t>
 class mesh_container_2d final {
-    static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
-    static_assert(std::is_integral_v<I>, "The I must be integral.");
 
     template<class U, class J, mesh_format Format>
     friend class mesh_parser;
@@ -97,7 +96,7 @@ public:
     void renumbering(const std::vector<size_t>& permutation);
 };
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 template<class Vector>
 T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q, const Vector& x) const {
     T approximation = T{0};
@@ -107,7 +106,7 @@ T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q,
     return approximation;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
     using namespace metamath::operators;
@@ -117,7 +116,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size
     return coord;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const size_t q) const {
     std::array<T, 2> J = {};
     using namespace metamath::operators;
@@ -127,7 +126,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const s
     return J;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
     std::array<T, 2> coord = {};
     using namespace metamath::operators;
@@ -138,7 +137,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
     return coord;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
     using namespace metamath::operators;
@@ -147,7 +146,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size
     return coord;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 metamath::linear::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::jacobi_matrix(const size_t q) const {
     metamath::linear::square_matrix<T, 2> J = {};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()}) {
@@ -159,7 +158,7 @@ metamath::linear::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::
     return J;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 mesh_container_2d<T, I>::mesh_container_2d(const std::filesystem::path& path_to_mesh) {
     logger::info() << "Read mesh: " << path_to_mesh << std::endl;
     if (!std::filesystem::is_regular_file(path_to_mesh))
@@ -171,7 +170,7 @@ mesh_container_2d<T, I>::mesh_container_2d(const std::filesystem::path& path_to_
         throw std::domain_error{"Unable to read mesh with extension " + extension};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 template<class Stream>
 mesh_container_2d<T, I>::mesh_container_2d(Stream& stream, const mesh_format format) {
     logger::info() << "Reading mesh from stream." << std::endl;
@@ -181,7 +180,7 @@ mesh_container_2d<T, I>::mesh_container_2d(Stream& stream, const mesh_format for
         throw std::domain_error{"Unsupported mesh format."};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::string& mesh_container_2d<T, I>::group(const size_t element) const {
     if (element >= _elements.size())
         throw std::domain_error{"The group was not found because the element number is greater than the total number of elements."};
@@ -191,122 +190,122 @@ const std::string& mesh_container_2d<T, I>::group(const size_t element) const {
     throw std::domain_error{"The group could not be determined. Unknown element number."};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_1d() const noexcept {
     return _groups_1d;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::unordered_set<std::string>& mesh_container_2d<T, I>::groups_2d() const noexcept {
     return _groups_2d;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::groups_1d_count() const noexcept {
     return groups_1d().size();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::groups_2d_count() const noexcept {
     return groups_2d().size();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::elements_count(const std::string& group_name) const {
     return _elements_groups.at(group_name).size();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::elements_1d_count() const {
     return _elements.size() - elements_2d_count();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::elements_2d_count() const {
     return _elements_2d_count;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements(const std::string& group_name) const {
     return _elements_groups.at(group_name);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements_1d() const noexcept {
     return {elements_2d_count(), _elements.size()};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements_2d() const noexcept {
     return {0u, elements_2d_count()};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::nodes_count() const noexcept {
     return _nodes.size();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::nodes_count(const size_t element) const {
     return nodes(element).size();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 size_t mesh_container_2d<T, I>::node_number(const size_t element, const size_t i) const {
     return nodes(element)[i];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::nodes() const noexcept {
     return {0u, nodes_count()};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::vector<I>& mesh_container_2d<T, I>::nodes(const size_t element) const {
     return _elements[element];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const std::array<T, 2>& mesh_container_2d<T, I>::node_coord(const size_t node) const {
     return _nodes[node];
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const elements_set<T>& mesh_container_2d<T, I>::get_elements_set() const {
     return _elements_set;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 element_1d_t mesh_container_2d<T, I>::element_type_1d(const size_t element) const {
     return element_1d_t(_elements_types[element]);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 element_2d_t mesh_container_2d<T, I>::element_type_2d(const size_t element) const {
     return element_2d_t(_elements_types[element]);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const element_integrate_1d<T>& mesh_container_2d<T, I>::element_1d(const size_t element) const {
     return get_elements_set().element_1d(element_type_1d(element));
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 const element_integrate_2d<T>& mesh_container_2d<T, I>::element_2d(const size_t element) const {
     return get_elements_set().element_2d(element_type_2d(element));
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 mesh_container_2d<T, I>::element_data_1d mesh_container_2d<T, I>::element_1d_data(const size_t element) const {
     return {.mesh = *this, .element = element};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 mesh_container_2d<T, I>::element_data_2d mesh_container_2d<T, I>::element_2d_data(const size_t element) const {
     return {.mesh = *this, .nodes = nodes(element), .element = element_2d(element)};
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_container_2d<T, I>::clear() {
     _elements_set = {};
     _nodes.clear();
@@ -321,7 +320,7 @@ void mesh_container_2d<T, I>::clear() {
     _elements_2d_count = 0u;
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 template<mesh_format Format, class Stream>
 void mesh_container_2d<T, I>::read_from_stream(Stream& stream) {
     clear();
@@ -329,7 +328,7 @@ void mesh_container_2d<T, I>::read_from_stream(Stream& stream) {
     parser.parse(stream);
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation) {
     if (permutation.size() != nodes_count())
         throw std::runtime_error{"Permutation size does not match the mesh nodes number."};

@@ -10,19 +10,19 @@
 
 namespace nonlocal {
 
-template<std::floating_point T, std::integral I>
-void save_solution(const solver_2d::thermal::heat_equation_solution_2d<T, I>& solution, 
+template<std::floating_point T>
+void save_solution(const solver_2d::thermal::heat_equation_solution_2d<T>& solution, 
                    config::save_data save,
                    const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0) // Only the master process saves data
         return;
     if (step.has_value())
         logger::info() << "step = " << *step << std::endl;
-    save_csv<T, I>(solution, std::nullopt, save, step);
-    save_vtk<T, I>(solution, std::nullopt, save, step);
+    save_csv<T>(solution, std::nullopt, save, step);
+    save_vtk<T>(solution, std::nullopt, save, step);
 }
 
-template<std::floating_point T, std::signed_integral I>
+template<std::floating_point T>
 solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
     const solver_2d::thermal::parameters_2d<T>& parameters,
@@ -41,12 +41,12 @@ solver_2d::thermal::heat_equation_solution_2d<T> solve_thermal_2d_problem(
         .max_iterations = 40,
         .energy = auxiliary.energy
     };
-    return solver_2d::thermal::stationary_heat_equation_solver_2d<I>( 
+    return solver_2d::thermal::stationary_heat_equation_solver_2d( 
         mesh, parameters, boundaries_conditions, auxiliary_data
     );
 }
 
-template<std::floating_point T, std::signed_integral I>
+template<std::floating_point T>
 void solve_thermal_2d_problem(
     std::shared_ptr<mesh::mesh_2d<T>>& mesh,
     const solver_2d::thermal::parameters_2d<T>& parameters,
@@ -54,7 +54,7 @@ void solve_thermal_2d_problem(
     const config::thermal_auxiliary_data_2d<T>& auxiliary,
     const config::time_data<T>& time,
     const config::save_data& save) {
-    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T, uint32_t, I> solver{mesh, time.time_step};
+    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T> solver{mesh, time.time_step};
     const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
     solver.compute(parameters, boundaries_conditions,
         [init_dist = auxiliary.initial_distribution](const std::array<T, 2>& x) constexpr noexcept { return init_dist; });

@@ -35,11 +35,13 @@ struct problem_settings final {
 };
 
 inline void log_problem_settings(const problem_settings& settings) {
-    logger::info() << (settings.is_symmetric() ? "Symmetric problem" : "Asymmetrical problem") << std::endl;
+    std::string problem_type = settings.is_nonlocal() ? "Nonlocal " : "Local ";
+    problem_type += settings.is_nonlinear() ? "nonlinear " : "linear ";
+    problem_type += settings.is_symmetric() ? "symmetric " : "asymmetrical ";
     if (settings.is_neumann)
-        logger::info() << "Neuman problem" << std::endl;
-    if (settings.is_nonlinear())
-        logger::info() << "Nonlinear problem" << std::endl;
+        problem_type += "Neumann ";
+    problem_type += "problem";
+    logger::info() << problem_type << std::endl;
     if (settings.is_solution_dependent)
         throw std::domain_error{"Parametrically nonlinear problems are not supported at the moment."};
 }

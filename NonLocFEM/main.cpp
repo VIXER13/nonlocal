@@ -12,9 +12,8 @@ int main(int argc, char** argv) {
         MPI_Init(&argc, &argv);
 #endif
         using T = double;
-        using I = int64_t;
         logger::info() << "NonLocFEM started." << std::endl;
-        nonlocal::determine_problem<T, I>(nonlocal::config::parse_json(std::filesystem::path{argv[1]}));
+        nonlocal::determine_problem<T>(nonlocal::config::parse_json(std::filesystem::path{argv[1]}));
         logger::info() << "NonLocFEM finished." << std::endl;
     } catch (const std::exception& e) {
         logger::error() << e.what() << std::endl;

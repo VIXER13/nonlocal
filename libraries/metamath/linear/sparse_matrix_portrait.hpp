@@ -79,7 +79,7 @@ struct sparse_matrix_portrait final {
     void sort_indices() {
         if (!shifts.empty()) {
 #pragma omp parallel for schedule(dynamic)
-            for(const size_t row : std::ranges::iota_view{0u, rows()})
+            for (size_t row = 0; row < rows(); ++row)
                 std::sort(&indices[shifts[row]], &indices[shifts[row + 1]]);
         }
     }
