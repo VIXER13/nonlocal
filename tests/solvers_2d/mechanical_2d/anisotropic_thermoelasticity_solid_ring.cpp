@@ -1,3 +1,5 @@
+#include "coordinate_converter.hpp"
+
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <mesh/mesh_2d/mesh_container_2d_utils.hpp>
@@ -16,8 +18,6 @@ using namespace nonlocal;
 using namespace unit_tests;
 using namespace mesh;
 using namespace solver_2d::mechanical;
-
-enum : size_t {RR, FF, RF};
 
 constexpr T Expected_Error = T{0};
 constexpr T Inner_Radius = T{0.5};
@@ -86,99 +86,30 @@ const suite<"anisotropic_thermoelasticity_solid_ring"> _ = [] {
         return calc_stress<T>(elastic.hooke(Zero_Angle_Point), strain - Temperature_Strain);
     };
 
-    "displacement_x"_test = [&mesh, &solution, &Expected_Displacement_R] {
-        const auto Expected_Displacement_X = [&Expected_Displacement_R](const std::array<T, 2>& point) {
-            return Expected_Displacement_R(point) * std::cos(std::atan2(point[Y], point[X]));
+    "displacement"_test = [&mesh, &solution, &Expected_Displacement_R] {
+        const auto Expected_Displacement = [&Expected_Displacement_R](const std::array<T, 2>& point) {
+            return polar_to_cartesian(Expected_Displacement_R(point), point);
         };
         static constexpr T Epsilon = 4.7e-4;
-        const T error = norm_error(solution.displacement()[X], mesh->container(), Expected_Displacement_X);
+        const T error = norm_error(solution.displacement(), mesh->container(), Expected_Displacement);
         expect(approx(error, Expected_Error, Epsilon));
     };
 
-    "displacement_y"_test = [&mesh, &solution, &Expected_Displacement_R] {
-        const auto Expected_Displacement_Y = [&Expected_Displacement_R](const std::array<T, 2>& point) {
-            return Expected_Displacement_R(point) * std::sin(std::atan2(point[Y], point[X]));
-        };
-        static constexpr T Epsilon = 4.7e-4;
-        const T error = norm_error(solution.displacement()[Y], mesh->container(), Expected_Displacement_Y);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "strain_xx"_test = [&mesh, &solution, &Expected_Polar_Strain] {
-        const auto Expected_Strain_XX = [&Expected_Polar_Strain](const std::array<T, 2>& point) {
-            const auto polar_strain = Expected_Polar_Strain(point);
-            const T angle = std::atan2(point[Y], point[X]);
-            const T cos = std::cos(angle);
-            const T sin = std::sin(angle);
-            return polar_strain[RR] * cos * cos + polar_strain[FF] * sin * sin - 2 * polar_strain[RF] * sin * cos;
+    "strain"_test = [&mesh, &solution, &Expected_Polar_Strain] {
+        const auto Expected_Strain = [&Expected_Polar_Strain](const std::array<T, 2>& point) {
+            return polar_to_cartesian(Expected_Polar_Strain(point), point);
         };
         static constexpr T Epsilon = 3.5e-2;
-        const T error = norm_error(solution.strain()[XX], mesh->container(), Expected_Strain_XX);
+        const T error = norm_error(solution.strain(), mesh->container(), Expected_Strain);
         expect(approx(error, Expected_Error, Epsilon));
     };
 
-    "strain_yy"_test = [&mesh, &solution, &Expected_Polar_Strain] {
-        const auto Expected_Strain_YY = [&Expected_Polar_Strain](const std::array<T, 2>& point) {
-            const auto polar_strain = Expected_Polar_Strain(point);
-            const T angle = std::atan2(point[Y], point[X]);
-            const T cos = std::cos(angle);
-            const T sin = std::sin(angle);
-            return polar_strain[RR] * sin * sin + polar_strain[FF] * cos * cos + 2 * polar_strain[RF] * sin * cos;
-        };
-        static constexpr T Epsilon = 3.5e-2;
-        const T error = norm_error(solution.strain()[YY], mesh->container(), Expected_Strain_YY);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "strain_xy"_test = [&mesh, &solution, &Expected_Polar_Strain] {
-        const auto Expected_Strain_XY = [&Expected_Polar_Strain](const std::array<T, 2>& point) {
-            const auto polar_strain = Expected_Polar_Strain(point);
-            const T angle = std::atan2(point[Y], point[X]);
-            const T cos = std::cos(angle);
-            const T sin = std::sin(angle);
-            return (polar_strain[RR] - polar_strain[FF]) * sin * cos + polar_strain[RF] * (cos * cos - sin * sin);
-        };
-        static constexpr T Epsilon = 4.5e-2;
-        const T error = norm_error(solution.strain()[XY], mesh->container(), Expected_Strain_XY);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "stress_xx"_test = [&mesh, &solution, &Expected_Polar_Stress] {
-        const auto Expected_Stress_XX = [&Expected_Polar_Stress](const std::array<T, 2>& point) {
-            const auto polar_stress = Expected_Polar_Stress(point);
-            const T angle = std::atan2(point[Y], point[X]);
-            const T cos = std::cos(angle);
-            const T sin = std::sin(angle);
-            return polar_stress[RR] * cos * cos + polar_stress[FF] * sin * sin - 2 * polar_stress[RF] * sin * cos;
+    "stress"_test = [&mesh, &solution, &Expected_Polar_Stress] {
+        const auto Expected_Stress = [&Expected_Polar_Stress](const std::array<T, 2>& point) {
+            return polar_to_cartesian(Expected_Polar_Stress(point), point);
         };
         static constexpr T Epsilon = 6e-2;
-        const T error = norm_error(solution.stress()[XX], mesh->container(), Expected_Stress_XX);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "stress_yy"_test = [&mesh, &solution, &Expected_Polar_Stress] {
-        const auto Expected_Stress_YY = [&Expected_Polar_Stress](const std::array<T, 2>& point) {
-            const auto polar_stress = Expected_Polar_Stress(point);
-            const T angle = std::atan2(point[Y], point[X]);
-            const T cos = std::cos(angle);
-            const T sin = std::sin(angle);
-            return polar_stress[RR] * sin * sin + polar_stress[FF] * cos * cos + 2 * polar_stress[RF] * sin * cos;
-        };
-        static constexpr T Epsilon = 6e-2;
-        const T error = norm_error(solution.stress()[YY], mesh->container(), Expected_Stress_YY);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "stress_xy"_test = [&mesh, &solution, &Expected_Polar_Stress] {
-        const auto Expected_Stress_XY = [&Expected_Polar_Stress](const std::array<T, 2>& point) {
-            const auto polar_stress = Expected_Polar_Stress(point);
-            const T angle = std::atan2(point[Y], point[X]);
-            const T cos = std::cos(angle);
-            const T sin = std::sin(angle);
-            return (polar_stress[RR] - polar_stress[FF]) * sin * cos + polar_stress[RF] * (cos * cos - sin * sin);
-        };
-        static constexpr T Epsilon = 6.8e-2;
-        const T error = norm_error(solution.stress()[XY], mesh->container(), Expected_Stress_XY);
+        const T error = norm_error(solution.stress(), mesh->container(), Expected_Stress);
         expect(approx(error, Expected_Error, Epsilon));
     };
 };

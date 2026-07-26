@@ -17,26 +17,25 @@ void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
     if (thermal_solution) {
         data.push_back({"temperature", thermal_solution->temperature()});
         // TODO: rework csv saver
-        std::vector<T> flux_x(thermal_solution->flux().size());
-        std::vector<T> flux_y(thermal_solution->flux().size());
-        for (size_t i = 0; i < thermal_solution->flux().size(); ++i) {
-            flux_x[i] = thermal_solution->flux()[i][X];
-            flux_y[i] = thermal_solution->flux()[i][Y];
-        }
-        data.push_back({"flux_x", flux_x});
-        data.push_back({"flux_y", flux_y});
+        // std::vector<T> flux_x(thermal_solution->flux().size());
+        // std::vector<T> flux_y(thermal_solution->flux().size());
+        // for (size_t i = 0; i < thermal_solution->flux().size(); ++i) {
+        //     flux_x[i] = thermal_solution->flux()[i][X];
+        //     flux_y[i] = thermal_solution->flux()[i][Y];
+        // }
+        // data.push_back({"flux_x", flux_x});
+        // data.push_back({"flux_y", flux_y});
     }
     if (mechanical_solution) {
-        data.push_back({"displacement_x", mechanical_solution->displacement()[X]});
-        data.push_back({"displacement_y", mechanical_solution->displacement()[Y]});
-        if (mechanical_solution->is_strain_and_stress_calculated()) {
-            data.push_back({"strain_11", mechanical_solution->strain()[0]});
-            data.push_back({"strain_22", mechanical_solution->strain()[1]});
-            data.push_back({"strain_12", mechanical_solution->strain()[2]});
-            data.push_back({"stress_11", mechanical_solution->stress()[0]});
-            data.push_back({"stress_22", mechanical_solution->stress()[1]});
-            data.push_back({"stress_12", mechanical_solution->stress()[2]});
-        }
+        // data.push_back({"displacement_x", mechanical_solution->displacement()[X]});
+        // data.push_back({"displacement_y", mechanical_solution->displacement()[Y]});
+        
+        // // data.push_back({"strain_11", mechanical_solution->strain()[0]});
+        // // data.push_back({"strain_22", mechanical_solution->strain()[1]});
+        // // data.push_back({"strain_12", mechanical_solution->strain()[2]});
+        // // data.push_back({"stress_11", mechanical_solution->stress()[0]});
+        // // data.push_back({"stress_22", mechanical_solution->stress()[1]});
+        // // data.push_back({"stress_12", mechanical_solution->stress()[2]});
     }
     if (data.empty())
         throw std::logic_error{"Nothig to save."};
@@ -67,8 +66,7 @@ void save_vtk(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
             mesh::utils::save_vectors_to_vtk(vtk, "flux", thermal_solution->flux());
     }
     if (mechanical_solution) {
-        mesh::utils::save_scalars_to_vtk(vtk, "displacement_x", mechanical_solution->displacement()[X]);
-        mesh::utils::save_scalars_to_vtk(vtk, "displacement_y", mechanical_solution->displacement()[Y]);
+        mesh::utils::save_vectors_to_vtk(vtk, "displacement", mechanical_solution->displacement());
         if (mechanical_solution->is_strain_and_stress_calculated()) {
             mesh::utils::save_tensors_to_vtk(vtk, "strain", mechanical_solution->strain());
             mesh::utils::save_tensors_to_vtk(vtk, "stress", mechanical_solution->stress());

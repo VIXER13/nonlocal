@@ -18,6 +18,8 @@ using namespace mesh;
 using namespace solver_2d::mechanical;
 
 constexpr T Expected_Error = T{0};
+
+// TODO: Add analytical solution for the isotropic Lame solid ring problem
     
 const suite<"isotropic_lame_solid_ring"> _ = [] {
     std::stringstream stream{solid_ring_su2_data};
@@ -46,101 +48,49 @@ const suite<"isotropic_lame_solid_ring"> _ = [] {
     };
     const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions);
 
-    "displacement_x"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Displacement_X = [](const std::array<T, 2>& point) {
+    "displacement"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Displacement = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
             const T hypot2 = x * x + y * y;
-            return x * (T{20} + T{3} * hypot2) / (T{420000} * hypot2);
+            const T value = (T{20} + T{3} * hypot2) / (T{420000} * hypot2);
+            return std::array{x * value, y * value};
         };
         static constexpr T Epsilon = 1.1e-3;
-        const T error = norm_error(solution.displacement()[X], mesh->container(), Expected_Displacement_X);
+        const T error = norm_error(solution.displacement(), mesh->container(), Expected_Displacement);
         expect(approx(error, Expected_Error, Epsilon));
     };
 
-    "displacement_y"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Displacement_Y = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            const T hypot2 = x * x + y * y;
-            return y * (T{20} + T{3} * hypot2) / (T{420000} * hypot2);
-        };
-        static constexpr T Epsilon = 1.1e-3;
-        const T error = norm_error(solution.displacement()[Y], mesh->container(), Expected_Displacement_Y);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "strain_xx"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Strain_XX = [](const std::array<T, 2>& point) {
+    "strain"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Strain = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
             const T x2 = x * x;
             const T y2 = y * y;
             using metamath::functions::power;
-            return (T{3} * power<2>(x2) + y2 * (T{20} + T{3} * y2) + x2 * (T{-20} + T{6} * y2)) /
-                   (T{420000} * power<2>(x2 + y2));
+            return std::array{
+                (T{3} * power<2>(x2) + y2 * (T{ 20} + T{3} * y2) + x2 * (T{-20} + T{6} * y2)) / (T{420000} * power<2>(x2 + y2)),
+                (T{3} * power<2>(x2) + y2 * (T{-20} + T{3} * y2) + x2 * (T{ 20} + T{6} * y2)) / (T{420000} * power<2>(x2 + y2)),
+                -std::sin(2 * std::atan2(y, x)) / (T{21000} * (x * x + y * y))
+            };
         };
         static constexpr T Epsilon = 3.1e-2;
-        const T error = norm_error(solution.strain()[XX], mesh->container(), Expected_Strain_XX);
+        const T error = norm_error(solution.strain(), mesh->container(), Expected_Strain);
         expect(approx(error, Expected_Error, Epsilon));
     };
 
-    "strain_yy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Strain_YY = [](const std::array<T, 2>& point) {
+    "stress"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Stress = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
             const T x2 = x * x;
             const T y2 = y * y;
             using metamath::functions::power;
-            return (T{3} * power<2>(x2) + y2 * (T{-20} + T{3} * y2) + x2 * (T{20} + T{6} * y2)) /
-                   (T{420000} * power<2>(x2 + y2));
-        };
-        static constexpr T Epsilon = 3.1e-2;
-        const T error = norm_error(solution.strain()[YY], mesh->container(), Expected_Strain_YY);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "strain_xy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Strain_XY = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            return -std::sin(2 * std::atan2(y, x)) / (T{21000} * (x * x + y * y));
-        };
-        static constexpr T Epsilon = 3.2e-2;
-        const T error = norm_error(solution.strain()[XY], mesh->container(), Expected_Strain_XY);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "stress_xx"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Stress_XX = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            const T x2 = x * x;
-            const T y2 = y * y;
-            using metamath::functions::power;
-            return (power<2>(x2) + T{2} * x2 * (T{-2} + y2) + y2 * (T{4} + y2)) /
-                   (T{300} * power<2>(x2 + y2));
+            return std::array{
+                (power<2>(x2) + T{2} * x2 * (T{-2} + y2) + y2 * (T{ 4} + y2)) / (T{300} * power<2>(x2 + y2)),
+                (power<2>(x2) + T{2} * x2 * (T{ 2} + y2) + y2 * (T{-4} + y2)) / (T{300} * power<2>(x2 + y2)),
+                -std::sin(2 * std::atan2(y, x)) / (T{75} * (x * x + y * y))
+            };
         };
         static constexpr T Epsilon = 3.3e-2;
-        const T error = norm_error(solution.stress()[XX], mesh->container(), Expected_Stress_XX);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "stress_yy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Stress_YY = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            const T x2 = x * x;
-            const T y2 = y * y;
-            using metamath::functions::power;
-            return (power<2>(x2) + T{2} * x2 * (T{2} + y2) + y2 * (T{-4} + y2)) /
-                   (T{300} * power<2>(x2 + y2));
-        };
-        static constexpr T Epsilon = 3.3e-2;
-        const T error = norm_error(solution.stress()[YY], mesh->container(), Expected_Stress_YY);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "stress_xy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Stress_XY = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            return -std::sin(2 * std::atan2(y, x)) / (T{75} * (x * x + y * y));
-        };
-        static constexpr T Epsilon = 3.3e-2;
-        const T error = norm_error(solution.stress()[XY], mesh->container(), Expected_Stress_XY);
+        const T error = norm_error(solution.stress(), mesh->container(), Expected_Stress);
         expect(approx(error, Expected_Error, Epsilon));
     };
 };

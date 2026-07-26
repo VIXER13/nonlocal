@@ -217,11 +217,11 @@ void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, con
 }
 
 template<class T>
-void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 3>& tensor) {
+void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, 3>>& tensor) {
     output << "TENSORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
     for(const size_t i : std::ranges::iota_view{0u, tensor[0].size()})
-        output << tensor[0][i] << ' ' << tensor[2][i] << " 0\n"
-               << tensor[2][i] << ' ' << tensor[1][i] << " 0\n"
+        output << tensor[i][XX] << ' ' << tensor[i][XY] << " 0\n"
+               << tensor[i][YX] << ' ' << tensor[i][YY] << " 0\n"
                << "0 0 0\n\n";
 }
 

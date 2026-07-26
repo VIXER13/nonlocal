@@ -1,3 +1,5 @@
+#include "coordinate_converter.hpp"
+
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <mesh/mesh_2d/mesh_container_2d_utils.hpp>
@@ -20,6 +22,8 @@ using namespace solver_2d::mechanical;
 constexpr T Expected_Error = T{0};
 constexpr T Contact_Radius = T{0.75};
 constexpr T Contact_Radius_Sqr = metamath::functions::power<2>(Contact_Radius);
+
+// TODO: Add analytical solution for the composite ring problem
 
 bool is_contact(const T r) noexcept {
     static constexpr T Epsilon = T{1e-12};
@@ -54,133 +58,78 @@ const suite<"isotropic_lame_composite_ring"> _ = [] {
     };
     const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions);
 
-    "displacement_x"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Displacement_X = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T r2 = x * x + y * y;
-                return r2 < Contact_Radius_Sqr ? x * (T{2.5284} + r2) / (T{47303}  * r2) 
-                                               : x * (T{9.7572} - r2) / (T{140715} * r2);
-            };
-            static constexpr T Epsilon = 1.6e-3;
-            const T error = norm_error(solution.displacement()[X], mesh->container(), Expected_Displacement_X);
-            expect(approx(error, Expected_Error, Epsilon));
+    "displacement"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Displacement = [](const std::array<T, 2>& point) {
+            const auto& [x, y] = point;
+            const T r2 = x * x + y * y;
+            const T inner = (T{2.5284} + r2) / (T{47303}  * r2);
+            const T outer = (T{9.7572} - r2) / (T{140715} * r2);
+            return r2 < Contact_Radius_Sqr ? std::array{x * inner, y * inner} : std::array{x * outer, y * outer};
         };
-
-    "displacement_y"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Displacement_Y = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T r2 = x * x + y * y;
-                return r2 < Contact_Radius_Sqr ? y * (T{2.5284} + r2) / (T{47303}  * r2)
-                                               : y * (T{9.7572} - r2) / (T{140715} * r2);
-            };
-            static constexpr T Epsilon = 1.6e-3;
-            const T error = norm_error(solution.displacement()[Y], mesh->container(), Expected_Displacement_Y);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
-
-    "strain_xx"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Strain_XX = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T x2 = x * x;
-                const T y2 = y * y;
-                const T r2 = x2 + y2;
-                using metamath::functions::power;
-                const auto Inner_Solution = [x2, y2, r2]() { return (T{ 1} + T{2.5284} * (y2 - x2) / power<2>(r2)) / T{47303}; };
-                const auto Outer_Solution = [x2, y2, r2]() { return (T{-1} + T{9.7572} * (y2 - x2) / power<2>(r2)) / T{140715}; };
-                if (is_contact(r2))
-                    return 0.5 * (Inner_Solution() + Outer_Solution());
-                return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
-            };
-            static constexpr T Epsilon = 2.7e-2;
-            const T error = norm_error(solution.strain()[XX], mesh->container(), Expected_Strain_XX);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
-
-    "strain_yy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Strain_YY = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T x2 = x * x;
-                const T y2 = y * y;
-                const T r2 = x2 + y2;
-                using metamath::functions::power;
-                const auto Inner_Solution = [x2, y2, r2]() { return (T{ 1} - T{2.5284} * (y2 - x2) / power<2>(r2)) / T{47303}; };
-                const auto Outer_Solution = [x2, y2, r2]() { return (T{-1} - T{9.7572} * (y2 - x2) / power<2>(r2)) / T{140715}; };
-                if (is_contact(r2))
-                    return 0.5 * (Inner_Solution() + Outer_Solution());
-                return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
-            };
-            static constexpr T Epsilon = 2.7e-2;
-            const T error = norm_error(solution.strain()[YY], mesh->container(), Expected_Strain_YY);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
-
-    "strain_xy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Strain_XY = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T r2 = x * x + y * y;
-                using metamath::functions::power;
-                const auto Inner_Solution = [x, y, r2]() { return -x * y / (T{9354.31} * power<2>(r2)); };
-                const auto Outer_Solution = [x, y, r2]() { return -x * y / (T{7210.83} * power<2>(r2)); };
-                if (is_contact(r2))
-                    return 0.5 * (Inner_Solution() + Outer_Solution());
-                return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
-            };
-            static constexpr T Epsilon = 2.8e-2;
-            const T error = norm_error(solution.strain()[XY], mesh->container(), Expected_Strain_XY);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
-
-    "stress_xx"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Stress_XX = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T x2 = x * x;
-                const T y2 = y * y;
-                const T r2 = x2 + y2;
-                using metamath::functions::power;
-                const auto Inner_Solution = [x2, y2, r2]() { return  (T{1} + T{1.5170} * (y2 - x2) / power<2>(r2)) / T{101.364}; };
-                const auto Outer_Solution = [x2, y2, r2]() { return -(T{1} - T{6.5048} * (y2 - x2) / power<2>(r2)) / T{750.481}; };
-                if (is_contact(r2))
-                    return 0.5 * (Inner_Solution() + Outer_Solution());
-                return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
-            };
-            static constexpr T Epsilon = 2.9e-2;
-            const T error = norm_error(solution.stress()[XX], mesh->container(), Expected_Stress_XX);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
-
-    "stress_yy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Stress_YY = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T x2 = x * x;
-                const T y2 = y * y;
-                const T r2 = x2 + y2;
-                using metamath::functions::power;
-                const auto Inner_Solution = [x2, y2, r2]() { return  (T{1} - T{1.5170} * (y2 - x2) / power<2>(r2)) / T{101.364}; };
-                const auto Outer_Solution = [x2, y2, r2]() { return -(T{1} + T{6.5048} * (y2 - x2) / power<2>(r2)) / T{750.481}; };
-                if (is_contact(r2))
-                    return 0.5 * (Inner_Solution() + Outer_Solution());
-                return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
-            };
-            static constexpr T Epsilon = 2.9e-2;
-            const T error = norm_error(solution.stress()[YY], mesh->container(), Expected_Stress_YY);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
-
-    "stress_xy"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Stress_XY = [](const std::array<T, 2>& point) {
-                const auto& [x, y] = point;
-                const T r2 = x * x + y * y;
-                using metamath::functions::power;
-                const auto Inner_Solution = [x, y, r2]() { return -x * y / (T{33.4082} * power<2>(r2)); };
-                const auto Outer_Solution = [x, y, r2]() { return -x * y / (T{57.6866} * power<2>(r2)); };
-                if (is_contact(r2))
-                    return 0.5 * (Inner_Solution() + Outer_Solution());
-                return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
-            };
-            static constexpr T Epsilon = 2.9e-2;
-            const T error = norm_error(solution.stress()[XY], mesh->container(), Expected_Stress_XY);
-            expect(approx(error, Expected_Error, Epsilon));
-        };
+        static constexpr T Epsilon = 1.6e-3;
+        const T error = norm_error(solution.displacement(), mesh->container(), Expected_Displacement);
+        expect(approx(error, Expected_Error, Epsilon));
     };
+
+    "strain"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Strain = [](const std::array<T, 2>& point) {
+            const auto& [x, y] = point;
+            const T x2 = x * x;
+            const T y2 = y * y;
+            const T r2 = x2 + y2;
+            const T r4 = r2 * r2;
+            const T mul = -x * y / r4;
+            const T diff = (y2 - x2) / r4;
+            using metamath::functions::power;
+            using namespace metamath::operators;
+            const auto Inner_Solution = [diff, mul]() { 
+                return std::array{(T{1} + T{2.5284} * diff) / T{47303},
+                                  (T{1} - T{2.5284} * diff) / T{47303},
+                                                        mul / T{9354.31}};
+            };
+            const auto Outer_Solution = [diff, mul]() {
+                return std::array{(T{-1} + T{9.7572} * diff) / T{140715},
+                                  (T{-1} - T{9.7572} * diff) / T{140715},
+                                                         mul / T{7210.83}};
+            };
+            if (is_contact(r2))
+                return 0.5 * (Inner_Solution() + Outer_Solution());
+            return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
+        };
+        static constexpr T Epsilon = 2.7e-2;
+        const T error = norm_error(solution.strain(), mesh->container(), Expected_Strain);
+        expect(approx(error, Expected_Error, Epsilon));
+    };
+
+    "stress"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Stress = [](const std::array<T, 2>& point) {
+            const auto& [x, y] = point;
+            const T x2 = x * x;
+            const T y2 = y * y;
+            const T r2 = x2 + y2;
+            const T r4 = r2 * r2;
+            const T mul = -x * y / r4;
+            const T diff = (y2 - x2) / r4;
+            using metamath::functions::power;
+            using namespace metamath::operators;
+            const auto Inner_Solution = [diff, mul]() {
+                return std::array{(T{1} + T{1.5170} * diff) / T{101.364},
+                                  (T{1} - T{1.5170} * diff) / T{101.364},
+                                                        mul / T{33.4082}};
+            };
+            const auto Outer_Solution = [diff, mul]() {
+                return std::array{-(T{1} - T{6.5048} * diff) / T{750.481},
+                                  -(T{1} + T{6.5048} * diff) / T{750.481},
+                                                         mul / T{57.6866}};
+            };
+            if (is_contact(r2))
+                return 0.5 * (Inner_Solution() + Outer_Solution());
+            return r2 < Contact_Radius_Sqr ? Inner_Solution() : Outer_Solution();
+        };
+        static constexpr T Epsilon = 2.9e-2;
+        const T error = norm_error(solution.stress(), mesh->container(), Expected_Stress);
+        expect(approx(error, Expected_Error, Epsilon));
+    };
+};
 
 }
