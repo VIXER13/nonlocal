@@ -1,6 +1,7 @@
 #pragma once
 
 #include "su2_parser.hpp"
+#include "csv_saver.hpp"
 
 #include <constants/nonlocal_constants.hpp>
 
@@ -223,27 +224,6 @@ void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, con
         output << tensor[i][XX] << ' ' << tensor[i][XY] << " 0\n"
                << tensor[i][YX] << ' ' << tensor[i][YY] << " 0\n"
                << "0 0 0\n\n";
-}
-
-template<class T, class I>
-void save_as_csv(const std::filesystem::path& path, const mesh_container_2d<T, I>& mesh,
-                 const std::vector<std::pair<std::string, const std::vector<T>&>>& data,
-                 const std::optional<std::streamsize> precision = std::nullopt) {
-    for(const auto& [name, vec] : data)
-        if (mesh.nodes_count() != vec.size())
-            throw std::logic_error{"The result cannot be saved because the mesh nodes number "
-                                   "and elements in the vector \"" + name + "\" do not match."};
-    std::ofstream csv{path};
-    csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-    csv << "x,y" << (data.empty() ? '\n' : ',');
-    for(const size_t j : std::ranges::iota_view{0u, data.size()})
-        csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
-    for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {
-        const std::array<T, 2>& node = mesh.node_coord(i);
-        csv << node[X] << ',' << node[Y] << (data.empty() ? '\n' : ',');
-        for(const size_t j : std::ranges::iota_view{0u, data.size()})
-            csv << data[j].second[i] << (j == data.size() - 1 ? '\n' : ',');
-    }
 }
 
 }
