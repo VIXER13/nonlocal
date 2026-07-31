@@ -64,7 +64,6 @@ class matrix_assembler_base {
 
     metamath::linear::sparse_matrix<T> _matrix;
     const mesh::mesh_2d<T>& _mesh;
-    nodes_sequence _processing_nodes;
 
     template<class Runner>
     void mesh_run(const problem_settings& settings, Runner&& runner);
@@ -80,18 +79,19 @@ protected:
     void calc_coeffs(const problem_settings& settings, Local_Integrator&& local_integrator, Nonlocal_Integrator&& nonlocal_integrator);
 
 public:
+    nodes_sequence processing_nodes;
+
     virtual ~matrix_assembler_base() noexcept = default;
 
     const mesh::mesh_2d<T>& mesh() const noexcept;
     metamath::linear::sparse_matrix<T>& matrix() noexcept;
     const metamath::linear::sparse_matrix<T>& matrix() const noexcept;
-    const nodes_sequence& processing_nodes() const noexcept;
 };
 
 template<class T>
 matrix_assembler_base<T>::matrix_assembler_base(const mesh::mesh_2d<T>& mesh)
     :  _mesh{mesh}
-    , _processing_nodes{_mesh.process_nodes()} {}
+    , processing_nodes{_mesh.process_nodes()} {}
 
 template<class T>
 const mesh::mesh_2d<T>& matrix_assembler_base<T>::mesh() const noexcept {
@@ -109,13 +109,8 @@ const metamath::linear::sparse_matrix<T>& matrix_assembler_base<T>::matrix() con
 }
 
 template<class T>
-const typename matrix_assembler_base<T>::nodes_sequence& matrix_assembler_base<T>::processing_nodes() const noexcept {
-    return _processing_nodes;
-}
-
-template<class T>
 size_t matrix_assembler_base<T>::rows() const noexcept {
-    return std::visit([](const auto& nodes) { return nodes.size(); }, processing_nodes());
+    return std::visit([](const auto& nodes) { return nodes.size(); }, processing_nodes);
 }
 
 template<class T>
@@ -123,7 +118,7 @@ template<class Runner>
 void matrix_assembler_base<T>::mesh_run(const problem_settings& settings, Runner&& runner) {
     std::visit([this, &settings, &runner](const auto& nodes) {
         mesh::utils::mesh_run(mesh(), nodes, settings.theories, std::move(runner));
-    }, processing_nodes());
+    }, processing_nodes);
 }
 
 template<class T>

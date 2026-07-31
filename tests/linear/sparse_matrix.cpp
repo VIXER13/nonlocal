@@ -94,6 +94,32 @@ suite<"sparse_matrix"> _ = [] {
         expect(eq(matrix(1, 1), 2.0));
         expect(eq(matrix(1, 3), 4.0));
         expect(eq(matrix(2, 0), 5.0));
+
+        auto shifts_range = matrix.portrait.shifts_range(0);
+        expect(eq(shifts_range.size(), 2));
+        expect(eq(shifts_range[0], 0));
+        expect(eq(shifts_range[1], 1));
+        shifts_range = matrix.portrait.shifts_range(1);
+        expect(eq(shifts_range.size(), 2));
+        expect(eq(shifts_range[0], 2));
+        expect(eq(shifts_range[1], 3));
+        shifts_range = matrix.portrait.shifts_range(2);
+        expect(eq(shifts_range.size(), 1));
+        expect(eq(shifts_range[0], 4));
+        expect(throws<std::out_of_range>([&matrix] { matrix.portrait.shifts_range(3); }));
+
+        auto indices_range = matrix.portrait.indices_range(0);
+        expect(eq(indices_range.size(), 2));
+        expect(eq(indices_range[0], 0));
+        expect(eq(indices_range[1], 2));
+        indices_range = matrix.portrait.indices_range(1);
+        expect(eq(indices_range.size(), 2));
+        expect(eq(indices_range[0], 1));
+        expect(eq(indices_range[1], 3));
+        indices_range = matrix.portrait.indices_range(2);
+        expect(eq(indices_range.size(), 1));
+        expect(eq(indices_range[0], 0));
+        expect(throws<std::out_of_range>([&matrix] { matrix.portrait.indices_range(3); }));
     };
 
     "validation"_test = [] {

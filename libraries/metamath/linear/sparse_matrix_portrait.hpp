@@ -52,6 +52,11 @@ struct sparse_matrix_portrait final {
         return std::ranges::iota_view<J, J>{shifts[row], shifts[row + 1]};
     }
 
+    auto indices_range(const size_t row) const {
+        check_row(row);
+        return std::ranges::subrange(&indices[shifts[row]], &indices[shifts[row + 1]]);
+    }
+
     size_t shift(const size_t row, const size_t col) const {
         check_row(row);
         const auto range = shifts_range(row);

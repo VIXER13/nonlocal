@@ -36,8 +36,9 @@ struct sparse_matrix final {
     }
 
     void clear() {
-        portrait = {};
-        values = {};
+        portrait.shifts.clear();
+        portrait.indices.clear();
+        values.clear();
     }
 
     T& operator()(const size_t row, const size_t col) {

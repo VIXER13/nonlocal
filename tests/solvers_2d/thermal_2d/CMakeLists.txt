@@ -8,9 +8,9 @@ add_library(
     OBJECT
         # boundary_conditions_2d.cpp
         flux_stability.cpp
-        # isotropic_composite_ring.cpp
-        # isotropic_solid_ring_radiation.cpp
-        # isotropic_solid_ring.cpp
+        isotropic_composite_ring.cpp
+        isotropic_solid_ring_radiation.cpp
+        isotropic_solid_ring.cpp
 )
 target_include_directories(
     thermal_2d_test_lib

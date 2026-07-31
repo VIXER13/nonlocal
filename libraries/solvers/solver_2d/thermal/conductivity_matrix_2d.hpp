@@ -79,7 +79,7 @@ T conductivity_matrix_2d<T>::integrate_basic(const size_t e, const size_t i) con
 
 template<std::floating_point T>
 void conductivity_matrix_2d<T>::integral_condition(const bool is_symmetric) {
-    const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_base::processing_nodes());
+    const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_base::processing_nodes);
 
 #pragma omp parallel for
     for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {

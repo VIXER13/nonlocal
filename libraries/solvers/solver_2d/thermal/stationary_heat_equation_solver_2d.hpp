@@ -15,7 +15,7 @@
 
 namespace nonlocal::solver_2d::thermal {
 
-template<class T>
+template<std::floating_point T>
 struct stationary_equation_parameters_2d final {
     std::optional<std::function<T(const std::array<T, 2>&)>> right_part;
     std::optional<std::function<T(const std::array<T, 2>&)>> initial_distribution;
@@ -24,7 +24,7 @@ struct stationary_equation_parameters_2d final {
     T energy = T{0};
 };
 
-template<class T>
+template<std::floating_point T>
 std::vector<T> init_right_part(const mesh::mesh_2d<T>& mesh,
                                const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                const stationary_equation_parameters_2d<T>& auxiliary_data,
@@ -42,22 +42,23 @@ std::vector<T> init_right_part(const mesh::mesh_2d<T>& mesh,
     return right_part;
 }
 
-template<class T>
+template<std::floating_point T>
 std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(const problem_settings& settings,
                                                                   const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                                                   const evaluated_conductivity_2d<T>& parameters,
                                                                   const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                   const std::vector<T>& temperature = {}) {
-    // conductivity_matrix_2d<T> local_conductivity{*mesh};
-    // local_conductivity.nodes_for_processing(std::ranges::iota_view{0zu, mesh->container().nodes_count()});
-    // local_conductivity.compute(parameters, settings);
-    // convection_condition_2d(local_conductivity.matrix(), *mesh, boundaries_conditions, settings.is_inner_nodes); // TODO: fix computational range for MPI
-    // if (!temperature.empty())
-    //     radiation_condition_2d(local_conductivity.matrix(), *mesh, boundaries_conditions, temperature, settings.is_inner_nodes);
-    // return slae::init_preconditioner(std::move(local_conductivity.matrix()), settings.is_symmetric());
+    conductivity_matrix_2d<T> local_conductivity{*mesh};
+    local_conductivity.processing_nodes = std::ranges::iota_view{0zu, mesh->container().nodes_count()};
+    local_conductivity.compute(parameters, settings);
+    convection_condition_2d(local_conductivity.matrix(), *mesh, boundaries_conditions, settings.is_inner_nodes); // TODO: fix computational range for MPI
+    remove_first_kind_elements(local_conductivity.matrix(), settings.is_inner_nodes);
+    if (!temperature.empty())
+        radiation_condition_2d(local_conductivity.matrix(), *mesh, boundaries_conditions, temperature, settings.is_inner_nodes);
+    return slae::init_preconditioner(std::move(local_conductivity.matrix()), settings.is_symmetric());
 }
 
-template<class T>
+template<std::floating_point T>
 std::vector<T> stationary_heat_equation_solver_2d_linear(const problem_settings& settings,
                                                          const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                                          const evaluated_conductivity_2d<T>& parameters,
@@ -66,15 +67,15 @@ std::vector<T> stationary_heat_equation_solver_2d_linear(const problem_settings&
     conductivity_matrix_2d<T> conductivity{*mesh};
     conductivity.compute(parameters, settings);
     convection_condition_2d(conductivity.matrix(), *mesh, boundaries_conditions, settings.is_inner_nodes);
-    // if (!settings.is_neumann)
-        // boundary_condition_first_kind_2d(right_part, *mesh, boundaries_conditions, conductivity.matrix().bound());
+    if (!settings.is_neumann)
+        boundary_condition_first_kind_2d(conductivity.matrix(), right_part, settings, mesh->container(), boundaries_conditions);
     auto solver = slae::init_iterative_solver(conductivity.matrix(), settings.is_symmetric());
-    // if (settings.is_nonlocal())
-    //     solver->preconditioner(init_preconditioner(settings, mesh, parameters, boundaries_conditions));
+    if (settings.is_nonlocal())
+        solver->preconditioner(init_preconditioner(settings, mesh, parameters, boundaries_conditions));
     return solver->solve(right_part);
 }
 
-template<class T>
+template<std::floating_point T>
 std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settings& settings,
                                                             const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                                             const parameters_2d<T>& parameters,
@@ -85,7 +86,7 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
     if (auxiliary_data.initial_distribution)
         for(const size_t node : mesh->container().nodes())
             temperature[node] = (*auxiliary_data.initial_distribution)(mesh->container().node_coord(node));
-    first_kind_fill_2d(temperature, *mesh, boundaries_conditions, true);
+    first_kind_fill_2d(temperature, mesh->container(), boundaries_conditions, true);
     std::vector<T> delta_temperature = temperature;
 
     conductivity_matrix_2d<T> conductivity{*mesh};
@@ -99,21 +100,20 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
 
         std::vector<T> right_part = initial_right_part;
         radiation_condition_2d(right_part, *mesh, boundaries_conditions, temperature, settings.is_inner_nodes);
+        if (!settings.is_neumann)
+            boundary_condition_first_kind_2d(conductivity.matrix(), right_part, settings, mesh->container(), boundaries_conditions);
         right_part -= settings.is_symmetric() ? 
                       conductivity.matrix().template self_adjoint<metamath::linear::matrix_part::Upper>() * temperature :
                       conductivity.matrix() * temperature;
-        if (!settings.is_neumann) {
-            // boundary_condition_first_kind_2d(right_part, *mesh, boundaries_conditions, conductivity.matrix().bound());
-            // first_kind_fill_2d(right_part, *mesh, boundaries_conditions, false);
-        }
+        first_kind_fill_2d(right_part, mesh->container(), boundaries_conditions, false);
 
         convection_condition_2d(conductivity.matrix(), *mesh, boundaries_conditions, settings.is_inner_nodes);
         radiation_condition_2d(conductivity.matrix(), *mesh, boundaries_conditions, temperature, settings.is_inner_nodes);
 
         // TODO: Implement smart invalidation of solver.
         auto solver = slae::init_iterative_solver(conductivity.matrix(), settings.is_symmetric());
-        // if (settings.is_nonlocal())
-        //     solver->preconditioner(init_preconditioner(settings, mesh, conductivity_parameters, boundaries_conditions));
+        if (settings.is_nonlocal())
+            solver->preconditioner(init_preconditioner(settings, mesh, conductivity_parameters, boundaries_conditions));
         delta_temperature = solver->solve(right_part, temperature);
 
         temperature += delta_temperature;
@@ -123,7 +123,7 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
     return temperature;
 }
 
-template<class T>
+template<std::floating_point T>
 heat_equation_solution_2d<T> stationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                                                 const parameters_2d<T>& parameters,
                                                                 const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
@@ -131,7 +131,7 @@ heat_equation_solution_2d<T> stationary_heat_equation_solver_2d(const std::share
     static constexpr bool Is_Stationary = true;
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
-    const std::vector<T> right_part = init_right_part(*mesh, boundaries_conditions, auxiliary_data, settings.is_neumann);
+    std::vector<T> right_part = init_right_part(*mesh, boundaries_conditions, auxiliary_data, settings.is_neumann);
     evaluated_conductivity_2d<T> conductivity_parameters;
     std::vector<T> temperature;
     if(settings.is_nonlinear()) {
@@ -139,7 +139,7 @@ heat_equation_solution_2d<T> stationary_heat_equation_solver_2d(const std::share
         conductivity_parameters = evaluate_conductivity(*mesh, parameters, mesh::utils::nodes_to_qnodes<T>(*mesh, temperature));
     } else {
         conductivity_parameters = evaluate_conductivity(*mesh, parameters, {});
-        temperature = stationary_heat_equation_solver_2d_linear(settings, mesh, conductivity_parameters, boundaries_conditions, right_part);
+        temperature = stationary_heat_equation_solver_2d_linear(settings, mesh, conductivity_parameters, boundaries_conditions, std::move(right_part));
     }
     auto solution = heat_equation_solution_2d<T>{mesh, conductivity_parameters, temperature};
     solution.calc_flux();
