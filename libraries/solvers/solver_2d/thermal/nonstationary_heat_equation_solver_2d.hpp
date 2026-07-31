@@ -44,7 +44,7 @@ public:
 template<class T>
 nonstationary_heat_equation_solver_2d<T>::nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh, const T time_step)
     : _conductivity{*mesh}
-    , _capacity{mesh}
+    , _capacity{*mesh}
     , _right_part(mesh->container().nodes_count(), T{0})
     , _temperature_prev(mesh->container().nodes_count(), T{0})
     , _temperature_curr(mesh->container().nodes_count(), T{0})

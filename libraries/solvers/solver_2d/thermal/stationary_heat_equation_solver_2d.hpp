@@ -17,11 +17,11 @@ namespace nonlocal::solver_2d::thermal {
 
 template<std::floating_point T>
 struct stationary_equation_parameters_2d final {
-    std::optional<std::function<T(const std::array<T, 2>&)>> right_part;
-    std::optional<std::function<T(const std::array<T, 2>&)>> initial_distribution;
+    std::function<T(const std::array<T, 2>&)> right_part;
+    std::function<T(const std::array<T, 2>&)> initial_distribution;
+    T energy = T{0}; // integral condition for Neumann problem
     T tolerance = 100 * std::numeric_limits<T>::epsilon();
     size_t max_iterations = 100;
-    T energy = T{0};
 };
 
 template<std::floating_point T>
@@ -33,7 +33,7 @@ std::vector<T> init_right_part(const mesh::mesh_2d<T>& mesh,
     std::vector<T> right_part(mesh.container().nodes_count() + is_neumann, T{0});
     boundary_condition_second_kind_2d(right_part, mesh, boundaries_conditions);
     if (auxiliary_data.right_part)
-        integrate_right_part<DoF>(right_part, mesh, *auxiliary_data.right_part);                                 
+        integrate_right_part<DoF>(right_part, mesh, auxiliary_data.right_part);                                 
     if (is_neumann) {
         if (std::abs(std::reduce(right_part.begin(), right_part.end(), T{0})) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
             throw std::domain_error{"It's unsolvable Neumann problem."};
@@ -85,7 +85,7 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
     std::vector<T> temperature(mesh->container().nodes_count() + settings.is_neumann, T{0});
     if (auxiliary_data.initial_distribution)
         for(const size_t node : mesh->container().nodes())
-            temperature[node] = (*auxiliary_data.initial_distribution)(mesh->container().node_coord(node));
+            temperature[node] = auxiliary_data.initial_distribution(mesh->container().node_coord(node));
     first_kind_fill_2d(temperature, mesh->container(), boundaries_conditions, true);
     std::vector<T> delta_temperature = temperature;
 

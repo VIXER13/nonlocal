@@ -1,8 +1,8 @@
 #pragma once
 
 #include "thermal_problems_1d.hpp"
-#include "thermal_problems_2d.hpp"
 #include "mechanical_problems_1d.hpp"
+#include "save_results.hpp"
 
 #include <config/read_mechanical_boundary_conditions.hpp>
 #include <config/read_mechanical_parameters.hpp>
@@ -13,6 +13,8 @@
 #include <config/time_data.hpp>
 #include <config/thermal_auxiliary_data.hpp>
 #include <mesh/mesh_2d/find_neighbours.hpp>
+#include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
+#include <solvers/solver_2d/thermal/nonstationary_heat_equation_solver_2d.hpp>
 #include <solvers/solver_2d/mechanical/equilibrium_equation_2d.hpp>
 #include <solvers/solver_2d/mechanical/motion_equation_solver.hpp>
 
@@ -90,10 +92,10 @@ std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_stationa
     mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     const auto boundaries_field = problem == config::problem_t::Thermal ? "boundaries" : "thermal_boundaries";
-    return solve_thermal_2d_problem<T>(mesh,
-        config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
-        config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
-        config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
+    return solver_2d::thermal::stationary_heat_equation_solver_2d(mesh,
+        config::read_thermal_parameters_2d<T>(config["materials"], "materials"), 
+        config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field), 
+        config::read_stationary_equation_parameters_2d<T>(config.value("auxiliary", nlohmann::json::object()), "auxiliary")
     );
 }
 
@@ -102,12 +104,29 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
     using DP = _determine_problem;
     mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
-    solve_thermal_2d_problem<T>(mesh, 
-        config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
-        config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries"),
-        config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
-        config::time_data<T>{config["time"], "time"},
-        save);
+    const auto time = config::time_data<T>{config["time"], "time"};
+    
+    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T> solver{mesh, time.time_step};
+    const auto parameters = config::read_thermal_parameters_2d<T>(config["materials"], "materials");
+    const auto boundaries_conditions = config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries");
+    const auto auxiliary = config::read_stationary_equation_parameters_2d<T>(config.value("auxiliary", nlohmann::json::object()), "auxiliary");
+    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
+    solver.compute(parameters, boundaries_conditions, auxiliary.initial_distribution);
+    {
+        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
+        solution.calc_flux();
+        // save_solution(solution, save, 0u);
+    }
+    for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+        solver.calc_step(boundaries_conditions, auxiliary.right_part);
+        if (step % time.save_frequency == 0) {
+            logger::info() << "saving step " << step << std::endl;
+            // solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
+            // solution.calc_flux();
+            // save_csv(solution, {}, save, step);
+            // save_vtk(solution, {}, save, step);
+        }
+    }
 }
 
 template<std::floating_point T>
