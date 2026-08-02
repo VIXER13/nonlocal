@@ -106,25 +106,25 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     const auto time = config::time_data<T>{config["time"], "time"};
     
-    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T> solver{mesh, time.time_step};
-    const auto parameters = config::read_thermal_parameters_2d<T>(config["materials"], "materials");
-    const auto boundaries_conditions = config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries");
+    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T> solver{mesh};
     const auto auxiliary = config::read_stationary_equation_parameters_2d<T>(config.value("auxiliary", nlohmann::json::object()), "auxiliary");
-    const auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, std::vector<T>(mesh->quad_shift(mesh->container().elements_2d_count()), T{0}));
-    solver.compute(parameters, boundaries_conditions, auxiliary.initial_distribution);
+    solver.compute(
+        config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
+        config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries"),
+        time.time_step, auxiliary.right_part, auxiliary.initial_distribution, time.initial_time
+    );
     {
-        solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
-        solution.calc_flux();
-        // save_solution(solution, save, 0u);
+        const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> solution = solver.solution();
+        save_csv(solution, {}, save, 0);
+        save_vtk(solution, {}, save, 0);
     }
     for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
-        solver.calc_step(boundaries_conditions, auxiliary.right_part);
+        solver.calc_step();
         if (step % time.save_frequency == 0) {
             logger::info() << "saving step " << step << std::endl;
-            // solver_2d::thermal::heat_equation_solution_2d<T> solution{mesh, conductivity_parameters, solver.temperature()};
-            // solution.calc_flux();
-            // save_csv(solution, {}, save, step);
-            // save_vtk(solution, {}, save, step);
+            const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> solution = solver.solution();
+            save_csv(solution, {}, save, step);
+            save_vtk(solution, {}, save, step);
         }
     }
 }
@@ -140,7 +140,12 @@ void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const 
     solver.compute(config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
                    config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field),
                    time.time_step, time.initial_time);
-    for(const size_t step : std::ranges::iota_view{0zu, time.steps_count}) {
+    {
+        const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> solution = solver.solution();
+        save_csv({}, solution, save, 0);
+        save_vtk({}, solution, save, 0);
+    }
+    for(const size_t step : std::ranges::iota_view{1zu, time.steps_count}) {
         solver.calc_step();
         if (step % time.save_frequency == 0) {
             logger::info() << "saving step " << step << std::endl;
