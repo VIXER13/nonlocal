@@ -27,7 +27,7 @@ public:
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
     explicit mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                     const evaluated_mechanical_parameters<T>& parameters, 
-                                    const std::vector<T>& displacement);
+                                    std::vector<std::array<T, 2>>&& displacement);
     ~mechanical_solution_2d() noexcept override = default;
 
     const std::vector<std::array<T, 2>>& displacement() const noexcept;
@@ -47,12 +47,9 @@ mechanical_solution_2d<T>::mechanical_solution_2d(const std::shared_ptr<mesh::me
 template<class T>
 mechanical_solution_2d<T>::mechanical_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                                   const evaluated_mechanical_parameters<T>& parameters,
-                                                  const std::vector<T>& displacement)
+                                                  std::vector<std::array<T, 2>>&& displacement)
     : _base{mesh, {}}
-    , _displacement(mesh->container().nodes_count(), std::array<T, 2>{}) {
-    for(const size_t i : std::views::iota(0zu, _displacement.size()))
-        _displacement[i] = {displacement[2 * i + X], displacement[2 * i + Y]};
-}
+    , _displacement(std::move(displacement)) {}
 
 template<class T>
 const std::vector<std::array<T, 2>>& mechanical_solution_2d<T>::displacement() const noexcept {

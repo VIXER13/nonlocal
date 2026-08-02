@@ -13,17 +13,20 @@ namespace details {
 
 // TODO: temporary here, but after refactoring will be moved in to integrator.hpp
 
-template<std::floating_point T, class Local_Integrator, class Nonlocal_Integrator>
+template<class T, class Local_Integrator, class Nonlocal_Integrator>
 class integrator final : public mesh::indexator_base {
     using _base = mesh::indexator_base;
+    using entity_t = metamath::types::container_type_t<T>;
+    using floating_point_t = metamath::types::container_type_t<entity_t>;
 
     Local_Integrator _local_integrator;
     Nonlocal_Integrator _nonlocal_integrator;
     metamath::linear::sparse_matrix<T>& _matrix;
-    const mesh::mesh_container_2d<T>& _mesh;
+    const mesh::mesh_container_2d<floating_point_t>& _mesh;
 
 public:
-    explicit integrator(metamath::linear::sparse_matrix<T>& matrix, const mesh::mesh_container_2d<T>& mesh, const bool is_symmetric,
+    explicit integrator(metamath::linear::sparse_matrix<T>& matrix,
+                        const mesh::mesh_container_2d<floating_point_t>& mesh, const bool is_symmetric,
                         Local_Integrator&& local_integrator, Nonlocal_Integrator&& nonlocal_integrator)
         : _base{is_symmetric}
         , _matrix{matrix}
@@ -57,19 +60,21 @@ public:
 
 template<class T>
 class matrix_assembler_base {
+    using entity_t = metamath::types::container_type_t<T>;
+    using floating_point_t = metamath::types::container_type_t<entity_t>;
     using nodes_sequence = std::variant<
         std::ranges::iota_view<size_t, size_t>,
         std::vector<size_t>
     >;
 
     metamath::linear::sparse_matrix<T> _matrix;
-    const mesh::mesh_2d<T>& _mesh;
+    const mesh::mesh_2d<floating_point_t>& _mesh;
 
     template<class Runner>
     void mesh_run(const problem_settings& settings, Runner&& runner);
 
 protected:
-    explicit matrix_assembler_base(const mesh::mesh_2d<T>& mesh);
+    explicit matrix_assembler_base(const mesh::mesh_2d<floating_point_t>& mesh);
 
     size_t rows() const noexcept;
 
@@ -83,18 +88,18 @@ public:
 
     virtual ~matrix_assembler_base() noexcept = default;
 
-    const mesh::mesh_2d<T>& mesh() const noexcept;
+    const mesh::mesh_2d<floating_point_t>& mesh() const noexcept;
     metamath::linear::sparse_matrix<T>& matrix() noexcept;
     const metamath::linear::sparse_matrix<T>& matrix() const noexcept;
 };
 
 template<class T>
-matrix_assembler_base<T>::matrix_assembler_base(const mesh::mesh_2d<T>& mesh)
+matrix_assembler_base<T>::matrix_assembler_base(const mesh::mesh_2d<floating_point_t>& mesh)
     :  _mesh{mesh}
     , processing_nodes{_mesh.process_nodes()} {}
 
 template<class T>
-const mesh::mesh_2d<T>& matrix_assembler_base<T>::mesh() const noexcept {
+const mesh::mesh_2d<typename matrix_assembler_base<T>::floating_point_t>& matrix_assembler_base<T>::mesh() const noexcept {
     return _mesh;
 }
 
