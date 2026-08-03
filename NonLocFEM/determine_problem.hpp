@@ -1,8 +1,8 @@
 #pragma once
 
 #include "thermal_problems_1d.hpp"
-#include "thermal_problems_2d.hpp"
 #include "mechanical_problems_1d.hpp"
+#include "save_results.hpp"
 
 #include <config/read_mechanical_boundary_conditions.hpp>
 #include <config/read_mechanical_parameters.hpp>
@@ -13,6 +13,8 @@
 #include <config/time_data.hpp>
 #include <config/thermal_auxiliary_data.hpp>
 #include <mesh/mesh_2d/find_neighbours.hpp>
+#include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
+#include <solvers/solver_2d/thermal/nonstationary_heat_equation_solver_2d.hpp>
 #include <solvers/solver_2d/mechanical/equilibrium_equation_2d.hpp>
 #include <solvers/solver_2d/mechanical/motion_equation_solver.hpp>
 
@@ -90,10 +92,10 @@ std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_stationa
     mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
     const auto boundaries_field = problem == config::problem_t::Thermal ? "boundaries" : "thermal_boundaries";
-    return solve_thermal_2d_problem<T>(mesh,
-        config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
-        config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field),
-        config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"}
+    return solver_2d::thermal::stationary_heat_equation_solver_2d(mesh,
+        config::read_thermal_parameters_2d<T>(config["materials"], "materials"), 
+        config::read_thermal_boundaries_conditions_2d<T>(config[boundaries_field], boundaries_field), 
+        config::read_stationary_equation_parameters_2d<T>(config.value("auxiliary", nlohmann::json::object()), "auxiliary")
     );
 }
 
@@ -102,12 +104,29 @@ void thermal_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const nlo
     using DP = _determine_problem;
     mesh->neighbours(mesh::find_neighbours(*mesh, config::read_influences<T>(config["materials"], "materials", "thermal")));
     mesh::utils::balancing(*mesh, mesh::utils::balancing_t::Memory, !DP::Only_Local, DP::Symmetric);
-    solve_thermal_2d_problem<T>(mesh, 
+    const auto time = config::time_data<T>{config["time"], "time"};
+    
+    solver_2d::thermal::nonstationary_heat_equation_solver_2d<T> solver{mesh};
+    const auto auxiliary = config::read_stationary_equation_parameters_2d<T>(config.value("auxiliary", nlohmann::json::object()), "auxiliary");
+    solver.compute(
         config::read_thermal_parameters_2d<T>(config["materials"], "materials"),
         config::read_thermal_boundaries_conditions_2d<T>(config["boundaries"], "boundaries"),
-        config::thermal_auxiliary_data_2d<T>{config.value("auxiliary", nlohmann::json::object()), "auxiliary"},
-        config::time_data<T>{config["time"], "time"},
-        save);
+        time.time_step, auxiliary.right_part, auxiliary.initial_distribution, time.initial_time
+    );
+    {
+        const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> solution = solver.solution();
+        save_csv(solution, {}, save, 0);
+        save_vtk(solution, {}, save, 0);
+    }
+    for(const uint64_t step : std::ranges::iota_view{1u, time.steps_count + 1}) {
+        solver.calc_step();
+        if (step % time.save_frequency == 0) {
+            logger::info() << "saving step " << step << std::endl;
+            const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> solution = solver.solution();
+            save_csv(solution, {}, save, step);
+            save_vtk(solution, {}, save, step);
+        }
+    }
 }
 
 template<std::floating_point T>
@@ -121,7 +140,12 @@ void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const 
     solver.compute(config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
                    config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field),
                    time.time_step, time.initial_time);
-    for(const size_t step : std::ranges::iota_view{0zu, time.steps_count}) {
+    {
+        const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> solution = solver.solution();
+        save_csv({}, solution, save, 0);
+        save_vtk({}, solution, save, 0);
+    }
+    for(const size_t step : std::ranges::iota_view{1zu, time.steps_count}) {
         solver.calc_step();
         if (step % time.save_frequency == 0) {
             logger::info() << "saving step " << step << std::endl;

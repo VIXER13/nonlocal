@@ -14,8 +14,10 @@ using namespace nonlocal;
 using namespace mesh;
 using namespace solver_2d::thermal;
 
-std::vector<T> get_values_on_center_line(const mesh_container_2d<T>& mesh, const std::vector<T>& solution) {
-    std::vector<T> values;
+template<class Vector>
+auto get_values_on_center_line(const mesh_container_2d<T>& mesh, const Vector& solution) {
+    using vector_t = typename Vector::value_type;
+    std::vector<vector_t> values;
     for(const size_t node : mesh.nodes())
         if (std::abs(mesh.node_coord(node)[X]) < std::numeric_limits<T>::epsilon())
             values.push_back(solution[node]);
@@ -41,8 +43,8 @@ const suite<"flux_stability"> _ = [] {
     "flux_x_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = -1;
         static constexpr T Epsilon = 2e-14;
-        for (const T value : get_values_on_center_line(mesh->container(), solution.flux()[X]))
-            expect(approx(value, Expected, Epsilon));
+        for (const auto& value : get_values_on_center_line(mesh->container(), solution.flux()))
+            expect(approx(value[X], Expected, Epsilon));
     };
 
     "temperature_integral"_test = [&mesh, &solution] {
@@ -55,8 +57,8 @@ const suite<"flux_stability"> _ = [] {
     "flux_x_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = -10;
         static constexpr T Epsilon = 5.5e-14;
-        const T integral = mesh::utils::integrate(*mesh, solution.flux()[X]);
-        expect(approx(integral, Expected, Epsilon));
+        const auto integral = mesh::utils::integrate(*mesh, solution.flux());
+        expect(approx(integral[X], Expected, Epsilon));
     };
 };
 

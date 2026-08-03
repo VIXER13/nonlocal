@@ -20,7 +20,7 @@ using namespace solver_2d::thermal;
 constexpr T Expected_Error = T{0};
 constexpr T Inner_Conductivity = T{1};
 constexpr T Outer_Conductivity = T{2};
-constexpr T Norm_Coductivity = Outer_Conductivity / Inner_Conductivity;
+constexpr T Norm_Conductivity = Outer_Conductivity / Inner_Conductivity;
 constexpr T Inner_Temperature = T{0};
 constexpr T Outer_Temperature = T{1};
 constexpr T Norm_Temperature = Outer_Temperature / (Outer_Temperature - Inner_Temperature);
@@ -29,9 +29,9 @@ constexpr T Contact_Radius = T{0.75};
 constexpr T Outer_Radius = T{1};
 constexpr T Norm_Radius = Inner_Radius / Outer_Radius;
 constexpr T Norm_Contact_Radius = Contact_Radius / Outer_Radius;
-const T Coeff = T{1} / ((Norm_Coductivity - T{1}) * std::log(Norm_Contact_Radius) - Norm_Coductivity * std::log(Norm_Radius));
+const T Coeff = T{1} / ((Norm_Conductivity - T{1}) * std::log(Norm_Contact_Radius) - Norm_Conductivity * std::log(Norm_Radius));
 
-const suite<"thermal_isotropic_solid_ring"> _ = [] {
+const suite<"thermal_isotropic_composite_ring"> _ = [] {
     std::stringstream stream{composite_ring_su2_data};
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const parameters_2d<T> parameters = {
@@ -48,7 +48,7 @@ const suite<"thermal_isotropic_solid_ring"> _ = [] {
             const auto& [x, y] = point;
             const T r = std::hypot(x, y);
             return r < Contact_Radius
-                   ? Norm_Temperature - T{1} + Norm_Coductivity * Coeff * std::log(r / Norm_Radius)
+                   ? Norm_Temperature - T{1} + Norm_Conductivity * Coeff * std::log(r / Norm_Radius)
                    : Norm_Temperature + Coeff * std::log(r);
         };
         static constexpr T Epsilon = 1.2e-3;
@@ -56,23 +56,14 @@ const suite<"thermal_isotropic_solid_ring"> _ = [] {
         expect(approx(error, Expected_Error, Epsilon));
     };
 
-    "flux_x"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Flux_X = [](const std::array<T, 2>& point) {
+    "flux"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Flux = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
-            return -Coeff * Norm_Coductivity * x / (x * x + y * y);
+            const T coeff = -Coeff * Norm_Conductivity / (x * x + y * y);
+            return std::array{coeff * x, coeff * y};
         };
         static constexpr T Epsilon = 2.1e-2;
-        const T error = norm_error(solution.flux()[X], mesh->container(), Expected_Flux_X);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "flux_y"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Flux_Y = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            return -Coeff * Norm_Coductivity * y / (x * x + y * y);
-        };
-        static constexpr T Epsilon = 2.1e-2;
-        const T error = norm_error(solution.flux()[Y], mesh->container(), Expected_Flux_Y);
+        const T error = norm_error(solution.flux(), mesh->container(), Expected_Flux);
         expect(approx(error, Expected_Error, Epsilon));
     };
 };

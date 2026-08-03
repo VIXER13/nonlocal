@@ -5,7 +5,7 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T>
+template<std::floating_point T>
 class _temperature_condition final {
     const mesh::mesh_2d<T>& _mesh;
 
@@ -60,13 +60,13 @@ class _temperature_condition final {
     }
 
 public:
-    template<class U>
-    friend void temperature_condition(std::vector<U>& f, const mesh::mesh_2d<U>& mesh,
+    template<std::floating_point U>
+    friend void temperature_condition(std::vector<std::array<U, 2>>& f, const mesh::mesh_2d<U>& mesh,
                                       const evaluated_mechanical_parameters<U>& parameters);
 };
 
-template<class T>
-void temperature_condition(std::vector<T>& f, const mesh::mesh_2d<T>& mesh,
+template<std::floating_point T>
+void temperature_condition(std::vector<std::array<T, 2>>& f, const mesh::mesh_2d<T>& mesh,
                            const evaluated_mechanical_parameters<T>& parameters) {
     const _temperature_condition<T> integrator{mesh};
     const auto process_node = mesh.process_nodes();
@@ -90,8 +90,8 @@ void temperature_condition(std::vector<T>& f, const mesh::mesh_2d<T>& mesh,
                 }
             }, physical.elastic, physical.thermal_strain);
         }
-        f[2 * node + X] += integral[X];
-        f[2 * node + Y] += integral[Y];
+        using namespace metamath::operators;
+        f[node] += integral;
     }
 }
 

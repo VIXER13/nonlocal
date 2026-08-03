@@ -81,52 +81,52 @@ void motion_equation_solver<T>::compute(const raw_mechanical_parameters<T>& para
                                         mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
                                         const T time_step, const T time,
                                         const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& init_dist) {
-    _time_step = time_step;
-    _time = time;
-    _boundaries_conditions = std::move(boundaries_conditions);
-    const auto& mesh = _mass.mesh();
-    const auto settings = init_problem_settings(mesh.container(), parameters, _boundaries_conditions);
-    log_problem_settings(settings);
-    _parameters = evaluate_mechanical_parameters(mesh, parameters);
-    _mass.compute(_parameters, settings.is_inner_nodes);
-    _stiffness.compute(_parameters, settings);
+    // _time_step = time_step;
+    // _time = time;
+    // _boundaries_conditions = std::move(boundaries_conditions);
+    // const auto& mesh = _mass.mesh();
+    // const auto settings = init_problem_settings(mesh.container(), parameters, _boundaries_conditions);
+    // log_problem_settings(settings);
+    // _parameters = evaluate_mechanical_parameters(mesh, parameters);
+    // _mass.compute(_parameters, settings.is_inner_nodes);
+    // _stiffness.compute(_parameters, settings);
 
-    _mass.matrix().inner() /= time_step * time_step;
-    if (settings.is_symmetric())
-        _stiffness.matrix().inner() += _mass.matrix().inner();
-    else
-        _stiffness.matrix().inner() += _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>();
-    first_kind_filler(_mass.mesh().process_nodes(), settings.is_inner_nodes, [&matrix = _stiffness.matrix().inner()](const size_t row) {
-        matrix.values[matrix.portrait.shifts[row]] = T{1};
-    });
+    // _mass.matrix().inner() /= time_step * time_step;
+    // if (settings.is_symmetric())
+    //     _stiffness.matrix().inner() += _mass.matrix().inner();
+    // else
+    //     _stiffness.matrix().inner() += _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>();
+    // first_kind_filler(_mass.mesh().process_nodes(), settings.is_inner_nodes, [&matrix = _stiffness.matrix().inner()](const size_t row) {
+    //     matrix.values[matrix.portrait.shifts[row]] = T{1};
+    // });
 
-    if (init_dist) {
-        for(const size_t node : mesh.container().nodes()) {
-            const auto displacement = (*init_dist)(mesh.container().node_coord(node));
-            _displacement_next[node + X] = displacement[X];
-            _displacement_next[node + Y] = displacement[Y];
-        }
-        _displacement_curr = _displacement_next;
-    }
+    // if (init_dist) {
+    //     for(const size_t node : mesh.container().nodes()) {
+    //         const auto displacement = (*init_dist)(mesh.container().node_coord(node));
+    //         _displacement_next[node + X] = displacement[X];
+    //         _displacement_next[node + Y] = displacement[Y];
+    //     }
+    //     _displacement_curr = _displacement_next;
+    // }
 
-    slae_solver = slae::init_iterative_solver(_stiffness.matrix().inner(), settings.is_symmetric());
+    // slae_solver = slae::init_iterative_solver(_stiffness.matrix().inner(), settings.is_symmetric());
 }
 
 template<class T>
 void motion_equation_solver<T>::calc_step(const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part) {
-    std::fill(_right_part.begin(), _right_part.end(), T{0});
-    _displacement_prev.swap(_displacement_curr);
-    _displacement_curr.swap(_displacement_next);
-    const auto& mesh = _mass.mesh();
-    boundary_condition_second_kind_2d(_right_part, mesh, _boundaries_conditions);
-    if (right_part)
-        integrate_right_part<DoF>(_right_part, mesh, *right_part);
-    _right_part -= _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>() * _displacement_prev;
-    const std::vector<T> tmp = _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>() * _displacement_curr;
-    _right_part += T{2} * tmp;
-    boundary_condition_first_kind_2d(_right_part, mesh, _boundaries_conditions, _stiffness.matrix().bound());
-    _displacement_next = slae_solver->solve(_right_part, _displacement_curr);
-    _time += time_step();
+    // std::fill(_right_part.begin(), _right_part.end(), T{0});
+    // _displacement_prev.swap(_displacement_curr);
+    // _displacement_curr.swap(_displacement_next);
+    // const auto& mesh = _mass.mesh();
+    // boundary_condition_second_kind_2d(_right_part, mesh, _boundaries_conditions);
+    // if (right_part)
+    //     integrate_right_part<DoF>(_right_part, mesh, *right_part);
+    // _right_part -= _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>() * _displacement_prev;
+    // const std::vector<T> tmp = _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>() * _displacement_curr;
+    // _right_part += T{2} * tmp;
+    // boundary_condition_first_kind_2d(_right_part, mesh, _boundaries_conditions, _stiffness.matrix().bound());
+    // _displacement_next = slae_solver->solve(_right_part, _displacement_curr);
+    // _time += time_step();
 }
 
 }

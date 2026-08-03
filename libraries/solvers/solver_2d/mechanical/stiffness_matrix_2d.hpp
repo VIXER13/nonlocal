@@ -2,49 +2,43 @@
 
 #include "mechanical_parameters_2d.hpp"
 
-#include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
+#include <solvers/solver_2d/base/matrix_assembler.hpp>
 #include <solvers/solver_2d/base/problem_settings.hpp>
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<class T>
-class stiffness_matrix : public matrix_assembler_2d<T, 2> {
-    using _base = matrix_assembler_2d<T, 2>;
+template<std::floating_point T>
+class stiffness_matrix : public matrix_assembler_base<metamath::linear::square_matrix<T, 2>> {
+    using _base = matrix_assembler_base<metamath::linear::square_matrix<T, 2>>;
     using hooke_parameter = equation_parameters<2, T, evaluated_hook_matrix_t>;
     using hooke_parameters = std::unordered_map<std::string, hooke_parameter>;
-    using block_t = metamath::linear::square_matrix<T, 2>;
-
-    static constexpr bool NEUMANN = false;
-    static constexpr bool SYMMETRIC = true;
 
 protected:
     template<class Hooke>
-    block_t integrate_local(const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const;
+    metamath::linear::square_matrix<T, 2> integrate_local(
+        const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const;
     template<class Hooke>
-    block_t integrate_nonlocal(const Hooke& hooke_matrix, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>)>& influence,
-                               const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
+    metamath::linear::square_matrix<T, 2> integrate_nonlocal(
+        const Hooke& hooke_matrix, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
+        const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
 
-    void create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
-                                const problem_settings& settings);
-
-    T integrate_basic(const size_t e, const size_t i) const;
-    void integral_condition();
+    void create_matrix_portrait(const problem_settings& settings);
 
 public:
-    explicit stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
+    explicit stiffness_matrix(const mesh::mesh_2d<T>& mesh);
     ~stiffness_matrix() noexcept override = default;
 
-    void compute(const evaluated_mechanical_parameters<T>& hooke, const problem_settings& settings, const assemble_part part = assemble_part::FULL);
+    void compute(const evaluated_mechanical_parameters<T>& hooke, const problem_settings& settings);
 };
 
-template<class T>
-stiffness_matrix<T>::stiffness_matrix(const std::shared_ptr<mesh::mesh_2d<T>>& mesh)
+template<std::floating_point T>
+stiffness_matrix<T>::stiffness_matrix(const mesh::mesh_2d<T>& mesh)
     : _base{mesh} {}
 
-template<class T>
+template<std::floating_point T>
 template<class Hooke>
-typename stiffness_matrix<T>::block_t stiffness_matrix<T>::integrate_local(const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const {
-    block_t integral = {};
+metamath::linear::square_matrix<T, 2> stiffness_matrix<T>::integrate_local(const Hooke& hooke_matrix, const size_t e, const size_t i, const size_t j) const {
+    metamath::linear::square_matrix<T, 2> integral = {};
     const size_t qshift = _base::mesh().quad_shift(e);
     const auto& el = _base::mesh().container().element_2d(e);
     for(const size_t q : el.qnodes()) {
@@ -79,12 +73,12 @@ typename stiffness_matrix<T>::block_t stiffness_matrix<T>::integrate_local(const
     return integral;
 }
 
-template<class T>
+template<std::floating_point T>
 template<class Hooke>
-typename stiffness_matrix<T>::block_t stiffness_matrix<T>::integrate_nonlocal(
-    const Hooke& hooke_matrix, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>)>& influence,
+metamath::linear::square_matrix<T, 2> stiffness_matrix<T>::integrate_nonlocal(
+    const Hooke& hooke_matrix, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
     const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    block_t integral = {};
+    metamath::linear::square_matrix<T, 2> integral = {};
     const size_t qshiftNL = _base::mesh().quad_shift(eNL);
     const auto& elL  = _base::mesh().container().element_2d(eL );
     const auto& elNL = _base::mesh().container().element_2d(eNL);
@@ -124,62 +118,22 @@ typename stiffness_matrix<T>::block_t stiffness_matrix<T>::integrate_nonlocal(
     return integral;
 }
 
-template<class T>
-void stiffness_matrix<T>::create_matrix_portrait(const std::unordered_map<std::string, theory_t> theories,
-                                                 const problem_settings& settings) {
-    const size_t cols = _base::cols() + NEUMANN;
-    const size_t rows = _base::rows() == _base::cols() ?
-                        cols : _base::rows() + (NEUMANN && parallel::is_last_process());
-    _base::matrix().inner().portrait.set_size(rows, cols);
-    _base::matrix().bound().portrait.set_size(rows, cols);
-    if (NEUMANN) {
-        for(const size_t row : std::views::iota(0u, _base::mesh().container().nodes_count()))
-            _base::matrix().inner().portrait.shifts[2 * row + 1] = 1;
-        _base::matrix().inner().portrait.shifts[2 * _base::mesh().container().nodes_count() + 1] = 1;
-    }
-    _base::init_shifts(theories, settings.is_inner_nodes, settings.is_symmetric());
-    static constexpr bool Sort_Indices = false;
-    _base::init_indices(theories, settings.is_inner_nodes, settings.is_symmetric(), Sort_Indices);
-    if (NEUMANN) {
-        for(const size_t row : std::ranges::iota_view{0u, _base::mesh().container().nodes_count()})
-            _base::matrix().inner().portrait.indices[_base::matrix().inner().portrait.shifts[2 * row + 1] - 1] = 2 * _base::mesh().container().nodes_count();
-        _base::matrix().inner().portrait.indices[_base::matrix().inner().portrait.non_zeros() - 1] = 2 * _base::mesh().container().nodes_count();
-    }
-    _base::matrix().inner().portrait.sort_indices();
-    _base::matrix().bound().portrait.sort_indices();
+template<std::floating_point T>
+void stiffness_matrix<T>::create_matrix_portrait(const problem_settings& settings) {
+    const size_t cols = _base::mesh().container().nodes_count();
+    const size_t rows = _base::rows();
+    _base::matrix().portrait.set_size(rows, cols);
+    _base::init_shifts(settings);
+    _base::init_indices(settings);
     logger::info() << "Matrix portrait is formed" << std::endl;
 }
 
-template<class T>
-T stiffness_matrix<T>::integrate_basic(const size_t e, const size_t i) const {
-    T integral = 0;
-    const auto& el = _base::mesh().container().element_2d(e);
-    for(const size_t q : el.qnodes())
-        integral += el.weight(q) * el.qN(i, q) * _base::mesh().jacobian(e, q);
-    return integral;
-}
-
-template<class T>
-void stiffness_matrix<T>::integral_condition() {
-    const auto process_nodes = _base::mesh().process_nodes();
-#pragma omp parallel for default(none) shared(process_nodes)
-    for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        T& val = _base::matrix().inner()(2 * (node - process_nodes.front()), 2 * _base::mesh().container().nodes_count());
-        for(const size_t e : _base::mesh().elements(node))
-            val += integrate_basic(e, _base::mesh().global_to_local(e, node));
-    }
-}
-
-template<class T>
-void stiffness_matrix<T>::compute(const evaluated_mechanical_parameters<T>& hooke, const problem_settings& settings, const assemble_part part) {
+template<std::floating_point T>
+void stiffness_matrix<T>::compute(const evaluated_mechanical_parameters<T>& hooke, const problem_settings& settings) {
     logger::info() << "Stiffness matrix assembly started" << std::endl;
-    const std::unordered_map<std::string, theory_t> theories = part == assemble_part::LOCAL ? 
-                                                               local_theories(_base::mesh().container()) :
-                                                               theories_types(hooke);
-    create_matrix_portrait(theories, settings);
-    if (NEUMANN)
-        integral_condition();
-    _base::calc_coeffs(theories, settings.is_inner_nodes, settings.is_symmetric(),
+    _base::matrix().clear();
+    create_matrix_portrait(settings);
+    _base::calc_coeffs(settings,
         [this, &hooke](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& [model, physic] = hooke.at(group);
             const auto integral = std::visit([this, e, i, j](const auto& hook) {

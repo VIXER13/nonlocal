@@ -1,14 +1,16 @@
 #pragma once
 
 #include "su2_parser.hpp"
+#include "csv_saver.hpp"
 
 #include <constants/nonlocal_constants.hpp>
 
 namespace nonlocal::mesh::utils {
 
 template<std::floating_point T, std::integral I, class Function>
-std::vector<T> discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
-    std::vector<T> x(mesh.nodes_count());
+auto discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
+    using vector_t = decltype(function(mesh.node_coord(0)));
+    std::vector<vector_t> x(mesh.nodes_count());
     for(const size_t node : mesh.nodes())
         x[node] = function(mesh.node_coord(node));
     return x;
@@ -202,41 +204,26 @@ void save_scalars_to_vtk(std::ofstream& output, const std::string_view name, con
         output << val << '\n';
 }
 
-template<class T>
-void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 2>& vector) {
+template<class T, size_t Dimension>
+void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, Dimension>>& vector) {
     output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()})
-        output << vector[X][i] << ' ' << vector[Y][i] << " 0\n";
+    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()}) {
+        if constexpr (Dimension == 2)
+            output << vector[i][X] << ' ' << vector[i][Y] << " 0\n";
+        else if constexpr (Dimension == 3)
+            output << vector[i][X] << ' ' << vector[i][Y] << ' ' << vector[i][Z] << '\n';
+        else
+            static_assert(false, "Only 2D and 3D vectors are supported.");
+    } 
 }
 
 template<class T>
-void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 3>& tensor) {
+void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, 3>>& tensor) {
     output << "TENSORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
     for(const size_t i : std::ranges::iota_view{0u, tensor[0].size()})
-        output << tensor[0][i] << ' ' << tensor[2][i] << " 0\n"
-               << tensor[2][i] << ' ' << tensor[1][i] << " 0\n"
+        output << tensor[i][XX] << ' ' << tensor[i][XY] << " 0\n"
+               << tensor[i][YX] << ' ' << tensor[i][YY] << " 0\n"
                << "0 0 0\n\n";
-}
-
-template<class T, class I>
-void save_as_csv(const std::filesystem::path& path, const mesh_container_2d<T, I>& mesh,
-                 const std::vector<std::pair<std::string, const std::vector<T>&>>& data,
-                 const std::optional<std::streamsize> precision = std::nullopt) {
-    for(const auto& [name, vec] : data)
-        if (mesh.nodes_count() != vec.size())
-            throw std::logic_error{"The result cannot be saved because the mesh nodes number "
-                                   "and elements in the vector \"" + name + "\" do not match."};
-    std::ofstream csv{path};
-    csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-    csv << "x,y" << (data.empty() ? '\n' : ',');
-    for(const size_t j : std::ranges::iota_view{0u, data.size()})
-        csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
-    for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {
-        const std::array<T, 2>& node = mesh.node_coord(i);
-        csv << node[X] << ',' << node[Y] << (data.empty() ? '\n' : ',');
-        for(const size_t j : std::ranges::iota_view{0u, data.size()})
-            csv << data[j].second[i] << (j == data.size() - 1 ? '\n' : ',');
-    }
 }
 
 }

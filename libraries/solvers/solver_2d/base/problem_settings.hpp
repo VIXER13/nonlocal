@@ -30,7 +30,7 @@ struct problem_settings final {
     }
 
     bool is_symmetric() const {
-        return !(is_nonlocal() && is_nonconstant_parameters);
+        return !(is_nonconstant_parameters && is_nonlocal());
     }
 };
 

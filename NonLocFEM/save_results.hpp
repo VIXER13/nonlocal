@@ -13,24 +13,18 @@ void save_csv(const std::optional<solver_2d::thermal::heat_equation_solution_2d<
               const config::save_data& save, const std::optional<uint64_t> step = std::nullopt) {
     if (parallel::MPI_rank() != 0 || !save.contains("csv")) // Only the master process saves data
         return;
-    std::vector<std::pair<std::string, const std::vector<T>&>> data;
+    using namespace std::string_literals;
+    std::vector<mesh::utils::data_pair_t<T>> data;
     if (thermal_solution) {
-        data.push_back({"temperature", thermal_solution->temperature()});
-        if (thermal_solution->is_flux_calculated()) {
-            data.push_back({"flux_x", thermal_solution->flux()[X]});
-            data.push_back({"flux_y", thermal_solution->flux()[Y]});
-        }
+        data.emplace_back(std::pair{"temperature"s, std::cref(thermal_solution->temperature())});
+        if (thermal_solution->is_flux_calculated())
+           data.emplace_back(std::pair{std::array{"flux_x"s, "flux_y"s}, std::cref(thermal_solution->flux())});
     }
     if (mechanical_solution) {
-        data.push_back({"displacement_x", mechanical_solution->displacement()[X]});
-        data.push_back({"displacement_y", mechanical_solution->displacement()[Y]});
+        data.emplace_back(std::pair{std::array{"displacement_x"s, "displacement_y"s}, std::cref(mechanical_solution->displacement())});
         if (mechanical_solution->is_strain_and_stress_calculated()) {
-            data.push_back({"strain_11", mechanical_solution->strain()[0]});
-            data.push_back({"strain_22", mechanical_solution->strain()[1]});
-            data.push_back({"strain_12", mechanical_solution->strain()[2]});
-            data.push_back({"stress_11", mechanical_solution->stress()[0]});
-            data.push_back({"stress_22", mechanical_solution->stress()[1]});
-            data.push_back({"stress_12", mechanical_solution->stress()[2]});
+            data.emplace_back(std::pair{std::array{"strain_11"s, "strain_22"s, "strain_12"s}, std::cref(mechanical_solution->strain())});
+            data.emplace_back(std::pair{std::array{"stress_11"s, "stress_22"s, "stress_12"s}, std::cref(mechanical_solution->stress())});
         }
     }
     if (data.empty())

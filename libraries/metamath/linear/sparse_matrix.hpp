@@ -35,6 +35,12 @@ struct sparse_matrix final {
         values.resize(portrait.non_zeros(), T{});
     }
 
+    void clear() {
+        portrait.shifts.clear();
+        portrait.indices.clear();
+        values.clear();
+    }
+
     T& operator()(const size_t row, const size_t col) {
         return values[portrait.shift(row, col)];
     }

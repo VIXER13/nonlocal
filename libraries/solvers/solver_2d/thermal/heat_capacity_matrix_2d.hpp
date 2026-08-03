@@ -1,30 +1,27 @@
 #pragma once
 
-#include <solvers/solver_2d/base/matrix_assembler_2d.hpp>
+#include <solvers/solver_2d/base/matrix_assembler.hpp>
 
 namespace nonlocal::solver_2d::thermal {
 
 template<class T>
-class heat_capacity_matrix_2d : public matrix_assembler_2d<T, 1> {
-    using _base = matrix_assembler_2d<T, 1>;
-
-    static constexpr bool Symmetric = true;
+class heat_capacity_matrix_2d : public matrix_assembler_base<T> {
+    using _base = matrix_assembler_base<T>;
 
 protected:
     T integrate_basic_pair(const size_t e, const size_t i, const size_t j) const;
 
-    void create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories,
-                                const std::vector<bool>& is_inner);
+    void create_matrix_portrait(const problem_settings& settings);
 
 public:
-    explicit heat_capacity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
+    explicit heat_capacity_matrix_2d(const mesh::mesh_2d<T>& mesh);
     ~heat_capacity_matrix_2d() noexcept override = default;
 
-    void calc_matrix(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner);
+    void calc_matrix(const parameters_2d<T>& parameters, const problem_settings& settings);
 };
 
 template<class T>
-heat_capacity_matrix_2d<T>::heat_capacity_matrix_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh)
+heat_capacity_matrix_2d<T>::heat_capacity_matrix_2d(const mesh::mesh_2d<T>& mesh)
     : _base{mesh} {}
 
 template<class T>
@@ -37,26 +34,24 @@ T heat_capacity_matrix_2d<T>::integrate_basic_pair(const size_t e, const size_t 
 }
 
 template<class T>
-void heat_capacity_matrix_2d<T>::create_matrix_portrait(const std::unordered_map<std::string, theory_t>& theories,
-                                                        const std::vector<bool>& is_inner) {
-    const size_t rows = _base::mesh().process_nodes().size();
+void heat_capacity_matrix_2d<T>::create_matrix_portrait(const problem_settings& settings) {
     const size_t cols = _base::mesh().container().nodes_count();
-    _base::matrix().inner().portrait.set_size(rows, cols);
-    _base::matrix().bound().portrait.set_size(rows, cols);
-    _base::init_shifts(theories, is_inner, Symmetric);
-    _base::init_indices(theories, is_inner, Symmetric);
+    const size_t rows = _base::rows();
+    _base::matrix().portrait.set_size(rows, cols);
+    _base::init_shifts(settings);
+    _base::init_indices(settings);
 }
 
 template<class T>
-void heat_capacity_matrix_2d<T>::calc_matrix(const parameters_2d<T>& parameters, const std::vector<bool>& is_inner) {
+void heat_capacity_matrix_2d<T>::calc_matrix(const parameters_2d<T>& parameters, const problem_settings& settings) {
     const std::unordered_map<std::string, theory_t> theories = local_theories(_base::mesh().container());
-    create_matrix_portrait(theories, is_inner);
-    _base::calc_coeffs(theories, is_inner, Symmetric,
+    create_matrix_portrait(settings);
+    _base::calc_coeffs(settings,
         [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& parameter = parameters.at(group).physical;
             return parameter.density * parameter.capacity * integrate_basic_pair(e, i, j); 
         },
-        [](const std::string&, const size_t, const size_t, const size_t, const size_t) constexpr noexcept { return T{0}; }
+        [](const std::string&, size_t, size_t, size_t, size_t) { return T{0}; }
     );
 }
 

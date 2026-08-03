@@ -14,8 +14,10 @@ using namespace nonlocal;
 using namespace mesh;
 using namespace solver_2d::mechanical;
 
-std::vector<T> get_values_on_center_line(const mesh_container_2d<T>& mesh, const std::vector<T>& solution) {
-    std::vector<T> values;
+template<class Vector>
+auto get_values_on_center_line(const mesh_container_2d<T>& mesh, const Vector& solution) {
+    using vector_t = typename Vector::value_type;
+    std::vector<vector_t> values;
     for(const size_t node : mesh.nodes())
         if (std::abs(mesh.node_coord(node)[X]) < std::numeric_limits<T>::epsilon())
             values.push_back(solution[node]);
@@ -50,29 +52,29 @@ const suite<"saint_venant"> _ = [] {
     "displacement_x_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;
         static constexpr T Epsilon = 2e-14;
-        for (const T value : get_values_on_center_line(mesh->container(), solution.displacement()[X]))
-            expect(approx(value, Expected, Epsilon));
+        for (const auto& value : get_values_on_center_line(mesh->container(), solution.displacement()))
+            expect(approx(value[X], Expected, Epsilon));
     };
 
     "stress_xx_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = 1;
         static constexpr T Epsilon = 1.3e-9;
-        for (const T value : get_values_on_center_line(mesh->container(), solution.stress()[0]))
-            expect(approx(value, Expected, Epsilon));
+        for (const auto& value : get_values_on_center_line(mesh->container(), solution.stress()))
+            expect(approx(value[XX], Expected, Epsilon));
     };
 
     "displacement_x_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;
         static constexpr T Epsilon = 7.5e-13;
-        const T integral = mesh::utils::integrate(*mesh, solution.displacement()[X]);
-            expect(approx(integral, Expected, Epsilon));
+        const auto integral = mesh::utils::integrate(*mesh, solution.displacement());
+            expect(approx(integral[X], Expected, Epsilon));
     };
 
     "stress_xx_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = 10;
         static constexpr T Epsilon = 1e-9;
-        const T integral = mesh::utils::integrate(*mesh, solution.stress()[0]);
-            expect(approx(integral, Expected, Epsilon));
+        const auto integral = mesh::utils::integrate(*mesh, solution.stress());
+            expect(approx(integral[XX], Expected, Epsilon));
     };
 };
 

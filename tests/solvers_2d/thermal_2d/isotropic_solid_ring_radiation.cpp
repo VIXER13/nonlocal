@@ -63,23 +63,14 @@ const suite<"thermal_isotropic_solid_ring_radiation"> _ = [] {
         expect(approx(error, Expected_Error, Epsilon));
     };
 
-    "flux_x"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Flux_X = [](const std::array<T, 2>& point) {
+    "flux"_test = [&mesh, &solution] {
+        static constexpr auto Expected_Flux = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
-            return flux(point) * x / std::hypot(x, y);
+            const T coeff = flux(point) / std::hypot(x, y);
+            return std::array{coeff * x, coeff * y};
         };
         static constexpr T Epsilon = 1.8e-2;
-        const T error = norm_error(solution.flux()[X], mesh->container(), Expected_Flux_X);
-        expect(approx(error, Expected_Error, Epsilon));
-    };
-
-    "flux_y"_test = [&mesh, &solution] {
-        static constexpr auto Expected_Flux_Y = [](const std::array<T, 2>& point) {
-            const auto& [x, y] = point;
-            return flux(point) * y / std::hypot(x, y);
-        };
-        static constexpr T Epsilon = 1.8e-2;
-        const T error = norm_error(solution.flux()[Y], mesh->container(), Expected_Flux_Y);
+        const T error = norm_error(solution.flux(), mesh->container(), Expected_Flux);
         expect(approx(error, Expected_Error, Epsilon));
     };
 };
