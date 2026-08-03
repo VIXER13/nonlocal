@@ -34,9 +34,7 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
     if (right_part)
         integrate_right_part(f, *mesh, right_part);
     temperature_condition(f, *mesh, evaluated_parameters);
-
-    remove_first_kind_elements(stiffness.matrix(), settings.is_inner_nodes);
-    // boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, stiffness.matrix().bound());
+    boundary_condition_first_kind_2d(stiffness.matrix(), f, settings, mesh->container(), boundaries_conditions);
 
     auto solver = slae::init_iterative_solver(stiffness.matrix(), settings.is_symmetric());
     // if (settings.is_nonlocal()) {

@@ -20,28 +20,36 @@ inline bool has_first_kind(const std::vector<bool>& is_inner_nodes, const size_t
 template<class T>
 metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear::sparse_matrix<T>& matrix, 
                                                          const std::vector<bool>& is_inner_nodes, const bool is_symmetric) {
+    if (is_inner_nodes.size() != DoF<T> * matrix.cols())
+        throw std::invalid_argument("The size of the vector of inner nodes does not match the number of degrees of freedom.");
     metamath::linear::sparse_matrix<T> boundary_matrix(matrix.cols(), matrix.cols());
 
+    const auto need_to_add = [&is_inner_nodes](const size_t row, const size_t col) {
+        for (const size_t row_global : std::ranges::iota_view{DoF<T> * row, DoF<T> * (row + 1)})
+            for (const size_t col_global : std::ranges::iota_view{DoF<T> * col, DoF<T> * (col + 1)})
+                if (row_global != col_global && !is_inner_nodes[col_global] && is_inner_nodes[row_global])
+                    return true;
+        return false;
+    };
+
     for(const size_t row : std::ranges::iota_view{0zu, boundary_matrix.rows()})
-        for(const size_t col : matrix.portrait.indices_range(row))
-            if (row != col) {
-                if (!is_inner_nodes[col] && is_inner_nodes[row])
-                    ++boundary_matrix.portrait.shifts[row + 1];
-                if (is_symmetric && !is_inner_nodes[row] && is_inner_nodes[col])
-                    ++boundary_matrix.portrait.shifts[col + 1];
-            }
+        for(const size_t col : matrix.portrait.indices_range(row)) {
+            if (need_to_add(row, col))
+                ++boundary_matrix.portrait.shifts[row + 1];
+            if (is_symmetric && need_to_add(col, row))
+                ++boundary_matrix.portrait.shifts[col + 1];
+        }
     boundary_matrix.portrait.accumulate_shifts();
 
     boundary_matrix.portrait.allocate_indices();
     auto current_shifts = boundary_matrix.portrait.shifts;
     for(const size_t row : std::ranges::iota_view(0zu, boundary_matrix.rows()))
-        for(const size_t col : matrix.portrait.indices_range(row))
-            if (row != col) {
-                if (!is_inner_nodes[col] && is_inner_nodes[row])
-                    boundary_matrix.portrait.indices[current_shifts[row]++] = col;
-                if (is_symmetric && !is_inner_nodes[row] && is_inner_nodes[col])
-                    boundary_matrix.portrait.indices[current_shifts[col]++] = row;
-            }
+        for(const size_t col : matrix.portrait.indices_range(row)) {
+            if (need_to_add(row, col))
+                boundary_matrix.portrait.indices[current_shifts[row]++] = col;
+            if (is_symmetric && need_to_add(col, row))
+                boundary_matrix.portrait.indices[current_shifts[col]++] = row;
+        }
     current_shifts.clear();
     current_shifts.shrink_to_fit();
     if (is_symmetric) // for non-symmetric matrices it doesn't needed, because matrix is already sorted
@@ -49,13 +57,29 @@ metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear:
 
     boundary_matrix.allocate_values();
     for(const size_t row : std::ranges::iota_view(0zu, boundary_matrix.rows()))
-        for(const size_t shift : matrix.portrait.shifts_range(row))
-            if (const size_t col = matrix.portrait.indices[shift]; row != col) {
-                if (!is_inner_nodes[col] && is_inner_nodes[row])
-                    boundary_matrix(row, col) = matrix.values[shift];
-                if (is_symmetric && !is_inner_nodes[row] && is_inner_nodes[col])
-                    boundary_matrix(col, row) = matrix.values[shift];
+        for(const size_t shift : matrix.portrait.shifts_range(row)) {
+            const size_t col = matrix.portrait.indices[shift];
+            for(const size_t row_loc : std::ranges::iota_view{0zu, DoF<T>}) {
+                const size_t row_global = DoF<T> * row + row_loc;
+                for(const size_t col_loc : std::ranges::iota_view{0zu, DoF<T>}) {
+                    const size_t col_global = DoF<T> * col + col_loc;
+                    if (row_global != col_global) {
+                        if (!is_inner_nodes[col_global] && is_inner_nodes[row_global]) {
+                            if constexpr (DoF<T> == 1)
+                                boundary_matrix(row, col) = matrix.values[shift];
+                            else
+                                boundary_matrix(row, col)[row_loc][col_loc] = matrix.values[shift][row_loc][col_loc];
+                        }
+                        if (is_symmetric && !is_inner_nodes[row_global] && is_inner_nodes[col_global]) {
+                            if constexpr (DoF<T> == 1)
+                                boundary_matrix(col, row) = matrix.values[shift];
+                            else
+                                boundary_matrix(col, row)[col_loc][row_loc] = matrix.values[shift][row_loc][col_loc];
+                        }
+                    }
+                }
             }
+        }
 
     return boundary_matrix;
 }
@@ -66,19 +90,18 @@ void remove_first_kind_elements(metamath::linear::sparse_matrix<T>& matrix,
     if (is_inner_nodes.size() != DoF<T> * matrix.cols())
         throw std::invalid_argument("The size of the vector of inner nodes does not match the number of degrees of freedom.");
     for(const size_t row : std::ranges::iota_view(0zu, matrix.rows()))
-        for (const size_t shift : matrix.portrait.shifts_range(row))
-            if (const size_t col = matrix.portrait.indices[shift]; has_first_kind(is_inner_nodes, row, DoF<T>) || 
-                                                                   has_first_kind(is_inner_nodes, col, DoF<T>)) {
-                    if constexpr (DoF<T> == 1)
-                        matrix.values[shift] = set_diagonal && row == col ? T{1} : T{0};
-                    else {
-                        using U = metamath::types::container_type_t<metamath::types::container_type_t<T>>;
-                        for(const size_t row_loc : std::ranges::iota_view{0zu, DoF<T>})
-                            for(const size_t col_loc : std::ranges::iota_view{0zu, DoF<T>})
-                                if (!is_inner_nodes[DoF<T> * row + row_loc] && !is_inner_nodes[DoF<T> * col + col_loc])
-                                    matrix.values[shift][row_loc][col_loc] = set_diagonal && row == col && row_loc == col_loc ? U{1} : U{0};
+        for (const size_t shift : matrix.portrait.shifts_range(row)) {
+            using U = metamath::types::container_type_t<metamath::types::container_type_t<T>>;
+            const size_t col = matrix.portrait.indices[shift];
+            for(const size_t row_loc : std::ranges::iota_view{0zu, DoF<T>})
+                for(const size_t col_loc : std::ranges::iota_view{0zu, DoF<T>})
+                    if (!is_inner_nodes[DoF<T> * row + row_loc] || !is_inner_nodes[DoF<T> * col + col_loc]) {
+                        if constexpr (DoF<T> == 1)
+                            matrix.values[shift] = set_diagonal && row == col ? T{1} : T{0};
+                        else
+                            matrix.values[shift][row_loc][col_loc] = set_diagonal && row == col && row_loc == col_loc ? U{1} : U{0};
                     }
-                }
+        }
 }
 
 template<std::floating_point T, physics_t Physics, size_t DoF>
@@ -113,10 +136,13 @@ void first_kind_fill_2d(std::vector<T>& right_part, const mesh::mesh_container_2
         });
 }
 
-template<class T, physics_t Physics, size_t DoF>
-void boundary_condition_first_kind_2d(metamath::linear::sparse_matrix<T>& matrix, std::vector<T>& right_part,
-                                      const problem_settings& settings, const mesh::mesh_container_2d<T>& mesh,
-                                      const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
+template<class T, class U, std::floating_point V, physics_t Physics, size_t DoF>
+void boundary_condition_first_kind_2d(metamath::linear::sparse_matrix<T>& matrix, std::vector<U>& right_part,
+                                      const problem_settings& settings, const mesh::mesh_container_2d<V>& mesh,
+                                      const boundaries_conditions_2d<V, Physics, DoF>& boundaries_conditions) {
+    static_assert(std::is_same_v<U, metamath::types::container_type_t<T>> &&
+                  std::is_same_v<V, metamath::types::container_type_t<U>>,
+                  "The floating point type of the mesh, matrix and the vector shall be the same");
     const auto boundary_matrix = get_first_kind_matrix(matrix, settings.is_inner_nodes, settings.is_symmetric());
     const auto boundary_vector = calc_first_kind_vector(mesh, boundaries_conditions);
     remove_first_kind_elements(matrix, settings.is_inner_nodes);
