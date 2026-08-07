@@ -18,6 +18,7 @@ struct problem_settings final {
     bool is_nonconstant_parameters = false;
     bool is_solution_dependent = false;
     std::vector<bool> is_inner_nodes;
+    std::optional<bool> force_symmetry;
 
     constexpr bool is_nonlinear() const noexcept {
         return is_nonlinear_boundary || is_solution_dependent;
@@ -30,7 +31,7 @@ struct problem_settings final {
     }
 
     bool is_symmetric() const {
-        return !(is_nonconstant_parameters && is_nonlocal());
+        return force_symmetry ? *force_symmetry : !(is_nonconstant_parameters && is_nonlocal());
     }
 };
 

@@ -16,7 +16,7 @@ std::unique_ptr<iterative_solver_base<T, I, J>> init_iterative_solver(const meta
     return std::make_unique<stable_biconjugate_gradient<T, I, J>>(matrix);
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
+template<class T, std::integral I, std::integral J>
 std::unique_ptr<preconditioner_base<T>> init_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix, const bool is_symmetric) {
     if (is_symmetric)
         return std::make_unique<ildlt_preconditioner<T, I, J>>(std::move(matrix));

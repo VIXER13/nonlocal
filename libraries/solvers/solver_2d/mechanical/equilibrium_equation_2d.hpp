@@ -18,6 +18,21 @@
 namespace nonlocal::solver_2d::mechanical {
 
 template<std::floating_point T>
+auto init_preconditioner(problem_settings settings,
+                         const mesh::mesh_2d<T>& mesh,
+                         const evaluated_mechanical_parameters<T>& parameters,
+                         const mechanical_boundaries_conditions_2d<T>& boundaries_conditions) {
+    settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
+    const auto theroires_setter = std::views::all(mesh.container().groups_2d()) |
+                                  std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
+    settings.theories = std::unordered_map<std::string, theory_t>(theroires_setter.begin(), theroires_setter.end());
+    stiffness_matrix<T> local_stiffness{mesh};
+    local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
+    local_stiffness.compute(parameters, settings);
+    return slae::init_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
+}
+
+template<std::floating_point T>
 mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
                                                            const raw_mechanical_parameters<T>& parameters,
                                                            const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
@@ -37,19 +52,8 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
     boundary_condition_first_kind_2d(stiffness.matrix(), f, settings, mesh->container(), boundaries_conditions);
 
     auto solver = slae::init_iterative_solver(stiffness.matrix(), settings.is_symmetric());
-    // if (settings.is_nonlocal()) {
-    //     const auto theroires_setter = std::views::all(mesh.container().groups_2d()) |
-    //                               std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
-    //     settings.theories = std::unordered_map<std::string, theory_t>(theroires_setter.begin(), theroires_setter.end());
-    //     stiffness_matrix<T> local_stiffness{mesh};
-    //     local_stiffness.nodes_for_processing(std::ranges::iota_view{0zu, mesh->container().nodes_count()});
-    //     local_stiffness.compute(evaluated_parameters, settings);
-    //     if (auto preconditioner = slae::init_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric()))
-    //         solver->preconditioner(std::move(preconditioner));
-    //     else
-    //         logger::warning() << "The preconditioner could not be calculated, "
-    //                           << "the preconditioner was switched to the Identity." << std::endl;
-    // }
+    if (settings.is_nonlocal())
+        solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
     auto solution = mechanical_solution_2d{mesh, evaluated_parameters, solver->solve(f)};
     solution.calc_strain_and_stress(evaluated_parameters);
     return solution;
