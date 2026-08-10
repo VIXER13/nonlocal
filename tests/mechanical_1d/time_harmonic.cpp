@@ -80,11 +80,8 @@ const boost::ut::suite<"mechanical_time_harmonic_1d"> _ = [] {
                 // Mass matrix must be intergrated with quadratures one order higher then Stiffness
                 // As mesh contains one set of quadrature points for both matrices one need to increase it's order for Mass matrix
                 static constexpr size_t Quadrature_Order = 2;
-                using quadrature = quadrature_1d<T, gauss, Quadrature_Order>;
-                using element_1d = element_1d<T, lagrangian_element_1d, Element_Order>;
-                using element_integrate_1d = element_1d_integrate<T>;
                 const auto mesh = std::make_shared<mesh_1d<T>>(
-                    std::make_unique<element_integrate_1d>(element_1d{}, quadrature{}),
+                    metamath::finite_element::make_element_1d_integrated<T>(Element_Order, Quadrature_Order),
                     std::vector<segment_data<T>>{{ .length = Length, .elements = elements }});
                 auto solution = harmonic_mechanical_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
                 solution.calc_stress();

@@ -13,42 +13,10 @@ using T = double;
 
 constexpr auto Sample_Nodes = std::array{T{-0.89}, T{-0.5234}, T{-0.03}, T{0.11}, T{0.57}, T{0.9844}};
 
-template<size_t Order>
-std::unique_ptr<element_1d_base<T>> make_element_1d() {
-    return std::make_unique<element_1d<T, lagrangian_element_1d, Order>>();
-}
-
-template<size_t Order>
-std::unique_ptr<quadrature_1d_base<T>> make_quadrature_1d() {
-    return std::make_unique<quadrature_1d<T, gauss, Order>>();
-}
-
-std::unique_ptr<element_1d_base<T>> make_element_1d(const size_t order) {
-    switch(order) {
-        case 1: return make_element_1d<1>();
-        case 2: return make_element_1d<2>();
-        case 3: return make_element_1d<3>();
-        case 4: return make_element_1d<4>();
-        case 5: return make_element_1d<5>();
-        default: throw std::domain_error{"Unsupported element order " + std::to_string(order)};
-    }
-}
-
-std::unique_ptr<quadrature_1d_base<T>> make_quadrature_1d(const size_t order) {
-    switch(order) {
-        case 1: return make_quadrature_1d<1>();
-        case 2: return make_quadrature_1d<2>();
-        case 3: return make_quadrature_1d<3>();
-        case 4: return make_quadrature_1d<4>();
-        case 5: return make_quadrature_1d<5>();
-        default: throw std::domain_error{"Unsupported quadrature order " + std::to_string(order)};
-    }
-}
-
 const suite<"element_1d"> _ = [] {
     for(const size_t element_order : std::ranges::iota_view(1zu, 6zu)) {
         const std::string suffix = "_element_order_" + std::to_string(element_order);
-        const auto element = make_element_1d(element_order);
+        const auto element = make_element_1d<T>(element_order);
 
         test("nodes_count" + suffix) = [&element, element_order] {
             expect(eq(element->nodes_count(), element_order + 1)) << "Unexpected nodes count.";
@@ -105,7 +73,7 @@ const suite<"element_1d"> _ = [] {
 
         for (const size_t quadrature_order : std::ranges::iota_view{element_order, 6zu}) {
             const std::string quadrature_suffix = suffix + "_quadrature_order_" + std::to_string(quadrature_order);
-            const element_1d_integrate<T> integrated_element{*element, *make_quadrature_1d(quadrature_order)};
+            const element_1d_integrate<T> integrated_element{*element, *make_quadrature_1d<T>(quadrature_order)};
 
             test("weights" + quadrature_suffix) = [&integrated_element] {
                 const T element_length = integrated_element.element().boundary(side_1d::RIGHT) - integrated_element.element().boundary(side_1d::LEFT);

@@ -14,7 +14,7 @@ enum class order_t : uint8_t {
     Unknown,
     Linear,
     Quadratic,
-    Сubic,
+    Cubic,
     Quartic,
     Quintic
 };
@@ -23,16 +23,14 @@ NLOHMANN_JSON_SERIALIZE_ENUM(order_t, {
     {order_t::Unknown, nullptr},
     {order_t::Linear, "linear"},
     {order_t::Quadratic, "quadratic"},
-    {order_t::Сubic, "cubic"},
+    {order_t::Cubic, "cubic"},
     {order_t::Quartic, "quartic"},
     {order_t::Quintic, "quintic"}
 })
 
 class _read_mesh_1d final {
     template<class T>
-    using quadrature_1d_ptr = std::unique_ptr<metamath::finite_element::quadrature_1d_base<T>>;
-    template<class T>
-    using finite_element_1d_ptr = std::unique_ptr<metamath::finite_element::element_1d_integrate<T>>;
+    using finite_element_1d = metamath::finite_element::element_1d_integrate<T>;
 
     template<class T, size_t Order>
     using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, Order>;
@@ -45,14 +43,7 @@ class _read_mesh_1d final {
     static order_t get_order(const nlohmann::json& config, const std::string& field, const order_t default_order = order_t::Linear);
 
     template<std::floating_point T>
-    static quadrature_1d_ptr<T> make_quadrature(const order_t order);
-    template<std::floating_point T>
-    static finite_element_1d_ptr<T> make_element(const order_t order, const quadrature_1d_ptr<T>& quadrature);
-    template<std::floating_point T>
-    static finite_element_1d_ptr<T> make_element(const order_t element_order, const order_t quadrature_order);
-
-    template<std::floating_point T>
-    static finite_element_1d_ptr<T> read_element(const nlohmann::json& config, const std::string& path);
+    static finite_element_1d<T> read_element(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
     static T read_search_radius(const nlohmann::json& config, const std::string& path);
@@ -69,55 +60,14 @@ public:
 };
 
 template<std::floating_point T>
-_read_mesh_1d::quadrature_1d_ptr<T> _read_mesh_1d::make_quadrature(const order_t order) {
-    switch(order) {
-    case order_t::Linear:
-        return std::make_unique<quadrature<T, 1>>();
-    case order_t::Quadratic:
-        return std::make_unique<quadrature<T, 2>>();
-    case order_t::Сubic:
-        return std::make_unique<quadrature<T, 3>>();
-    case order_t::Quartic:
-        return std::make_unique<quadrature<T, 4>>();
-    case order_t::Quintic:
-        return std::make_unique<quadrature<T, 5>>();
-    default:
-        throw std::logic_error{"Invalid quadrature order: " + std::to_string(size_t(order))};
-    }
-}
-
-template<std::floating_point T>
-_read_mesh_1d::finite_element_1d_ptr<T> _read_mesh_1d::make_element(const order_t order, const quadrature_1d_ptr<T>& quadrature) {
-    switch(order) {
-    case order_t::Linear:
-        return std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, *quadrature);
-    case order_t::Quadratic:
-        return std::make_unique<element_1d_integrate<T>>(element_1d<T, 2>{}, *quadrature);
-    case order_t::Сubic:
-        return std::make_unique<element_1d_integrate<T>>(element_1d<T, 3>{}, *quadrature);
-    case order_t::Quartic:
-        return std::make_unique<element_1d_integrate<T>>(element_1d<T, 4>{}, *quadrature);
-    case order_t::Quintic:
-        return std::make_unique<element_1d_integrate<T>>(element_1d<T, 5>{}, *quadrature);
-    default:
-        throw std::domain_error{"Invalid element order: " + std::to_string(size_t(order))};
-    }
-}
-
-template<std::floating_point T>
-_read_mesh_1d::finite_element_1d_ptr<T> _read_mesh_1d::make_element(const order_t element_order, const order_t quadrature_order) {
-    return make_element(element_order, make_quadrature<T>(quadrature_order == order_t::Unknown ? element_order : quadrature_order));
-}
-
-template<std::floating_point T>
-_read_mesh_1d::finite_element_1d_ptr<T> _read_mesh_1d::read_element(const nlohmann::json& config, const std::string& path) {
+_read_mesh_1d::finite_element_1d<T> _read_mesh_1d::read_element(const nlohmann::json& config, const std::string& path) {
     if (!config.empty())
         check_optional_fields(config, {"element_order", "quadrature_order"}, append_access_sign(path));
-    const order_t element_order = _read_mesh_1d::get_order(config, "element_order");
-    const order_t quadrature_order = _read_mesh_1d::get_order(config, "quadrature_order", element_order);
-    if (size_t(quadrature_order) < size_t(element_order))
+    const size_t element_order = size_t(_read_mesh_1d::get_order(config, "element_order"));
+    const size_t quadrature_order = size_t(_read_mesh_1d::get_order(config, "quadrature_order", order_t(element_order)));
+    if (quadrature_order < element_order)
         logger::warning() << "The order of the quadrature is lower than the order of the element, this may lead to computational problems." << std::endl;
-    return make_element<T>(element_order, quadrature_order);
+    return metamath::finite_element::make_element_1d_integrated<T>(element_order, quadrature_order);
 }
 
 template<std::floating_point T>

@@ -8,7 +8,7 @@
 
 namespace metamath::finite_element {
 
-template<class T>
+template<std::floating_point T>
 class quadrature_1d_base : public quadrature_base<T> {
 public:
     ~quadrature_1d_base() override = default;

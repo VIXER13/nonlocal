@@ -11,12 +11,7 @@ using namespace boost::ut;
 using namespace nonlocal;
 using namespace nonlocal::solver_1d::thermal;
 
-template<class T>
-using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, std::size_t(1)>;
-template<class T>
-using element_1d_integrate = metamath::finite_element::element_1d_integrate<T>;
-template<class T, size_t Order>
-using element_1d = metamath::finite_element::element_1d<T, metamath::finite_element::lagrangian_element_1d, Order>;
+constexpr size_t Order = 1;
 
 template <std::floating_point T>
 struct time_data final {
@@ -135,7 +130,7 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         }};
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, quadrature<T>{}),
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
             segments
         );
         
@@ -172,7 +167,7 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>( element_1d<T, 1>{}, quadrature<T>{}),
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
             segments
         );
 
@@ -214,7 +209,7 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, quadrature<T>{}),
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
             segments
         );
 
@@ -263,7 +258,7 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, quadrature<T>{}),
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
             segments
         );
         

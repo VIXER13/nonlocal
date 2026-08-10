@@ -51,9 +51,8 @@ class mesh_1d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
     using finite_element_1d = metamath::finite_element::element_1d_integrate<T>;
-    using finite_element_1d_ptr = std::unique_ptr<finite_element_1d>;
 
-    finite_element_1d_ptr _element;
+    finite_element_1d _element;
     std::vector<segment_data<T>> _segments;
     std::vector<size_t> _neighbours_count;
 
@@ -61,7 +60,7 @@ class mesh_1d final {
     void find_neighbours();
 
 public:
-    explicit mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments);
+    explicit mesh_1d(finite_element_1d&& element, const std::vector<segment_data<T>>& segments);
 
     const finite_element_1d& element() const;
 
@@ -98,7 +97,7 @@ public:
 };
 
 template<class T>
-mesh_1d<T>::mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments)
+mesh_1d<T>::mesh_1d(finite_element_1d&& element, const std::vector<segment_data<T>>& segments)
     : _element{std::move(element)}
     , _segments{accumulate(segments)}
     , _neighbours_count(_segments.size(), 1) {
@@ -123,7 +122,7 @@ void mesh_1d<T>::find_neighbours() {
 
 template<class T>
 const mesh_1d<T>::finite_element_1d& mesh_1d<T>::element() const {
-    return *_element;
+    return _element;
 }
 
 template<class T>

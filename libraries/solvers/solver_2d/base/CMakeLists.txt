@@ -8,12 +8,13 @@ target_sources(
         boundary_condition_first_kind_2d.hpp
         boundary_condition_second_kind_2d.hpp
         boundary_conditions_2d.hpp
-        matrix_assembler_2d.hpp
-        matrix_index_initializer.hpp
-        matrix_indexator_base.hpp
-        matrix_separator_base.hpp
+        degree_of_freedom.hpp
+        finite_element_matrix.hpp
+        indices_initializer.hpp
+        integrator.hpp
+        matrix_assembler.hpp
+        problem_settings.hpp
         right_part_2d.hpp
-        shift_initializer.hpp
         solution_2d.hpp
         solvers_utils.hpp
 )

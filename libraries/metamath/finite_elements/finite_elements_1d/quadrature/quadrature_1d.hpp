@@ -1,10 +1,10 @@
 #pragma once
 
-#include <metamath/finite_elements/finite_elements_1d/quadrature/quadrature_1d_base.hpp>
+#include "quadrature_1d_base.hpp"
 
 namespace metamath::finite_element {
 
-template<class T, template<class, auto...> class Quadrature_Type, auto... Args>
+template<std::floating_point T, template<class, auto...> class Quadrature_Type, auto... Args>
 class quadrature_1d : public quadrature_1d_base<T>,
                       public Quadrature_Type<T, Args...> {
     using quadrature_t = Quadrature_Type<T, Args...>;
