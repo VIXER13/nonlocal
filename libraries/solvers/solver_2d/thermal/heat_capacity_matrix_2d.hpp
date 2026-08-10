@@ -20,7 +20,7 @@ public:
     explicit heat_capacity_matrix_2d(const mesh::mesh_2d<T>& mesh) : _base{mesh} {}
     ~heat_capacity_matrix_2d() noexcept override = default;
 
-    void compute(const parameters_2d<T>& parameters, const problem_settings& settings) {
+    void compute(const evaluated_thermal_parameters<T>& parameters, const problem_settings& settings) {
         logger::info() << "Capacity matrix assembly started" << std::endl;
         _base::matrix().clear();
         _base::matrix().portrait.set_size(_base::rows(), _base::mesh().container().nodes_count());

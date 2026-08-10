@@ -27,7 +27,7 @@ class _read_thermal_parameters final {
     template<std::floating_point T>
     static solver_2d::thermal::raw_conductivity_t<T> read_conductivity_2d(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
-    static solver_2d::thermal::parameter_2d<T> read_thermal_coefficient_2d(const nlohmann::json& config, const std::string& path);
+    static solver_2d::thermal::raw_thermal_parameters_t<T> read_thermal_coefficient_2d(const nlohmann::json& config, const std::string& path);
 
     explicit _read_thermal_parameters() noexcept = default;
 
@@ -36,7 +36,7 @@ public:
     friend solver_1d::thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& config, const std::string& path);
 
     template<std::floating_point T>
-    friend solver_2d::thermal::parameters_2d<T> read_thermal_parameters_2d(const nlohmann::json& config, const std::string& path);
+    friend solver_2d::thermal::raw_thermal_parameters<T> read_thermal_parameters_2d(const nlohmann::json& config, const std::string& path);
 };
 
 template<std::floating_point T>
@@ -124,7 +124,7 @@ solver_2d::thermal::raw_conductivity_t<T> _read_thermal_parameters::read_conduct
 }
 
 template<std::floating_point T>
-solver_2d::thermal::parameter_2d<T> _read_thermal_parameters::read_thermal_coefficient_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::thermal::raw_thermal_parameters_t<T> _read_thermal_parameters::read_thermal_coefficient_2d(const nlohmann::json& config, const std::string& path) {
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, {"conductivity"}, path_with_access);
     check_optional_fields(config, {"capacity", "density", "relaxation_time"}, path_with_access);
@@ -156,11 +156,11 @@ solver_1d::thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::
 }
 
 template<std::floating_point T>
-solver_2d::thermal::parameters_2d<T> read_thermal_parameters_2d(const nlohmann::json& config, const std::string& path) {
+solver_2d::thermal::raw_thermal_parameters<T> read_thermal_parameters_2d(const nlohmann::json& config, const std::string& path) {
     if (!config.is_object())
         throw std::domain_error{"\"materials\" initialization requires the initializing config to be an object."};
     const std::string path_with_access = append_access_sign(path);
-    solver_2d::thermal::parameters_2d<T> parameters;
+    solver_2d::thermal::raw_thermal_parameters<T> parameters;
     for(const auto& [name, material] : config.items()) {
         const std::string path_with_access_to_material = append_access_sign(path_with_access + name);
         const std::string model_field = get_model_field(material, path_with_access, "thermal");

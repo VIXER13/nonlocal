@@ -27,7 +27,7 @@ auto get_values_on_center_line(const mesh_container_2d<T>& mesh, const Vector& s
 const suite<"flux_stability"> _ = [] {
     std::stringstream stream{plate_10x1_h0_125_su2_data};
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
-    const parameters_2d<T> parameters = {{ "DEFAULT", { .physical = { .conductivity = T{1} } } }};
+    const raw_thermal_parameters<T> parameters = {{ "DEFAULT", { .physical = { .conductivity = T{1} } } }};
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Left"]  = std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return -4 * std::abs(point[Y]); });
     boundaries_conditions["Right"] = std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return  4 * std::abs(point[Y]); });

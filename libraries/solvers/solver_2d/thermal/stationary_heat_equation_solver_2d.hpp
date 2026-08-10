@@ -44,7 +44,7 @@ std::vector<T> init_right_part(const mesh::mesh_2d<T>& mesh,
 template<std::floating_point T>
 std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(problem_settings settings,
                                                                   const mesh::mesh_2d<T>& mesh,
-                                                                  const evaluated_conductivity_2d<T>& parameters,
+                                                                  const evaluated_thermal_parameters<T>& parameters,
                                                                   const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                   const std::vector<T>& temperature = {}) {
     settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
@@ -62,7 +62,7 @@ std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(problem_settin
 template<std::floating_point T>
 std::vector<T> stationary_heat_equation_solver_2d_linear(const problem_settings& settings,
                                                          const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-                                                         const evaluated_conductivity_2d<T>& parameters,
+                                                         const evaluated_thermal_parameters<T>& parameters,
                                                          const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                          std::vector<T> right_part) {
     conductivity_matrix_2d<T> conductivity{*mesh};
@@ -79,7 +79,7 @@ std::vector<T> stationary_heat_equation_solver_2d_linear(const problem_settings&
 template<std::floating_point T>
 std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settings& settings,
                                                             const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-                                                            const parameters_2d<T>& parameters,
+                                                            const raw_thermal_parameters<T>& parameters,
                                                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                             const stationary_equation_parameters_2d<T>& auxiliary_data,
                                                             const std::vector<T>& initial_right_part) {
@@ -126,14 +126,14 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
 
 template<std::floating_point T>
 heat_equation_solution_2d<T> stationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-                                                                const parameters_2d<T>& parameters,
+                                                                const raw_thermal_parameters<T>& parameters,
                                                                 const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                 const stationary_equation_parameters_2d<T>& auxiliary_data) {
     static constexpr bool Is_Stationary = true;
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
     std::vector<T> right_part = init_right_part(*mesh, boundaries_conditions, auxiliary_data, settings.is_neumann);
-    evaluated_conductivity_2d<T> conductivity_parameters;
+    evaluated_thermal_parameters<T> conductivity_parameters;
     std::vector<T> temperature;
     if(settings.is_nonlinear()) {
         temperature = stationary_heat_equation_solver_2d_nonlinear(settings, mesh, parameters, boundaries_conditions, auxiliary_data, right_part);

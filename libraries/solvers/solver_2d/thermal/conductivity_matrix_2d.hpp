@@ -28,7 +28,7 @@ public:
     explicit conductivity_matrix_2d(const mesh::mesh_2d<T>& mesh);
     ~conductivity_matrix_2d() noexcept override = default;
 
-    void compute(const evaluated_conductivity_2d<T>& conductivity, const problem_settings& settings);
+    void compute(const evaluated_thermal_parameters<T>& conductivity, const problem_settings& settings);
 };
 
 template<std::floating_point T>
@@ -161,7 +161,7 @@ T conductivity_matrix_2d<T>::integrate_nonlocal(const Conductivity& conductivity
 }
 
 template<std::floating_point T>
-void conductivity_matrix_2d<T>::compute(const evaluated_conductivity_2d<T>& conductivity, const problem_settings& settings) {
+void conductivity_matrix_2d<T>::compute(const evaluated_thermal_parameters<T>& conductivity, const problem_settings& settings) {
     logger::info() << "Thermal conductivity matrix assembly started" << std::endl;
     _base::matrix().clear();
     create_matrix_portrait(settings);
@@ -172,13 +172,13 @@ void conductivity_matrix_2d<T>::compute(const evaluated_conductivity_2d<T>& cond
             const auto& [model, physic] = conductivity.at(group);
             return model.local_weight * std::visit([this, e, i, j](const auto& conductivity) {
                 return integrate_local(conductivity, e, i, j);
-            }, physic);
+            }, physic.conductivity);
         },
         [this, &conductivity](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             const auto& [model, physic] = conductivity.at(group);
             return nonlocal::nonlocal_weight(model.local_weight) * std::visit([this, &model, eL, eNL, iL, jNL](const auto& conductivity) {
                 return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL);
-            }, physic);
+            }, physic.conductivity);
         }
     );
     logger::info() << "Thermal conductivity matrix assembly finished" << std::endl;

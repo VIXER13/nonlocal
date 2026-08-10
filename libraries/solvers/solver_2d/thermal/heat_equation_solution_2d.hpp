@@ -13,20 +13,20 @@ class heat_equation_solution_2d : public solution_2d<T> {
 
     std::vector<T> _temperature;
     std::vector<std::array<T, 2>> _flux;
-    std::unordered_map<std::string, evaluated_conductivity_t<T>> _conductivity;
+    std::unordered_map<std::string, evaluated_thermal_parameters_t<T>> _conductivity;
 
     std::vector<std::array<T, 2>> local_flux_in_qnodes() const;
 
 public:
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
     explicit heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-                                       const evaluated_conductivity_2d<T>& conductivity,
+                                       const evaluated_thermal_parameters<T>& conductivity,
                                        const std::vector<T>& temperature);
     ~heat_equation_solution_2d() noexcept override = default;
 
     const std::vector<T>& temperature() const noexcept;
     const std::vector<std::array<T, 2>>& flux() const;
-    const evaluated_conductivity_t<T>& conductivity(const std::string& group) const;
+    const evaluated_thermal_parameters_t<T>& conductivity(const std::string& group) const;
 
     bool is_flux_calculated() const noexcept;
     const std::vector<std::array<T, 2>>& calc_flux();
@@ -39,7 +39,7 @@ heat_equation_solution_2d<T>::heat_equation_solution_2d(const std::shared_ptr<me
 
 template<std::floating_point T>
 heat_equation_solution_2d<T>::heat_equation_solution_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
-                                                        const evaluated_conductivity_2d<T>& conductivity,
+                                                        const evaluated_thermal_parameters<T>& conductivity,
                                                         const std::vector<T>& temperature)
     : _base{mesh, get_models(conductivity)}
     , _temperature{temperature.cbegin(), std::next(temperature.cbegin(), mesh->container().nodes_count())}
@@ -58,7 +58,7 @@ const std::vector<std::array<T, 2>>& heat_equation_solution_2d<T>::flux() const 
 }
 
 template<std::floating_point T>
-const evaluated_conductivity_t<T>& heat_equation_solution_2d<T>::conductivity(const std::string& group) const {
+const evaluated_thermal_parameters_t<T>& heat_equation_solution_2d<T>::conductivity(const std::string& group) const {
     return _conductivity.at(group);
 }
 
@@ -70,7 +70,7 @@ bool heat_equation_solution_2d<T>::is_flux_calculated() const noexcept {
 template<std::floating_point T>
 std::vector<std::array<T, 2>> heat_equation_solution_2d<T>::local_flux_in_qnodes() const {
     auto flux = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
-    for (const auto& [group, conductivity] : _conductivity)
+    for (const auto& [group, parameters] : _conductivity)
         for(const size_t e : _base::mesh().container().elements(group))
             for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
                 std::visit([&flux, qshift](const auto& conductivity) {
@@ -87,7 +87,7 @@ std::vector<std::array<T, 2>> heat_equation_solution_2d<T>::local_flux_in_qnodes
                                         -conduct[XY] * flux[X][qshift] - conduct[YY] * flux[Y][qshift]};
                     else
                         static_assert(false, "Unknown conductivity coefficients type.");
-                }, conductivity);
+                }, parameters.conductivity);
             }
     return flux;
 }
@@ -100,7 +100,7 @@ const std::vector<std::array<T, 2>>& heat_equation_solution_2d<T>::calc_flux() {
     using namespace metamath::operators;
     _flux = local_flux_in_qnodes();
     auto flux = _flux;
-    for(const auto& [group, parameter] : _conductivity)
+    for(const auto& [group, parameters] : _conductivity)
         if (const model_parameters<2, T>& model = _base::model(group); theory_type(model.local_weight) == theory_t::NONLOCAL) {
             const T nonlocal_weight = nonlocal::nonlocal_weight(model.local_weight);
             for(const size_t eL : _base::mesh().container().elements(group))

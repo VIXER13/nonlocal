@@ -26,7 +26,7 @@ class nonstationary_heat_equation_solver_2d final {
 
     std::function<T(const std::array<T, 2>&)> _inner_flux;
     thermal_boundaries_conditions_2d<T> _boundaries_conditions;
-    evaluated_conductivity_2d<T> _parameters;
+    evaluated_thermal_parameters<T> _parameters;
     T _time_step = T{1};
     T _time = T{0};
     bool is_symmetric = false;
@@ -39,7 +39,7 @@ public:
     constexpr T time_step() const noexcept;
     constexpr T time() const noexcept;
 
-    void compute(const parameters_2d<T>& parameters,
+    void compute(const raw_thermal_parameters<T>& parameters,
                  thermal_boundaries_conditions_2d<T>&& boundaries_conditions,
                  const T time_step, 
                  const std::function<T(const std::array<T, 2>&)>& inner_flux = nullptr,
@@ -81,7 +81,7 @@ constexpr T nonstationary_heat_equation_solver_2d<T>::time() const noexcept {
 }
 
 template<std::floating_point T>
-void nonstationary_heat_equation_solver_2d<T>::compute(const parameters_2d<T>& parameters,
+void nonstationary_heat_equation_solver_2d<T>::compute(const raw_thermal_parameters<T>& parameters,
                                                        thermal_boundaries_conditions_2d<T>&& boundaries_conditions,
                                                        const T time_step, 
                                                        const std::function<T(const std::array<T, 2>&)>& inner_flux,
@@ -109,7 +109,7 @@ void nonstationary_heat_equation_solver_2d<T>::compute(const parameters_2d<T>& p
     _slae_solver = slae::init_iterative_solver(_conductivity.matrix(), is_symmetric);
     
     settings.set_fully_local();
-    _capacity.compute(parameters, settings);
+    _capacity.compute(_parameters, settings);
     _capacity.matrix() /= time_step;
     static constexpr bool Set_Diagonal = false;
     remove_first_kind_elements(_capacity.matrix(), settings.is_inner_nodes, Set_Diagonal);
