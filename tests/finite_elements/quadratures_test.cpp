@@ -44,6 +44,17 @@ const suite<"quadrature_1d"> _ = [] {
             expect(lt(std::abs(weights_sum - length), std::numeric_limits<T>::epsilon())) << "Unexpected weights sum.";
         };
 
+        test("copy" + suffix) = [&quadrature] {
+            const auto copied_quadrature = quadrature->copy();
+            expect(eq(copied_quadrature->nodes_count(), quadrature->nodes_count())) << "Unexpected nodes count in copied quadrature.";
+            expect(eq(copied_quadrature->boundary(side_1d::LEFT), quadrature->boundary(side_1d::LEFT))) << "Unexpected left boundary position in copied quadrature.";
+            expect(eq(copied_quadrature->boundary(side_1d::RIGHT), quadrature->boundary(side_1d::RIGHT))) << "Unexpected right boundary position in copied quadrature.";
+            for(const size_t i : quadrature->nodes()) {
+                expect(eq(copied_quadrature->weight(i), quadrature->weight(i))) << "Unexpected weight in copied quadrature.";
+                expect(eq(copied_quadrature->node(i), quadrature->node(i))) << "Unexpected node in copied quadrature.";
+            }
+        };
+
         ++order;
     }
 };

@@ -16,6 +16,11 @@ namespace nonlocal::mesh {
 
 constexpr std::string_view Default_Group_Name = "DEFAULT";
 
+template<class T>
+constexpr T jacobian(const metamath::linear::square_matrix<T, 2>& J) noexcept {
+    return std::abs(metamath::linear::determinant(J));
+}
+
 template<std::floating_point T, std::integral I = uint32_t>
 class mesh_container_2d final {
 
@@ -150,7 +155,7 @@ template<std::floating_point T, std::integral I>
 metamath::linear::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::jacobi_matrix(const size_t q) const {
     metamath::linear::square_matrix<T, 2> J = {};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()}) {
-        const std::array<T, 2> derivative = {element.qNxi (i, q), element.qNeta(i, q)};
+        const std::array<T, 2> derivative = {element.qNxi(i, q), element.qNeta(i, q)};
         using namespace metamath::operators;
         J[0] += mesh.node_coord(nodes[i])[0] * derivative;
         J[1] += mesh.node_coord(nodes[i])[1] * derivative;

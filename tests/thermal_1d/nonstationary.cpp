@@ -135,10 +135,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         }};
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, quadrature<T>{}),
+            segments
+        );
         
         constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
         constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
@@ -173,10 +172,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            std::make_unique<element_1d_integrate<T>>( element_1d<T, 1>{}, quadrature<T>{}),
+            segments
+        );
 
         constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
         constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
@@ -216,10 +214,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, quadrature<T>{}),
+            segments
+        );
 
         constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(500.0); };
         constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
@@ -266,10 +263,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            std::make_unique<element_1d_integrate<T>>(element_1d<T, 1>{}, quadrature<T>{}),
+            segments
+        );
         
         const auto init_dist =  [&](const T x)            constexpr noexcept { return ref_sol(T(0), x); };
         const auto right_part = [&](const T t, const T x) constexpr noexcept { 

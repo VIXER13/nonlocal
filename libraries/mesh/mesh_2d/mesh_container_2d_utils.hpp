@@ -87,11 +87,6 @@ std::vector<metamath::linear::square_matrix<T, 2>> approx_all_jacobi_matrices(co
 }
 
 template<class T>
-constexpr T jacobian(const metamath::linear::square_matrix<T, 2>& J) noexcept {
-    return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
-}
-
-template<class T>
 std::vector<T> calculate_jacobians(const std::vector<metamath::linear::square_matrix<T, 2>>& jacobi_matrices) {
     std::vector<T> jacobians(jacobi_matrices.size());
     std::transform(jacobi_matrices.begin(), jacobi_matrices.end(), jacobians.begin(), jacobian<T>);

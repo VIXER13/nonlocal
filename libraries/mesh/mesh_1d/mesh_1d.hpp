@@ -275,7 +275,7 @@ T mesh_1d<T>::search_radius(const size_t segment) const {
 template<class T>
 T mesh_1d<T>::jacobian(const size_t segment) const {
     using enum metamath::finite_element::side_1d;
-    return element_length(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
+    return element_length(segment) / (element().element().boundary(RIGHT) - element().element().boundary(LEFT));
 }
 
 template<class T>
@@ -295,7 +295,7 @@ T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const {
     const size_t segment = segment_number(e);
     const auto [left_bound, _] = bounds(segment);
     const size_t first_segment_element = elements(segment).front();
-    const T qnode_coord_loc = (element().quadrature().node(q) - element().boundary(LEFT)) * jacobian(segment);
+    const T qnode_coord_loc = (element().quadrature().node(q) - element().quadrature().boundary(LEFT)) * jacobian(segment);
     return left_bound + element_length(segment) * (e - first_segment_element) + qnode_coord_loc;
 }
 

@@ -155,29 +155,29 @@ const suite<"element_2d"> _ = [] {
             };
 
             test("copy" + suffix) = [&element] {
-                auto cloned_base = element->copy();
-                expect(cloned_base != nullptr);
-                expect(cloned_base.get() != element.get());
+                auto copied_base = element->copy();
+                expect(copied_base != nullptr);
+                expect(copied_base.get() != element.get());
 
-                auto* cloned = dynamic_cast<element_2d_integrate<T>*>(cloned_base.get());
-                expect(cloned != nullptr);
+                auto* copied = dynamic_cast<element_2d_integrate<T>*>(copied_base.get());
+                expect(copied != nullptr);
 
-                expect(eq(cloned->nodes_count(), element->nodes_count()));
-                expect(eq(cloned->qnodes_count(), element->qnodes_count()));
+                expect(eq(copied->nodes_count(), element->nodes_count()));
+                expect(eq(copied->qnodes_count(), element->qnodes_count()));
 
                 for(const size_t i : element->nodes()) {
-                    expect(eq(cloned->nearest_qnode(i), element->nearest_qnode(i)));
-                    expect(cloned->node(i) == element->node(i));
+                    expect(eq(copied->nearest_qnode(i), element->nearest_qnode(i)));
+                    expect(copied->node(i) == element->node(i));
                 }
 
                 for(const size_t q : element->qnodes())
-                    expect(eq(cloned->weight(q), element->weight(q)));
+                    expect(eq(copied->weight(q), element->weight(q)));
 
                 for(const size_t i : element->nodes())
                     for(const size_t q : element->qnodes()) {
-                        expect(eq(cloned->qN(i, q), element->qN(i, q)));
-                        expect(eq(cloned->qNxi(i, q), element->qNxi(i, q)));
-                        expect(eq(cloned->qNeta(i, q), element->qNeta(i, q)));
+                        expect(eq(copied->qN(i, q), element->qN(i, q)));
+                        expect(eq(copied->qNxi(i, q), element->qNxi(i, q)));
+                        expect(eq(copied->qNeta(i, q), element->qNeta(i, q)));
                     }
             };
 

@@ -38,14 +38,14 @@ class vtk_elements_set final : public elements_set<T> {
 
     static std::vector<element_integrate_1d<T>> make_default_1d_elements() {
         return {
-            element_integrate_1d<T>{std::make_unique<element_1d<T, 1>>(), quadrature<T, gauss, 1>{}},
-            element_integrate_1d<T>{std::make_unique<element_1d<T, 2>>(), quadrature<T, gauss, 3>{} }
+            element_integrate_1d<T>{element_1d<T, 1>{}, quadrature<T, gauss, 1>{}},
+            element_integrate_1d<T>{element_1d<T, 2>{}, quadrature<T, gauss, 2>{}}
         };
     }
 
     static std::vector<element_integrate_2d<T>> make_default_2d_elements() {
         return {
-            element_integrate_2d<T>{ std::make_unique<element_2d<T, triangle, 1>>(), quadrature<T, gauss, 1>{}},
+            element_integrate_2d<T>{std::make_unique<element_2d<T, triangle, 1>>(), quadrature<T, gauss, 1>{}},
             element_integrate_2d<T>{std::make_unique<element_2d<T, triangle, 2>>(), quadrature<T, gauss, 2>{}},
             element_integrate_2d<T>{std::make_unique<element_2d<T, metamath::finite_element::serendipity, 1>>(), quadrature<T, gauss, 2>{}},
             element_integrate_2d<T>{std::make_unique<element_2d<T, metamath::finite_element::serendipity, 2>>(), quadrature<T, gauss, 3>{}},
