@@ -48,9 +48,7 @@ std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(problem_settin
                                                                   const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                                   const std::vector<T>& temperature = {}) {
     settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
-    const auto theroires_setter = std::views::all(mesh.container().groups_2d()) |
-                                  std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
-    settings.theories = std::unordered_map<std::string, theory_t>(theroires_setter.begin(), theroires_setter.end());
+    settings.set_fully_local();
     conductivity_matrix_2d<T> local_conductivity{mesh};
     local_conductivity.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
     local_conductivity.compute(parameters, settings);

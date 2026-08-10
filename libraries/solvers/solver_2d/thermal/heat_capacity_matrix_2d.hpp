@@ -21,6 +21,7 @@ public:
     ~heat_capacity_matrix_2d() noexcept override = default;
 
     void compute(const parameters_2d<T>& parameters, const problem_settings& settings) {
+        logger::info() << "Capacity matrix assembly started" << std::endl;
         _base::matrix().clear();
         _base::matrix().portrait.set_size(_base::rows(), _base::mesh().container().nodes_count());
         _base::init_shifts(settings);
@@ -32,6 +33,7 @@ public:
             },
             [](const std::string&, size_t, size_t, size_t, size_t) { return T{0}; }
         );
+        logger::info() << "Capacity matrix assembly finished" << std::endl;
     }
 };
 

@@ -23,9 +23,7 @@ auto init_preconditioner(problem_settings settings,
                          const evaluated_mechanical_parameters<T>& parameters,
                          const mechanical_boundaries_conditions_2d<T>& boundaries_conditions) {
     settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
-    const auto theroires_setter = std::views::all(mesh.container().groups_2d()) |
-                                  std::views::transform([](const std::string& group) { return std::pair{group, theory_t::LOCAL}; });
-    settings.theories = std::unordered_map<std::string, theory_t>(theroires_setter.begin(), theroires_setter.end());
+    settings.set_fully_local();
     stiffness_matrix<T> local_stiffness{mesh};
     local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
     local_stiffness.compute(parameters, settings);

@@ -139,7 +139,7 @@ void mechanical_nonstationary_2d(std::shared_ptr<mesh::mesh_2d<T>>& mesh, const 
     solver_2d::mechanical::motion_equation_solver<T> solver{mesh};
     solver.compute(config::read_mechanical_parameters_2d<T>(config["materials"], "materials"),
                    config::read_mechanical_boundaries_conditions_2d<T>(config[Boundaries_Field], Boundaries_Field),
-                   time.time_step, time.initial_time);
+                   time.time_step, nullptr, nullptr, time.initial_time);
     {
         const std::optional<solver_2d::mechanical::mechanical_solution_2d<T>> solution = solver.solution();
         save_csv({}, solution, save, 0);

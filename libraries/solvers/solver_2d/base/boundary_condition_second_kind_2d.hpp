@@ -9,7 +9,7 @@ namespace nonlocal::solver_2d {
 
 template<class T, std::floating_point U, physics_t Physics, size_t DoF>
     void boundary_condition_second_kind_2d(std::vector<T>& f, const mesh::mesh_2d<U>& mesh,
-                                        const boundaries_conditions_2d<U, Physics, DoF>& boundaries_conditions) {
+                                           const boundaries_conditions_2d<U, Physics, DoF>& boundaries_conditions) {
     static_assert(std::is_same_v<U, metamath::types::container_type_t<T>>, "The floating point type of the mesh and the vector shall be the same");
 
     static constexpr auto integrate = [](const second_kind_2d<U, Physics>& condition, const auto& element, const size_t i) {

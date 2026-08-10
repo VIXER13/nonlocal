@@ -20,6 +20,11 @@ struct problem_settings final {
     std::vector<bool> is_inner_nodes;
     std::optional<bool> force_symmetry;
 
+    void set_fully_local() {
+        for (auto& [_, theory] : theories)
+            theory = theory_t::LOCAL;
+    }
+
     constexpr bool is_nonlinear() const noexcept {
         return is_nonlinear_boundary || is_solution_dependent;
     }
