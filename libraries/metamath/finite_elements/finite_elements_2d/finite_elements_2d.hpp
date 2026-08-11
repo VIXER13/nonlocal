@@ -5,3 +5,5 @@
 
 #include "element/element_2d_integrate.hpp"
 #include "element/basis/basis_2d.hpp"
+
+#include "quadrature/make_quadrature_2d.hpp"

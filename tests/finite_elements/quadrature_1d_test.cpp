@@ -11,7 +11,6 @@ using namespace metamath::finite_element;
 using T = double;
 
 const suite<"quadrature_1d"> _ = [] {
-    size_t order = 1;
     for(const size_t order : std::ranges::iota_view{1zu, 6zu}) {
         const std::string suffix = "_order_" + std::to_string(order);
         const auto quadrature = make_quadrature_1d<T>(order);
@@ -32,7 +31,7 @@ const suite<"quadrature_1d"> _ = [] {
             };
             const T weights_sum = std::accumulate(nodes.begin(), nodes.end(), T{0}, weight_summator);
             const T length = quadrature->boundary(side_1d::RIGHT) - quadrature->boundary(side_1d::LEFT);
-            expect(lt(std::abs(weights_sum - length), std::numeric_limits<T>::epsilon())) << "Unexpected weights sum.";
+            expect(approx(weights_sum, length, std::numeric_limits<T>::epsilon())) << "Unexpected weights sum.";
         };
 
         test("copy" + suffix) = [&quadrature] {

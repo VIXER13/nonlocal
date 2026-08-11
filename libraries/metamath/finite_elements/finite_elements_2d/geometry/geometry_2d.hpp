@@ -14,6 +14,7 @@ public:
     ~geometry_2d() override = default;
 
     T boundary(const side_2d bound, const T x) const override { return shape_t::boundary[size_t(bound)](x); }
+    T area() const override { return shape_t::area(); }
 };
 
 }

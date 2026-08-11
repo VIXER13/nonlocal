@@ -14,11 +14,13 @@ class quadrature_1d : public quadrature_1d_base<T>,
 public:
     ~quadrature_1d() override = default;
 
-    std::unique_ptr<quadrature_1d_base<T>> copy() const override { return std::make_unique<quadrature_1d<T, Quadrature_Type, Args...>>(); }
+    std::unique_ptr<quadrature_1d_base<T>> copy() const override {
+        return std::make_unique<quadrature_1d<T, Quadrature_Type, Args...>>(*this);
+    }
 
     size_t nodes_count() const override { return quadrature_t::nodes.size(); }
 
-    const T node(const size_t i) const override { return quadrature_t::nodes[i]; }
+    T node(const size_t i) const override { return quadrature_t::nodes[i]; }
     T weight(const size_t i) const override { return quadrature_t::weights[i]; }
 
     T boundary(const side_1d bound) const override { return quadrature_t::boundary(bound); }
