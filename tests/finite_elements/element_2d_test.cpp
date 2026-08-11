@@ -70,9 +70,9 @@ struct basis_summator final {
 
     std::array<T, 3> operator()(const std::array<T, 3>& sum, const size_t i) const {
         return {
-            sum[0] + element.N(i, point),
-            sum[1] + element.Nxi(i, point),
-            sum[2] + element.Neta(i, point)
+            sum[0] + element.element().N(i, point),
+            sum[1] + element.element().Nxi(i, point),
+            sum[2] + element.element().Neta(i, point)
         };
     }
 };
@@ -113,7 +113,7 @@ const suite<"element_2d"> _ = [] {
                 static constexpr T Epsilon = std::is_same_v<T, float> ? T{1e-6} : T{1e-15};
                 for(const size_t i : element->nodes())
                     for(const size_t j : element->nodes())
-                        expect(lt(std::abs(element->N(i, element->node(j)) - T(i == j)), Epsilon)) <<
+                        expect(lt(std::abs(element->element().N(i, element->element().node(j)) - T(i == j)), Epsilon)) <<
                             "Unexpected value of function " + std::to_string(i) + " at node " + std::to_string(j);
             };
 
@@ -167,7 +167,7 @@ const suite<"element_2d"> _ = [] {
 
                 for(const size_t i : element->nodes()) {
                     expect(eq(copied->nearest_qnode(i), element->nearest_qnode(i)));
-                    expect(copied->node(i) == element->node(i));
+                    expect(copied->element().node(i) == element->element().node(i));
                 }
 
                 for(const size_t q : element->qnodes())

@@ -138,7 +138,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
     using namespace metamath::finite_element;
     const T x0 = bool(dynamic_cast<const rectangle_element_geometry<T>*>(&element)) ? T{1} / T{3} : T{0};
     for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
-        coord += mesh.node_coord(nodes[i]) * element.N(i, {x0, x0});
+        coord += mesh.node_coord(nodes[i]) * element.element().N(i, {x0, x0});
     return coord;
 }
 
