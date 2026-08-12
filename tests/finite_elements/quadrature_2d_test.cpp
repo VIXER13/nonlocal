@@ -17,7 +17,7 @@ const suite<"quadrature_2d"> _ = [] {
                 continue;
             const std::string type_name = type == geometry_t::Rectangle ? "_rectangle" : "_triangle";
             const std::string suffix = type_name + "_order_" + std::to_string(order);
-            const auto quadrature = make_quadrature_2d<T>(order, type);
+            const auto quadrature = make_quadrature_2d<T>(type, order);
 
             test("nodes_count" + suffix) = [&quadrature, type, order] {
                 static constexpr auto Nodes_Count = std::array{1zu, 3zu, 4zu, 6zu, 7zu, 12zu};

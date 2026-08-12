@@ -71,7 +71,7 @@ const suite<"element_1d"> _ = [] {
             }
         };
 
-        for (const size_t quadrature_order : std::ranges::iota_view{element_order, 6zu}) {
+        for(const size_t quadrature_order : std::ranges::iota_view{element_order, 6zu}) {
             const std::string quadrature_suffix = suffix + "_quadrature_order_" + std::to_string(quadrature_order);
             const element_1d_integrate<T> integrated_element{*element, *make_quadrature_1d<T>(quadrature_order)};
 
@@ -98,7 +98,7 @@ const suite<"element_1d"> _ = [] {
                     "The sum of the integrals of all basis functions does not match with the element length.";
             };
 
-            test("copy" + quadrature_suffix) = [&integrated_element] {
+            test("integrated_copy" + quadrature_suffix) = [&integrated_element] {
                 const auto copy_ptr = integrated_element.copy();
                 const auto& copy = dynamic_cast<const element_1d_integrate<T>&>(*copy_ptr);
                 expect(neq(&copy, nullptr)) << "Copied element is not of type element_1d_integrate.";

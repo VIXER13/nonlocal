@@ -71,10 +71,10 @@ public:
             throw std::invalid_argument("element and quadrature shall be of the same type");
         }
 
-        _quadrature = quadrature.copy();
-        _weights.resize(quadrature().nodes_count());
-        for(const size_t i : std::ranges::iota_view(0zu, quadrature().nodes_count()))
-            _weights[i] = quadrature().weight(i);
+        _quadrature.reset(quadrature.copy());
+        _weights.resize(quadrature.nodes_count());
+        for(const size_t i : std::ranges::iota_view(0zu, quadrature.nodes_count()))
+            _weights[i] = quadrature.weight(i);
 
         _nearest_qnode.resize(element().nodes_count(), 0);
         _qN.resize(element().nodes_count() * qnodes_count());
@@ -82,8 +82,8 @@ public:
         _qNeta.resize(element().nodes_count() * qnodes_count());
         for(const size_t i : std::ranges::iota_view(0zu, element().nodes_count())) {
             T length = std::numeric_limits<T>::max();
-            for(const size_t j : std::ranges::iota_view(0zu, quadrature().nodes_count())) {
-                const auto& qnode = quadrature().node(j);
+            for(const size_t j : std::ranges::iota_view(0zu, quadrature.nodes_count())) {
+                const auto& qnode = quadrature.node(j);
                 _qN   [i * qnodes_count() + j] = element().N   (i, qnode);
                 _qNxi [i * qnodes_count() + j] = element().Nxi (i, qnode);
                 _qNeta[i * qnodes_count() + j] = element().Neta(i, qnode);

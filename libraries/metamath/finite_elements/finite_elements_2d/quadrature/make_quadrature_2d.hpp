@@ -36,7 +36,7 @@ std::unique_ptr<quadrature_2d_base<T>> make_quadrature_2d(const size_t order_x, 
 }
 
 template<std::floating_point T>
-std::unique_ptr<quadrature_2d_base<T>> make_quadrature_2d(const size_t order, const geometry_t geometry) {
+std::unique_ptr<quadrature_2d_base<T>> make_quadrature_2d(const geometry_t geometry, const size_t order) {
     if (geometry == geometry_t::Triangle)
         return make_barycentric_quadrature_2d<T>(order);
     else if (geometry == geometry_t::Rectangle) {
