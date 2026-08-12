@@ -12,12 +12,35 @@ add_subdirectory(finite_elements)
 add_subdirectory(linear)
 add_subdirectory(math_expression_tests)
 add_subdirectory(metamath)
+add_subdirectory(metamath_instantiations)
 add_subdirectory(parallel)
 add_subdirectory(slae)
 add_subdirectory(thermal_1d)
 add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
+
+# PCH carrier: compiled once, reused by all test OBJECT libraries.
+add_library(tests_pch_lib OBJECT pch_dummy.cpp)
+target_include_directories(tests_pch_lib PUBLIC ${LIBRARIES_DIR})
+target_link_libraries(tests_pch_lib PUBLIC metamath_lib Boost::ut)
+target_precompile_headers(tests_pch_lib PUBLIC pch.hpp)
+
+foreach(test_target
+    finite_elements_test_lib
+    linear_test_lib
+    slae_test_lib
+    metamath_test_lib
+    parallel_test_lib
+    math_expression_test_lib
+    config_test_lib
+    thermal_1d_test_lib
+    mechanical_1d_test_lib
+    thermal_2d_test_lib
+    mechanical_2d_test_lib
+)
+    target_precompile_headers(${test_target} REUSE_FROM tests_pch_lib)
+endforeach()
 
 add_executable(unit_tests nonlocal_tests.cpp)
 target_include_directories(
@@ -28,6 +51,7 @@ target_include_directories(
 target_link_libraries(
     unit_tests
     PRIVATE #
+        metamath_instantiations_lib
         embedded_files
         finite_elements_test_lib
         linear_test_lib

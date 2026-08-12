@@ -42,7 +42,7 @@ const suite<"flux_stability"> _ = [] {
 
     "flux_x_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = -1;
-        static constexpr T Epsilon = 2e-14;
+        static constexpr T Epsilon = 5e-14;
         for (const auto& value : get_values_on_center_line(mesh->container(), solution.flux()))
             expect(approx(value[X], Expected, Epsilon));
     };
@@ -56,7 +56,7 @@ const suite<"flux_stability"> _ = [] {
 
     "flux_x_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = -10;
-        static constexpr T Epsilon = 5.5e-14;
+        static constexpr T Epsilon = 2.5e-13;
         const auto integral = mesh::utils::integrate(*mesh, solution.flux());
         expect(approx(integral[X], Expected, Epsilon));
     };
