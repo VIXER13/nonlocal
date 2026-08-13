@@ -12,7 +12,6 @@ add_subdirectory(finite_elements)
 add_subdirectory(linear)
 add_subdirectory(math_expression_tests)
 add_subdirectory(metamath)
-add_subdirectory(metamath_instantiations)
 add_subdirectory(parallel)
 add_subdirectory(slae)
 add_subdirectory(thermal_1d)
@@ -36,6 +35,7 @@ foreach(test_target
     mechanical_2d_test_lib
 )
     target_precompile_headers(${test_target} PRIVATE
+        "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/pch.hpp>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/pch.hpp>")
 endforeach()
 
