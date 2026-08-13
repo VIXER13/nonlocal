@@ -241,11 +241,6 @@ T mesh_2d<T, I>::area(const std::ranges::iota_view<size_t, size_t> elements) con
 
 template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area(const std::string& element_group) const {
-    if (!container().groups_names_2d().contains(element_group))
-        throw std::domain_error{
-            "It is not possible to calculate the area of the elements group, "
-            "since the elements group " + element_group + " is missing"
-        };
     return area(container().elements(element_group));
 }
 

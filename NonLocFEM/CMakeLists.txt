@@ -17,4 +17,4 @@ target_link_libraries(
         finite_element_solver_2d_lib
 )
 target_precompile_headers(NonLocFEM PRIVATE
-    "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/pch.hpp>")
+    "$<BUILD_INTERFACE:${METAMATH_PCH}>")

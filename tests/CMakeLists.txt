@@ -35,9 +35,10 @@ foreach(test_target
     mechanical_2d_test_lib
 )
     target_precompile_headers(${test_target} PRIVATE
-        "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/pch.hpp>"
+        "$<BUILD_INTERFACE:${METAMATH_PCH}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/pch.hpp>")
 endforeach()
+
 
 add_executable(unit_tests nonlocal_tests.cpp)
 target_include_directories(
