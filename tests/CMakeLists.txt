@@ -20,12 +20,8 @@ add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
 
-# PCH carrier: compiled once, reused by all test OBJECT libraries.
-add_library(tests_pch_lib OBJECT pch_dummy.cpp)
-target_include_directories(tests_pch_lib PUBLIC ${LIBRARIES_DIR})
-target_link_libraries(tests_pch_lib PUBLIC metamath_lib Boost::ut)
-target_precompile_headers(tests_pch_lib PUBLIC pch.hpp)
-
+# Apply PCH to each test OBJECT library with its own flags to avoid compile-definition mismatches
+# (e.g. _OPENMP / _REENTRANT differ between OpenMP and non-OpenMP targets).
 foreach(test_target
     finite_elements_test_lib
     linear_test_lib
@@ -39,7 +35,8 @@ foreach(test_target
     thermal_2d_test_lib
     mechanical_2d_test_lib
 )
-    target_precompile_headers(${test_target} REUSE_FROM tests_pch_lib)
+    target_precompile_headers(${test_target} PRIVATE
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/pch.hpp>")
 endforeach()
 
 add_executable(unit_tests nonlocal_tests.cpp)
