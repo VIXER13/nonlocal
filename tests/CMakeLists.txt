@@ -34,9 +34,10 @@ foreach(test_target
     thermal_2d_test_lib
     mechanical_2d_test_lib
 )
-    target_precompile_headers(${test_target} PRIVATE
-        "$<BUILD_INTERFACE:${METAMATH_PCH}>"
-        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/pch.hpp>")
+    target_precompile_headers(
+        ${test_target}
+        PRIVATE
+            "$<BUILD_INTERFACE:${METAMATH_PCH}>")
 endforeach()
 
 
