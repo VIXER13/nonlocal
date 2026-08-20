@@ -1,43 +1,48 @@
 #include <boost/ut.hpp>
 
-#include <csignal>
-#include <cstdlib>
+namespace boost::ut {
+    class safe_runner : public runner<reporter_junit<printer>> {
+    public:
+        [[nodiscard]] auto run(run_cfg rc = {}) -> bool {
+            run_ = true;
+            reporter_.on(events::run_begin{.argc = rc.argc, .argv = rc.argv});
+            for (const auto &[suite, suite_name] : suites_) {
+                if constexpr (requires { reporter_.on(events::suite_begin{}); }) {
+                    reporter_.on(events::suite_begin{.type = "suite", .name = suite_name});
+                }
+                constexpr auto type = "placeholder";
+                std::string name = std::string(suite_name) + " suite preliminaries";
+                try {
+                    suite();
+                } catch (const std::exception& exception) {
+                    ++fails_;
+                    reporter_.on(events::test_begin{.type = type, .name = name});
+                    reporter_.on(events::exception{exception.what()});
+                    reporter_.on(events::test_end{.type = type, .name = name});
+                } catch (...) {
+                    ++fails_;
+                    reporter_.on(events::test_begin{.type = type, .name = name});
+                    reporter_.on(events::exception{"Unknown exception"});
+                    reporter_.on(events::test_end{.type = type, .name = name});
+                }
+                if constexpr (requires { reporter_.on(events::suite_end{}); }) {
+                    reporter_.on(events::suite_end{.type = "suite", .name = suite_name});
+                }
+            }
+            suites_.clear();
 
-namespace {
-    void signal_handler(const int sig) {
-        std::signal(sig, SIG_DFL);
-        std::string err = std::string(boost::ut::colors{}.fail);
-        err += "FAILED\nSignal received: ";
-        err += [sig] {
-            switch(sig) {
-            case SIGABRT: return "SIGABRT";
-            case SIGSEGV: return "SIGSEGV";
-            case SIGFPE:  return "SIGFPE";
-            case SIGILL:  return "SIGILL";
-            case SIGTERM: return "SIGTERM";
-#ifndef _WIN32
-            case SIGBUS:  return "SIGBUS";
-#endif
-            default:      return "Unknown signal";
-            }   
-        }();
-        err += boost::ut::colors{}.none;
-        boost::ut::cfg<>.on(boost::ut::events::log{err});
-        boost::ut::cfg<>.on(boost::ut::events::fatal_assertion{});
-    }
+            if (rc.report_errors) {
+                report_summary();
+            }
 
-    void install_signal_handlers() {
-        std::signal(SIGABRT, signal_handler);
-        std::signal(SIGSEGV, signal_handler);
-        std::signal(SIGFPE, signal_handler);
-        std::signal(SIGILL, signal_handler);
-        std::signal(SIGTERM, signal_handler);
-#ifndef _WIN32
-        std::signal(SIGBUS, signal_handler);
-#endif
-    }
+            return fails_ > 0;
+        }
+    };
+
+    template <>
+    inline auto cfg<override> = safe_runner{};
 }
 
-int main() {
-    install_signal_handlers();
+int main(int argc, const char **argv) {
+    return boost::ut::cfg<>.run({.argc = argc, .argv = argv});
 }
