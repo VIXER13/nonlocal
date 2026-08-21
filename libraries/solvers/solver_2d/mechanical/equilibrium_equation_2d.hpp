@@ -14,6 +14,7 @@
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
 #include <optional>
+#include <iostream>
 
 namespace nonlocal::solver_2d::mechanical {
 
@@ -22,11 +23,12 @@ auto init_preconditioner(problem_settings settings,
                          const mesh::mesh_2d<T>& mesh,
                          const evaluated_mechanical_parameters<T>& parameters,
                          const mechanical_boundaries_conditions_2d<T>& boundaries_conditions) {
-    settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
+    // settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
     settings.set_fully_local();
     stiffness_matrix<T> local_stiffness{mesh};
     local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
     local_stiffness.compute(parameters, settings);
+    remove_first_kind_elements(local_stiffness.matrix(), settings.is_inner_nodes);
     return slae::init_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
 }
 
@@ -54,6 +56,10 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
         solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
     auto solution = mechanical_solution_2d{mesh, evaluated_parameters, solver->solve(f)};
     solution.calc_strain_and_stress(evaluated_parameters);
+
+    std::cerr << "iterations: " << solver->iterations() << std::endl;
+    std::cerr << "residual: " << solver->residual() << std::endl;
+
     return solution;
 }
 

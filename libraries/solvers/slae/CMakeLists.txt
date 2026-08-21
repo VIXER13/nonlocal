@@ -10,6 +10,8 @@ target_sources(
         diagonal_preconditioner.hpp
         ildlt_preconditioner.hpp
         ilu0_preconditioner.hpp
+        ldlt_solver.hpp
+        lu_solver.hpp
         iterative_solver_base.hpp
         conjugate_gradient.hpp
         stable_biconjugate_gradient.hpp

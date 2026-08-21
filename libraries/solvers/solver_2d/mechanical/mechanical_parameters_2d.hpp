@@ -4,6 +4,8 @@
 #include "elastic_parameters.hpp"
 #include "thermal_expansion_parameters.hpp"
 
+#include <solvers/base/equation_parameters.hpp>
+
 namespace nonlocal::solver_2d::mechanical {
 
 template<std::floating_point T>

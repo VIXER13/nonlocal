@@ -10,6 +10,8 @@ add_library(
         identity_preconditioner.cpp
         ildlt_preconditioner.cpp
         ilu0_preconditioner.cpp
+        ldlt_solver.cpp
+        lu_solver.cpp
         stable_biconjugate_gradient.cpp
         gmres.cpp
 )

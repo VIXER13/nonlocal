@@ -73,7 +73,12 @@ std::vector<T> stationary_heat_equation_solver_2d_linear(const problem_settings&
     auto solver = slae::init_iterative_solver(conductivity.matrix(), settings.is_symmetric());
     if (settings.is_nonlocal())
         solver->preconditioner(init_preconditioner(settings, *mesh, parameters, boundaries_conditions));
-    return solver->solve(right_part);
+
+    const auto x = solver->solve(right_part);
+    std::cerr << "thermal problem" << std::endl;
+    std::cerr << "iterations: " << solver->iterations() << std::endl;
+    std::cerr << "residual: " << solver->residual() << std::endl;
+    return x;
 }
 
 template<std::floating_point T>

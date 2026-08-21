@@ -180,6 +180,10 @@ public:
 
         return result;
     }
+
+    metamath::linear::sparse_matrix<T, I, J> matrix() const noexcept {
+        return _matrix;
+    }
 };
 
 }
