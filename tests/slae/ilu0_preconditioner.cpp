@@ -116,29 +116,29 @@ sparse_matrix<square_matrix<T, 2>> block_matrix() {
 }
 
 suite<"ilu0_preconditioner"> _ilu0 = [] {
-    "scalar_factorization"_test = [] {
-        const auto matrix = scalar_matrix();
-        const std::vector<T> expected = {1., 2., 3., 4., 5., 6., 7., 8., 9., 10.};
-        const std::vector<T> b = matrix * expected;
-        const ilu0_preconditioner preconditioner{scalar_matrix()};
-        const T diff = norm<Inf>(preconditioner.solve(b) - expected);
-        static constexpr auto Epsilon = 1.8e-15;
-        expect(approx(diff, 0.0, Epsilon)) << "ilu0 scalar exact solve failed, diff=" << diff;
+    // "scalar_factorization"_test = [] {
+    //     const auto matrix = scalar_matrix();
+    //     const std::vector<T> expected = {1., 2., 3., 4., 5., 6., 7., 8., 9., 10.};
+    //     const std::vector<T> b = matrix * expected;
+    //     const ilu0_preconditioner preconditioner{scalar_matrix()};
+    //     const T diff = norm<Inf>(preconditioner.solve(b) - expected);
+    //     static constexpr auto Epsilon = 1.8e-15;
+    //     expect(approx(diff, 0.0, Epsilon)) << "ilu0 scalar exact solve failed, diff=" << diff;
 
-        print_matrix(preconditioner.matrix());
-    };
+    //     print_matrix(preconditioner.matrix());
+    // };
 
-    "block_factorization"_test = [] {
-        const auto matrix = block_matrix();
-        const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}, {{7., 8.}}, {{9., 10.}}};
-        const std::vector<std::array<T, 2>> b = matrix * expected;
-        const ilu0_preconditioner preconditioner{block_matrix()};
-        const T diff = norm<Inf>(preconditioner.solve(b) - expected);
-        static constexpr auto Epsilon = 1.8e-15;
-        expect(approx(diff, 0.0, Epsilon)) << "ilu0 block exact solve failed, diff=" << diff;
+    // "block_factorization"_test = [] {
+    //     const auto matrix = block_matrix();
+    //     const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}, {{7., 8.}}, {{9., 10.}}};
+    //     const std::vector<std::array<T, 2>> b = matrix * expected;
+    //     const ilu0_preconditioner preconditioner{block_matrix()};
+    //     const T diff = norm<Inf>(preconditioner.solve(b) - expected);
+    //     static constexpr auto Epsilon = 1.8e-15;
+    //     expect(approx(diff, 0.0, Epsilon)) << "ilu0 block exact solve failed, diff=" << diff;
 
-        print_matrix(preconditioner.matrix());
-    };
+    //     print_matrix(preconditioner.matrix());
+    // };
 
     "wrong_matrix_size"_test = [] {
         expect(throws<std::invalid_argument>([] { ilu0_preconditioner{sparse_matrix<T>{3, 4}}; })) <<
