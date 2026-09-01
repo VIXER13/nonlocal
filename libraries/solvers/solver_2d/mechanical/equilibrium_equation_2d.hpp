@@ -27,6 +27,7 @@ auto init_preconditioner(problem_settings settings,
     stiffness_matrix<T> local_stiffness{mesh};
     local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
     local_stiffness.compute(parameters, settings);
+    remove_first_kind_elements(local_stiffness.matrix(), settings.is_inner_nodes);
     return slae::init_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
 }
 
