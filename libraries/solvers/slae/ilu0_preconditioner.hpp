@@ -18,23 +18,43 @@ template<class T, std::integral I, std::integral J>
 class ilu0_preconditioner final : public preconditioner_base<T> {
     metamath::linear::sparse_matrix<T, I, J> _matrix;
 
-    // Computes ILU0 factorization in-place on the sparsity pattern of the matrix.
-    void compute() {
-        for(const size_t i : std::ranges::iota_view{0zu, _matrix.cols()}) {
+    template<std::floating_point U>
+    static void compute(metamath::linear::sparse_matrix<U, I, J>& matrix) {
+        for(const size_t i : std::ranges::iota_view{0zu, matrix.rows()}) {
             // Process lower entries of row i: for each k < i with (i,k) in pattern
-            for(const size_t s : _matrix.portrait.shifts_range(i))
-                if (const size_t k = _matrix.portrait.indices[s]; k < i) {
+            for(const size_t s : matrix.portrait.shifts_range(i))
+                if (const size_t k = matrix.portrait.indices[s]; k < i) {
                     using namespace metamath::linear;
                     // l[i,k] = a[i,k] * inv(u[k,k])
-                    _matrix.values[s] *= _matrix(k, k);
-                    const T& lik = _matrix.values[s];
+                    matrix.values[s] *= matrix(k, k);
+                    const auto& lik = matrix.values[s];
                     // Update all remaining entries in row i after position k
-                    for(const size_t si : _matrix.portrait.shifts_range(i))
-                        if (const size_t j = _matrix.portrait.indices[si]; j > k && _matrix.portrait.contains(k, j))
-                            _matrix.values[si] -= lik * _matrix(k, j);
+                    for(const size_t si : matrix.portrait.shifts_range(i))
+                        if (const size_t j = matrix.portrait.indices[si]; j > k && matrix.portrait.contains(k, j))
+                            matrix.values[si] -= lik * matrix(k, j);
                 }
-            _matrix(i, i) = metamath::linear::inverse(_matrix(i, i));
+            matrix(i, i) = metamath::linear::inverse(matrix(i, i));
         }
+    }
+
+    template<std::floating_point U, size_t N>
+    static void compute(metamath::linear::sparse_matrix<metamath::linear::square_matrix<U, N>, I, J>& matrix) {
+        for(const size_t i : std::ranges::iota_view{0zu, matrix.rows()})
+            for(const size_t i_dof : std::ranges::iota_view{0zu, N}) {
+                for(const size_t s : matrix.portrait.shifts_range(i))
+                    for(const size_t k_dof : std::ranges::iota_view{0zu, N})
+                        if (const size_t k = matrix.portrait.indices[s]; N * k + k_dof < N * i + i_dof) {
+                            using namespace metamath::linear;
+                            matrix.values[s][i_dof][k_dof] *= matrix(k, k)[k_dof][k_dof];
+                            const auto& lik = matrix.values[s][i_dof][k_dof];
+                            for(const size_t si : matrix.portrait.shifts_range(i))
+                                if (const size_t j = matrix.portrait.indices[si]; matrix.portrait.contains(k, j))
+                                    for(const size_t j_dof : std::ranges::iota_view{0zu, N})
+                                        if (N * j + j_dof > N * k + k_dof)
+                                            matrix.values[si][i_dof][j_dof] -= lik * matrix(k, j)[k_dof][j_dof];
+                        }
+                matrix(i, i)[i_dof][i_dof] = metamath::linear::inverse(matrix(i, i)[i_dof][i_dof]);
+            }
     }
 
 public:
@@ -44,7 +64,7 @@ public:
         : _matrix{std::move(matrix)} {
         if (_matrix.rows() != _matrix.cols())
             throw std::invalid_argument{"ILU0 preconditioner requires a square matrix."};
-        compute();
+        compute(_matrix);
     }
 
     // Solves (L U) x = rhs via forward and backward substitution.
@@ -74,6 +94,10 @@ public:
 
         return result;
     }
+
+    const metamath::linear::sparse_matrix<T, I, J>& matrix() const noexcept {
+        return _matrix;
+    };
 };
 
 }
