@@ -10,6 +10,7 @@ add_library(mechanical_2d_test_lib
         elastic_parameters.cpp
         isotropic_lame_composite_ring.cpp
         isotropic_lame_solid_ring.cpp
+        # nonlocal_example.cpp
         saint_venant.cpp
 )
 target_include_directories(

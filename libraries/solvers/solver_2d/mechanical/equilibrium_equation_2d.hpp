@@ -14,6 +14,7 @@
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
 #include <optional>
+#include <iostream>
 
 namespace nonlocal::solver_2d::mechanical {
 
@@ -27,6 +28,7 @@ auto init_preconditioner(problem_settings settings,
     stiffness_matrix<T> local_stiffness{mesh};
     local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
     local_stiffness.compute(parameters, settings);
+    remove_first_kind_elements(local_stiffness.matrix(), settings.is_inner_nodes);
     return slae::init_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
 }
 
@@ -35,7 +37,8 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
                                                            const raw_mechanical_parameters<T>& parameters,
                                                            const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
                                                            const std::vector<T>& delta_temperature = {},
-                                                           const std::function<std::array<T, 2>(const std::array<T, 2>&)>& right_part = nullptr) {
+                                                           const std::function<std::array<T, 2>(const std::array<T, 2>&)>& right_part = nullptr,
+                                                           const bool use_preconditioner = true) {
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions);
     log_problem_settings(settings);
     const auto evaluated_parameters = evaluate_mechanical_parameters(*mesh, parameters, delta_temperature);
@@ -50,10 +53,12 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
     boundary_condition_first_kind_2d(stiffness.matrix(), f, settings, mesh->container(), boundaries_conditions);
 
     auto solver = slae::init_iterative_solver(stiffness.matrix(), settings.is_symmetric());
-    if (settings.is_nonlocal())
-        solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
+    // TODO: Unavailable due to problems with the preconditioner
+    // if (use_preconditioner && settings.is_nonlocal())
+    //     solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
     auto solution = mechanical_solution_2d{mesh, evaluated_parameters, solver->solve(f)};
     solution.calc_strain_and_stress(evaluated_parameters);
+
     return solution;
 }
 

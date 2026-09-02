@@ -106,7 +106,7 @@ solver_1d::thermal::parameter_1d<T> _read_thermal_parameters::read_thermal_coeff
 
 template<std::floating_point T>
 solver_2d::thermal::raw_conductivity_t<T> _read_thermal_parameters::read_conductivity_2d(const nlohmann::json& config, const std::string& path) {
-    if (config.is_number())
+    if (config.is_number() || config.is_string())
         return read_coefficient<T, 2u>(config, path);
     if (config.is_array() && config.size() == 2)
         return solver_2d::thermal::raw_orthotropic_conductivity_t<T>{ read_coefficient<T, 2u>(config[X], append_access_sign(path, X)), 
