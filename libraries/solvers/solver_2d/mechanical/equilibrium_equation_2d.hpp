@@ -53,12 +53,11 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
     boundary_condition_first_kind_2d(stiffness.matrix(), f, settings, mesh->container(), boundaries_conditions);
 
     auto solver = slae::init_iterative_solver(stiffness.matrix(), settings.is_symmetric());
-    if (use_preconditioner && settings.is_nonlocal())
-        solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
+    // TODO: Unavailable due to problems with the preconditioner
+    // if (use_preconditioner && settings.is_nonlocal())
+    //     solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
     auto solution = mechanical_solution_2d{mesh, evaluated_parameters, solver->solve(f)};
     solution.calc_strain_and_stress(evaluated_parameters);
-
-    std::cerr << "Iterations = " << solver->iterations() << std::endl;
 
     return solution;
 }

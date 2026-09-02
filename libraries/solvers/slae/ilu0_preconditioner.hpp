@@ -7,7 +7,6 @@
 #include <metamath/utils/operators.hpp>
 
 #include <vector>
-#include <iostream>
 
 namespace nonlocal::slae {
 
