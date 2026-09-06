@@ -13,6 +13,7 @@
 #include <config/time_data.hpp>
 #include <config/thermal_auxiliary_data.hpp>
 #include <mesh/mesh_2d/find_neighbours.hpp>
+#include <mesh/mesh_2d/cuthill_mckee.hpp>
 #include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
 #include <solvers/solver_2d/thermal/nonstationary_heat_equation_solver_2d.hpp>
 #include <solvers/solver_2d/mechanical/equilibrium_equation_2d.hpp>
@@ -182,6 +183,7 @@ void problems_2d(const nlohmann::json& config, const config::save_data& save, co
     config::check_required_fields(config, DP::get_required_fields(task));
     config::check_optional_fields(config, {"auxiliary"});
     auto mesh = config::read_mesh_2d<T, uint32_t>(config["mesh"], "mesh");
+    mesh->renumbering(mesh::utils::cuthill_mckee(*mesh, true, false));
     switch (task.analysis_type) {
         case config::analysis_type_t::Stationary: {
             const std::optional<solver_2d::thermal::heat_equation_solution_2d<T>> thermal_solution = thermal_stationary_2d<T>(mesh, config, task.problem);
