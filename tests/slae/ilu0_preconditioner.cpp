@@ -165,7 +165,7 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
         const T diff = norm<Inf>(preconditioner.solve(b) - expected);
         static constexpr auto Epsilon = 1.8e-15;
         expect(approx(diff, 0.0, Epsilon)) << "ilu0 scalar exact solve failed, diff=" << diff;
-        print_matrix(preconditioner.matrix());
+        // print_matrix(preconditioner.matrix());
     };
 
     "block_factorization"_test = [] {
@@ -176,7 +176,7 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
         const T diff = norm<Inf>(preconditioner.solve(b) - expected);
         static constexpr auto Epsilon = 1.8e-15;
         expect(approx(diff, 0.0, Epsilon)) << "ilu0 block exact solve failed, diff=" << diff;
-        print_matrix(preconditioner.matrix());
+        // print_matrix(preconditioner.matrix());
     };
 };
 

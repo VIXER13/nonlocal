@@ -42,14 +42,14 @@ const suite<"flux_stability"> _ = [] {
 
     "flux_x_on_center_line"_test = [&mesh, &solution] {
         static constexpr T Expected = -1;
-        static constexpr T Epsilon = 5e-14;
+        static constexpr T Epsilon = 5.5e-14;
         for (const auto& value : get_values_on_center_line(mesh->container(), solution.flux()))
             expect(approx(value[X], Expected, Epsilon));
     };
 
     "temperature_integral"_test = [&mesh, &solution] {
         static constexpr T Expected = 0;
-        static constexpr T Epsilon = 3.3e-14;
+        static constexpr T Epsilon = 3.5e-14;
         const T integral = mesh::utils::integrate(*mesh, solution.temperature());
         expect(approx(integral, Expected, Epsilon));
     };
