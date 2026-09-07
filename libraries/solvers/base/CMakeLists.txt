@@ -6,6 +6,7 @@ target_sources(
     assembler_base_lib
     INTERFACE #
         equation_parameters.hpp
+        degree_of_freedom.hpp
         utils.hpp
 )
 target_include_directories(

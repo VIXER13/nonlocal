@@ -19,6 +19,28 @@ add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
 
+# Apply PCH to each test OBJECT library with its own flags to avoid compile-definition mismatches
+# (e.g. _OPENMP / _REENTRANT differ between OpenMP and non-OpenMP targets).
+foreach(test_target
+    finite_elements_test_lib
+    linear_test_lib
+    slae_test_lib
+    metamath_test_lib
+    parallel_test_lib
+    math_expression_test_lib
+    config_test_lib
+    thermal_1d_test_lib
+    mechanical_1d_test_lib
+    thermal_2d_test_lib
+    mechanical_2d_test_lib
+)
+    target_precompile_headers(
+        ${test_target}
+        PRIVATE
+            "$<BUILD_INTERFACE:${METAMATH_PCH}>")
+endforeach()
+
+
 add_executable(unit_tests nonlocal_tests.cpp)
 target_include_directories(
     unit_tests
@@ -28,6 +50,7 @@ target_include_directories(
 target_link_libraries(
     unit_tests
     PRIVATE #
+        metamath_instantiations_lib
         embedded_files
         finite_elements_test_lib
         linear_test_lib

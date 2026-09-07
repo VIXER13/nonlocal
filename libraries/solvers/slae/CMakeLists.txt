@@ -13,6 +13,7 @@ target_sources(
         iterative_solver_base.hpp
         conjugate_gradient.hpp
         stable_biconjugate_gradient.hpp
+        gmres.hpp
 )
 target_include_directories(
     slae_solver_lib

@@ -53,4 +53,25 @@ void validate_sparse_matrix(const sparse_matrix<T, I, J>& matrix) {
         throw std::logic_error{"Values vector size shall be equal to the number of non-zero elements in the portrait."};
 }
 
+template<std::integral I, std::integral J>
+size_t max_width(const sparse_matrix_portrait<I, J>& portrait) {
+    size_t width = 0;
+    for(const size_t row : std::ranges::iota_view{0zu, portrait.rows()}) {
+        const auto range = portrait.indices_range(row);
+        if (const auto current = range.back() - range.front(); current > width)
+            width = current;
+    }
+    return width;
+}
+
+template<std::integral I, std::integral J>
+size_t mean_width(const sparse_matrix_portrait<I, J>& portrait) {
+    size_t width = 0;
+    for(const size_t row : std::ranges::iota_view{0zu, portrait.rows()}) {
+        const auto range = portrait.indices_range(row);
+        width += range.back() - range.front();
+    }
+    return width / portrait.rows();
+}
+
 }

@@ -1,9 +1,8 @@
 #pragma once
 
-#include "MPI_utils.hpp"
-#include "OMP_utils.hpp"
-
 #include <metamath/linear/linear.hpp>
+#include <parallel/OMP_utils.hpp>
+#include <parallel/MPI_utils.hpp>
 
 #include <optional>
 

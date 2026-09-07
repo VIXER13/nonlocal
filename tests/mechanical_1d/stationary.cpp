@@ -74,12 +74,8 @@ const boost::ut::suite<"mechanical_stationary_1d"> _ = [] {
             std::fill(prev_errors.begin(), prev_errors.end(), std::numeric_limits<T>::max());
             for(const size_t elements : {10, 20, 40}) {
                 static constexpr size_t Order = 1;
-                using quadrature = quadrature_1d<T, gauss, Order>;
-                using element_integrate_1d = element_1d_integrate<T>;
                 const auto mesh = std::make_shared<mesh_1d<T>>(
-                    std::make_unique<element_integrate_1d>(
-                        std::make_unique<element_1d<T, lagrangian_element_1d, Order>>(),
-                        quadrature{}),
+                    metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
                     std::vector<segment_data<T>>{{ .length = Length, .elements = elements }});
                 auto solution = stationary_mechanical_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
                 solution.calc_stress();

@@ -112,7 +112,7 @@ template<class T, class I>
 void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_local, const bool is_symmetric) {
     if (balance == balancing_t::No || parallel::MPI_size() == 1)
         return;
-    std::vector<size_t> nonzero_elements_count(mesh.container().nodes_count(), 0);
+    std::vector<size_t> nonzero_elements_count(mesh.container().nodes_count() + 1, 0);
     if (balance == balancing_t::Memory)
         mesh_run(mesh, mesh.process_nodes(), theories(mesh, only_local),
             nonzero_counter{nonzero_elements_count, mesh.container(), is_symmetric});
@@ -122,6 +122,8 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
     else 
         throw std::domain_error{"Unsupported balancing type"};
     nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
+    for(const size_t row : std::ranges::iota_view{1zu, nonzero_elements_count.size()})
+        nonzero_elements_count[row] += nonzero_elements_count[row - 1];
     mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
     mesh.neighbours(find_neighbours(mesh, mesh.get_influences(), diameter_expanding_strategy::NO));
     // TODO: add sorting rules for elements, for example, by distance from main element or numbers for more efficient cache usage

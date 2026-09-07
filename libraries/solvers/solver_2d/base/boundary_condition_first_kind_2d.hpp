@@ -6,7 +6,7 @@
 
 #include <metamath/linear/linear.hpp>
 #include <mesh/mesh_2d/mesh_2d.hpp>
-#include <solvers/solver_2d/base/degree_of_freedom.hpp>
+#include <solvers/base/degree_of_freedom.hpp>
 
 namespace nonlocal::solver_2d {
 

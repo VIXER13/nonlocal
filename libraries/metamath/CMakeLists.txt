@@ -3,6 +3,7 @@ project(metamath)
 
 add_subdirectory(finite_elements)
 add_subdirectory(functions)
+add_subdirectory(instantiations)
 add_subdirectory(linear)
 add_subdirectory(symbolic)
 add_subdirectory(utils)

@@ -11,7 +11,10 @@ target_include_directories(
 target_link_libraries(
     NonLocFEM
     PRIVATE #
+        metamath_instantiations_lib
         config_lib
         finite_element_solver_1d_lib
         finite_element_solver_2d_lib
 )
+target_precompile_headers(NonLocFEM PRIVATE
+    "$<BUILD_INTERFACE:${METAMATH_PCH}>")

@@ -11,6 +11,7 @@ add_library(
         ildlt_preconditioner.cpp
         ilu0_preconditioner.cpp
         stable_biconjugate_gradient.cpp
+        gmres.cpp
 )
 
 target_include_directories(

@@ -17,7 +17,6 @@ target_link_libraries(
     PUBLIC #
         ${MPI_C_LIBRARIES}
         ${MPI_CXX_LIBRARIES}
-        Eigen3::Eigen
 )
 
 if(ENABLE_OMP)

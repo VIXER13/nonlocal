@@ -1,16 +1,17 @@
 #pragma once
 
-#include "iterative_solver_base.hpp"
+#include "matrix_vector_production.hpp"
 
 #include <logger/logger.hpp>
 
 namespace nonlocal::slae {
 
 template<class T, std::integral I = uint32_t, std::integral J = size_t>
-class stable_biconjugate_gradient final : public iterative_solver_base<T, I, J> {
-    using _base = iterative_solver_base<T, I, J>;
+class stable_biconjugate_gradient final : public matrix_vector_production<T, I, J> {
+    using _base = matrix_vector_production<T, I, J>;
     using _base::_iterations;
     using _base::_residual;
+    using _base::production;
 
 public:
     using typename _base::entity_t;
@@ -37,7 +38,8 @@ public:
 
         const J n = matrix().cols();
         std::vector<entity_t> x = x0.template value_or(std::vector<entity_t>(matrix().cols(), entity_t{}));
-        std::vector<entity_t> r = matrix() * x;
+        std::vector<entity_t> r(n, entity_t{});
+        production(r, x);
         r *= floating_point_t{-1};
         r += b;
         std::vector<entity_t> r0 = r;
@@ -67,7 +69,7 @@ public:
             if (std::abs(rho) < eps2) {
                 // The new residual vector became too orthogonal to the arbitrarily chosen direction r0
                 // Let's restart with a new r0:
-                r  = matrix() * x;
+                production(r, x);
                 r *= floating_point_t{-1};
                 r += b;
                 r0 = r;
@@ -81,12 +83,12 @@ public:
             const floating_point_t beta = (rho / rho_old) * (alpha / w);
             p = r + beta * (p - w * v);
             y = preconditioner().solve(p);
-            v = matrix() * y;
+            production(v, y);
 
             alpha = rho / scalar_product(r0, v);
             s = r - alpha * v;
             z = preconditioner().solve(s);
-            t = matrix() * z;
+            production(t, z);
 
             const floating_point_t t_squared_norm = powered_norm(t);
             w = t_squared_norm > floating_point_t{0} ? scalar_product(t, s) / t_squared_norm : floating_point_t{0};

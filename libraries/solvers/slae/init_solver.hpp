@@ -4,6 +4,7 @@
 #include "ildlt_preconditioner.hpp"
 #include "ilu0_preconditioner.hpp"
 #include "stable_biconjugate_gradient.hpp"
+#include "eigen_based_preconditioners.hpp"
 
 #include <memory>
 
@@ -16,11 +17,20 @@ std::unique_ptr<iterative_solver_base<T, I, J>> init_iterative_solver(const meta
     return std::make_unique<stable_biconjugate_gradient<T, I, J>>(matrix);
 }
 
-template<std::floating_point T, std::integral I, std::integral J>
+template<class T, std::integral I, std::integral J>
 std::unique_ptr<preconditioner_base<T>> init_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix, const bool is_symmetric) {
     if (is_symmetric)
         return std::make_unique<ildlt_preconditioner<T, I, J>>(std::move(matrix));
     return std::make_unique<ilu0_preconditioner<T, I, J>>(std::move(matrix));
+}
+
+template<class T, std::integral I, std::integral J>
+std::unique_ptr<preconditioner_base<T>> init_eigen_preconditioner(metamath::linear::sparse_matrix<T, I, J>&& matrix, const bool is_symmetric) {
+    // A temporary solution that uses preconditioners from the Eigen library.
+    // The plan is to eliminate this dependency in the future once native versions of the preconditioners are implemented for our data types.
+    if (is_symmetric)
+        return std::make_unique<ildlt_eigen_preconditioner<T, I, J>>(std::move(matrix));
+    return std::make_unique<ilut_eigen_preconditioner<T, I, J>>(std::move(matrix));
 }
 
 }

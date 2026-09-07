@@ -34,7 +34,7 @@ const T Coeff = T{1} / ((Norm_Conductivity - T{1}) * std::log(Norm_Contact_Radiu
 const suite<"thermal_isotropic_composite_ring"> _ = [] {
     std::stringstream stream{composite_ring_su2_data};
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
-    const parameters_2d<T> parameters = {
+    const raw_thermal_parameters<T> parameters = {
         {"Inner_Material", {.physical = {.conductivity = Inner_Conductivity}}},
         {"Outer_Material", {.physical = {.conductivity = Outer_Conductivity}}}
     };

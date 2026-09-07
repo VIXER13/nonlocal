@@ -1,8 +1,6 @@
 #pragma once
 
-// #include "independent_symmetric_matrix_vector_product.hpp"
-// #include "unrelated_symmetric_matrix_vector_product.hpp"
-#include "iterative_solver_base.hpp"
+#include "matrix_vector_production.hpp"
 
 #include <logger/logger.hpp>
 
@@ -10,17 +8,13 @@
 
 namespace nonlocal::slae {
 
-enum class product_strategy : bool {
-    Independent,
-    Nonintersecting
-};
-
 template<class T, std::integral I = uint32_t, std::integral J = size_t>
-class conjugate_gradient final : public iterative_solver_base<T, I, J> {
-    using _base = iterative_solver_base<T, I, J>;
+class conjugate_gradient final : public symmetric_matrix_vector_product<T, I, J> {
+    using _base = symmetric_matrix_vector_product<T, I, J>;
 
     using _base::_iterations;
     using _base::_residual;
+    using _base::production;
 
 public:
     using typename _base::entity_t;
@@ -47,7 +41,7 @@ public:
         parallel::reduce_vector(z, b);
         std::vector<entity_t> r(matrix().cols(), entity_t{});
         std::vector<entity_t> x = x0.template value_or(std::vector<entity_t>(matrix().cols(), entity_t{}));
-        r = matrix().template self_adjoint<matrix_part::Upper>() * x;
+        production(r, x);
         r = z - r;
         std::vector<entity_t> p = preconditioner().solve(r);
         floating_point_t r_squared_norm = scalar_product(r, p);
@@ -56,7 +50,7 @@ public:
         _residual = std::sqrt(r_squared_norm) / b_norm;
         while(_iterations < max_iterations() && _residual > tolerance()) {
             // TODO: optimize vector operations
-            z = matrix().template self_adjoint<matrix_part::Upper>() * p;
+            production(z, p);
             const floating_point_t nu = r_squared_norm / scalar_product(p, z);
             x += nu * p;
             z *= nu;

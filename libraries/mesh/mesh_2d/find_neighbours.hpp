@@ -93,12 +93,12 @@ std::pair<size_t, size_t> subarea_id(const rectangle<T>& corners, const std::arr
 }
 
 template<class I, class T>
-metamath::types::matrix<std::vector<I>> split_elements_by_subareas(const std::vector<std::array<T, 2>>& centers,
+metamath::linear::matrix<std::vector<I>> split_elements_by_subareas(const std::vector<std::array<T, 2>>& centers,
                                                                    const std::ranges::iota_view<size_t, size_t>& elements, 
                                                                    const rectangle<T>& corners,
                                                                    const std::array<T, 2>& radius) {
     const T max_radius = std::max(radius[0], radius[1]);
-    metamath::types::matrix<std::vector<I>> subareas(size_t(corners.length() / max_radius) + 1zu, size_t(corners.width() / max_radius) + 1zu);
+    metamath::linear::matrix<std::vector<I>> subareas(size_t(corners.length() / max_radius) + 1zu, size_t(corners.width() / max_radius) + 1zu);
     for(const size_t e : elements) {
         const auto [row, col] = subarea_id(corners, centers[e], {max_radius, max_radius});
         subareas(row, col).push_back(e);
@@ -107,7 +107,7 @@ metamath::types::matrix<std::vector<I>> split_elements_by_subareas(const std::ve
 }
 
 template<class I>
-std::vector<std::pair<size_t, size_t>> subareas_ids(const metamath::types::matrix<std::vector<I>>& subareas, const size_t row, const size_t col) {
+std::vector<std::pair<size_t, size_t>> subareas_ids(const metamath::linear::matrix<std::vector<I>>& subareas, const size_t row, const size_t col) {
     std::vector<std::pair<size_t, size_t>> result;
     result.reserve(9);
     for(const size_t i : std::ranges::iota_view{row ? row - 1 : row, row != subareas.rows() - 1 ? row + 2 : row + 1})

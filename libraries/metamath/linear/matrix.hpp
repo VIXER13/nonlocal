@@ -2,14 +2,17 @@
 
 #include <cstddef>
 #include <vector>
+#include <stdexcept>
 
-namespace metamath::types {
+namespace metamath::linear {
 
 template<class T>
 class matrix : protected std::vector<T> {
     using _base = std::vector<T>;
 
     size_t _cols = 0;
+
+    void check_index(const size_t row, const size_t col) const;
 
 public:
     using _base::size;
@@ -50,12 +53,20 @@ size_t matrix<T>::cols() const noexcept {
 }
 
 template<class T>
+void matrix<T>::check_index(const size_t row, const size_t col) const {
+    if (col >= cols() || row >= rows())
+        throw std::out_of_range{"Matrix index out of range"};
+}
+
+template<class T>
 T& matrix<T>::operator()(const size_t row, const size_t col) {
+    check_index(row, col);
     return (*this)[row * cols() + col];
 }
 
 template<class T>
 const T& matrix<T>::operator()(const size_t row, const size_t col) const {
+    check_index(row, col);
     return (*this)[row * cols() + col];
 }
 

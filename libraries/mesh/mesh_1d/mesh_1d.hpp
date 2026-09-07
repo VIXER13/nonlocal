@@ -51,9 +51,8 @@ class mesh_1d final {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
     using finite_element_1d = metamath::finite_element::element_1d_integrate<T>;
-    using finite_element_1d_ptr = std::unique_ptr<finite_element_1d>;
 
-    finite_element_1d_ptr _element;
+    finite_element_1d _element;
     std::vector<segment_data<T>> _segments;
     std::vector<size_t> _neighbours_count;
 
@@ -61,7 +60,7 @@ class mesh_1d final {
     void find_neighbours();
 
 public:
-    explicit mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments);
+    explicit mesh_1d(finite_element_1d&& element, const std::vector<segment_data<T>>& segments);
 
     const finite_element_1d& element() const;
 
@@ -98,7 +97,7 @@ public:
 };
 
 template<class T>
-mesh_1d<T>::mesh_1d(finite_element_1d_ptr&& element, const std::vector<segment_data<T>>& segments)
+mesh_1d<T>::mesh_1d(finite_element_1d&& element, const std::vector<segment_data<T>>& segments)
     : _element{std::move(element)}
     , _segments{accumulate(segments)}
     , _neighbours_count(_segments.size(), 1) {
@@ -123,7 +122,7 @@ void mesh_1d<T>::find_neighbours() {
 
 template<class T>
 const mesh_1d<T>::finite_element_1d& mesh_1d<T>::element() const {
-    return *_element;
+    return _element;
 }
 
 template<class T>
@@ -275,7 +274,7 @@ T mesh_1d<T>::search_radius(const size_t segment) const {
 template<class T>
 T mesh_1d<T>::jacobian(const size_t segment) const {
     using enum metamath::finite_element::side_1d;
-    return element_length(segment) / (element().boundary(RIGHT) - element().boundary(LEFT));
+    return element_length(segment) / (element().element().boundary(RIGHT) - element().element().boundary(LEFT));
 }
 
 template<class T>
@@ -295,7 +294,7 @@ T mesh_1d<T>::qnode_coord(const size_t e, const size_t q) const {
     const size_t segment = segment_number(e);
     const auto [left_bound, _] = bounds(segment);
     const size_t first_segment_element = elements(segment).front();
-    const T qnode_coord_loc = (element().quadrature().node(q) - element().boundary(LEFT)) * jacobian(segment);
+    const T qnode_coord_loc = (element().quadrature().node(q) - element().quadrature().boundary(LEFT)) * jacobian(segment);
     return left_bound + element_length(segment) * (e - first_segment_element) + qnode_coord_loc;
 }
 

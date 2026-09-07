@@ -87,11 +87,6 @@ std::vector<metamath::linear::square_matrix<T, 2>> approx_all_jacobi_matrices(co
 }
 
 template<class T>
-constexpr T jacobian(const metamath::linear::square_matrix<T, 2>& J) noexcept {
-    return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
-}
-
-template<class T>
 std::vector<T> calculate_jacobians(const std::vector<metamath::linear::square_matrix<T, 2>>& jacobi_matrices) {
     std::vector<T> jacobians(jacobi_matrices.size());
     std::transform(jacobi_matrices.begin(), jacobi_matrices.end(), jacobians.begin(), jacobian<T>);
@@ -207,7 +202,7 @@ void save_scalars_to_vtk(std::ofstream& output, const std::string_view name, con
 template<class T, size_t Dimension>
 void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, Dimension>>& vector) {
     output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()}) {
+    for(const size_t i : std::ranges::iota_view{0u, vector.size()}) {
         if constexpr (Dimension == 2)
             output << vector[i][X] << ' ' << vector[i][Y] << " 0\n";
         else if constexpr (Dimension == 3)
@@ -220,7 +215,7 @@ void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, con
 template<class T>
 void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, 3>>& tensor) {
     output << "TENSORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, tensor[0].size()})
+    for(const size_t i : std::ranges::iota_view{0u, tensor.size()})
         output << tensor[i][XX] << ' ' << tensor[i][XY] << " 0\n"
                << tensor[i][YX] << ' ' << tensor[i][YY] << " 0\n"
                << "0 0 0\n\n";

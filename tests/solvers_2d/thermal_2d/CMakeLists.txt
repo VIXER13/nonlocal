@@ -11,6 +11,7 @@ add_library(
         isotropic_composite_ring.cpp
         isotropic_solid_ring_radiation.cpp
         isotropic_solid_ring.cpp
+        nonstationary_isotropic_solid_ring.cpp
 )
 target_include_directories(
     thermal_2d_test_lib
