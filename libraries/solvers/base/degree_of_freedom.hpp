@@ -2,7 +2,7 @@
 
 #include <array>
 
-namespace nonlocal::solver_2d {
+namespace nonlocal {
 
 template<class T>
 struct degree_of_freedom : std::integral_constant<size_t, 1> {};

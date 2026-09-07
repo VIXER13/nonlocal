@@ -13,9 +13,6 @@
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
-#include <optional>
-#include <iostream>
-
 namespace nonlocal::solver_2d::mechanical {
 
 template<std::floating_point T>
@@ -29,7 +26,7 @@ auto init_preconditioner(problem_settings settings,
     local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
     local_stiffness.compute(parameters, settings);
     remove_first_kind_elements(local_stiffness.matrix(), settings.is_inner_nodes);
-    return slae::init_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
+    return slae::init_eigen_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
 }
 
 template<std::floating_point T>
@@ -53,9 +50,8 @@ mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr
     boundary_condition_first_kind_2d(stiffness.matrix(), f, settings, mesh->container(), boundaries_conditions);
 
     auto solver = slae::init_iterative_solver(stiffness.matrix(), settings.is_symmetric());
-    // TODO: Unavailable due to problems with the preconditioner
-    // if (use_preconditioner && settings.is_nonlocal())
-    //     solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
+    if (use_preconditioner && settings.is_nonlocal())
+        solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
     auto solution = mechanical_solution_2d{mesh, evaluated_parameters, solver->solve(f)};
     solution.calc_strain_and_stress(evaluated_parameters);
 

@@ -8,7 +8,6 @@ target_sources(
         boundary_condition_first_kind_2d.hpp
         boundary_condition_second_kind_2d.hpp
         boundary_conditions_2d.hpp
-        degree_of_freedom.hpp
         finite_element_matrix.hpp
         indices_initializer.hpp
         integrator.hpp

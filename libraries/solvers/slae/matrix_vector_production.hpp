@@ -64,6 +64,8 @@ private:
 
 protected:
     void production(std::vector<entity_t>& result, const std::vector<entity_t>& vector) const {
+        using namespace metamath::linear;
+        using namespace metamath::operators;
     #pragma omp parallel num_threads(threads_count())
     {
     #ifdef _OPENMP
@@ -71,21 +73,24 @@ protected:
     #else
         const int thread = 0;
     #endif
-        for(const size_t row : _thread_rows.get(thread))
-            for(const size_t shift : matrix().portrait.shifts_range(row)) {
-                using namespace metamath::linear;
-                using namespace metamath::operators;
-                const size_t col = matrix().portrait.indices[shift];
-                _threaded_product(thread, row) += matrix().values[shift] * vector[col];
-                if (col != row)
-                    _threaded_product(thread, col) += matrix().values[shift] * vector[row];
+        for(const size_t i : std::ranges::iota_view{0u, _threaded_product.cols()})
+            _threaded_product(thread, i) = {};
+
+        for(const size_t row : _thread_rows.get(thread)) {
+            const size_t ind = matrix().portrait.shifts[row];
+            _threaded_product(thread, row) += matrix().values[ind] * vector[matrix().portrait.indices[ind]];
+            for(const size_t i : std::ranges::iota_view{ind + 1, matrix().portrait.shifts[row + 1]}) {
+                const size_t col = matrix().portrait.indices[i];
+                _threaded_product(thread, row) += matrix().values[i] * vector[col];
+                _threaded_product(thread, col) += metamath::linear::transpose(matrix().values[i]) * vector[row];
             }
-    }
-        for(const size_t row : std::ranges::iota_view{0u, result.size()}) {
-            result[row] = {};
-            for(const size_t thread : std::ranges::iota_view{0zu, threads_count()})
-                result[row] += _threaded_product(thread, row);
         }
+    }
+        for(const size_t i : std::ranges::iota_view{0u, result.size()})
+            result[i] = {};
+        for(const size_t thread : std::ranges::iota_view{0zu, threads_count()})
+            for(const size_t i : std::ranges::iota_view{0u, result.size()})
+                result[i] += _threaded_product(thread, i);
     }
 
 public:

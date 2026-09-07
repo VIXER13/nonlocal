@@ -56,7 +56,7 @@ std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(problem_settin
     remove_first_kind_elements(local_conductivity.matrix(), settings.is_inner_nodes);
     if (!temperature.empty())
         radiation_condition_2d(local_conductivity.matrix(), settings, mesh, boundaries_conditions, temperature);
-    return slae::init_preconditioner(std::move(local_conductivity.matrix()), settings.is_symmetric());
+    return slae::init_eigen_preconditioner(std::move(local_conductivity.matrix()), settings.is_symmetric());
 }
 
 template<std::floating_point T>
