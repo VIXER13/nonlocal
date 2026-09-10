@@ -3,8 +3,8 @@
 #include <parallel/MPI_utils.hpp>
 
 #include <algorithm>
-#include <iostream>
 #include <array>
+#include <iostream>
 
 namespace {
 struct dummy_stream : public logger::stream_base {
@@ -61,7 +61,6 @@ logger& get(const level level, std::unique_ptr<stream_base>&& init) {
     static_assert(levels.size() == size_t(level::Count));
 
     static logger log{init ? std::move(init) : std::make_unique<cout_stream>()};
-    // If initial level is set, use it for filtering
     if (uint8_t(level) <= uint8_t(g_log_level) && level != level::Off) {
         const auto current_time = std::chrono::system_clock::now();
         const std::chrono::duration<double> duration = current_time - log._initial_time;
