@@ -1,48 +1,53 @@
-#include <boost/ut.hpp>
+#include <array>
+#include <exception>
+#include <stacktrace>
 
-namespace boost::ut {
-    class safe_runner : public runner<reporter_junit<printer>> {
-    public:
-        [[nodiscard]] auto run(run_cfg rc = {}) -> bool {
-            run_ = true;
-            reporter_.on(events::run_begin{.argc = rc.argc, .argv = rc.argv});
-            for (const auto &[suite, suite_name] : suites_) {
-                if constexpr (requires { reporter_.on(events::suite_begin{}); }) {
-                    reporter_.on(events::suite_begin{.type = "suite", .name = suite_name});
-                }
-                constexpr auto type = "placeholder";
-                std::string name = std::string(suite_name) + " suite preliminaries";
-                try {
-                    suite();
-                } catch (const std::exception& exception) {
-                    ++fails_;
-                    reporter_.on(events::test_begin{.type = type, .name = name});
-                    reporter_.on(events::exception{exception.what()});
-                    reporter_.on(events::test_end{.type = type, .name = name});
-                } catch (...) {
-                    ++fails_;
-                    reporter_.on(events::test_begin{.type = type, .name = name});
-                    reporter_.on(events::exception{"Unknown exception"});
-                    reporter_.on(events::test_end{.type = type, .name = name});
-                }
-                if constexpr (requires { reporter_.on(events::suite_end{}); }) {
-                    reporter_.on(events::suite_end{.type = "suite", .name = suite_name});
-                }
-            }
-            suites_.clear();
+#include "runner.hpp"
 
-            if (rc.report_errors) {
-                report_summary();
-            }
+// Storage to store up to 5 nested stack traces for exceptions
+//   should be enough for most cases but can be increased if needed
+thread_local std::array<std::stacktrace, 5> s_stacktraces;
 
-            return fails_ > 0;
-        }
-    };
+// Forward declaration for the original __cxa_throw function
+//   that will be called from our wrapper
+extern "C" auto __real___cxa_throw(void* thrown_object, std::type_info* tinfo,
+                                   void (*dest)(void*)) -> void;
 
-    template <>
-    inline auto cfg<override> = safe_runner{};
+// Wrapper function for __cxa_throw that will be called
+//   instead of the original one
+extern "C" auto __wrap___cxa_throw(void* thrown_object, std::type_info* tinfo,
+                                   void (*dest)(void*)) -> void {
+  // Called when an exception is thrown, at the call site of the `throw`
+
+  // std::uncaught_exceptions() returns the number of currently
+  //   active exceptions that have been thrown but not yet caught
+  auto exception_count = std::uncaught_exceptions();
+
+  // If there's still some space on the exception stack,
+  //   capture a new stacktrace and add it to the stack
+  if (exception_count < ssize_t(s_stacktraces.size())) {
+    // Add the current stack trace to the end of the
+    //   stack trace storage array skipping the current
+    //   frame which is the __wrap___cxa_throw function itself
+    s_stacktraces[exception_count] = std::stacktrace::current(1);
+  }
+
+  // Forward to original __cxa_throw()
+  __real___cxa_throw(thrown_object, tinfo, dest);
 }
 
-int main(int argc, const char **argv) {
-    return boost::ut::cfg<>.run({.argc = argc, .argv = argv});
+// Simple helper function to print the stack trace
+//   of the exception that's currently being caught
+extern "C" auto get_stacktrace() -> std::string {
+  auto exception_count = std::uncaught_exceptions();
+  if (exception_count < 0) {
+    return "No active exception";
+  } else if (exception_count >= s_stacktraces.size()) {
+    return "Too many active exceptions";
+  }
+  return std::to_string(s_stacktraces[exception_count]);
+}
+
+int main(int argc, const char** argv) {
+  return boost::ut::cfg<>.run({.argc = argc, .argv = argv});
 }

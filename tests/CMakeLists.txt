@@ -37,7 +37,14 @@ foreach(test_target
     target_precompile_headers(
         ${test_target}
         PRIVATE
-            "$<BUILD_INTERFACE:${METAMATH_PCH}>")
+            "$<BUILD_INTERFACE:${METAMATH_PCH}>"
+            "runner.hpp"
+    )
+    target_link_libraries(
+        ${test_target}
+        PRIVATE #
+            stdc++_libbacktrace
+    )
 endforeach()
 
 
@@ -47,9 +54,15 @@ target_include_directories(
     PRIVATE #
         ${LIBRARIES_DIR}
 )
+target_link_options(
+    unit_tests
+    PRIVATE #
+        "-Wl,--wrap=__cxa_throw"
+)
 target_link_libraries(
     unit_tests
     PRIVATE #
+        stdc++_libbacktrace
         metamath_instantiations_lib
         embedded_files
         finite_elements_test_lib
