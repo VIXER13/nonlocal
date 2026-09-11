@@ -2,17 +2,18 @@
 
 #include <parallel/MPI_utils.hpp>
 
-#include <iostream>
+#include <algorithm>
 #include <array>
+#include <iostream>
 
 namespace {
-
 struct dummy_stream : public logger::stream_base {
-    std::fstream empty;
+    std::ostream empty = std::ostream{nullptr};
     explicit dummy_stream() :
         logger::stream_base{empty} {}
 };
 
+logger::level g_log_level = logger::level::Info;
 }
 
 namespace logger {
@@ -20,16 +21,32 @@ namespace logger {
 stream_base::stream_base(std::ostream& out) noexcept
     : out{out} {}
 
-logger::logger(const level level, std::unique_ptr<stream_base>&& out)
-    : _level{level}
-    , _out{std::move(out)} {}
-
-level logger::log_level() const noexcept {
-    return _level;
-}
+logger::logger(std::unique_ptr<stream_base>&& out)
+    : _out{std::move(out)} {}
 
 std::chrono::time_point<std::chrono::system_clock> logger::initial_time() const {
     return _initial_time;
+}
+
+void set_log_level(level l) noexcept {
+    g_log_level = l;
+}
+
+std::optional<level> parse_level(std::string_view name) {
+    // Case insensitive comparison
+    const auto compare = [](std::string_view a, std::string_view b) {
+        constexpr auto cmp = [](char c1, char c2) { return std::tolower(c1) == std::tolower(c2); };
+        if (a.size() != b.size()) return false;
+        return std::equal(a.begin(), a.end(), b.begin(), cmp);
+    };
+
+    if (compare(name, "off")) return level::Off;
+    if (compare(name, "error")) return level::Error;
+    if (compare(name, "warning")) return level::Warning;
+    if (compare(name, "info")) return level::Info;
+    if (compare(name, "debug")) return level::Debug;
+    if (compare(name, "trace")) return level::Trace;
+    return std::nullopt;
 }
 
 logger& get(const level level, std::unique_ptr<stream_base>&& init) {
@@ -43,8 +60,8 @@ logger& get(const level level, std::unique_ptr<stream_base>&& init) {
     };
     static_assert(levels.size() == size_t(level::Count));
 
-    static logger log{level, init ? std::move(init) : std::make_unique<cout_stream>()};
-    if (uint8_t(level) <= uint8_t(log.log_level()) && level != level::Off) {
+    static logger log{init ? std::move(init) : std::make_unique<cout_stream>()};
+    if (uint8_t(level) <= uint8_t(g_log_level) && level != level::Off) {
         const auto current_time = std::chrono::system_clock::now();
         const std::chrono::duration<double> duration = current_time - log._initial_time;
         log._out->out << '[' << duration.count() << "s] ";
@@ -54,7 +71,7 @@ logger& get(const level level, std::unique_ptr<stream_base>&& init) {
         return log;
     }
 
-    static logger dummy_log{level::Off, std::make_unique<dummy_stream>()};
+    static logger dummy_log{std::make_unique<dummy_stream>()};
     return dummy_log;
 }
 
