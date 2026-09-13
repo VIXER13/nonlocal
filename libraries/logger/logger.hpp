@@ -61,6 +61,8 @@ logger& operator<<(logger& log, const T& value) {
 }
 
 void set_log_level(level l) noexcept;
+level get_log_level() noexcept;
+
 std::optional<level> parse_level(std::string_view name);
 
 struct cout_stream : public stream_base {

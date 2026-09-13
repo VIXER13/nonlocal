@@ -32,6 +32,10 @@ void set_log_level(level l) noexcept {
     g_log_level = l;
 }
 
+level get_log_level() noexcept {
+    return g_log_level;
+}
+
 std::optional<level> parse_level(std::string_view name) {
     // Case insensitive comparison
     const auto compare = [](std::string_view a, std::string_view b) {
