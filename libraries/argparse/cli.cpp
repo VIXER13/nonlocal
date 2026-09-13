@@ -31,14 +31,12 @@ cli::kv_arg& cli::kv_arg::alias(std::string_view name) {
   return *this;
 }
 
-// flag_arg implementations
 cli::flag_arg::flag_arg(cli& cli, std::string_view descr, std::string_view name) : kv_arg(cli, descr, name) {
   _parser = [this](std::string_view) { _value = true; };
   _type_name = "flag";
   _value = false;
 }
 
-// Cli method implementations
 cli::flag_arg& cli::flag(std::string_view name, std::string_view descr) {
   auto arg_ptr = std::make_shared<flag_arg>(*this, descr, name);
   _named[name] = arg_ptr;
