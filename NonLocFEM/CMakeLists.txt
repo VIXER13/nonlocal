@@ -11,6 +11,7 @@ target_include_directories(
 target_link_libraries(
     NonLocFEM
     PRIVATE #
+        argparse_lib
         metamath_instantiations_lib
         config_lib
         finite_element_solver_1d_lib
