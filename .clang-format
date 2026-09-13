@@ -1,0 +1,6 @@
+BasedOnStyle: LLVM
+BreakBeforeBraces: Attach
+AlwaysBreakTemplateDeclarations: Yes
+PointerAlignment: Left
+ColumnLimit: 130
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
