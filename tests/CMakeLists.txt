@@ -20,6 +20,20 @@ add_subdirectory(solvers_2d)
 add_subdirectory(utils)
 add_subdirectory(logger)
 
+# Hack for stacktrace
+include(CheckLinkerFlag)
+add_library(stacktrace_support INTERFACE)
+check_linker_flag(CXX "-lstdc++exp" HAVE_STDCXXEXP)
+check_linker_flag(CXX "-lstdc++_libbacktrace" HAVE_STDCXX_LIBBACKTRACE)
+if(HAVE_STDCXXEXP)
+    target_link_libraries(stacktrace_support INTERFACE stdc++exp)
+elseif(HAVE_STDCXX_LIBBACKTRACE)
+    target_link_libraries(stacktrace_support INTERFACE stdc++_libbacktrace)
+else()
+    message(WARNING "Stacktrace: neither stdc++exp nor stdc++_libbacktrace found.")
+endif()
+
+
 # Apply PCH to each test OBJECT library with its own flags to avoid compile-definition mismatches
 # (e.g. _OPENMP / _REENTRANT differ between OpenMP and non-OpenMP targets).
 foreach(test_target
@@ -45,7 +59,7 @@ foreach(test_target
     target_link_libraries(
         ${test_target}
         PRIVATE #
-            stdc++_libbacktrace
+            stacktrace_support
     )
 endforeach()
 
@@ -64,7 +78,7 @@ target_link_options(
 target_link_libraries(
     unit_tests
     PRIVATE #
-        stdc++_libbacktrace
+        stacktrace_support
         metamath_instantiations_lib
         embedded_files
         finite_elements_test_lib
