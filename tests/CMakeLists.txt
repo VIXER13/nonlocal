@@ -18,6 +18,7 @@ add_subdirectory(thermal_1d)
 add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
+add_subdirectory(logger)
 
 # Apply PCH to each test OBJECT library with its own flags to avoid compile-definition mismatches
 # (e.g. _OPENMP / _REENTRANT differ between OpenMP and non-OpenMP targets).
@@ -33,6 +34,7 @@ foreach(test_target
     mechanical_1d_test_lib
     thermal_2d_test_lib
     mechanical_2d_test_lib
+    logger_test_lib
 )
     target_precompile_headers(
         ${test_target}
@@ -76,6 +78,7 @@ target_link_libraries(
         mechanical_1d_test_lib
         thermal_2d_test_lib
         mechanical_2d_test_lib
+        logger_test_lib
         unit_tests_utils_lib
         Boost::ut
 )

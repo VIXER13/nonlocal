@@ -38,6 +38,21 @@ make run-tests
 ./build/NonLocFEM/NonLocFEM ./documents/config/examples/thermal_stationary_1d.json
 ```
 
+Дополнительно можно указать уровень логирования с помощью аргумента `--log-level`:
+```bash
+./build/NonLocFEM/NonLocFEM ./documents/config/examples/thermal_stationary_1d.json --log-level=Debug
+```
+
+Доступные уровни логирования (в порядке возрастания детализации):
+- `off` - отключение логирования
+- `error` - ошибки
+- `warning` - предупреждения
+- `info` - информационные сообщения (по умолчанию)
+- `debug` - отладочная информация
+- `trace` - трассировка выполнения
+
+Уровень логирования регистронезависимый, например `--log-level=DEBUG` или `--log-level=Info` будут работать корректно.
+
 **Разработка**
 - Рекомендуется держать файлы CMakeLists.txt в форматированном состоянии. Для этого удобно использовать gersemi
   ```
