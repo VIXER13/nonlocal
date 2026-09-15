@@ -8,7 +8,7 @@ on:
       - '*.md'
 
 jobs:
-  15:
+  ci_job:
     uses: ./.github/workflows/common.yml
     with:
       compiler: gcc-15

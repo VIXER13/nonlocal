@@ -8,7 +8,7 @@ on:
       - '*.md'
 
 jobs:
-  22:
+  ci_job:
     uses: ./.github/workflows/common.yml
     with:
       compiler: clang-22
