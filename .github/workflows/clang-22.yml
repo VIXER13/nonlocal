@@ -13,3 +13,4 @@ jobs:
     with:
       compiler: clang-22
       deps: clang-22 libomp-22-dev
+      os: ubuntu-26.04

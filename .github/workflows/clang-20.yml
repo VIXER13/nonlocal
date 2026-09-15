@@ -13,3 +13,4 @@ jobs:
     with:
       compiler: clang-20
       deps: clang-20 libomp-20-dev
+      os: ubuntu-24.04

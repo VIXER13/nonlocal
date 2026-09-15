@@ -9,13 +9,16 @@ on:
       deps:
         required: true
         type: string
+      os:
+        required: true
+        type: string
     outputs:
       build_output:
         value: ${{ jobs.build.outputs.result }}
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.os }}
     outputs:
       result: ${{ steps.build_app.outputs.status }}
     steps:

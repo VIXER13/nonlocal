@@ -13,3 +13,4 @@ jobs:
     with:
       compiler: gcc-13
       deps: gcc-13 g++-13
+      os: ubuntu-24.04

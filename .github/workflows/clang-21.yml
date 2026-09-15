@@ -13,3 +13,4 @@ jobs:
     with:
       compiler: clang-21
       deps: clang-21 libomp-21-dev
+      os: ubuntu-26.04

@@ -13,3 +13,4 @@ jobs:
     with:
       compiler: gcc-15
       deps: gcc-15 g++-15
+      os: ubuntu-26.04
