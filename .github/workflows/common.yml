@@ -32,18 +32,12 @@ jobs:
         with:
           version: 2.21.0
 
-      - name: Setup Conan
-        run: conan install . --build=missing --output-folder=build --profile ./.profiles/${{ inputs.compiler }}
-
-      - name: Configure project
+      - name: Setup Conan & Configure project
         working-directory: ./build
-        run: |
-          cmake .. --preset conan-release
+        run: make setup COMPILER=${{ inputs.compiler }}
 
       - name: Build project
-        working-directory: ./build
-        run: |
-          cmake --build . --config Release --parallel
+        run: make build COMPILER=${{ inputs.compiler }}
 
       - name: Run unit tests
         working-directory: ./build

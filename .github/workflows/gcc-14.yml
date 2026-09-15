@@ -8,8 +8,8 @@ on:
       - '*.md'
 
 jobs:
-  ci_job:
+  14:
     uses: ./.github/workflows/common.yml
     with:
-      compiler: gcc
-      deps: gcc-13 g++-13
+      compiler: gcc-14
+      deps: gcc-14 g++-14

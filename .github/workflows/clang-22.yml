@@ -1,0 +1,15 @@
+name: clang
+
+on:
+  push:
+    branches: [ master, dev ]
+    paths-ignore:
+      - 'documents/**'
+      - '*.md'
+
+jobs:
+  22:
+    uses: ./.github/workflows/common.yml
+    with:
+      compiler: clang-22
+      deps: clang-22 libomp-22-dev
