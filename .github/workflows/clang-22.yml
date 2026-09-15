@@ -11,5 +11,5 @@ jobs:
   ci_job:
     uses: ./.github/workflows/common.yml
     with:
-      compiler: clang
-      deps: clang-20 libomp-20-dev
+      compiler: clang-22
+      deps: clang-22 libomp-22-dev

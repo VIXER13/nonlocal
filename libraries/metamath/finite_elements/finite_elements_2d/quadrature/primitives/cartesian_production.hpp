@@ -8,7 +8,7 @@
 
 namespace metamath::finite_element {
 
-template<std::floating_point T>
+template<std::floating_point T, auto...>
 class cartesian_production : public geometry_2d<T, rectangle_element_geometry> {
 protected:
     std::vector<T> weights;
