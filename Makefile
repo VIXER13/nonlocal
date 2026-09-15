@@ -9,16 +9,25 @@ DEFAULT_COMPILER := gcc
 DEFAULT_THREADS := $(shell command -v nproc > /dev/null 2>&1 && nproc || sysctl -n hw.ncpu)
 COMPILER ?= $(if $(wildcard $(COMPILER_MARKER)),$(shell cat $(COMPILER_MARKER)),$(DEFAULT_COMPILER))
 THREADS ?= $(if $(wildcard $(THREADS_MARKER)),$(shell cat $(THREADS_MARKER)),$(DEFAULT_THREADS))
-PROFILE_PATH := ./.profiles/$(COMPILER)
+COMPILER_NAME := $(word 1,$(subst -, ,$(COMPILER)))
+COMPILER_VERSION := $(word 2,$(subst -, ,$(COMPILER)))
+PROFILE_PATH := ./.profiles/$(COMPILER_NAME)
 
 $(COMPILER_MARKER):
 	mkdir -p $(BUILD_DIR)
 	echo $(COMPILER) > $@
 
+ARG_VERSION := compiler.version=$(COMPILER_VERSION)
+ARG_gcc_EXECUTABLES := 'tools.build:compiler_executables={"c":"gcc-$(COMPILER_VERSION)","cpp":"g++-$(COMPILER_VERSION)"}'
+ARG_clang_EXECUTABLES := 'tools.build:compiler_executables={"c":"clang-$(COMPILER_VERSION)","cpp":"clang++-$(COMPILER_VERSION)"}'
 $(TOOLCHAIN_FILE): $(COMPILER_MARKER) $(PROFILE_PATH)
-	conan install . --build=missing --output-folder=$(BUILD_DIR) --profile $(PROFILE_PATH)
+	if [ -n "$(COMPILER_VERSION)" ]; then \
+		conan install . --build=missing --output-folder=$(BUILD_DIR) --profile $(PROFILE_PATH) -s $(ARG_VERSION) -c $(ARG_$(COMPILER_NAME)_EXECUTABLES); \
+	else \
+		conan install . --build=missing --output-folder=$(BUILD_DIR) --profile $(PROFILE_PATH); \
+	fi
 
-$(BUILD_MAKEFILE): $(COMPILER_MARKER) $(TOOLCHAIN_FILE)
+$(BUILD_MAKEFILE): update_compiler $(COMPILER_MARKER) $(TOOLCHAIN_FILE)
 	cd $(BUILD_DIR) && cmake .. --preset conan-release
 
 .PHONY: update_compiler
@@ -37,7 +46,7 @@ setup: $(BUILD_MAKEFILE)
 
 # Build target
 .PHONY: build
-build: update_compiler update_threads setup
+build: update_threads setup
 	cmake --build $(BUILD_DIR) --config Release -j$(THREADS) -- -s
 
 # Run unit tests
