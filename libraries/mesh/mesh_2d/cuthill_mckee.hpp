@@ -128,7 +128,8 @@ class _cuthill_mckee final {
 
     template<class I>
     static std::vector<size_t> calculate_permutation(const node_graph<I>& graph, const I init_node) {
-        std::vector<size_t> permutation(graph.shifts.size() - 1, I{-1});
+        static constexpr I Invalid_Index = std::numeric_limits<I>::max();
+        std::vector<size_t> permutation(graph.shifts.size() - 1, Invalid_Index);
         I curr_index = 0;
         permutation[init_node] = curr_index++;
         std::unordered_set<I> curr_layer{init_node}, next_layer;
@@ -137,7 +138,7 @@ class _cuthill_mckee final {
             for(const I node : curr_layer) {
                 std::multimap<I, I> neighbours;
                 for(const I shift : std::ranges::iota_view{graph.shifts[node], graph.shifts[node + 1]})
-                    if (const I neighbour_node = graph.indices[shift]; permutation[neighbour_node] == I{-1})
+                    if (const I neighbour_node = graph.indices[shift]; permutation[neighbour_node] == Invalid_Index)
                         neighbours.emplace(graph.neighbours_count(neighbour_node), neighbour_node);
                 for(const auto [_, neighbour] : neighbours) {
                     next_layer.emplace(neighbour);
@@ -157,9 +158,8 @@ public:
 template<class I>
 std::vector<I> reverse_permutation(const std::vector<I>& permutation) {
     std::vector<I> reversed(permutation.size());
-    I index = 0;
-    for(const I i : permutation)
-        reversed[i] = index++;
+    for (size_t i = 0; i < permutation.size(); ++i)
+        reversed[permutation[i]] = i;
     return reversed;
 }
 

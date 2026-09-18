@@ -6,10 +6,12 @@
 
 namespace nonlocal::solver_2d::mechanical {
 
-template<std::floating_point T, std::integral I>
-evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::mesh_2d<T, I>& mesh, 
-                                                                  const raw_mechanical_parameters<T>& parameters) {
+template<std::floating_point T>
+evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::mesh_2d<T>& mesh, 
+                                                                  const raw_mechanical_parameters<T>& parameters,
+                                                                  const std::vector<T>& delta_temperature = {}) {
     evaluated_mechanical_parameters<T> result;
+    const auto temperature = delta_temperature.empty() ? delta_temperature : nonlocal::mesh::utils::nodes_to_qnodes(mesh, delta_temperature);
     for (const auto& [name, parameter] : parameters) {
         auto& [_, physical] = result[name] = { .model = parameter.model };
 
@@ -17,41 +19,68 @@ evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::me
             if (elastic.is_constant())
                 return elastic.hooke({});
             const auto qshifts = mesh.quad_shifts(name);
-            static constexpr size_t N = std::tuple_size_v<std::remove_cvref_t<decltype(elastic.hooke({}))>>;
-            metamath::types::vector_with_shifted_index<std::array<T, N>> result = {
-                .container = std::vector<std::array<T, N>>(qshifts.size()),
-                .shift = qshifts.front()
-            };
-            for(size_t q = qshifts.front(); q <= qshifts.back(); ++q)
-                result[q] = elastic.hooke(mesh.quad_coord(q));
+            using Hooke = std::remove_cvref_t<decltype(elastic.hooke({}))>;
+            metamath::types::vector_with_shifted_index<Hooke> result = { .container = std::vector<Hooke>(qshifts.size()),
+                                                                         .shift = qshifts.front() };
+            for(const size_t qshift : qshifts)
+                result[qshift] = elastic.hooke(mesh.quad_coord(qshift));
             return result;
         }, parameter.physical.elastic);
 
-        if (parameter.physical.thermal_expansion.valueless_by_exception())
+        physical.density = std::visit(metamath::types::visitor{
+            [](const std::monostate) -> evaluated_density_t<T> { return std::monostate{}; },
+            [&mesh, &name](const coefficient_t<T, 2>& density) -> evaluated_density_t<T> {
+                if (is_constant(density))
+                    return evaluate<T, 2u>(density, {}, {});
+                const auto qshifts = mesh.quad_shifts(name);
+                metamath::types::vector_with_shifted_index<T> result = { .container = std::vector<T>(qshifts.size()),
+                                                                         .shift = qshifts.front() };
+                for(const size_t qshift : qshifts)
+                    result[qshift] = evaluate<T, 2u>(density, mesh.quad_coord(qshift), {});
+                return result;
+            }
+        }, parameter.physical.density);
+
+        if (temperature.empty())
             continue;
-        
-        physical.thermal_expansion = std::visit(metamath::types::visitor{
-            [&mesh, &name](const raw_isotropic_thermal_expansion_t<T>& thermal_expansion) -> evaluated_thermal_expansion_t<T> {
-                if (is_constant(thermal_expansion))
-                    return std::get<T>(thermal_expansion);
-                std::vector<T> result;
+
+        physical.thermal_strain = std::visit(metamath::types::visitor{
+            [](const std::monostate) -> evaluated_thermal_strain_t<T> { return std::monostate{}; },
+            [&mesh, &name, &temperature](const raw_isotropic_thermal_expansion_t<T>& thermal_expansion) -> evaluated_thermal_strain_t<T> {
                 const auto qshifts = mesh.quad_shifts(name);
-                result.reserve(qshifts.size());
-                for(const size_t qshift: qshifts)
-                    result.push_back(evaluate<T, 2u>(thermal_expansion, mesh.quad_coord(qshift), {}));
-                return metamath::types::vector_with_shifted_index<T>{std::move(result), qshifts.front()};
+                isotropic_thermal_strain<T> result{.strain = {std::vector<T>(qshifts.size(), T{0}), qshifts.front()}};
+                for(const size_t qshift : qshifts)
+                    result.strain[qshift] = temperature[qshift] * evaluate<T, 2u>(thermal_expansion, mesh.quad_coord(qshift), {});
+                return result;
             },
-            [&mesh, &name](const auto& thermal_expansion) -> evaluated_thermal_expansion_t<T> {
-                if (is_constant(thermal_expansion))
-                    return evaluate<T, 2u>(thermal_expansion, {}, {});
+            [&mesh, &name, &temperature](const auto& thermal_expansion) -> evaluated_thermal_strain_t<T> {
+                using Expansion = std::remove_cvref_t<decltype(thermal_expansion)>;
                 const auto qshifts = mesh.quad_shifts(name);
-                static constexpr size_t N = std::tuple_size_v<std::remove_cvref_t<decltype(thermal_expansion)>>;
-                metamath::types::vector_with_shifted_index<std::array<T, N>> result = {
-                    .container = std::vector<std::array<T, N>>(qshifts.size()),
-                    .shift = qshifts.front()
+                if (is_constant(thermal_expansion)) {
+                    std::conditional_t<std::is_same_v<Expansion, raw_orthotropic_thermal_expansion_t<T>>,
+                        orthotropic_constant_thermal_strain<T>,
+                        anisotropic_constant_thermal_strain<T>
+                    > result = {
+                        .delta_temperature = metamath::types::vector_with_shifted_index<T>{
+                            .container = std::vector<T>(std::next(temperature.begin(), qshifts.front()), 
+                                                        std::next(temperature.begin(), qshifts.back() + 1)),
+                            .shift = qshifts.front()
+                        },
+                        .thermal_expansion = evaluate<T, 2u>(thermal_expansion, {}, {})
+                    };
+                    return result;
+                }
+                
+                using namespace metamath::operators;
+                std::conditional_t<std::is_same_v<Expansion, raw_orthotropic_thermal_expansion_t<T>>,
+                    orthotropic_thermal_strain<T>,
+                    anisotropic_thermal_strain<T>
+                > result = {
+                    .strain = { .container = std::vector<std::array<T, std::tuple_size_v<Expansion>>>(qshifts.size()),
+                                .shift = qshifts.front() }
                 };
-                for(size_t q = qshifts.front(); q <= qshifts.back(); ++q)
-                    result[q] = evaluate<T, 2u>(thermal_expansion, mesh.quad_coord(q), {});
+                for(const size_t qshift : qshifts)
+                    result.strain[qshift] = temperature[qshift] * evaluate<T, 2u>(thermal_expansion, mesh.quad_coord(qshift), {});
                 return result;
             }
         }, parameter.physical.thermal_expansion);

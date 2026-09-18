@@ -7,6 +7,7 @@ target_sources(
     INTERFACE #
         element_1d.hpp
         element_1d_integrate.hpp
+        make_element_1d.hpp
         basis/lagrangian_elements_1d.hpp
 )
 target_include_directories(

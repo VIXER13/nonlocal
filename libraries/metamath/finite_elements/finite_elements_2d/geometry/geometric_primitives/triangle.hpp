@@ -18,6 +18,8 @@ protected:
 
 public:
     virtual ~triangle_element_geometry() noexcept = default;
+
+    static constexpr T area() noexcept { return T{0.5}; }
 };
 
 }

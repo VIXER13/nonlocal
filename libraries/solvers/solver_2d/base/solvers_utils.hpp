@@ -6,8 +6,8 @@
 
 namespace nonlocal::solver_2d::utils {
 
-template<template<class, auto...> class Condition, auto... Args, class T, class I, physics_t Physics, class Callback>
-void run_by_boundary(const mesh::mesh_container_2d<T, I>& mesh, const std::string& bound_name,
+template<template<class, auto...> class Condition, auto... Args, class T, physics_t Physics, class Callback>
+void run_by_boundary(const mesh::mesh_container_2d<T>& mesh, const std::string& bound_name,
                      const boundary_condition_2d<T, Physics> *const condition, const size_t degree, 
                      const Callback& callback) {
     if (const auto *const cond = dynamic_cast<const Condition<T, Args...>*>(condition))
@@ -16,8 +16,8 @@ void run_by_boundary(const mesh::mesh_container_2d<T, I>& mesh, const std::strin
                 callback(*cond, be, node, degree);
 }
 
-template<template<class, auto...> class Condition, auto... Args, class T, class I, physics_t Physics, size_t DoF, class Callback>
-void run_by_boundaries(const mesh::mesh_container_2d<T, I>& mesh,
+template<template<class, auto...> class Condition, auto... Args, class T, physics_t Physics, size_t DoF, class Callback>
+void run_by_boundaries(const mesh::mesh_container_2d<T>& mesh,
                        const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions,
                        const Callback& callback) {
     for(const auto& [bound_name, conditions] : boundaries_conditions)
@@ -28,8 +28,8 @@ void run_by_boundaries(const mesh::mesh_container_2d<T, I>& mesh,
                 run_by_boundary<Condition, Args...>(mesh, bound_name, conditions[degree].get(), degree, callback);
 }
 
-template<class T, class I, physics_t Physics, size_t DoF>
-std::vector<bool> inner_nodes(const mesh::mesh_container_2d<T, I>& mesh,
+template<class T, physics_t Physics, size_t DoF>
+std::vector<bool> inner_nodes(const mesh::mesh_container_2d<T>& mesh,
                               const boundaries_conditions_2d<T, Physics, DoF>& boundaries_conditions) {
     std::vector<bool> is_inner(DoF * mesh.nodes_count(), true);
     run_by_boundaries<first_kind_2d, Physics>(mesh, boundaries_conditions,

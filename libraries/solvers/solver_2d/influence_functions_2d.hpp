@@ -133,7 +133,7 @@ class fast_polynomial final {
     T distance(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         if constexpr (std::is_same_v<Distance, mesh::powered_distance_with_rotation<T>>)
             return mesh::powered_distance_with_rotation<T>::operator()(x, y, _radius);
-        return metamath::functions::powered_distance<2>(x, y, _radius);
+        return metamath::linear::powered_distance<2>(x, y, _radius);
     }
 
 public:

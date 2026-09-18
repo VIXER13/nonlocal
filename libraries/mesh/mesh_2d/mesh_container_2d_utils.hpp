@@ -1,14 +1,16 @@
 #pragma once
 
 #include "su2_parser.hpp"
+#include "csv_saver.hpp"
 
 #include <constants/nonlocal_constants.hpp>
 
 namespace nonlocal::mesh::utils {
 
 template<std::floating_point T, std::integral I, class Function>
-std::vector<T> discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
-    std::vector<T> x(mesh.nodes_count());
+auto discrete(const mesh::mesh_container_2d<T, I>& mesh, const Function& function) {
+    using vector_t = decltype(function(mesh.node_coord(0)));
+    std::vector<vector_t> x(mesh.nodes_count());
     for(const size_t node : mesh.nodes())
         x[node] = function(mesh.node_coord(node));
     return x;
@@ -79,18 +81,13 @@ std::vector<std::array<T, 2>> approx_all_quad_nodes(const mesh_container_2d<T, I
 }
 
 template<class T, class I>
-std::vector<metamath::types::square_matrix<T, 2>> approx_all_jacobi_matrices(const mesh_container_2d<T, I>& mesh, const std::vector<I>& qshifts) {
-    return approx_in_all_quad_nodes<metamath::types::square_matrix>(mesh, qshifts, 
+std::vector<metamath::linear::square_matrix<T, 2>> approx_all_jacobi_matrices(const mesh_container_2d<T, I>& mesh, const std::vector<I>& qshifts) {
+    return approx_in_all_quad_nodes<metamath::linear::square_matrix>(mesh, qshifts, 
         [](const auto& element_data, const size_t q) { return element_data.jacobi_matrix(q); });
 }
 
 template<class T>
-constexpr T jacobian(const metamath::types::square_matrix<T, 2>& J) noexcept {
-    return std::abs(J[X][X] * J[Y][Y] - J[X][Y] * J[Y][X]);
-}
-
-template<class T>
-std::vector<T> calculate_jacobians(const std::vector<metamath::types::square_matrix<T, 2>>& jacobi_matrices) {
+std::vector<T> calculate_jacobians(const std::vector<metamath::linear::square_matrix<T, 2>>& jacobi_matrices) {
     std::vector<T> jacobians(jacobi_matrices.size());
     std::transform(jacobi_matrices.begin(), jacobi_matrices.end(), jacobians.begin(), jacobian<T>);
     return jacobians;
@@ -101,7 +98,7 @@ template<class T, class I>
 std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>& mesh,
                                                   const std::vector<I>& quad_element_shifts,
                                                   const std::vector<I>& quad_nodes_shifts,
-                                                  const std::vector<metamath::types::square_matrix<T, 2>>& jacobi_matrices) {
+                                                  const std::vector<metamath::linear::square_matrix<T, 2>>& jacobi_matrices) {
     if (mesh.elements_2d_count() + 1 != quad_element_shifts.size() || mesh.elements_2d_count() + 1 != quad_nodes_shifts.size())
         throw std::logic_error{"The number of quadrature shifts and elements does not match."};
     if (quad_element_shifts.back() != jacobi_matrices.size())
@@ -112,7 +109,7 @@ std::vector<std::array<T, 2>> derivatives_in_quad(const mesh_container_2d<T, I>&
         const auto& el = mesh.element_2d(e);
         for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
             for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
-                const metamath::types::square_matrix<T, 2>& J = jacobi_matrices[quad_element_shifts[e] + q];
+                const metamath::linear::square_matrix<T, 2>& J = jacobi_matrices[quad_element_shifts[e] + q];
                 derivatives[quad_nodes_shifts[e] + i * el.qnodes_count() + q] = {
                      el.qNxi(i, q) * J[1][1] - el.qNeta(i, q) * J[1][0],
                     -el.qNxi(i, q) * J[0][1] + el.qNeta(i, q) * J[0][0]
@@ -202,41 +199,26 @@ void save_scalars_to_vtk(std::ofstream& output, const std::string_view name, con
         output << val << '\n';
 }
 
-template<class T>
-void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 2>& vector) {
+template<class T, size_t Dimension>
+void save_vectors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, Dimension>>& vector) {
     output << "VECTORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, vector[X].size()})
-        output << vector[X][i] << ' ' << vector[Y][i] << " 0\n";
+    for(const size_t i : std::ranges::iota_view{0u, vector.size()}) {
+        if constexpr (Dimension == 2)
+            output << vector[i][X] << ' ' << vector[i][Y] << " 0\n";
+        else if constexpr (Dimension == 3)
+            output << vector[i][X] << ' ' << vector[i][Y] << ' ' << vector[i][Z] << '\n';
+        else
+            static_assert(false, "Only 2D and 3D vectors are supported.");
+    } 
 }
 
 template<class T>
-void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::array<std::vector<T>, 3>& tensor) {
+void save_tensors_to_vtk(std::ofstream& output, const std::string_view name, const std::vector<std::array<T, 3>>& tensor) {
     output << "TENSORS " << name << ' ' << mesh::vtk_data_type<T> << '\n';
-    for(const size_t i : std::ranges::iota_view{0u, tensor[0].size()})
-        output << tensor[0][i] << ' ' << tensor[2][i] << " 0\n"
-               << tensor[2][i] << ' ' << tensor[1][i] << " 0\n"
+    for(const size_t i : std::ranges::iota_view{0u, tensor.size()})
+        output << tensor[i][XX] << ' ' << tensor[i][XY] << " 0\n"
+               << tensor[i][YX] << ' ' << tensor[i][YY] << " 0\n"
                << "0 0 0\n\n";
-}
-
-template<class T, class I>
-void save_as_csv(const std::filesystem::path& path, const mesh_container_2d<T, I>& mesh,
-                 const std::vector<std::pair<std::string, const std::vector<T>&>>& data,
-                 const std::optional<std::streamsize> precision = std::nullopt) {
-    for(const auto& [name, vec] : data)
-        if (mesh.nodes_count() != vec.size())
-            throw std::logic_error{"The result cannot be saved because the mesh nodes number "
-                                   "and elements in the vector \"" + name + "\" do not match."};
-    std::ofstream csv{path};
-    csv.precision(precision ? *precision : std::numeric_limits<T>::max_digits10);
-    csv << "x,y" << (data.empty() ? '\n' : ',');
-    for(const size_t j : std::ranges::iota_view{0u, data.size()})
-        csv << data[j].first << (j == data.size() - 1 ? '\n' : ',');
-    for(const size_t i : std::ranges::iota_view{0u, mesh.nodes_count()}) {
-        const std::array<T, 2>& node = mesh.node_coord(i);
-        csv << node[X] << ',' << node[Y] << (data.empty() ? '\n' : ',');
-        for(const size_t j : std::ranges::iota_view{0u, data.size()})
-            csv << data[j].second[i] << (j == data.size() - 1 ? '\n' : ',');
-    }
 }
 
 }

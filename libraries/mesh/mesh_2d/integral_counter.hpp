@@ -34,7 +34,7 @@ void integral_counter<T, I>::reset(const size_t) {}
 template<class T, class I>
 void integral_counter<T, I>::check_node(const size_t row, const size_t col) {
     if (!is_symmetric() || col >= row)
-        ++_shifts[row];
+        ++_shifts[row + 1];
 }
 
 template<class T, class I>

@@ -8,56 +8,53 @@
 #include "temperature_condition_2d.hpp"
 
 #include <solvers/base/utils.hpp>
-#include <solvers/slae/conjugate_gradient.hpp>
+#include <solvers/slae/init_solver.hpp>
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
 #include <solvers/solver_2d/base/boundary_condition_second_kind_2d.hpp>
 #include <solvers/solver_2d/base/right_part_2d.hpp>
 
-#include <optional>
-
 namespace nonlocal::solver_2d::mechanical {
 
-template<class Matrix_Index, class T, class I>
-mechanical::mechanical_solution_2d<T, I> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T, I>>& mesh,
-                                                              const raw_mechanical_parameters<T>& parameters,
-                                                              const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
-                                                              const std::vector<T>& delta_temperature = {},
-                                                              const std::optional<std::function<std::array<T, 2>(const std::array<T, 2>&)>>& right_part = std::nullopt) {
+template<std::floating_point T>
+auto init_preconditioner(problem_settings settings,
+                         const mesh::mesh_2d<T>& mesh,
+                         const evaluated_mechanical_parameters<T>& parameters,
+                         const mechanical_boundaries_conditions_2d<T>& boundaries_conditions) {
+    settings.force_symmetry = settings.is_symmetric(); // use the same pattern for preconditioner as for the main matrix
+    settings.set_fully_local();
+    stiffness_matrix<T> local_stiffness{mesh};
+    local_stiffness.processing_nodes = std::ranges::iota_view{0zu, mesh.container().nodes_count()};
+    local_stiffness.compute(parameters, settings);
+    remove_first_kind_elements(local_stiffness.matrix(), settings.is_inner_nodes);
+    return slae::init_eigen_preconditioner(std::move(local_stiffness.matrix()), settings.is_symmetric());
+}
+
+template<std::floating_point T>
+mechanical::mechanical_solution_2d<T> equilibrium_equation(const std::shared_ptr<mesh::mesh_2d<T>>& mesh,
+                                                           const raw_mechanical_parameters<T>& parameters,
+                                                           const mechanical_boundaries_conditions_2d<T>& boundaries_conditions,
+                                                           const std::vector<T>& delta_temperature = {},
+                                                           const std::function<std::array<T, 2>(const std::array<T, 2>&)>& right_part = nullptr,
+                                                           const bool use_preconditioner = true) {
     const auto settings = init_problem_settings(mesh->container(), parameters, boundaries_conditions);
     log_problem_settings(settings);
-    const auto evaluated_parameters = evaluate_mechanical_parameters(*mesh, parameters);
-    stiffness_matrix<T, I, Matrix_Index> stiffness{mesh};
+    const auto evaluated_parameters = evaluate_mechanical_parameters(*mesh, parameters, delta_temperature);
+
+    stiffness_matrix<T> stiffness{*mesh};
     stiffness.compute(evaluated_parameters, settings);
-    Eigen::Matrix<T, Eigen::Dynamic, 1> f = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(stiffness.matrix().inner().cols());
+    std::vector<std::array<T, 2>> f(mesh->container().nodes_count(), std::array<T, 2>{});
     boundary_condition_second_kind_2d(f, *mesh, boundaries_conditions);
     if (right_part)
-        integrate_right_part<2>(f, *mesh, *right_part);
-    temperature_condition(f, *mesh, evaluated_parameters, delta_temperature);
-    boundary_condition_first_kind_2d(f, *mesh, boundaries_conditions, stiffness.matrix().bound());
-    stiffness_matrix<T, I, Matrix_Index> local_stiffness{mesh};
-    if (settings.is_nonlocal()) {
-        local_stiffness.nodes_for_processing(std::ranges::iota_view<size_t, size_t>{0u, mesh->container().nodes_count()});
-        local_stiffness.compute(evaluated_parameters, settings, assemble_part::LOCAL);
-    }
+        integrate_right_part(f, *mesh, right_part);
+    temperature_condition(f, *mesh, evaluated_parameters);
+    boundary_condition_first_kind_2d(stiffness.matrix(), f, settings, mesh->container(), boundaries_conditions);
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> displacement;
-    if (settings.is_symmetric()) {
-        slae::conjugate_gradient<T, Matrix_Index> solver{stiffness.matrix().inner()};
-        if (settings.is_nonlocal()) {
-            solver.template init_preconditioner<slae::eigen_ILLT_preconditioner>(local_stiffness.matrix().inner());
-            if (solver.preconditioner().computation_info() != Eigen::Success) {
-                solver.template init_preconditioner<slae::eigen_identity_preconditioner>();
-                logger::warning() << "The ILLT preconditioner could not be calculated, "
-                                << "the preconditioner was switched to Identity." << std::endl;
-            }
-        }
-        displacement = solver.solve(f);
-    } else {
-        const Eigen::BiCGSTAB<Eigen::SparseMatrix<T, Eigen::RowMajor, Matrix_Index>> solver{stiffness.matrix().inner()};
-        displacement = solver.solve(f);
-    }
-    auto solution = mechanical_solution_2d<T, I>{mesh, evaluated_parameters, displacement, delta_temperature};
-    solution.calc_strain_and_stress();
+    auto solver = slae::init_iterative_solver(stiffness.matrix(), settings.is_symmetric());
+    if (use_preconditioner && settings.is_nonlocal())
+        solver->preconditioner(init_preconditioner(settings, *mesh, evaluated_parameters, boundaries_conditions));
+    auto solution = mechanical_solution_2d{mesh, evaluated_parameters, solver->solve(f)};
+    solution.calc_strain_and_stress(evaluated_parameters);
+
     return solution;
 }
 

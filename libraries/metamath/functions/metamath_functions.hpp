@@ -1,5 +1,5 @@
 #pragma once
 
 #include "factorial.hpp"
-#include "distance.hpp"
+#include "power.hpp"
 #include "sqrt.hpp"

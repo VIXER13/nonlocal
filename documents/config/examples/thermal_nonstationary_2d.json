@@ -2,7 +2,7 @@
     "task": {
         "dimension": 2,
         "problem": "thermal",
-        "time_dependency": true
+        "analysis_type": "time_dependent"
     },
     "save": {
         "folder": "./test",

@@ -1,0 +1,50 @@
+{
+    "task": {
+        "dimension": 1,
+        "problem": "mechanical",
+        "analysis_type": "time_harmonic"
+    },
+	"frequency": {
+        "units": "KHz",
+        "range": [0, 1, 10, 100, 1000, 2, 5, 1e-4]
+	},
+    "save": {
+        "folder": "./test",
+        "config": "config",
+        "csv": "solution_mechanical_time_harmonic_1d",
+        "precision": 16
+    },
+    "mesh": {
+        "element_order": 1,
+        "quadrature_order": 3
+    },
+    "auxiliary": {
+        "right_part": "x : x + 3",
+        "initial_distribution": 0
+    },
+    "boundaries": {
+        "left": {
+            "kind": "displacement",
+			"displacement": 0.0
+        },
+        "right": {
+            "kind": "displacement",
+			"displacement": -0.3
+        }
+    },
+    "materials": [
+        {
+            "elements_count": 100,
+            "length": 1.0,
+            "physical": {
+                "youngs_modulus": 20.0,
+                "density": 30.0
+            },
+            "model": {
+                "local_weight": 1.0,
+                "nonlocal_radius": 0,
+                "search_radius": 0
+            }
+        }
+    ]
+}

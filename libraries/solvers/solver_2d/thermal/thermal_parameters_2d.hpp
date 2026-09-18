@@ -49,7 +49,7 @@ using evaluated_conductivity_t = std::variant<
 >;
 
 template<std::floating_point T>
-struct parameter_2d final {
+struct raw_thermal_parameters_t final {
     raw_conductivity_t<T> conductivity = T{1};
     T capacity = T{1};
     T density = T{1};
@@ -57,9 +57,17 @@ struct parameter_2d final {
 };
 
 template<std::floating_point T>
-using parameters_2d = std::unordered_map<std::string, equation_parameters<2, T, parameter_2d>>;
+struct evaluated_thermal_parameters_t final {
+    evaluated_conductivity_t<T> conductivity;
+    T capacity = T{1};
+    T density = T{1};
+    T relaxation_time = T{0};
+};
 
 template<std::floating_point T>
-using evaluated_conductivity_2d = std::unordered_map<std::string, equation_parameters<2, T, evaluated_conductivity_t>>;
+using raw_thermal_parameters = std::unordered_map<std::string, equation_parameters<2, T, raw_thermal_parameters_t>>;
+
+template<std::floating_point T>
+using evaluated_thermal_parameters = std::unordered_map<std::string, equation_parameters<2, T, evaluated_thermal_parameters_t>>;
 
 }

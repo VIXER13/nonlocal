@@ -52,14 +52,10 @@ T solve_thermal_problem_with_relaxation(const std::shared_ptr<mesh_1d<T>>& mesh,
 const suite<"thermal_nonstationary_1d_relaxation"> _ = [] {
     static constexpr T Epsilon = 5e-5;
     static constexpr size_t Order = 1;
-    using quadrature = quadrature_1d<T, gauss, Order>;
-    using element_integrate_1d = element_1d_integrate<T>;
-
     const auto mesh = std::make_shared<mesh_1d<T>>(
-        std::make_unique<element_integrate_1d>(
-            std::make_unique<element_1d<T, lagrangian_element_1d, Order>>(),
-            quadrature{}),
-        std::vector<segment_data<T>>{{ .length = T{1}, .elements = 100 }});
+        metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
+        std::vector<segment_data<T>>{{ .length = T{1}, .elements = 100 }}
+    );
 
     "exact_solution"_test = [&mesh] {
         static constexpr auto exact_solution = [](const T t, const T x) constexpr noexcept { return x * x * t * t; };

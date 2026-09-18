@@ -106,7 +106,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
         boundaries_conditions["Top"   ] = std::make_unique<temperature_2d<T>>(top_temperature);
         boundaries_conditions["Bottom"] = std::make_unique<temperature_2d<T>>(bottom_temperature);
         // 2D stationary solution
-        const auto num_sol = stationary_heat_equation_solver_2d<I, T, I>( 
+        const auto num_sol = stationary_heat_equation_solver_2d<T, I>( 
             mesh, parameters, boundaries_conditions, auxiliary_data
         );
         check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);
@@ -125,7 +125,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
     //     boundaries_conditions["Top"   ] = std::make_unique<thermal::temperature_2d<T>>(top_temperature);
     //     boundaries_conditions["Bottom"] = std::make_unique<thermal::temperature_2d<T>>(bottom_temperature);
     //     // 2D stationary solution
-    //     const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
+    //     const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<T, I>( 
     //         mesh, parameters, boundaries_conditions, auxiliary_data
     //     );
     //     check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);
@@ -144,7 +144,7 @@ const suite<"thermal_stationary_boundary_conditions_2d"> _ = [] {
     //     boundaries_conditions["Top"   ] = std::make_unique<thermal::temperature_2d<T>>(top_temperature);
     //     boundaries_conditions["Bottom"] = std::make_unique<thermal::temperature_2d<T>>(bottom_temperature);
     //     // 2D stationary solution
-    //     const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<I, T, I>( 
+    //     const auto num_sol = nonlocal::thermal::stationary_heat_equation_solver_2d<T, I>( 
     //         mesh, parameters, boundaries_conditions, auxiliary_data
     //     );
     //     check_solution<T, I>(mesh, num_sol, ref_sol, 1e-3);

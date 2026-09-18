@@ -12,6 +12,7 @@ target_sources(
         mechanical_boundary_conditions_2d.hpp
         mechanical_parameters_2d.hpp
         mechanical_solution_2d.hpp
+        motion_equation_solver.hpp
         stiffness_matrix_2d.hpp
         temperature_condition_2d.hpp
         thermal_expansion_parameters.hpp

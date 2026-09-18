@@ -2,7 +2,7 @@
 
 #include "config_utils.hpp"
 
-#include <metamath/functions/norm.hpp>
+#include <metamath/linear/norm.hpp>
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/influence_functions_1d.hpp>
@@ -134,7 +134,7 @@ template<std::floating_point T>
 std::function<T(T, T)> read_influence_1d(const nlohmann::json& config, const std::string& path, const T radius) {
     using namespace nonlocal::solver_1d::influence;
     check_optional_fields(config, { "influence", "p", "q" }, path);
-    if (const auto influence = config["influence"].get<influence_t>(); influence == influence_t::Constant)
+    if (const auto influence = config.value("influence", influence_t::Polynomial); influence == influence_t::Constant)
         return constant_1d<T>{radius};
     else if (influence == influence_t::Exponential)
         return normal_distribution_1d<T>{radius};

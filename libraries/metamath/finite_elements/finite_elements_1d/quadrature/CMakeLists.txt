@@ -5,8 +5,9 @@ add_library(quadrature_1d_lib INTERFACE)
 target_sources(
     quadrature_1d_lib
     INTERFACE #
-        quadrature_1d.hpp
         gaussian_quadrature.hpp
+        make_quadrature_1d.hpp
+        quadrature_1d.hpp
 )
 target_include_directories(
     quadrature_1d_lib

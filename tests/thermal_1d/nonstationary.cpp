@@ -11,12 +11,7 @@ using namespace boost::ut;
 using namespace nonlocal;
 using namespace nonlocal::solver_1d::thermal;
 
-template<class T>
-using quadrature = metamath::finite_element::quadrature_1d<T, metamath::finite_element::gauss, std::size_t(1)>;
-template<class T>
-using element_1d_integrate = metamath::finite_element::element_1d_integrate<T>;
-template<class T, size_t Order>
-using element_1d = metamath::finite_element::element_1d<T, metamath::finite_element::lagrangian_element_1d, Order>;
+constexpr size_t Order = 1;
 
 template <std::floating_point T>
 struct time_data final {
@@ -135,10 +130,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         }};
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
+            segments
+        );
         
         constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
         constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
@@ -173,10 +167,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
+            segments
+        );
 
         constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(0.0); };
         constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
@@ -216,10 +209,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
+            segments
+        );
 
         constexpr auto init_dist  = [](const T x)            constexpr noexcept { return T(500.0); };
         constexpr auto right_part = [](const T t, const T x) constexpr noexcept { return T(0.0); };
@@ -266,10 +258,9 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
         };
         
         const auto mesh = std::make_shared<mesh::mesh_1d<T>>(
-            std::make_unique<element_1d_integrate<T>>(
-                std::make_unique<element_1d<T, 1>>(),
-                quadrature<T>()),
-            segments);
+            metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
+            segments
+        );
         
         const auto init_dist =  [&](const T x)            constexpr noexcept { return ref_sol(T(0), x); };
         const auto right_part = [&](const T t, const T x) constexpr noexcept { 

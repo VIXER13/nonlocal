@@ -6,9 +6,10 @@ project(finite_elements_tests)
 add_library(
     finite_elements_test_lib
     OBJECT
-    quadratures_test.cpp
     element_1d_test.cpp
     element_2d_test.cpp
+    quadrature_1d_test.cpp
+    quadrature_2d_test.cpp
 )
 
 target_include_directories(

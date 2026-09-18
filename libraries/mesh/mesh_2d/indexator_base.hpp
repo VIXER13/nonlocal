@@ -10,11 +10,12 @@ protected:
         : _is_symmetric{is_symmetric} {}
     virtual ~indexator_base() noexcept = default;
 
-public:
-    bool is_symmetric() const noexcept {
-        return _is_symmetric;
+    bool check(const size_t row, const size_t col) const noexcept {
+        return !is_symmetric() || col >= row;
     }
 
+public:
+    bool is_symmetric() const noexcept { return _is_symmetric; }
     virtual void reset(const size_t node) = 0;
 };
 

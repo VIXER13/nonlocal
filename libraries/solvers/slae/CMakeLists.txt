@@ -5,7 +5,15 @@ add_library(slae_solver_lib INTERFACE)
 target_sources(
     slae_solver_lib
     INTERFACE #
+        preconditioner_base.hpp
+        identity_preconditioner.hpp
+        diagonal_preconditioner.hpp
+        ildlt_preconditioner.hpp
+        ilu0_preconditioner.hpp
+        iterative_solver_base.hpp
         conjugate_gradient.hpp
+        stable_biconjugate_gradient.hpp
+        gmres.hpp
 )
 target_include_directories(
     slae_solver_lib
@@ -16,8 +24,7 @@ target_link_libraries(
     slae_solver_lib
     INTERFACE #
         parallel_lib
-        Eigen3::Eigen
-        Spectra::Spectra
+        linear_lib
 )
 
 if(ENABLE_OMP)

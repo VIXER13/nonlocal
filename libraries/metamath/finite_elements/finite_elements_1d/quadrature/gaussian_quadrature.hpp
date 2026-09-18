@@ -6,10 +6,10 @@
 
 namespace metamath::finite_element {
 
-template<class T, size_t N>
+template<std::floating_point T, size_t N>
 class gauss;
 
-template<class T>
+template<std::floating_point T>
 class gauss<T, 1> : public geometry_1d<T, standart_segment_geometry> {
 protected:
     static inline constexpr std::array<T, 1> nodes = { T{0} };
@@ -19,7 +19,7 @@ protected:
     ~gauss() noexcept override = default;
 };
 
-template<class T>
+template<std::floating_point T>
 class gauss<T, 2> : public geometry_1d<T, standart_segment_geometry> {
 protected:
     static inline constexpr std::array<T, 2> nodes = { T{-1} / functions::sqrt(T{3}), T{1} / functions::sqrt(T{3}) };
@@ -29,7 +29,7 @@ protected:
     ~gauss() noexcept override = default;
 };
 
-template<class T>
+template<std::floating_point T>
 class gauss<T, 3> : public geometry_1d<T, standart_segment_geometry> {
 protected:
     static inline constexpr std::array<T, 3> nodes = { -functions::sqrt(T{3}/T{5}), T{0}, functions::sqrt(T{3}/T{5}) };
@@ -39,7 +39,7 @@ protected:
     ~gauss() noexcept override = default;
 };
 
-template<class T>
+template<std::floating_point T>
 class gauss<T, 4> : public geometry_1d<T, standart_segment_geometry> {
 protected:
     static inline constexpr std::array<T, 4>
@@ -57,7 +57,7 @@ protected:
     ~gauss() noexcept override = default;
 };
 
-template<class T>
+template<std::floating_point T>
 class gauss<T, 5> : public geometry_1d<T, standart_segment_geometry> {
 protected:
     static inline constexpr std::array<T, 5>

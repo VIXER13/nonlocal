@@ -43,10 +43,8 @@ const boost::ut::suite<"uniform_range"> _ = [] {
                 expect(eq(more_ranges[i].front(), i));
                 expect(eq(more_ranges[i].back(),  i));
             }
-            for(const size_t i : std::ranges::iota_view{Size, more_ranges.size()}) {
-                expect(eq(more_ranges[i].front(), Size));
-                expect(eq(more_ranges[i].back(),  Size - 1));
-            }
+            for(const size_t i : std::ranges::iota_view{Size, more_ranges.size()})
+                expect(more_ranges[i].empty()) << "Range " << i << " should be empty.";
         };
     }
 };

@@ -18,10 +18,24 @@ NLOHMANN_JSON_SERIALIZE_ENUM(problem_t, {
     {problem_t::Thermomechanical, "thermomechanical"},
 })
 
+enum class analysis_type_t : uint8_t {
+    Stationary,
+    Time_Harmonic,
+    Time_Dependent,
+    Unknown
+};
+
+NLOHMANN_JSON_SERIALIZE_ENUM(analysis_type_t, {
+    {analysis_type_t::Stationary, "stationary"},
+    {analysis_type_t::Time_Harmonic, "time_harmonic"},
+    {analysis_type_t::Time_Dependent, "time_dependent"},
+    {analysis_type_t::Unknown, nullptr}
+})
+
 struct task_data final {
     size_t dimension = 0;
     problem_t problem = problem_t::Unknown;
-    bool time_dependency = false;
+    analysis_type_t analysis_type = analysis_type_t::Unknown;
 
     explicit task_data(const nlohmann::json& config, const std::string& path = {});
 

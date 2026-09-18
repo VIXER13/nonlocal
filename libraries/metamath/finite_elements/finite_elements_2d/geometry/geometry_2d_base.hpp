@@ -19,6 +19,7 @@ protected:
 public:
     virtual ~geometry_2d_base() noexcept = default;
     virtual T boundary(const side_2d bound, const T x) const = 0;
+    virtual T area() const = 0;
 };
 
 }
