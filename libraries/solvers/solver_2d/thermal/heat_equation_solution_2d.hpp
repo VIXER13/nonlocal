@@ -82,10 +82,10 @@ std::vector<std::array<T, 2>> heat_equation_solution_2d<T>::local_flux_in_qnodes
                         flux[qshift] *= -conduct;
                     else if constexpr (std::is_same_v<conductivity_t, evaluated_orthotropic_conductivity_t<T>>)
                         flux[qshift] = {-conduct[X] * flux[qshift][X], -conduct[Y] * flux[qshift][Y]};
-                    else if constexpr (std::is_same_v<conductivity_t, evaluated_anisotropic_conductivity_t<T>>)
-                        flux[qshift] = {-conduct[XX] * flux[X][qshift] - conduct[XY] * flux[Y][qshift],
-                                        -conduct[XY] * flux[X][qshift] - conduct[YY] * flux[Y][qshift]};
-                    else
+                    else if constexpr (std::is_same_v<conductivity_t, evaluated_anisotropic_conductivity_t<T>>) {
+                        flux[qshift] = {-conduct[XX] * flux[qshift][X] - conduct[XY] * flux[qshift][Y],
+                                        -conduct[XY] * flux[qshift][X] - conduct[YY] * flux[qshift][Y]};
+                    } else
                         static_assert(false, "Unknown conductivity coefficients type.");
                 }, parameters.conductivity);
             }
