@@ -4,8 +4,8 @@ build_type=Release
 compiler=gcc
 compiler.cppstd=gnu23
 compiler.libcxx=libstdc++11
-compiler.version=13
+compiler.version=15
 os=Linux
 
 [conf]
-tools.build:compiler_executables={'c': 'gcc-13', 'cpp': 'g++-13'}
+tools.build:compiler_executables={'c': 'gcc-15', 'cpp': 'g++-15'}
