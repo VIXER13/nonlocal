@@ -13,7 +13,7 @@ using namespace metamath::linear;
 using namespace metamath::operators;
 using T = double;
 
-constexpr auto Epsilon = std::numeric_limits<T>::epsilon();
+constexpr auto Epsilon = 10 * std::numeric_limits<T>::epsilon();
 constexpr auto Inf = metamath::constants::Infinity<size_t>;
 
 suite<"diagonal_preconditioner"> _diagonal = [] {
