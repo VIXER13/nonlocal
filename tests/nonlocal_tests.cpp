@@ -38,7 +38,7 @@ extern "C" auto __wrap___cxa_throw(void* thrown_object, std::type_info* tinfo,
 
 // Simple helper function to print the stack trace
 //   of the exception that's currently being caught
-extern "C" auto get_stacktrace() -> std::string {
+std::string get_stacktrace() {
   auto exception_count = std::uncaught_exceptions();
   if (exception_count < 0) {
     return "No active exception";

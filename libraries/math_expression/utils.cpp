@@ -199,6 +199,8 @@ std::vector<token_t> tokenize(std::string_view input) {
                 state = it == input.end() ? state_t::Terminate : state_t::NewToken;
                 continue;
             } break;
+            default:
+                throw std::runtime_error{"Wrong tokenizer behaviour. Unknown state."};
         }
         if(it != input.end())
             ++it;
