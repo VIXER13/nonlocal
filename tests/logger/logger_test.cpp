@@ -29,7 +29,7 @@ const suite<"logger"> _ = [] {
 
     "off"_test = [] {
         std::stringstream ss;
-        auto& log = get(level::Off, std::make_unique<logger::stream_base>(ss));
+        auto& log = get(level::Off, std::make_unique<::logger::stream_base>(ss));
         log << "This should not be logged.";
         expect(ss.str().empty());
         ss.clear();

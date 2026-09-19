@@ -2,8 +2,13 @@
 
 **Healthchecks**
 
-[![gcc](https://github.com/VIXER13/nonlocal/actions/workflows/gcc.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/gcc.yml)
-[![clang](https://github.com/VIXER13/nonlocal/actions/workflows/clang.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/clang.yml)
+[![gcc-13](https://github.com/VIXER13/nonlocal/actions/workflows/gcc-13.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/gcc-13.yml)
+[![gcc-14](https://github.com/VIXER13/nonlocal/actions/workflows/gcc-14.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/gcc-14.yml)
+[![gcc-15](https://github.com/VIXER13/nonlocal/actions/workflows/gcc-15.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/gcc-15.yml)
+
+[![clang-20](https://github.com/VIXER13/nonlocal/actions/workflows/clang-20.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/clang-20.yml)
+[![clang-21](https://github.com/VIXER13/nonlocal/actions/workflows/clang-21.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/clang-21.yml)
+[![clang-22](https://github.com/VIXER13/nonlocal/actions/workflows/clang-22.yml/badge.svg?branch=dev)](https://github.com/VIXER13/nonlocal/actions/workflows/clang-22.yml)
 
 Конечно-элементный программный комплекс NonLocFEM предназначен для эффективного решения задач термоупругости с учётом [пространственной нелокальности](./documents/theory/nonlocal_operator.md) на многопроцессорных электронно-вычислительных машинах с общей и распределённой памятью. К основным особенностям программного комплекса стоит отнести возможность решения одномерных и двумерных задач стационарной и нестационарной [теплопроводности](./documents/theory/thermal.md), и задачи [статики](./documents/theory/mechanical.md), для однородных и композитных материалов на неструктурированных сетках с использованием изопараметрических конечных элементов произвольного порядка и формы.
  
@@ -20,6 +25,11 @@ make build
 Возможно явно указать нужный компилятор (gcc или clang[по умолчанию])
 ```bash
 make build COMPILER=gcc
+```
+
+Версию компилятора можно указать через полное имя. Если версия не задана, используется версия и исполняемые файлы из профиля Conan:
+```bash
+make build COMPILER=gcc-15
 ```
 
 Возможно явно указать количество потоков (используются все доступные[по умолчанию])

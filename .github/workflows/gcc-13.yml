@@ -1,4 +1,4 @@
-name: clang
+name: gcc
 
 on:
   push:
@@ -11,5 +11,6 @@ jobs:
   ci_job:
     uses: ./.github/workflows/common.yml
     with:
-      compiler: clang
-      deps: clang-20 libomp-20-dev
+      compiler: gcc-13
+      deps: gcc-13 g++-13
+      os: ubuntu-24.04

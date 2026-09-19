@@ -9,13 +9,16 @@ on:
       deps:
         required: true
         type: string
+      os:
+        required: true
+        type: string
     outputs:
       build_output:
         value: ${{ jobs.build.outputs.result }}
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ inputs.os }}
     outputs:
       result: ${{ steps.build_app.outputs.status }}
     steps:
@@ -29,21 +32,12 @@ jobs:
 
       - name: Install Conan
         uses: conan-io/setup-conan@v1
-        with:
-          version: 2.21.0
 
-      - name: Setup Conan
-        run: conan install . --build=missing --output-folder=build --profile ./.profiles/${{ inputs.compiler }}
-
-      - name: Configure project
-        working-directory: ./build
-        run: |
-          cmake .. --preset conan-release
+      - name: Setup Conan & Configure project
+        run: make setup COMPILER=${{ inputs.compiler }}
 
       - name: Build project
-        working-directory: ./build
-        run: |
-          cmake --build . --config Release --parallel
+        run: make build COMPILER=${{ inputs.compiler }}
 
       - name: Run unit tests
         working-directory: ./build
