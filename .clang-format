@@ -1,6 +1,21 @@
 BasedOnStyle: LLVM
 BreakBeforeBraces: Attach
-AlwaysBreakTemplateDeclarations: Yes
-PointerAlignment: Left
+BreakTemplateDeclarations: Yes
 ColumnLimit: 130
-AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+IndentWidth: 4
+UseTab: Never
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"[^/].*\.(h|hpp)"'
+    Priority: 1
+  - Regex: '^"[^/].*"'
+    Priority: 2
+  - Regex: '^<(Eigen|Spectra|nlohmann|boost)/[^>]+>'
+    Priority: 4
+  - Regex: '^<[^/]+/[^>]+>'
+    Priority: 3
+  - Regex: '^<[^/]+>'
+    Priority: 5
+IncludeIsMainRegex: '(^|/)([^/]+)\.(cpp|cc)$'
+SortIncludes: true
+Cpp11BracedListStyle: Block
