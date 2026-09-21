@@ -186,8 +186,8 @@ const suite<"config_exceptions"> _ = [] {
     };
 
     "read_frequency"_test = [&config] {
-        static constexpr auto create_frequency_data = [](const nlohmann::json& config, const std::string& field) { 
-            const frequency_data<T> sweep{config, field};
+        static constexpr auto create_frequency_data = [](const nlohmann::json& config, const std::string& field) {
+            const frequency_data<T> sweep{ config, field };
         };
         expect_throws(create_frequency_data, config, "read_frequency_missed_all_parameters_fail");
         expect_throws(create_frequency_data, config, "read_frequency_negative_min_fail");

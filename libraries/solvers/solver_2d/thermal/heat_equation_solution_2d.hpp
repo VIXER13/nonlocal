@@ -69,23 +69,25 @@ template<std::floating_point T>
 std::vector<std::array<T, 2>> heat_equation_solution_2d<T>::local_flux_in_qnodes() const {
     auto flux = mesh::utils::gradient_in_qnodes(_base::mesh(), _temperature);
     for (const auto& [group, parameters] : _conductivity)
-        for(const size_t e : _base::mesh().container().elements(group))
-            for(const size_t qshift : _base::mesh().quad_shifts_count(e)) {
-                std::visit([&flux, qshift](const auto& conductivity) {
-                    const auto& conduct = conductivity.index() ? std::get<Variable>(conductivity)[qshift] :
-                                                                 std::get<Constant>(conductivity);
-                    using namespace metamath::operators;
-                    using conductivity_t = std::remove_cvref_t<decltype(conductivity)>;
-                    if constexpr (std::is_same_v<conductivity_t, evaluated_isotropic_conductivity_t<T>>)
-                        flux[qshift] *= -conduct;
-                    else if constexpr (std::is_same_v<conductivity_t, evaluated_orthotropic_conductivity_t<T>>)
-                        flux[qshift] = {-conduct[X] * flux[qshift][X], -conduct[Y] * flux[qshift][Y]};
-                    else if constexpr (std::is_same_v<conductivity_t, evaluated_anisotropic_conductivity_t<T>>) {
-                        flux[qshift] = {-conduct[XX] * flux[qshift][X] - conduct[XY] * flux[qshift][Y],
-                                        -conduct[XY] * flux[qshift][X] - conduct[YY] * flux[qshift][Y]};
-                    } else
-                        static_assert(false, "Unknown conductivity coefficients type.");
-                }, parameters.conductivity);
+        for (const size_t e : _base::mesh().container().elements(group))
+            for (const size_t qshift : _base::mesh().quad_shifts_count(e)) {
+                std::visit(
+                    [&flux, qshift](const auto& conductivity) {
+                        const auto& conduct =
+                            conductivity.index() ? std::get<Variable>(conductivity)[qshift] : std::get<Constant>(conductivity);
+                        using namespace metamath::operators;
+                        using conductivity_t = std::remove_cvref_t<decltype(conductivity)>;
+                        if constexpr (std::is_same_v<conductivity_t, evaluated_isotropic_conductivity_t<T>>)
+                            flux[qshift] *= -conduct;
+                        else if constexpr (std::is_same_v<conductivity_t, evaluated_orthotropic_conductivity_t<T>>)
+                            flux[qshift] = { -conduct[X] * flux[qshift][X], -conduct[Y] * flux[qshift][Y] };
+                        else if constexpr (std::is_same_v<conductivity_t, evaluated_anisotropic_conductivity_t<T>>) {
+                            flux[qshift] = { -conduct[XX] * flux[qshift][X] - conduct[XY] * flux[qshift][Y],
+                                             -conduct[XY] * flux[qshift][X] - conduct[YY] * flux[qshift][Y] };
+                        } else
+                            static_assert(false, "Unknown conductivity coefficients type.");
+                    },
+                    parameters.conductivity);
             }
     return flux;
 }

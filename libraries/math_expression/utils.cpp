@@ -204,7 +204,7 @@ std::vector<token_t> tokenize(std::string_view input) {
             continue;
         } break;
         default:
-            throw std::runtime_error{"Wrong tokenizer behaviour. Unknown state."};
+            throw std::runtime_error{ "Wrong tokenizer behaviour. Unknown state." };
         }
         if (it != input.end())
             ++it;
