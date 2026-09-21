@@ -10,9 +10,8 @@ class constant : public expression<constant<T>> {
 
     const T _value = 0;
 
-public:
-    constexpr constant(const T& value) noexcept
-        : _value{value} {}
+  public:
+    constexpr constant(const T& value) noexcept : _value{ value } {}
 
     template<class... Args>
     constexpr const T& operator()(const Args&...) const noexcept {
@@ -30,4 +29,4 @@ constexpr constant<T> simplify(const constant<T>& c) noexcept {
     return c;
 }
 
-}
+} // namespace metamath::symbolic

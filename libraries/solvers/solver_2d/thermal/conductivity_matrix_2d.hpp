@@ -4,11 +4,11 @@
 
 #include <solvers/solver_2d/base/matrix_assembler.hpp>
 
-#include <string>
 #include <iostream>
+#include <string>
 
 namespace nonlocal::solver_2d::thermal {
-    
+
 template<std::floating_point T>
 class conductivity_matrix_2d : public matrix_assembler_base<T> {
     using _base = matrix_assembler_base<T>;
@@ -21,10 +21,11 @@ class conductivity_matrix_2d : public matrix_assembler_base<T> {
     template<class Conductivity>
     T integrate_local(const Conductivity& conductivity, const size_t e, const size_t i, const size_t j) const;
     template<class Conductivity>
-    T integrate_nonlocal(const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
-                         const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const;
+    T integrate_nonlocal(const Conductivity& conductivity,
+                         const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence, const size_t eL,
+                         const size_t eNL, const size_t iL, const size_t jNL) const;
 
-public:
+  public:
     explicit conductivity_matrix_2d(const mesh::mesh_2d<T>& mesh);
     ~conductivity_matrix_2d() noexcept override = default;
 
@@ -32,8 +33,7 @@ public:
 };
 
 template<std::floating_point T>
-conductivity_matrix_2d<T>::conductivity_matrix_2d(const mesh::mesh_2d<T>& mesh)
-    : _base{mesh} {}
+conductivity_matrix_2d<T>::conductivity_matrix_2d(const mesh::mesh_2d<T>& mesh) : _base{ mesh } {}
 
 template<std::floating_point T>
 void conductivity_matrix_2d<T>::create_matrix_portrait(const problem_settings& settings) {
@@ -42,7 +42,7 @@ void conductivity_matrix_2d<T>::create_matrix_portrait(const problem_settings& s
     _base::matrix().portrait.set_size(rows, cols);
 
     if (settings.is_neumann) {
-        for(const size_t row : std::views::iota(0u, rows))
+        for (const size_t row : std::views::iota(0u, rows))
             _base::matrix().portrait.shifts[row + 1] = 1;
         if (!settings.is_symmetric() && parallel::is_last_process())
             _base::matrix().portrait.shifts[rows] = cols - 1;
@@ -53,17 +53,17 @@ void conductivity_matrix_2d<T>::create_matrix_portrait(const problem_settings& s
     _base::init_indices(settings, Sort_Indices);
 
     if (settings.is_neumann) {
-        for(const size_t row : std::ranges::iota_view{0u, rows}) {
+        for (const size_t row : std::ranges::iota_view{ 0u, rows }) {
             const size_t index = _base::matrix().portrait.shifts[row + 1] - 1;
             _base::matrix().portrait.indices[index] = _base::mesh().container().nodes_count();
         }
         if (!settings.is_symmetric() && parallel::is_last_process())
-            for(const size_t col : std::ranges::iota_view{0u, cols}) {
+            for (const size_t col : std::ranges::iota_view{ 0u, cols }) {
                 const size_t index = _base::matrix().portrait.indices[rows - 1] + col;
                 _base::matrix().portrait.indices[index] = col;
             }
     }
-    
+
     _base::matrix().portrait.sort_indices();
     logger::info() << "Matrix portrait is formed" << std::endl;
 }
@@ -72,7 +72,7 @@ template<std::floating_point T>
 T conductivity_matrix_2d<T>::integrate_basic(const size_t e, const size_t i) const {
     T integral = 0;
     const auto& el = _base::mesh().container().element_2d(e);
-    for(const size_t q : el.qnodes())
+    for (const size_t q : el.qnodes())
         integral += el.weight(q) * el.qN(i, q) * _base::mesh().jacobian(e, q);
     return integral;
 }
@@ -82,9 +82,9 @@ void conductivity_matrix_2d<T>::integral_condition(const bool is_symmetric) {
     const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_base::processing_nodes);
 
 #pragma omp parallel for
-    for(size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+    for (size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
         T& val = _base::matrix()(node - process_nodes.front(), _base::mesh().container().nodes_count());
-        for(const size_t e : _base::mesh().elements(node))
+        for (const size_t e : _base::mesh().elements(node))
             val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         if (!is_symmetric && parallel::is_last_process())
             _base::matrix()(_base::matrix().rows() - 1, node) = val;
@@ -92,9 +92,9 @@ void conductivity_matrix_2d<T>::integral_condition(const bool is_symmetric) {
 
     if (!is_symmetric && parallel::MPI_size() > 1 && parallel::is_last_process()) {
 #pragma omp parallel for
-        for(size_t node = 0; node < process_nodes.front(); ++node) {
+        for (size_t node = 0; node < process_nodes.front(); ++node) {
             T& val = _base::matrix()(_base::matrix().rows() - 1, node);
-            for(const size_t e : _base::mesh().elements(node))
+            for (const size_t e : _base::mesh().elements(node))
                 val += integrate_basic(e, _base::mesh().global_to_local(e, node));
         }
     }
@@ -102,23 +102,24 @@ void conductivity_matrix_2d<T>::integral_condition(const bool is_symmetric) {
 
 template<std::floating_point T>
 template<class Conductivity>
-T conductivity_matrix_2d<T>::integrate_local(const Conductivity& conductivity, const size_t e, const size_t i, const size_t j) const {
-    T integral = T{0};
+T conductivity_matrix_2d<T>::integrate_local(const Conductivity& conductivity, const size_t e, const size_t i,
+                                             const size_t j) const {
+    T integral = T{ 0 };
     const size_t qshift = _base::mesh().quad_shift(e);
     const auto& el = _base::mesh().container().element_2d(e);
-    for(const size_t q : el.qnodes()) {
+    for (const size_t q : el.qnodes()) {
         const auto& dNi = _base::mesh().derivatives(e, i, q);
         const auto& dNj = _base::mesh().derivatives(e, j, q);
-        T value = T{0};
-        const auto& conduct = conductivity.index() ? std::get<Variable>(conductivity)[qshift + q] :
-                                                     std::get<Constant>(conductivity);
+        T value = T{ 0 };
+        const auto& conduct =
+            conductivity.index() ? std::get<Variable>(conductivity)[qshift + q] : std::get<Constant>(conductivity);
         if constexpr (std::is_same_v<Conductivity, evaluated_isotropic_conductivity_t<T>>)
             value = conduct * (dNi[X] * dNj[X] + dNi[Y] * dNj[Y]);
         else if constexpr (std::is_same_v<Conductivity, evaluated_orthotropic_conductivity_t<T>>)
             value = conduct[X] * dNi[X] * dNj[X] + conduct[Y] * dNi[Y] * dNj[Y];
         else if constexpr (std::is_same_v<Conductivity, evaluated_anisotropic_conductivity_t<T>>)
-            value = dNi[X] * (conduct[XX] * dNj[X] + conduct[XY] * dNj[Y]) +
-                    dNi[Y] * (conduct[XY] * dNj[X] + conduct[YY] * dNj[Y]);
+            value =
+                dNi[X] * (conduct[XX] * dNj[X] + conduct[XY] * dNj[Y]) + dNi[Y] * (conduct[XY] * dNj[X] + conduct[YY] * dNj[Y]);
         else
             static_assert(false, "Unsupported coefficient type.");
         integral += el.weight(q) * value / _base::mesh().jacobian(e, q);
@@ -128,19 +129,20 @@ T conductivity_matrix_2d<T>::integrate_local(const Conductivity& conductivity, c
 
 template<std::floating_point T>
 template<class Conductivity>
-T conductivity_matrix_2d<T>::integrate_nonlocal(const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
-                                                const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
-    T integral = T{0};
-    const auto& elL  = _base::mesh().container().element_2d(eL );
+T conductivity_matrix_2d<T>::integrate_nonlocal(
+    const Conductivity& conductivity, const std::function<T(const std::array<T, 2>&, const std::array<T, 2>&)>& influence,
+    const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) const {
+    T integral = T{ 0 };
+    const auto& elL = _base::mesh().container().element_2d(eL);
     const auto& elNL = _base::mesh().container().element_2d(eNL);
     const size_t qshiftNL = _base::mesh().quad_shift(eNL);
-    for(const size_t qL : elL.qnodes()) {
+    for (const size_t qL : elL.qnodes()) {
         std::array<T, 2> inner_integral = {};
         const auto& qcoordL = _base::mesh().quad_coord(eL, qL);
         const auto& dNi = _base::mesh().derivatives(eL, iL, qL);
-        for(const size_t qNL : elNL.qnodes()) {
-            const auto& conduct = conductivity.index() ? std::get<Variable>(conductivity)[qshiftNL + qNL] :
-                                                         std::get<Constant>(conductivity);
+        for (const size_t qNL : elNL.qnodes()) {
+            const auto& conduct =
+                conductivity.index() ? std::get<Variable>(conductivity)[qshiftNL + qNL] : std::get<Constant>(conductivity);
             const auto& dNj = _base::mesh().derivatives(eNL, jNL, qNL);
             const T influence_weight = elNL.weight(qNL) * influence(qcoordL, _base::mesh().quad_coord(eNL, qNL));
             if constexpr (std::is_same_v<Conductivity, evaluated_isotropic_conductivity_t<T>>) {
@@ -167,21 +169,24 @@ void conductivity_matrix_2d<T>::compute(const evaluated_thermal_parameters<T>& c
     create_matrix_portrait(settings);
     if (settings.is_neumann)
         integral_condition(settings.is_symmetric());
-    _base::calc_coeffs(settings,
+    _base::calc_coeffs(
+        settings,
         [this, &conductivity](const std::string& group, const size_t e, const size_t i, const size_t j) {
             const auto& [model, physic] = conductivity.at(group);
-            return model.local_weight * std::visit([this, e, i, j](const auto& conductivity) {
-                return integrate_local(conductivity, e, i, j);
-            }, physic.conductivity);
+            return model.local_weight *
+                   std::visit([this, e, i, j](const auto& conductivity) { return integrate_local(conductivity, e, i, j); },
+                              physic.conductivity);
         },
         [this, &conductivity](const std::string& group, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
             const auto& [model, physic] = conductivity.at(group);
-            return nonlocal::nonlocal_weight(model.local_weight) * std::visit([this, &model, eL, eNL, iL, jNL](const auto& conductivity) {
-                return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL);
-            }, physic.conductivity);
-        }
-    );
+            return nonlocal::nonlocal_weight(model.local_weight) *
+                   std::visit(
+                       [this, &model, eL, eNL, iL, jNL](const auto& conductivity) {
+                           return integrate_nonlocal(conductivity, model.influence, eL, eNL, iL, jNL);
+                       },
+                       physic.conductivity);
+        });
     logger::info() << "Thermal conductivity matrix assembly finished" << std::endl;
 }
 
-}
+} // namespace nonlocal::solver_2d::thermal

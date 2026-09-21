@@ -16,23 +16,24 @@ constexpr auto Inf = metamath::constants::Infinity<size_t>;
 template<class Container>
 Container init_container() {
     if constexpr (metamath::types::is_array_v<std::ranges::range_value_t<Container>>)
-        return {std::array<T, 2>{3.0, -4.0}, std::array<T, 2>{5.0, -6.0}};
+        return { std::array<T, 2>{ 3.0, -4.0 }, std::array<T, 2>{ 5.0, -6.0 } };
     else
-        return {3.0, -4.0};
+        return { 3.0, -4.0 };
 }
 
 template<class Container>
 constexpr std::array<T, 5> excpected_powered_norms() noexcept {
     return metamath::types::is_array_v<std::ranges::range_value_t<Container>>
-         ? std::array{18.0, 86.0, 432.0, 2258.0, std::numeric_limits<T>::infinity()}
-         : std::array{7.0, 25.0, 91.0, 337.0, std::numeric_limits<T>::infinity()};
+               ? std::array{ 18.0, 86.0, 432.0, 2258.0, std::numeric_limits<T>::infinity() }
+               : std::array{ 7.0, 25.0, 91.0, 337.0, std::numeric_limits<T>::infinity() };
 }
 
 template<class Container>
 std::array<T, 5> excpected_norms() noexcept {
     return metamath::types::is_array_v<std::ranges::range_value_t<Container>>
-         ? std::array{18.0, std::sqrt(86.0), std::cbrt(432.0), std::sqrt(std::sqrt(2258.0)), std::numeric_limits<T>::infinity()}
-         : std::array{7.0, 5.0, std::cbrt(91.0), std::sqrt(std::sqrt(337.0)), std::numeric_limits<T>::infinity()};
+               ? std::array{ 18.0, std::sqrt(86.0), std::cbrt(432.0), std::sqrt(std::sqrt(2258.0)),
+                             std::numeric_limits<T>::infinity() }
+               : std::array{ 7.0, 5.0, std::cbrt(91.0), std::sqrt(std::sqrt(337.0)), std::numeric_limits<T>::infinity() };
 }
 
 const suite<"norm"> _ = [] {
@@ -92,4 +93,4 @@ const suite<"norm"> _ = [] {
     } | containers{};
 };
 
-}
+} // namespace

@@ -15,15 +15,11 @@ class integrator final : public mesh::indexator_base {
     metamath::linear::sparse_matrix<T>& _matrix;
     const mesh::mesh_container_2d<floating_point_t>& _mesh;
 
-public:
-    explicit integrator(metamath::linear::sparse_matrix<T>& matrix,
-                        const mesh::mesh_container_2d<floating_point_t>& mesh, const bool is_symmetric,
-                        Local_Integrator&& local_integrator, Nonlocal_Integrator&& nonlocal_integrator)
-        : _base{is_symmetric}
-        , _matrix{matrix}
-        , _mesh{mesh}
-        , _local_integrator{std::move(local_integrator)}
-        , _nonlocal_integrator{std::move(nonlocal_integrator)} {}
+  public:
+    explicit integrator(metamath::linear::sparse_matrix<T>& matrix, const mesh::mesh_container_2d<floating_point_t>& mesh,
+                        const bool is_symmetric, Local_Integrator&& local_integrator, Nonlocal_Integrator&& nonlocal_integrator)
+        : _base{ is_symmetric }, _matrix{ matrix }, _mesh{ mesh }, _local_integrator{ std::move(local_integrator) },
+          _nonlocal_integrator{ std::move(nonlocal_integrator) } {}
 
     void reset(const size_t node) override {}
 
@@ -47,4 +43,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::solver_2d

@@ -1,29 +1,42 @@
 #pragma once
 
-#include "element_2d_base.hpp"
 #include "derivative_element_basis_2d.hpp"
+#include "element_2d_base.hpp"
 
 namespace metamath::finite_element {
 
-template<class T, template<class, auto...> class Element_Type, auto...Args>
-class element_2d : public element_2d_base<T>,
-                   public derivative_element_basis_2d<T, 2, Element_Type, Args...> {
+template<class T, template<class, auto...> class Element_Type, auto... Args>
+class element_2d : public element_2d_base<T>, public derivative_element_basis_2d<T, 2, Element_Type, Args...> {
     using derivative_base = derivative_element_basis_2d<T, 2, Element_Type, Args...>;
 
-public:
+  public:
     ~element_2d() override = default;
 
-    std::unique_ptr<element_2d_base<T>> copy() const override { return std::make_unique<element_2d>(*this); }
+    std::unique_ptr<element_2d_base<T>> copy() const override {
+        return std::make_unique<element_2d>(*this);
+    }
 
-    size_t nodes_count() const override { return derivative_base::N.size(); }
+    size_t nodes_count() const override {
+        return derivative_base::N.size();
+    }
 
-    const std::array<T, 2>& node(const size_t i) const override { return derivative_base::nodes[i]; }
+    const std::array<T, 2>& node(const size_t i) const override {
+        return derivative_base::nodes[i];
+    }
 
-    T N   (const size_t i, const std::array<T, 2>& x) const override { return derivative_base::N   [i](x); }
-    T Nxi (const size_t i, const std::array<T, 2>& x) const override { return derivative_base::Nxi [i](x); }
-    T Neta(const size_t i, const std::array<T, 2>& x) const override { return derivative_base::Neta[i](x); }
+    T N(const size_t i, const std::array<T, 2>& x) const override {
+        return derivative_base::N[i](x);
+    }
+    T Nxi(const size_t i, const std::array<T, 2>& x) const override {
+        return derivative_base::Nxi[i](x);
+    }
+    T Neta(const size_t i, const std::array<T, 2>& x) const override {
+        return derivative_base::Neta[i](x);
+    }
 
-    T boundary(const side_2d bound, const T x) const override { return derivative_base::boundary(bound, x); }
+    T boundary(const side_2d bound, const T x) const override {
+        return derivative_base::boundary(bound, x);
+    }
 };
 
-}
+} // namespace metamath::finite_element

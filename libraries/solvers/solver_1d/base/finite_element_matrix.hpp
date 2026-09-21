@@ -24,8 +24,7 @@ struct finite_element_matrix_1d final {
             bound.front().clear();
             bound.back().clear();
             std::memset(inner.valuePtr(), '\0', sizeof(T) * size_t(inner.nonZeros()));
-        } 
-        else {
+        } else {
             utils::iterate(*rows_sequence, [this](const size_t row) {
                 const size_t bytes = sizeof(T) * (inner.outerIndexPtr()[row + 1] - inner.outerIndexPtr()[row]);
                 std::memset(inner.valuePtr() + inner.outerIndexPtr()[row], '\0', bytes);
@@ -37,4 +36,4 @@ struct finite_element_matrix_1d final {
     }
 };
 
-}
+} // namespace nonlocal::solver_1d

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
 #include <metamath/finite_elements/finite_elements_2d/geometry/geometric_primitives/triangle.hpp>
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
 
 namespace metamath::finite_element {
 
 template<class T>
 class barycentric : public geometry_2d<T, triangle_element_geometry> {
-protected:
+  protected:
     using geometry_2d<T, triangle_element_geometry>::x;
     using geometry_2d<T, triangle_element_geometry>::y;
 
@@ -19,4 +19,4 @@ protected:
     ~barycentric() override = default;
 };
 
-}
+} // namespace metamath::finite_element

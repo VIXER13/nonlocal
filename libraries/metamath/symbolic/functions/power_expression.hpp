@@ -13,9 +13,8 @@ template<class E, auto N>
 class power_expression : public unary_expression<E, power_expression, N> {
     using _base = unary_expression<E, power_expression, N>;
 
-public:
-    constexpr explicit power_expression(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit power_expression(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     constexpr auto operator()(const Args&... args) const {
@@ -24,13 +23,13 @@ public:
 
     template<auto X>
     constexpr auto derivative() const noexcept {
-        return integral_constant<N>{} * _base::expr().template derivative<X>() * power<N-1>(_base::expr());
+        return integral_constant<N>{} * _base::expr().template derivative<X>() * power<N - 1>(_base::expr());
     }
 };
 
 template<auto N, class E>
 constexpr power_expression<E, N> power(const expression<E>& e) noexcept {
-    return power_expression<E, N>{e()};
+    return power_expression<E, N>{ e() };
 }
 
 template<class E, auto N, std::enable_if_t<N == 0, bool> = true>
@@ -45,7 +44,7 @@ constexpr auto simplify(const power_expression<E, N>& e) {
 
 template<class E, auto N, auto M>
 constexpr auto simplify(const power_expression<power_expression<E, M>, N>& e) {
-    return power_expression<E, N * M>{simplify(e.expr().expr())};
+    return power_expression<E, N * M>{ simplify(e.expr().expr()) };
 }
 
-}
+} // namespace metamath::symbolic

@@ -1,5 +1,6 @@
 #include "coordinate_converter.hpp"
 
+#include <embedded_files/solid_ring_su2.h>
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <mesh/mesh_2d/mesh_container_2d_utils.hpp>
@@ -7,8 +8,6 @@
 #include <tests/utils/error.hpp>
 
 #include <boost/ut.hpp>
-
-#include <embedded_files/solid_ring_su2.h>
 
 namespace {
 
@@ -19,68 +18,65 @@ using namespace unit_tests;
 using namespace mesh;
 using namespace solver_2d::mechanical;
 
-constexpr T Expected_Error = T{0};
-constexpr T Inner_Radius = T{0.5};
-constexpr T Outer_Radius = T{1.0};
-constexpr T Er = T{50};
-constexpr T Ef = T{200};
-constexpr T nu_rf = T{0.05};
+constexpr T Expected_Error = T{ 0 };
+constexpr T Inner_Radius = T{ 0.5 };
+constexpr T Outer_Radius = T{ 1.0 };
+constexpr T Er = T{ 50 };
+constexpr T Ef = T{ 200 };
+constexpr T nu_rf = T{ 0.05 };
 constexpr T nu_fr = Ef * nu_rf / Er;
-constexpr T a_rr = T{2};
-constexpr T a_ff = T{1};
-constexpr T Delta_Temperature = T{1};
+constexpr T a_rr = T{ 2 };
+constexpr T a_ff = T{ 1 };
+constexpr T Delta_Temperature = T{ 1 };
 
 const suite<"anisotropic_thermoelasticity_solid_ring"> _ = [] {
-    std::stringstream stream{solid_ring_su2_data};
+    std::stringstream stream{ solid_ring_su2_data };
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const anisotropic_elastic_parameters<T> elastic = {
-        .main_parameters = {
-            .young_modulus = {Er, Ef},
-            .poissons_ratio = {nu_rf, nu_fr},
-            .shear_modulus = 180.
-        },
+        .main_parameters = { .young_modulus = { Er, Ef }, .poissons_ratio = { nu_rf, nu_fr }, .shear_modulus = 180. },
         .angle = [](const std::array<T, 2>& point) noexcept { return std::atan2(point[Y], point[X]); }
     };
-    const raw_thermal_expansion_t<T> expansion = {raw_anisotropic_thermal_expansion_t<T>{
-        [](const std::array<T, 2>& point) { return (a_rr * point[X] * point[X] + a_ff * point[Y] * point[Y]) / (point[X] * point[X] + point[Y] * point[Y]); },
-        [](const std::array<T, 2>& point) { return (a_rr * point[Y] * point[Y] + a_ff * point[X] * point[X]) / (point[X] * point[X] + point[Y] * point[Y]); },
-        [](const std::array<T, 2>& point) { return (a_rr - a_ff) * point[X] * point[Y] / (point[X] * point[X] + point[Y] * point[Y]); }
-    }};
-    const raw_mechanical_parameters<T> parameters = { { "DEFAULT", { .physical = { .elastic = elastic, .thermal_expansion = expansion } } } };
+    const raw_thermal_expansion_t<T> expansion = { raw_anisotropic_thermal_expansion_t<T>{
+        [](const std::array<T, 2>& point) {
+            return (a_rr * point[X] * point[X] + a_ff * point[Y] * point[Y]) / (point[X] * point[X] + point[Y] * point[Y]);
+        },
+        [](const std::array<T, 2>& point) {
+            return (a_rr * point[Y] * point[Y] + a_ff * point[X] * point[X]) / (point[X] * point[X] + point[Y] * point[Y]);
+        },
+        [](const std::array<T, 2>& point) {
+            return (a_rr - a_ff) * point[X] * point[Y] / (point[X] * point[X] + point[Y] * point[Y]);
+        } } };
+    const raw_mechanical_parameters<T> parameters = {
+        { "DEFAULT", { .physical = { .elastic = elastic, .thermal_expansion = expansion } } }
+    };
     mechanical_boundaries_conditions_2d<T> boundaries_conditions;
-    boundaries_conditions["Horizontal"] = {
-        nullptr,
-        std::make_unique<displacement_2d<T>>(T{0})
-    };
-    boundaries_conditions["Vertical"] = {
-        std::make_unique<displacement_2d<T>>(T{0}),
-        nullptr
-    };
-    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions, 
+    boundaries_conditions["Horizontal"] = { nullptr, std::make_unique<displacement_2d<T>>(T{ 0 }) };
+    boundaries_conditions["Vertical"] = { std::make_unique<displacement_2d<T>>(T{ 0 }), nullptr };
+    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions,
                                                std::vector<T>(mesh->container().nodes_count(), Delta_Temperature));
 
     const T k = std::sqrt(Ef / Er);
-    const T B = ((T{1} - nu_fr) * a_rr + (nu_fr - k * k) * a_ff) * Delta_Temperature;
-    const T K = B * (T{1} + nu_fr) + (a_rr + nu_fr * a_ff) * (k * k - T{1});
-    const T D = (std::pow(Inner_Radius, 2 * k) - std::pow(Outer_Radius, 2 * k)) * (k * k - T{1});
+    const T B = ((T{ 1 } - nu_fr) * a_rr + (nu_fr - k * k) * a_ff) * Delta_Temperature;
+    const T K = B * (T{ 1 } + nu_fr) + (a_rr + nu_fr * a_ff) * (k * k - T{ 1 });
+    const T D = (std::pow(Inner_Radius, 2 * k) - std::pow(Outer_Radius, 2 * k)) * (k * k - T{ 1 });
     const T C1 = (std::pow(Inner_Radius, k + 1) - std::pow(Outer_Radius, k + 1)) * K / (D * (k + nu_fr));
-    const T C2 = -(Outer_Radius * std::pow(Inner_Radius, k) - Inner_Radius * std::pow(Outer_Radius, k)) * K * 
-                  std::pow(Inner_Radius * Outer_Radius, k) / (D * (k - nu_fr));
+    const T C2 = -(Outer_Radius * std::pow(Inner_Radius, k) - Inner_Radius * std::pow(Outer_Radius, k)) * K *
+                 std::pow(Inner_Radius * Outer_Radius, k) / (D * (k - nu_fr));
     const auto Expected_Displacement_R = [C1, C2, B, k](const std::array<T, 2>& point) {
         const T r = std::hypot(point[X], point[Y]);
-        return C1 * std::pow(r, k) + C2 * std::pow(r, -k) - r * B / (k * k - T{1});
+        return C1 * std::pow(r, k) + C2 * std::pow(r, -k) - r * B / (k * k - T{ 1 });
     };
 
     const auto Expected_Polar_Strain = [C1, C2, B, k](const std::array<T, 2>& point) -> std::array<T, 3> {
         const T r = std::hypot(point[X], point[Y]);
-        return { C1 * k * std::pow(r, k - 1) - C2 * k * std::pow(r, -k - 1) - B / (k * k - T{1}), // strain_rr
-                 C1 * std::pow(r, k - 1) + C2 * std::pow(r, -k - 1) - B / (k * k - T{1}),         // strain_ff
-                 T{0} };                                                                          // strain_rf
+        return { C1 * k * std::pow(r, k - 1) - C2 * k * std::pow(r, -k - 1) - B / (k * k - T{ 1 }), // strain_rr
+                 C1 * std::pow(r, k - 1) + C2 * std::pow(r, -k - 1) - B / (k * k - T{ 1 }),         // strain_ff
+                 T{ 0 } };                                                                          // strain_rf
     };
 
     const auto Expected_Polar_Stress = [&Expected_Polar_Strain, &elastic](const std::array<T, 2>& point) -> std::array<T, 3> {
-        static constexpr std::array<T, 2> Zero_Angle_Point = {T{1}, T{0}};
-        static constexpr std::array<T, 3> Temperature_Strain = {a_rr * Delta_Temperature, a_ff * Delta_Temperature, T{0}};
+        static constexpr std::array<T, 2> Zero_Angle_Point = { T{ 1 }, T{ 0 } };
+        static constexpr std::array<T, 3> Temperature_Strain = { a_rr * Delta_Temperature, a_ff * Delta_Temperature, T{ 0 } };
         const auto strain = Expected_Polar_Strain(point);
         using namespace metamath::operators;
         return calc_stress<T>(elastic.hooke(Zero_Angle_Point), strain - Temperature_Strain);
@@ -114,4 +110,4 @@ const suite<"anisotropic_thermoelasticity_solid_ring"> _ = [] {
     };
 };
 
-}
+} // namespace

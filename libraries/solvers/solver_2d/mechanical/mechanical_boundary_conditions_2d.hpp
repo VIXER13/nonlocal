@@ -11,10 +11,9 @@ class displacement_2d final : public first_kind_2d<T, physics_t::MECHANICAL> {
     using first_kind_2d<T, physics_t::MECHANICAL>::from_value;
     const std::function<T(const std::array<T, 2>&)> _displacement;
 
-public:
+  public:
     template<class U>
-    explicit displacement_2d(const U& displacement)
-        : _displacement{from_value(displacement)} {}
+    explicit displacement_2d(const U& displacement) : _displacement{ from_value(displacement) } {}
     ~displacement_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>& x) const override {
@@ -27,10 +26,9 @@ class pressure_2d final : public second_kind_2d<T, physics_t::MECHANICAL> {
     using second_kind_2d<T, physics_t::MECHANICAL>::from_value;
     const std::function<T(const std::array<T, 2>&)> _pressure;
 
-public:
+  public:
     template<class U>
-    explicit pressure_2d(const U& pressure)
-        : _pressure{from_value(pressure)} {}
+    explicit pressure_2d(const U& pressure) : _pressure{ from_value(pressure) } {}
     ~pressure_2d() noexcept override = default;
 
     T operator()(const std::array<T, 2>& x) const override {
@@ -47,4 +45,4 @@ using mechanical_boundary_conditions_2d = boundary_conditions_2d<T, physics_t::M
 template<class T>
 using mechanical_boundaries_conditions_2d = boundaries_conditions_2d<T, physics_t::MECHANICAL, 2>;
 
-}
+} // namespace nonlocal::solver_2d::mechanical

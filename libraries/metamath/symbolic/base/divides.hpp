@@ -11,9 +11,8 @@ template<class E1, class E2>
 class divides : public binary_expression<E1, E2, divides> {
     using _base = binary_expression<E1, E2, divides>;
 
-public:
-    constexpr explicit divides(const expression<E1>& e1, const expression<E2>& e2) noexcept
-        : _base{e1(), e2()} {}
+  public:
+    constexpr explicit divides(const expression<E1>& e1, const expression<E2>& e2) noexcept : _base{ e1(), e2() } {}
 
     template<class... Args>
     constexpr auto operator()(const Args&... args) const {
@@ -30,17 +29,17 @@ public:
 
 template<class E1, class E2>
 constexpr divides<E1, E2> operator/(const expression<E1>& e1, const expression<E2>& e2) noexcept {
-    return divides<E1, E2>{e1(), e2()};
+    return divides<E1, E2>{ e1(), e2() };
 }
 
 template<class T, class E, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
 constexpr divides<constant<T>, E> operator/(const T& c, const expression<E>& e) noexcept {
-    return divides<constant<T>, E>{constant<T>{c}, e()};
+    return divides<constant<T>, E>{ constant<T>{ c }, e() };
 }
 
 template<class E, class T, std::enable_if_t<std::is_arithmetic_v<T>, bool> = true>
 constexpr divides<E, constant<T>> operator/(const expression<E>& e, const T& c) noexcept {
-    return divides<E, constant<T>>{e(), constant<T>{c}};
+    return divides<E, constant<T>>{ e(), constant<T>{ c } };
 }
 
 template<auto N1, auto N2>
@@ -51,13 +50,13 @@ constexpr integral_constant<N1 / N2> simplify(const divides<integral_constant<N1
 template<auto N, class T>
 constexpr constant<decltype(N / T{})> simplify(const divides<integral_constant<N>, constant<T>>& e) noexcept {
     const auto [_, c] = e.expr();
-    return {N / c()};
+    return { N / c() };
 }
 
 template<class T, auto N>
 constexpr constant<decltype(T{} / N)> simplify(const divides<constant<T>, integral_constant<N>>& e) noexcept {
     const auto [c, _] = e.expr();
-    return {c() / N};
+    return { c() / N };
 }
 
 template<auto N, class E, std::enable_if_t<N == 0, bool> = true>
@@ -80,4 +79,4 @@ constexpr auto simplify(const multiplies<divides<E1U, E1D>, divides<E2U, E2D>>& 
     return simplify((lu * ru) / (ld * rd));
 }
 
-}
+} // namespace metamath::symbolic

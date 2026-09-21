@@ -15,23 +15,23 @@ sparse_matrix<T> init_sparse_matrix() {
     // [1 0 3]
     // [0 2 4]
     // [5 0 0]
-    sparse_matrix<T> matrix{3, 3};
-    matrix.portrait.shifts = {0, 2, 4, 5};
-    matrix.portrait.indices = {0, 2, 1, 2, 0};
-    matrix.values = {1.0, 3.0, 2.0, 4.0, 5.0};
+    sparse_matrix<T> matrix{ 3, 3 };
+    matrix.portrait.shifts = { 0, 2, 4, 5 };
+    matrix.portrait.indices = { 0, 2, 1, 2, 0 };
+    matrix.values = { 1.0, 3.0, 2.0, 4.0, 5.0 };
     return matrix;
 }
 
 std::pair<sparse_matrix<T>, std::vector<T>> init_sparse_matrix_and_vector() {
-    return {init_sparse_matrix(), {1.0, 2.0, 3.0}};
+    return { init_sparse_matrix(), { 1.0, 2.0, 3.0 } };
 }
 
 suite<"sparse_matrix_operators"> _ = [] {
     "sparse_matrix_scalar_multiplication"_test = [] {
-        sparse_matrix<T> matrix{3, 3};
-        matrix.portrait.shifts = {0, 1, 2, 3};
-        matrix.portrait.indices = {0, 1, 2};
-        matrix.values = {1.0, 2.0, 3.0};
+        sparse_matrix<T> matrix{ 3, 3 };
+        matrix.portrait.shifts = { 0, 1, 2, 3 };
+        matrix.portrait.indices = { 0, 1, 2 };
+        matrix.values = { 1.0, 2.0, 3.0 };
 
         matrix *= 2.0;
         expect(approx(matrix.values[0], 2.0, Epsilon));
@@ -45,41 +45,41 @@ suite<"sparse_matrix_operators"> _ = [] {
     };
 
     "sparse_matrix_scalar_multiplication_block"_test = [] {
-        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
-        block_matrix.portrait.shifts = {0, 2, 4, 5};
-        block_matrix.portrait.indices = {0, 1, 0, 2, 1};
-        block_matrix.values = {{1.0, 2.0, 3.0, 4.0}, 
-                               {5.0, 6.0, 7.0, 8.0},
-                               {9.0, 10.0, 11.0, 12.0},
-                               {13.0, 14.0, 15.0, 16.0},
-                               {17.0, 18.0, 19.0, 20.0}};
+        sparse_matrix<square_matrix<T, 2>> block_matrix{ 3, 3 };
+        block_matrix.portrait.shifts = { 0, 2, 4, 5 };
+        block_matrix.portrait.indices = { 0, 1, 0, 2, 1 };
+        block_matrix.values = { { 1.0, 2.0, 3.0, 4.0 },
+                                { 5.0, 6.0, 7.0, 8.0 },
+                                { 9.0, 10.0, 11.0, 12.0 },
+                                { 13.0, 14.0, 15.0, 16.0 },
+                                { 17.0, 18.0, 19.0, 20.0 } };
 
         block_matrix *= 2.0;
-        sparse_matrix<square_matrix<T, 2>> expected_block_matrix{3, 3};
-        expected_block_matrix.portrait.shifts = {0, 2, 4, 5};
-        expected_block_matrix.portrait.indices = {0, 1, 0, 2, 1};
-        expected_block_matrix.values = {{2.0, 4.0, 6.0, 8.0}, 
-                                        {10.0, 12.0, 14.0, 16.0},
-                                        {18.0, 20.0, 22.0, 24.0},
-                                        {26.0, 28.0, 30.0, 32.0},
-                                        {34.0, 36.0, 38.0, 40.0}};
-        for(const size_t block : std::ranges::iota_view{0u, block_matrix.values.size()})
-            for(const size_t row : std::ranges::iota_view{0u, 2u})
-                for(const size_t col : std::ranges::iota_view{0u, 2u})
-                    expect(approx(block_matrix.values[block][row][col], expected_block_matrix.values[block][row][col], Epsilon)) << 
-                        " at block " << block << ", element (" << row << ", " << col << ")";
+        sparse_matrix<square_matrix<T, 2>> expected_block_matrix{ 3, 3 };
+        expected_block_matrix.portrait.shifts = { 0, 2, 4, 5 };
+        expected_block_matrix.portrait.indices = { 0, 1, 0, 2, 1 };
+        expected_block_matrix.values = { { 2.0, 4.0, 6.0, 8.0 },
+                                         { 10.0, 12.0, 14.0, 16.0 },
+                                         { 18.0, 20.0, 22.0, 24.0 },
+                                         { 26.0, 28.0, 30.0, 32.0 },
+                                         { 34.0, 36.0, 38.0, 40.0 } };
+        for (const size_t block : std::ranges::iota_view{ 0u, block_matrix.values.size() })
+            for (const size_t row : std::ranges::iota_view{ 0u, 2u })
+                for (const size_t col : std::ranges::iota_view{ 0u, 2u })
+                    expect(approx(block_matrix.values[block][row][col], expected_block_matrix.values[block][row][col], Epsilon))
+                        << " at block " << block << ", element (" << row << ", " << col << ")";
 
         block_matrix /= 2.0;
-        expected_block_matrix.values = {{1.0, 2.0, 3.0, 4.0}, 
-                                        {5.0, 6.0, 7.0, 8.0},
-                                        {9.0, 10.0, 11.0, 12.0},
-                                        {13.0, 14.0, 15.0, 16.0},
-                                        {17.0, 18.0, 19.0, 20.0}};
-         for(const size_t block : std::ranges::iota_view{0u, block_matrix.values.size()})
-            for(const size_t row : std::ranges::iota_view{0u, 2u})
-                for(const size_t col : std::ranges::iota_view{0u, 2u})
-                    expect(approx(block_matrix.values[block][row][col], expected_block_matrix.values[block][row][col], Epsilon)) << 
-                        " at block " << block << ", element (" << row << ", " << col << ")";
+        expected_block_matrix.values = { { 1.0, 2.0, 3.0, 4.0 },
+                                         { 5.0, 6.0, 7.0, 8.0 },
+                                         { 9.0, 10.0, 11.0, 12.0 },
+                                         { 13.0, 14.0, 15.0, 16.0 },
+                                         { 17.0, 18.0, 19.0, 20.0 } };
+        for (const size_t block : std::ranges::iota_view{ 0u, block_matrix.values.size() })
+            for (const size_t row : std::ranges::iota_view{ 0u, 2u })
+                for (const size_t col : std::ranges::iota_view{ 0u, 2u })
+                    expect(approx(block_matrix.values[block][row][col], expected_block_matrix.values[block][row][col], Epsilon))
+                        << " at block " << block << ", element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_vector_multiplication"_test = [] {
@@ -127,22 +127,19 @@ suite<"sparse_matrix_operators"> _ = [] {
         // [-----------]
         // [0 0|4 5|0 0]   [5]   [32]
         // [0 0|6 7|0 0]   [6]   [46]
-        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
-        block_matrix.portrait.shifts = {0, 2, 5, 6};
-        block_matrix.portrait.indices = {0, 1, 0, 1, 2, 1};
-        block_matrix.values = {{1.0, 2.0, 2.0, 2.0}, 
-                               {1.0, 4.0, 0.0, 3.0}, 
-                               {1.0, 4.0, 3.0, 0.0},
-                               {1.0, 2.0, 6.0, 7.0},
-                               {3.0, 0.0, 2.0, 3.0},
-                               {4.0, 5.0, 6.0, 7.0}};
-        const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+        sparse_matrix<square_matrix<T, 2>> block_matrix{ 3, 3 };
+        block_matrix.portrait.shifts = { 0, 2, 5, 6 };
+        block_matrix.portrait.indices = { 0, 1, 0, 1, 2, 1 };
+        block_matrix.values = { { 1.0, 2.0, 2.0, 2.0 }, { 1.0, 4.0, 0.0, 3.0 }, { 1.0, 4.0, 3.0, 0.0 },
+                                { 1.0, 2.0, 6.0, 7.0 }, { 3.0, 0.0, 2.0, 3.0 }, { 4.0, 5.0, 6.0, 7.0 } };
+        const std::vector<std::array<T, 2>> block_vector = { { 1.0, 2.0 }, { 3.0, 4.0 }, { 5.0, 6.0 } };
         const auto block_result = block_matrix * block_vector;
-        const std::vector<std::array<T, 2>> Expected_Block_Result = {{24.0, 18.0}, {35.0, 77.0}, {32.0, 46.0}};
+        const std::vector<std::array<T, 2>> Expected_Block_Result = { { 24.0, 18.0 }, { 35.0, 77.0 }, { 32.0, 46.0 } };
         expect(eq(block_result.size(), 3));
-        for(const size_t row : std::ranges::iota_view{0zu, block_result.size()})
-            for(const size_t col : std::ranges::iota_view{0zu, 2zu})
-                expect(approx(block_result[row][col], Expected_Block_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+        for (const size_t row : std::ranges::iota_view{ 0zu, block_result.size() })
+            for (const size_t col : std::ranges::iota_view{ 0zu, 2zu })
+                expect(approx(block_result[row][col], Expected_Block_Result[row][col], Epsilon))
+                    << " at element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_upper_self_adjoint_vector_multiplication_block"_test = [] {
@@ -154,22 +151,19 @@ suite<"sparse_matrix_operators"> _ = [] {
         // [-----------]
         // [0 0|3 2|0 0]   [5]   [17]
         // [0 0|0 3|0 0]   [6]   [12]
-        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
-        block_matrix.portrait.shifts = {0, 2, 5, 6};
-        block_matrix.portrait.indices = {0, 1, 0, 1, 2, 1};
-        block_matrix.values = {{1.0, 2.0, 2.0, 2.0}, 
-                               {1.0, 4.0, 0.0, 3.0}, 
-                               {1.0, 4.0, 3.0, 0.0},
-                               {1.0, 2.0, 6.0, 7.0},
-                               {3.0, 0.0, 2.0, 3.0},
-                               {4.0, 5.0, 6.0, 7.0}};
-        const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+        sparse_matrix<square_matrix<T, 2>> block_matrix{ 3, 3 };
+        block_matrix.portrait.shifts = { 0, 2, 5, 6 };
+        block_matrix.portrait.indices = { 0, 1, 0, 1, 2, 1 };
+        block_matrix.values = { { 1.0, 2.0, 2.0, 2.0 }, { 1.0, 4.0, 0.0, 3.0 }, { 1.0, 4.0, 3.0, 0.0 },
+                                { 1.0, 2.0, 6.0, 7.0 }, { 3.0, 0.0, 2.0, 3.0 }, { 4.0, 5.0, 6.0, 7.0 } };
+        const std::vector<std::array<T, 2>> block_vector = { { 1.0, 2.0 }, { 3.0, 4.0 }, { 5.0, 6.0 } };
         const auto result = block_matrix.self_adjoint<matrix_part::Upper>() * block_vector;
-        const std::vector<std::array<T, 2>> Expected_Result = {{24.0, 18.0}, {27.0, 72.0}, {17.0, 12.0}};
+        const std::vector<std::array<T, 2>> Expected_Result = { { 24.0, 18.0 }, { 27.0, 72.0 }, { 17.0, 12.0 } };
         expect(eq(result.size(), 3));
-        for(const size_t row : std::ranges::iota_view{0zu, result.size()})
-            for(const size_t col : std::ranges::iota_view{0zu, 2zu})
-                expect(approx(result[row][col], Expected_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+        for (const size_t row : std::ranges::iota_view{ 0zu, result.size() })
+            for (const size_t col : std::ranges::iota_view{ 0zu, 2zu })
+                expect(approx(result[row][col], Expected_Result[row][col], Epsilon))
+                    << " at element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_lower_self_adjoint_vector_multiplication_block"_test = [] {
@@ -181,30 +175,29 @@ suite<"sparse_matrix_operators"> _ = [] {
         // [-----------]
         // [0 0|4 5|0 0]   [5]   [ 32]
         // [0 0|6 7|0 0]   [6]   [ 46]
-        sparse_matrix<square_matrix<T, 2>> block_matrix{3, 3};
-        block_matrix.portrait.shifts = {0, 2, 5, 6};
-        block_matrix.portrait.indices = {0, 1, 0, 1, 2, 1};
-        block_matrix.values = {{1.0, 2.0, 2.0, 2.0}, 
-                               {1.0, 4.0, 0.0, 3.0}, 
-                               {1.0, 4.0, 3.0, 0.0},
-                               {1.0, 2.0, 6.0, 7.0},
-                               {3.0, 0.0, 2.0, 3.0},
-                               {4.0, 5.0, 6.0, 7.0}};
-        const std::vector<std::array<T, 2>> block_vector = {{1.0, 2.0}, {3.0, 4.0}, {5.0, 6.0}};
+        sparse_matrix<square_matrix<T, 2>> block_matrix{ 3, 3 };
+        block_matrix.portrait.shifts = { 0, 2, 5, 6 };
+        block_matrix.portrait.indices = { 0, 1, 0, 1, 2, 1 };
+        block_matrix.values = { { 1.0, 2.0, 2.0, 2.0 }, { 1.0, 4.0, 0.0, 3.0 }, { 1.0, 4.0, 3.0, 0.0 },
+                                { 1.0, 2.0, 6.0, 7.0 }, { 3.0, 0.0, 2.0, 3.0 }, { 4.0, 5.0, 6.0, 7.0 } };
+        const std::vector<std::array<T, 2>> block_vector = { { 1.0, 2.0 }, { 3.0, 4.0 }, { 5.0, 6.0 } };
         const auto result = block_matrix.self_adjoint<matrix_part::Lower>() * block_vector;
-        const std::vector<std::array<T, 2>> Expected_Result = {{20.0, 18.0}, {92.0, 116.0}, {32.0, 46.0}};
+        const std::vector<std::array<T, 2>> Expected_Result = { { 20.0, 18.0 }, { 92.0, 116.0 }, { 32.0, 46.0 } };
         expect(eq(result.size(), 3));
-        for(const size_t row : std::ranges::iota_view{0zu, result.size()})
-            for(const size_t col : std::ranges::iota_view{0zu, 2zu})
-                expect(approx(result[row][col], Expected_Result[row][col], Epsilon)) << " at element (" << row << ", " << col << ")";
+        for (const size_t row : std::ranges::iota_view{ 0zu, result.size() })
+            for (const size_t col : std::ranges::iota_view{ 0zu, 2zu })
+                expect(approx(result[row][col], Expected_Result[row][col], Epsilon))
+                    << " at element (" << row << ", " << col << ")";
     };
 
     "sparse_matrix_vector_multiplication_invalid_size"_test = [] {
         const auto matrix = init_sparse_matrix();
-        const std::vector<T> invalid_vector = {1.0, 2.0};
-        expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix * invalid_vector; }));
-        expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Upper>() * invalid_vector; }));
-        expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Lower>() * invalid_vector; }));
+        const std::vector<T> invalid_vector = { 1.0, 2.0 };
+        expect(throws<std::invalid_argument>([&matrix, &invalid_vector] { matrix* invalid_vector; }));
+        expect(throws<std::invalid_argument>(
+            [&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Upper>() * invalid_vector; }));
+        expect(throws<std::invalid_argument>(
+            [&matrix, &invalid_vector] { matrix.self_adjoint<matrix_part::Lower>() * invalid_vector; }));
     };
 
     "sparse_matrix_addition"_test = [] {
@@ -212,15 +205,15 @@ suite<"sparse_matrix_operators"> _ = [] {
         // [0 2 4 0] + [2 0 3 0] = [2 2 7 0]
         // [5 0 0 0]   [0 5 0 2]   [5 5 0 2]
         // [0 0 0 6]   [1 0 4 0]   [1 0 4 6]
-        sparse_matrix<T> matrix_a{4, 4};
-        matrix_a.portrait.shifts = {0, 2, 4, 5, 6};
-        matrix_a.portrait.indices = {0, 2, 1, 2, 0, 3};
-        matrix_a.values = {1.0, 3.0, 2.0, 4.0, 5.0, 6.0};
+        sparse_matrix<T> matrix_a{ 4, 4 };
+        matrix_a.portrait.shifts = { 0, 2, 4, 5, 6 };
+        matrix_a.portrait.indices = { 0, 2, 1, 2, 0, 3 };
+        matrix_a.values = { 1.0, 3.0, 2.0, 4.0, 5.0, 6.0 };
 
-        sparse_matrix<T> matrix_b{4, 4};
-        matrix_b.portrait.shifts = {0, 2, 4, 6, 8};
-        matrix_b.portrait.indices = {1, 3, 0, 2, 1, 3, 0, 2};
-        matrix_b.values = {2.0, 1.0, 2.0, 3.0, 5.0, 2.0, 1.0, 4.0};
+        sparse_matrix<T> matrix_b{ 4, 4 };
+        matrix_b.portrait.shifts = { 0, 2, 4, 6, 8 };
+        matrix_b.portrait.indices = { 1, 3, 0, 2, 1, 3, 0, 2 };
+        matrix_b.values = { 2.0, 1.0, 2.0, 3.0, 5.0, 2.0, 1.0, 4.0 };
 
         matrix_a += matrix_b;
         expect(eq(matrix_a.rows(), 4));
@@ -253,22 +246,17 @@ suite<"sparse_matrix_operators"> _ = [] {
         // [-----------]   [-----------]   [-----------]
         // [0 0|1 5|0 0]   [0 0|8 2|1 2]   [0 0|9 7|1 2]
         // [0 0|6 7|0 0]   [0 0|1 2|3 4]   [0 0|7 9|3 4]
-        sparse_matrix<square_matrix<T, 2>> block_matrix_a{3, 3};
-        block_matrix_a.portrait.shifts = {0, 1, 3, 4};
-        block_matrix_a.portrait.indices = {0, 0, 1, 1};
-        block_matrix_a.values = {{1.0, 2.0, 2.0, 2.0}, 
-                                 {2.0, 0.0, 0.0, 5.0}, 
-                                 {1.0, 2.0, 2.0, 3.0},
-                                 {1.0, 5.0, 6.0, 7.0}};
-        sparse_matrix<square_matrix<T, 2>> block_matrix_b{3, 3};
-        block_matrix_b.portrait.shifts = {0, 2, 4, 6};
-        block_matrix_b.portrait.indices = {0, 2, 0, 1, 1, 2};
-        block_matrix_b.values = {{0.0, 2.0, 2.0, 0.0}, 
-                                 {0.0, 1.0, 0.0, 2.0}, 
-                                 {2.0, 0.0, 1.0, 0.0},
-                                 {0.0, 4.0, 4.0, 5.0},
-                                 {8.0, 2.0, 1.0, 2.0},
-                                 {1.0, 2.0, 3.0, 4.0}};
+        sparse_matrix<square_matrix<T, 2>> block_matrix_a{ 3, 3 };
+        block_matrix_a.portrait.shifts = { 0, 1, 3, 4 };
+        block_matrix_a.portrait.indices = { 0, 0, 1, 1 };
+        block_matrix_a.values = {
+            { 1.0, 2.0, 2.0, 2.0 }, { 2.0, 0.0, 0.0, 5.0 }, { 1.0, 2.0, 2.0, 3.0 }, { 1.0, 5.0, 6.0, 7.0 }
+        };
+        sparse_matrix<square_matrix<T, 2>> block_matrix_b{ 3, 3 };
+        block_matrix_b.portrait.shifts = { 0, 2, 4, 6 };
+        block_matrix_b.portrait.indices = { 0, 2, 0, 1, 1, 2 };
+        block_matrix_b.values = { { 0.0, 2.0, 2.0, 0.0 }, { 0.0, 1.0, 0.0, 2.0 }, { 2.0, 0.0, 1.0, 0.0 },
+                                  { 0.0, 4.0, 4.0, 5.0 }, { 8.0, 2.0, 1.0, 2.0 }, { 1.0, 2.0, 3.0, 4.0 } };
 
         block_matrix_a += block_matrix_b;
         expect(eq(block_matrix_a.rows(), 3));
@@ -304,18 +292,18 @@ suite<"sparse_matrix_operators"> _ = [] {
     };
 
     "sparse_matrix_addition_invalid_size"_test = [] {
-        sparse_matrix<T> matrix_a{3, 3};
-        matrix_a.portrait.shifts = {0, 2, 4, 5};
-        matrix_a.portrait.indices = {0, 2, 1, 2, 0};
-        matrix_a.values = {1.0, 3.0, 2.0, 4.0, 5.0};
+        sparse_matrix<T> matrix_a{ 3, 3 };
+        matrix_a.portrait.shifts = { 0, 2, 4, 5 };
+        matrix_a.portrait.indices = { 0, 2, 1, 2, 0 };
+        matrix_a.values = { 1.0, 3.0, 2.0, 4.0, 5.0 };
 
-        sparse_matrix<T> matrix_b{4, 4};
-        matrix_b.portrait.shifts = {0, 2, 4, 6, 8};
-        matrix_b.portrait.indices = {1, 3, 0, 2, 1, 3, 0, 2};
-        matrix_b.values = {2.0, 1.0, 2.0, 3.0, 5.0, 2.0, 1.0, 4.0};
+        sparse_matrix<T> matrix_b{ 4, 4 };
+        matrix_b.portrait.shifts = { 0, 2, 4, 6, 8 };
+        matrix_b.portrait.indices = { 1, 3, 0, 2, 1, 3, 0, 2 };
+        matrix_b.values = { 2.0, 1.0, 2.0, 3.0, 5.0, 2.0, 1.0, 4.0 };
 
         expect(throws<std::invalid_argument>([&matrix_a, &matrix_b] { matrix_a += matrix_b; }));
     };
 };
 
-}
+} // namespace

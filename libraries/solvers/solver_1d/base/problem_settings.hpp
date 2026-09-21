@@ -3,8 +3,8 @@
 #include <constants/nonlocal_constants.hpp>
 #include <logger/logger.hpp>
 
-#include <array>
 #include <algorithm>
+#include <array>
 #include <vector>
 
 namespace nonlocal::solver_1d {
@@ -15,7 +15,7 @@ struct problem_settings final {
     bool is_nonlinear_boundary = false;
     bool is_nonconstant_parameters = false;
     bool is_solution_dependent = false;
-    std::array<bool, 2> is_first_kind = {false, false};
+    std::array<bool, 2> is_first_kind = { false, false };
 
     constexpr bool is_nonlinear() const noexcept {
         return is_nonlinear_boundary || is_solution_dependent;
@@ -35,7 +35,7 @@ inline void log_problem_settings(const problem_settings& settings) {
     if (settings.is_nonlinear())
         logger::info() << "Nonlinear problem" << std::endl;
     if (settings.is_solution_dependent)
-        throw std::domain_error{"Parametrically nonlinear problems are not supported at the moment."};
+        throw std::domain_error{ "Parametrically nonlinear problems are not supported at the moment." };
 }
 
-}
+} // namespace nonlocal::solver_1d

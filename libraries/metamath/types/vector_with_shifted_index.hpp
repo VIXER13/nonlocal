@@ -18,4 +18,4 @@ struct vector_with_shifted_index final {
     }
 };
 
-}
+} // namespace metamath::types

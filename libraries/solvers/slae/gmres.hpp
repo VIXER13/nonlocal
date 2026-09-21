@@ -20,19 +20,22 @@ class gmres final : public iterative_solver_base<T, I, J> {
 
     uintmax_t _restart = 30;
 
-public:
-    using typename _base::entity_t;
-    using typename _base::floating_point_t;
+  public:
     using _base::matrix;
-    using _base::tolerance;
     using _base::max_iterations;
     using _base::preconditioner;
+    using _base::tolerance;
+    using typename _base::entity_t;
+    using typename _base::floating_point_t;
 
-    explicit gmres(const metamath::linear::sparse_matrix<T, I, J>& matrix)
-        : _base{matrix} {}
+    explicit gmres(const metamath::linear::sparse_matrix<T, I, J>& matrix) : _base{ matrix } {}
 
-    uintmax_t restart() const noexcept { return _restart; }
-    void restart(const uintmax_t m) noexcept { _restart = m; }
+    uintmax_t restart() const noexcept {
+        return _restart;
+    }
+    void restart(const uintmax_t m) noexcept {
+        _restart = m;
+    }
 
     std::vector<entity_t> solve(const std::vector<entity_t>& b,
                                 const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const override {
@@ -49,29 +52,29 @@ public:
         std::vector<entity_t> x = x0.value_or(std::vector<entity_t>(n, entity_t{}));
 
         const floating_point_t rhs_norm = norm(b);
-        if (rhs_norm == floating_point_t{0}) {
+        if (rhs_norm == floating_point_t{ 0 }) {
             return std::vector<entity_t>(n, entity_t{});
         }
 
         _iterations = 0;
-        _residual = floating_point_t{1};
+        _residual = floating_point_t{ 1 };
 
         const uintmax_t m = _restart;
 
         // Hessenberg matrix H  (m+1) x m, stored column-major: H[j] = column j of length j+2
         // V: Krylov basis vectors v_0 ... v_m
         // Givens rotation coefficients
-        std::vector<std::vector<entity_t>>        V(m + 1, std::vector<entity_t>(n, entity_t{}));
-        std::vector<std::vector<floating_point_t>> H(m, std::vector<floating_point_t>(m + 1, floating_point_t{0}));
-        std::vector<floating_point_t> cs(m, floating_point_t{0});
-        std::vector<floating_point_t> sn(m, floating_point_t{0});
-        std::vector<floating_point_t> e1(m + 1, floating_point_t{0});
-        std::vector<floating_point_t> y(m, floating_point_t{0});
+        std::vector<std::vector<entity_t>> V(m + 1, std::vector<entity_t>(n, entity_t{}));
+        std::vector<std::vector<floating_point_t>> H(m, std::vector<floating_point_t>(m + 1, floating_point_t{ 0 }));
+        std::vector<floating_point_t> cs(m, floating_point_t{ 0 });
+        std::vector<floating_point_t> sn(m, floating_point_t{ 0 });
+        std::vector<floating_point_t> e1(m + 1, floating_point_t{ 0 });
+        std::vector<floating_point_t> y(m, floating_point_t{ 0 });
 
         while (_iterations < max_iterations() && _residual > tolerance()) {
             // --- compute initial residual for this restart cycle ---
             std::vector<entity_t> r = matrix() * x;
-            r *= floating_point_t{-1};
+            r *= floating_point_t{ -1 };
             r += b;
             const floating_point_t beta = norm(r);
             _residual = beta / rhs_norm;
@@ -80,13 +83,14 @@ public:
 
             // v_0 = r / beta
             V[0] = r;
-            V[0] *= (floating_point_t{1} / beta);
+            V[0] *= (floating_point_t{ 1 } / beta);
 
             // reset per-cycle data
-            for (auto& col : H) std::fill(col.begin(), col.end(), floating_point_t{0});
-            std::fill(cs.begin(), cs.end(), floating_point_t{0});
-            std::fill(sn.begin(), sn.end(), floating_point_t{0});
-            std::fill(e1.begin(), e1.end(), floating_point_t{0});
+            for (auto& col : H)
+                std::fill(col.begin(), col.end(), floating_point_t{ 0 });
+            std::fill(cs.begin(), cs.end(), floating_point_t{ 0 });
+            std::fill(sn.begin(), sn.end(), floating_point_t{ 0 });
+            std::fill(e1.begin(), e1.end(), floating_point_t{ 0 });
             e1[0] = beta;
 
             uintmax_t j = 0; // Arnoldi step index; also counts inner iterations
@@ -102,30 +106,30 @@ public:
                 }
                 H[j][j + 1] = norm(w);
 
-                if (H[j][j + 1] > floating_point_t{0})
-                    V[j + 1] = w * (floating_point_t{1} / H[j][j + 1]);
+                if (H[j][j + 1] > floating_point_t{ 0 })
+                    V[j + 1] = w * (floating_point_t{ 1 } / H[j][j + 1]);
 
                 // apply previous Givens rotations to new Hessenberg column
                 for (uintmax_t i = 0; i < j; ++i) {
                     const floating_point_t tmp = cs[i] * H[j][i] + sn[i] * H[j][i + 1];
-                    H[j][i + 1]               = -sn[i] * H[j][i] + cs[i] * H[j][i + 1];
-                    H[j][i]                   = tmp;
+                    H[j][i + 1] = -sn[i] * H[j][i] + cs[i] * H[j][i + 1];
+                    H[j][i] = tmp;
                 }
 
                 // compute and apply new Givens rotation for (j, j+1)
                 const floating_point_t r_val = std::hypot(H[j][j], H[j][j + 1]);
-                if (r_val > floating_point_t{0}) {
-                    cs[j] = H[j][j]     / r_val;
+                if (r_val > floating_point_t{ 0 }) {
+                    cs[j] = H[j][j] / r_val;
                     sn[j] = H[j][j + 1] / r_val;
                 } else {
-                    cs[j] = floating_point_t{1};
-                    sn[j] = floating_point_t{0};
+                    cs[j] = floating_point_t{ 1 };
+                    sn[j] = floating_point_t{ 0 };
                 }
-                H[j][j]     =  cs[j] * H[j][j] + sn[j] * H[j][j + 1];
-                H[j][j + 1] = floating_point_t{0};
+                H[j][j] = cs[j] * H[j][j] + sn[j] * H[j][j + 1];
+                H[j][j + 1] = floating_point_t{ 0 };
 
                 e1[j + 1] = -sn[j] * e1[j];
-                e1[j]     =  cs[j] * e1[j];
+                e1[j] = cs[j] * e1[j];
 
                 _residual = std::abs(e1[j + 1]) / rhs_norm;
                 ++_iterations;
@@ -150,10 +154,9 @@ public:
             x += correction;
         }
 
-        logger::info() << "iterations = " << _iterations << '\n'
-                       << "residual = "   << _residual   << std::endl;
+        logger::info() << "iterations = " << _iterations << '\n' << "residual = " << _residual << std::endl;
         return x;
     }
 };
 
-}
+} // namespace nonlocal::slae

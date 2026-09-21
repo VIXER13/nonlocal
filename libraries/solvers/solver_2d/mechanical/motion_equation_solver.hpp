@@ -1,9 +1,9 @@
 #pragma once
 
-#include "stiffness_matrix_2d.hpp"
 #include "mass_matrix.hpp"
 #include "mechanical_parameters_2d.hpp"
 #include "mechanical_solution_2d.hpp"
+#include "stiffness_matrix_2d.hpp"
 
 #include <solvers/slae/init_solver.hpp>
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
@@ -27,10 +27,10 @@ class motion_equation_solver final {
     std::function<std::array<T, 2>(const std::array<T, 2>&)> _inner_pressure;
     mechanical_boundaries_conditions_2d<T> _boundaries_conditions;
     evaluated_mechanical_parameters<T> _parameters;
-    T _time_step = T{1};
-    T _time = T{0};
+    T _time_step = T{ 1 };
+    T _time = T{ 0 };
 
-public:
+  public:
     explicit motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
 
     const std::vector<std::array<T, 2>>& displacement() const noexcept;
@@ -38,25 +38,20 @@ public:
     T time_step() const noexcept;
     T time() const noexcept;
 
-    void compute(const raw_mechanical_parameters<T>& parameters,
-                 mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
-                 const T time_step,
-                 const std::function<std::array<T, 2>(const std::array<T, 2>&)>& inner_pressure = nullptr,
+    void compute(const raw_mechanical_parameters<T>& parameters, mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
+                 const T time_step, const std::function<std::array<T, 2>(const std::array<T, 2>&)>& inner_pressure = nullptr,
                  const std::function<std::array<T, 2>(const std::array<T, 2>&)>& init_dist = nullptr,
-                 const T initial_time = T{0});
+                 const T initial_time = T{ 0 });
 
     void calc_step();
 };
 
 template<std::floating_point T>
 motion_equation_solver<T>::motion_equation_solver(const std::shared_ptr<mesh::mesh_2d<T>>& mesh)
-    : _mesh{mesh}
-    , _mass{mesh}
-    , _stiffness{mesh} 
-    , _right_part(mesh->container().nodes_count(), std::array<T, 2>{})
-    , _displacement_prev(mesh->container().nodes_count(), std::array<T, 2>{})
-    , _displacement_curr(mesh->container().nodes_count(), std::array<T, 2>{})
-    , _displacement_next(mesh->container().nodes_count(), std::array<T, 2>{}) {}
+    : _mesh{ mesh }, _mass{ mesh }, _stiffness{ mesh }, _right_part(mesh->container().nodes_count(), std::array<T, 2>{}),
+      _displacement_prev(mesh->container().nodes_count(), std::array<T, 2>{}),
+      _displacement_curr(mesh->container().nodes_count(), std::array<T, 2>{}),
+      _displacement_next(mesh->container().nodes_count(), std::array<T, 2>{}) {}
 
 template<std::floating_point T>
 const std::vector<std::array<T, 2>>& motion_equation_solver<T>::displacement() const noexcept {
@@ -65,7 +60,7 @@ const std::vector<std::array<T, 2>>& motion_equation_solver<T>::displacement() c
 
 template<std::floating_point T>
 mechanical_solution_2d<T> motion_equation_solver<T>::solution(const bool strain_and_stress) const {
-    mechanical_solution_2d<T> sol{_mass.mesh_ptr(), _parameters, displacement()};
+    mechanical_solution_2d<T> sol{ _mass.mesh_ptr(), _parameters, displacement() };
     if (strain_and_stress)
         sol.calc_strain_and_stress(_parameters);
     return sol;
@@ -83,8 +78,7 @@ T motion_equation_solver<T>::time() const noexcept {
 
 template<std::floating_point T>
 void motion_equation_solver<T>::compute(const raw_mechanical_parameters<T>& parameters,
-                                        mechanical_boundaries_conditions_2d<T>&& boundaries_conditions,
-                                        const T time_step,
+                                        mechanical_boundaries_conditions_2d<T>&& boundaries_conditions, const T time_step,
                                         const std::function<std::array<T, 2>(const std::array<T, 2>&)>& inner_pressure,
                                         const std::function<std::array<T, 2>(const std::array<T, 2>&)>& init_dist,
                                         const T initial_time) {
@@ -93,7 +87,7 @@ void motion_equation_solver<T>::compute(const raw_mechanical_parameters<T>& para
     _boundaries_conditions = std::move(boundaries_conditions);
 
     if (init_dist) {
-        for(const size_t node : _mesh->container().nodes())
+        for (const size_t node : _mesh->container().nodes())
             _displacement_next[node] = (*init_dist)(_mesh->container().node_coord(node));
         _displacement_curr = _displacement_next;
         _displacement_prev = _displacement_curr;
@@ -123,7 +117,7 @@ void motion_equation_solver<T>::compute(const raw_mechanical_parameters<T>& para
 
 template<std::floating_point T>
 void motion_equation_solver<T>::calc_step() {
-    std::fill(_right_part.begin(), _right_part.end(), T{0});
+    std::fill(_right_part.begin(), _right_part.end(), T{ 0 });
     _displacement_prev.swap(_displacement_curr);
     _displacement_curr.swap(_displacement_next);
     boundary_condition_second_kind_2d(_right_part, *_mesh, _boundaries_conditions);
@@ -131,7 +125,7 @@ void motion_equation_solver<T>::calc_step() {
         integrate_right_part(_right_part, *_mesh, _inner_pressure);
     _right_part -= _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>() * _displacement_prev;
     auto tmp = _mass.matrix().inner().template self_adjoint<metamath::linear::matrix_part::Upper>() * _displacement_curr;
-    tmp *= T{2};
+    tmp *= T{ 2 };
     _right_part += tmp;
     _right_part -= _boundary_matrix * calc_first_kind_vector(_mesh->container(), _boundaries_conditions);
     first_kind_fill_2d(_right_part, _mesh->container(), _boundaries_conditions);
@@ -139,4 +133,4 @@ void motion_equation_solver<T>::calc_step() {
     _time += time_step();
 }
 
-}
+} // namespace nonlocal::solver_2d::mechanical

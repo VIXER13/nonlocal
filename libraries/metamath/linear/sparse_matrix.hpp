@@ -11,12 +11,11 @@ struct sparse_matrix final {
     std::vector<T> values;
 
     sparse_matrix() = default;
-    explicit sparse_matrix(const size_t rows, const size_t cols)
-        : portrait{rows, cols} {}
+    explicit sparse_matrix(const size_t rows, const size_t cols) : portrait{ rows, cols } {}
 
     template<matrix_part Part>
     self_adjoint_view<Part, T, I, J> self_adjoint() const {
-        return self_adjoint_view<Part, T, I, J>{*this};
+        return self_adjoint_view<Part, T, I, J>{ *this };
     }
 
     size_t rows() const {
@@ -50,4 +49,4 @@ struct sparse_matrix final {
     }
 };
 
-}
+} // namespace metamath::linear

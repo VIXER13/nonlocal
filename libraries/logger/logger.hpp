@@ -10,15 +10,7 @@
 
 namespace logger {
 
-enum class level : uint8_t {
-    Off,
-    Error,
-    Warning,
-    Info,
-    Debug,
-    Trace,
-    Count
-};
+enum class level : uint8_t { Off, Error, Warning, Info, Debug, Trace, Count };
 
 struct stream_base {
     std::ostream& out;
@@ -32,7 +24,7 @@ class logger {
 
     explicit logger(std::unique_ptr<stream_base>&& out);
 
-public:
+  public:
     std::chrono::time_point<std::chrono::system_clock> initial_time() const;
 
     friend logger& get(const level level, std::unique_ptr<stream_base>&& init);
@@ -44,7 +36,7 @@ public:
 
     template<class T>
     friend logger& operator<<(logger& log, const T& value);
-    friend logger& operator<<(logger& log, std::ostream&(*f)(std::ostream&));
+    friend logger& operator<<(logger& log, std::ostream& (*f)(std::ostream&));
 };
 
 logger& get(const level level = level::Info, std::unique_ptr<stream_base>&& init = nullptr);
@@ -78,4 +70,4 @@ struct file_stream : public stream_base {
     explicit file_stream(const std::filesystem::path& path);
 };
 
-}
+} // namespace logger

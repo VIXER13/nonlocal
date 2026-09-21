@@ -7,26 +7,30 @@
 namespace nonlocal::solver_2d::mechanical {
 
 template<std::floating_point T>
-evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::mesh_2d<T>& mesh, 
+evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::mesh_2d<T>& mesh,
                                                                   const raw_mechanical_parameters<T>& parameters,
                                                                   const std::vector<T>& delta_temperature = {}) {
     evaluated_mechanical_parameters<T> result;
-    const auto temperature = delta_temperature.empty() ? delta_temperature : nonlocal::mesh::utils::nodes_to_qnodes(mesh, delta_temperature);
+    const auto temperature =
+        delta_temperature.empty() ? delta_temperature : nonlocal::mesh::utils::nodes_to_qnodes(mesh, delta_temperature);
     for (const auto& [name, parameter] : parameters) {
         auto& [_, physical] = result[name] = { .model = parameter.model };
 
-        physical.elastic = std::visit([&mesh, &name](const auto& elastic) -> evaluated_hook_matrix_t<T> {
-            if (elastic.is_constant())
-                return elastic.hooke({});
-            const auto qshifts = mesh.quad_shifts(name);
-            using Hooke = std::remove_cvref_t<decltype(elastic.hooke({}))>;
-            metamath::types::vector_with_shifted_index<Hooke> result = { .container = std::vector<Hooke>(qshifts.size()),
-                                                                         .shift = qshifts.front() };
-            for(const size_t qshift : qshifts)
-                result[qshift] = elastic.hooke(mesh.quad_coord(qshift));
-            return result;
-        }, parameter.physical.elastic);
+        physical.elastic = std::visit(
+            [&mesh, &name](const auto& elastic) -> evaluated_hook_matrix_t<T> {
+                if (elastic.is_constant())
+                    return elastic.hooke({});
+                const auto qshifts = mesh.quad_shifts(name);
+                using Hooke = std::remove_cvref_t<decltype(elastic.hooke({}))>;
+                metamath::types::vector_with_shifted_index<Hooke> result = { .container = std::vector<Hooke>(qshifts.size()),
+                                                                             .shift = qshifts.front() };
+                for (const size_t qshift : qshifts)
+                    result[qshift] = elastic.hooke(mesh.quad_coord(qshift));
+                return result;
+            },
+            parameter.physical.elastic);
 
+        // clang-format off
         physical.density = std::visit(metamath::types::visitor{
             [](const std::monostate) -> evaluated_density_t<T> { return std::monostate{}; },
             [&mesh, &name](const coefficient_t<T, 2>& density) -> evaluated_density_t<T> {
@@ -40,10 +44,11 @@ evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::me
                 return result;
             }
         }, parameter.physical.density);
-
+        // clang-format on
         if (temperature.empty())
             continue;
 
+        // clang-format off
         physical.thermal_strain = std::visit(metamath::types::visitor{
             [](const std::monostate) -> evaluated_thermal_strain_t<T> { return std::monostate{}; },
             [&mesh, &name, &temperature](const raw_isotropic_thermal_expansion_t<T>& thermal_expansion) -> evaluated_thermal_strain_t<T> {
@@ -84,8 +89,9 @@ evaluated_mechanical_parameters<T> evaluate_mechanical_parameters(const mesh::me
                 return result;
             }
         }, parameter.physical.thermal_expansion);
+        // clang-format on
     }
     return result;
 }
 
-}
+} // namespace nonlocal::solver_2d::mechanical

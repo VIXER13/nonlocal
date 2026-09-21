@@ -14,4 +14,4 @@ std::string get_model_field(const nlohmann::json& config, const std::string& pat
     return "";
 }
 
-}
+} // namespace nonlocal::config

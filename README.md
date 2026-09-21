@@ -69,3 +69,16 @@ make run-tests
   pip3 install gersemi
   find . -type f -name CMakeLists.txt -exec python3 -m  gersemi -i --definitions CMakeTools/EmbeddedFiles.cmake {} +
   ```
+- Требуется держать исходные файлы в отформатированном состоянии согласно конфигу [.clang-format](.clang-format).
+  - Для локального отключения форматирования можно:
+    - добавить `///` в конец конкретной строки
+      ```cpp
+      ... код ... ///
+      ```
+    - использовать стандартные комментарии для блока кода:
+      ```cpp
+      // clang-format off
+      ... код ...
+      // clang-format on
+      ```
+  - В проект добавлены настройки VS Code, включающие форматирование при сохранении (`format on save`). Чтобы избежать конфликтов с глобальными настройками редактора, рекомендуется сохранить папку проекта как Workspace (**File > Save Workspace as...**) и хранить свои личные настройки в `.code-workspace` файле.

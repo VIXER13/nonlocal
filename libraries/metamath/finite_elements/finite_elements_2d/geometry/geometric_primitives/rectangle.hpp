@@ -7,19 +7,22 @@ namespace metamath::finite_element {
 
 template<class T>
 class rectangle_element_geometry {
-protected:
-    static inline const std::array<std::function<T(const T)>, 4>
-        boundary = { [](const T x) constexpr noexcept { return T{-1}; },
-                     [](const T x) constexpr noexcept { return T{ 1}; },
-                     [](const T y) constexpr noexcept { return T{-1}; },
-                     [](const T y) constexpr noexcept { return T{ 1}; } };
+  protected:
+    static inline const std::array<std::function<T(const T)>, 4> boundary = {
+        [](const T x) constexpr noexcept { return T{ -1 }; }, //
+        [](const T x) constexpr noexcept { return T{ 1 }; },  //
+        [](const T y) constexpr noexcept { return T{ -1 }; }, //
+        [](const T y) constexpr noexcept { return T{ 1 }; }
+    };
 
     explicit rectangle_element_geometry() = default;
 
-public:
+  public:
     virtual ~rectangle_element_geometry() noexcept = default;
 
-    static constexpr T area() noexcept { return T{4}; }
+    static constexpr T area() noexcept {
+        return T{ 4 };
+    }
 };
 
-}
+} // namespace metamath::finite_element

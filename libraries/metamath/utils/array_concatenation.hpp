@@ -10,9 +10,9 @@ class _concat final {
     constexpr explicit _concat() noexcept = default;
 
     template<class T, size_t N, size_t M, size_t... I, size_t... J>
-    static constexpr std::array<T, N + M> concat_impl(const std::array<T, N>& first,   const std::array<T, M>& second,
-                                                 const std::index_sequence<I...>, const std::index_sequence<J...>) {
-        return {first[I]..., second[J]...};
+    static constexpr std::array<T, N + M> concat_impl(const std::array<T, N>& first, const std::array<T, M>& second,
+                                                      const std::index_sequence<I...>, const std::index_sequence<J...>) {
+        return { first[I]..., second[J]... };
     }
 
     template<class T, size_t N, size_t M>
@@ -25,7 +25,7 @@ class _concat final {
         return concat_impl(first, concat_impl(arrays...));
     }
 
-public:
+  public:
     template<class T, size_t N, size_t... I>
     friend constexpr std::array<T, N + (I + ...)> concat(const std::array<T, N>& first, const std::array<T, I>&... arrays);
 };
@@ -40,4 +40,4 @@ constexpr std::array<T, N> concat(const std::array<T, N> first) {
     return first;
 }
 
-}
+} // namespace metamath::utils

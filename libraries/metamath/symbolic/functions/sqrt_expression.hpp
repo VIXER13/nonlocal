@@ -12,9 +12,8 @@ template<class E>
 class sqrt_expression : public unary_expression<E, sqrt_expression> {
     using _base = unary_expression<E, sqrt_expression>;
 
-public:
-    constexpr explicit sqrt_expression(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit sqrt_expression(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     auto operator()(const Args&... args) const {
@@ -29,7 +28,7 @@ public:
 
 template<class E>
 constexpr sqrt_expression<E> sqrt(const expression<E>& e) noexcept {
-    return sqrt_expression<E>{e()};
+    return sqrt_expression<E>{ e() };
 }
 
-}
+} // namespace metamath::symbolic

@@ -1,11 +1,11 @@
-#include <boost/ut.hpp>
 #include <logger/logger.hpp>
+
+#include <boost/ut.hpp>
 
 using namespace logger;
 using namespace boost::ut;
 
-namespace
-{
+namespace {
 const suite<"logger"> _ = [] {
     "parse_level"_test = [] {
         // Test valid levels (case insensitive)
@@ -35,4 +35,4 @@ const suite<"logger"> _ = [] {
         ss.clear();
     };
 };
-}
+} // namespace

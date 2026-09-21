@@ -4,33 +4,19 @@
 
 namespace nonlocal::config {
 
-enum class problem_t : uint8_t {
-    Unknown,
-    Thermal,
-    Mechanical,
-    Thermomechanical
-};
+enum class problem_t : uint8_t { Unknown, Thermal, Mechanical, Thermomechanical };
 
-NLOHMANN_JSON_SERIALIZE_ENUM(problem_t, {
-    {problem_t::Unknown, nullptr},
-    {problem_t::Thermal, "thermal"},
-    {problem_t::Mechanical, "mechanical"},
-    {problem_t::Thermomechanical, "thermomechanical"},
-})
+NLOHMANN_JSON_SERIALIZE_ENUM(problem_t, { { problem_t::Unknown, nullptr },
+                                          { problem_t::Thermal, "thermal" },
+                                          { problem_t::Mechanical, "mechanical" },
+                                          { problem_t::Thermomechanical, "thermomechanical" } })
 
-enum class analysis_type_t : uint8_t {
-    Stationary,
-    Time_Harmonic,
-    Time_Dependent,
-    Unknown
-};
+enum class analysis_type_t : uint8_t { Stationary, Time_Harmonic, Time_Dependent, Unknown };
 
-NLOHMANN_JSON_SERIALIZE_ENUM(analysis_type_t, {
-    {analysis_type_t::Stationary, "stationary"},
-    {analysis_type_t::Time_Harmonic, "time_harmonic"},
-    {analysis_type_t::Time_Dependent, "time_dependent"},
-    {analysis_type_t::Unknown, nullptr}
-})
+NLOHMANN_JSON_SERIALIZE_ENUM(analysis_type_t, { { analysis_type_t::Stationary, "stationary" },
+                                                { analysis_type_t::Time_Harmonic, "time_harmonic" },
+                                                { analysis_type_t::Time_Dependent, "time_dependent" },
+                                                { analysis_type_t::Unknown, nullptr } })
 
 struct task_data final {
     size_t dimension = 0;
@@ -42,4 +28,4 @@ struct task_data final {
     operator nlohmann::json() const;
 };
 
-}
+} // namespace nonlocal::config

@@ -1,13 +1,13 @@
 #pragma once
 
 #include "conductivity_matrix_2d.hpp"
+#include "convection_condition_2d.hpp"
 #include "heat_capacity_matrix_2d.hpp"
 #include "heat_equation_solution_2d.hpp"
-#include "convection_condition_2d.hpp"
-#include "radiation_condition_2d.hpp"
 #include "init_problem_settings.hpp"
-#include "thermal_parameters_2d.hpp"
+#include "radiation_condition_2d.hpp"
 #include "thermal_boundary_conditions_2d.hpp"
+#include "thermal_parameters_2d.hpp"
 
 #include <solvers/slae/init_solver.hpp>
 #include <solvers/solver_2d/base/boundary_condition_first_kind_2d.hpp>
@@ -29,11 +29,11 @@ class nonstationary_heat_equation_solver_2d final {
     std::function<T(const std::array<T, 2>&)> _inner_flux;
     thermal_boundaries_conditions_2d<T> _boundaries_conditions;
     evaluated_thermal_parameters<T> _parameters;
-    T _time_step = T{1};
-    T _time = T{0};
+    T _time_step = T{ 1 };
+    T _time = T{ 0 };
     bool is_symmetric = false;
 
-public:
+  public:
     explicit nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh);
 
     const std::vector<T>& temperature() const noexcept;
@@ -44,23 +44,17 @@ public:
     void set_boundaries(thermal_boundaries_conditions_2d<T>&& boundaries_conditions);
     void set_inner_flux(const std::function<T(const std::array<T, 2>&)>& inner_flux);
 
-    void compute(const raw_thermal_parameters<T>& parameters,
-                 thermal_boundaries_conditions_2d<T>&& boundaries_conditions,
-                 const T time_step, 
-                 const std::function<T(const std::array<T, 2>&)>& inner_flux = nullptr,
-                 const std::function<T(const std::array<T, 2>&)>& init_dist = nullptr, 
-                 const T initial_time = T{0});
+    void compute(const raw_thermal_parameters<T>& parameters, thermal_boundaries_conditions_2d<T>&& boundaries_conditions,
+                 const T time_step, const std::function<T(const std::array<T, 2>&)>& inner_flux = nullptr,
+                 const std::function<T(const std::array<T, 2>&)>& init_dist = nullptr, const T initial_time = T{ 0 });
 
     void calc_step();
 };
 
 template<std::floating_point T>
 nonstationary_heat_equation_solver_2d<T>::nonstationary_heat_equation_solver_2d(const std::shared_ptr<mesh::mesh_2d<T>>& mesh)
-    : _mesh{mesh}
-    , _conductivity{*_mesh}
-    , _capacity{*_mesh}
-    , _right_part(mesh->container().nodes_count(), T{0})
-    , _temperature(mesh->container().nodes_count(), T{0}) {}
+    : _mesh{ mesh }, _conductivity{ *_mesh }, _capacity{ *_mesh }, _right_part(mesh->container().nodes_count(), T{ 0 }),
+      _temperature(mesh->container().nodes_count(), T{ 0 }) {}
 
 template<std::floating_point T>
 const std::vector<T>& nonstationary_heat_equation_solver_2d<T>::temperature() const noexcept {
@@ -69,7 +63,7 @@ const std::vector<T>& nonstationary_heat_equation_solver_2d<T>::temperature() co
 
 template<std::floating_point T>
 heat_equation_solution_2d<T> nonstationary_heat_equation_solver_2d<T>::solution(const bool flux) const {
-    heat_equation_solution_2d<T> sol{_mesh, _parameters, temperature()};
+    heat_equation_solution_2d<T> sol{ _mesh, _parameters, temperature() };
     if (flux)
         sol.calc_flux();
     return sol;
@@ -98,9 +92,9 @@ void nonstationary_heat_equation_solver_2d<T>::set_inner_flux(const std::functio
 template<std::floating_point T>
 void nonstationary_heat_equation_solver_2d<T>::compute(const raw_thermal_parameters<T>& parameters,
                                                        thermal_boundaries_conditions_2d<T>&& boundaries_conditions,
-                                                       const T time_step, 
+                                                       const T time_step,
                                                        const std::function<T(const std::array<T, 2>&)>& inner_flux,
-                                                       const std::function<T(const std::array<T, 2>&)>& init_dist, 
+                                                       const std::function<T(const std::array<T, 2>&)>& init_dist,
                                                        const T initial_time) {
     _time_step = time_step;
     _time = initial_time;
@@ -108,7 +102,7 @@ void nonstationary_heat_equation_solver_2d<T>::compute(const raw_thermal_paramet
     set_boundaries(std::move(boundaries_conditions));
 
     if (init_dist)
-        for(const size_t node : _mesh->container().nodes())
+        for (const size_t node : _mesh->container().nodes())
             _temperature[node] = init_dist(_mesh->container().node_coord(node));
     _parameters = evaluate_conductivity(*_mesh, parameters, mesh::utils::nodes_to_qnodes<T>(*_mesh, _temperature));
 
@@ -122,7 +116,7 @@ void nonstationary_heat_equation_solver_2d<T>::compute(const raw_thermal_paramet
     remove_first_kind_elements(_conductivity.matrix(), settings.is_inner_nodes);
 
     _slae_solver = slae::init_iterative_solver(_conductivity.matrix(), is_symmetric);
-    
+
     settings.set_fully_local();
     _capacity.compute(_parameters, settings);
     _capacity.matrix() /= time_step;
@@ -137,7 +131,7 @@ void nonstationary_heat_equation_solver_2d<T>::compute(const raw_thermal_paramet
 
 template<std::floating_point T>
 void nonstationary_heat_equation_solver_2d<T>::calc_step() {
-    std::fill(_right_part.begin(), _right_part.end(), T{0});
+    std::fill(_right_part.begin(), _right_part.end(), T{ 0 });
     // TODO: radiation condition
     boundary_condition_second_kind_2d(_right_part, _conductivity.mesh(), _boundaries_conditions);
     if (_inner_flux)
@@ -150,4 +144,4 @@ void nonstationary_heat_equation_solver_2d<T>::calc_step() {
     _time += time_step();
 }
 
-}
+} // namespace nonlocal::solver_2d::thermal

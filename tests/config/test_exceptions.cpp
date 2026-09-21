@@ -1,15 +1,12 @@
 #include "test_exceptions_json.h"
 
-#include <config/read_model.hpp>
-
-#include <config/read_thermal_parameters.hpp>
-#include <config/read_thermal_boundary_conditions.hpp>
-
-#include <config/read_mechanical_parameters.hpp>
-#include <config/read_mechanical_boundary_conditions.hpp>
-
 #include <config/frequency_data.hpp>
+#include <config/read_mechanical_boundary_conditions.hpp>
+#include <config/read_mechanical_parameters.hpp>
 #include <config/read_mesh.hpp>
+#include <config/read_model.hpp>
+#include <config/read_thermal_boundary_conditions.hpp>
+#include <config/read_thermal_parameters.hpp>
 
 #include <boost/ut.hpp>
 
@@ -20,14 +17,14 @@ using namespace nonlocal::config;
 
 template<class Function>
 void expect_throws(const Function& function, const nlohmann::json& config, const std::string& field) {
-    expect(throws<std::domain_error>([&function, &config, &field]{ function(config[field], field); }));
+    expect(throws<std::domain_error>([&function, &config, &field] { function(config[field], field); }));
 }
 
 template<class Function>
 void expect_nothrows(const Function& function, const nlohmann::json& config, const std::string& field) {
-    expect(nothrow([&function, &config, &field]{ function(config[field], field); }));
+    expect(nothrow([&function, &config, &field] { function(config[field], field); }));
 }
-
+// clang-format off
 const suite<"config_exceptions"> _ = [] {
     using T = double;
     const nlohmann::json config = nlohmann::json::parse(test_exceptions_json_data);
@@ -98,7 +95,7 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_emissivity_greater_than_1_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_missed_temperature_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_negative_heat_transfer_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_negative_emissivity_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,"thermal_boundaries_conditions_combined_negative_emissivity_fail");
         expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_temperature_and_flux_ok");
         expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_convenction_and_radiation_ok");
         expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_ok");
@@ -159,8 +156,8 @@ const suite<"config_exceptions"> _ = [] {
     };
 
     "read_frequency"_test = [&config] {
-        static constexpr auto create_frequency_data = [](const nlohmann::json& config, const std::string& field) { 
-            const frequency_data<T> sweep{config, field};
+        static constexpr auto create_frequency_data = [](const nlohmann::json& config, const std::string& field) {
+            const frequency_data<T> sweep{ config, field };
         };
         expect_throws(create_frequency_data, config, "read_frequency_missed_all_parameters_fail");
         expect_throws(create_frequency_data, config, "read_frequency_negative_min_fail");
@@ -172,5 +169,5 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(create_frequency_data, config, "read_frequency_ok_2");
     };
 };
-
-}
+//clang-format on
+} // namespace

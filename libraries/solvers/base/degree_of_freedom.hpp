@@ -13,4 +13,4 @@ struct degree_of_freedom<std::array<T, Dimension>> : std::integral_constant<size
 template<class T>
 constexpr size_t DoF = degree_of_freedom<T>::value;
 
-}
+} // namespace nonlocal
