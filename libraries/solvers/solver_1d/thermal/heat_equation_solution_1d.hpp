@@ -1,5 +1,7 @@
 #pragma once
 
+#include "thermal_parameters_1d.hpp"
+
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/base/solution_1d.hpp>
