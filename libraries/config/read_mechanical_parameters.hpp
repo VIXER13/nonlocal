@@ -63,11 +63,10 @@ solver_1d::mechanical::parameters_1d<T> read_mechanical_parameters_1d(const nloh
         const std::string path_with_access = append_access_sign(append_access_sign(path, i));
         check_required_fields(config_material, { "physical" }, path_with_access);
         const std::string model_field = get_model_field(config_material, path_with_access, "mechanical");
-        parameters[i] = { .model = model_field.empty()
-                                       ? model_parameters<1u, T>{}
-                                       : read_model_1d<T>(config_material[model_field], path_with_access + model_field),
-                          .physical = _mechanical_parameters_1d::read_mechanical_coefficient_1d<T>(
-                              config_material["physical"], path_with_access + "physical") };
+        parameters[i] = { 
+            .model = model_field.empty() ? model_parameters<1u, T>{} : read_model_1d<T>(config_material[model_field], path_with_access + model_field), ///
+            .physical = _mechanical_parameters_1d::read_mechanical_coefficient_1d<T>(config_material["physical"], path_with_access + "physical")       ///
+        };
     }
     return parameters;
 }
@@ -221,11 +220,8 @@ solver_2d::mechanical::raw_thermal_expansion_t<T> _mechanical_parameters_2d::rea
             read_coefficient<T, 2u>(expansion[YY], append_access_sign(path, YY)),
             read_coefficient<T, 2u>(expansion[XY], append_access_sign(path, XY))
         };
-    throw std::domain_error{ "The thermal expansion parameter \"" + path +
-                             "\" "
-                             "shall be either a number in the isotropic case, "
-                             "or an array of size 2 in the orthotropic case, "
-                             "or an array of size 3 in the anisotropic case." };
+    throw std::domain_error{ "The thermal expansion parameter \"" + path + "\" shall be either a number in the isotropic case," +
+                             "or an array of size 2 in the orthotropic case, or an array of size 3 in the anisotropic case." };
 }
 
 template<std::floating_point T>

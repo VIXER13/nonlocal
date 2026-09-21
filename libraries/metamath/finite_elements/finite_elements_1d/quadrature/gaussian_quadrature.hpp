@@ -33,7 +33,7 @@ template<std::floating_point T>
 class gauss<T, 3> : public geometry_1d<T, standart_segment_geometry> {
   protected:
     static inline constexpr std::array<T, 3> nodes = { -functions::sqrt(T{ 3 } / T{ 5 }), T{ 0 },
-                                                       functions::sqrt(T{ 3 } / T{ 5 }) };
+                                                       +functions::sqrt(T{ 3 } / T{ 5 }) };
     static inline constexpr std::array<T, 3> weights = { T{ 5 } / T{ 9 }, T{ 8 } / T{ 9 }, T{ 5 } / T{ 9 } };
 
     constexpr explicit gauss() noexcept = default;

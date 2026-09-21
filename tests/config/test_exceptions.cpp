@@ -24,7 +24,7 @@ template<class Function>
 void expect_nothrows(const Function& function, const nlohmann::json& config, const std::string& field) {
     expect(nothrow([&function, &config, &field] { function(config[field], field); }));
 }
-
+// clang-format off
 const suite<"config_exceptions"> _ = [] {
     using T = double;
     const nlohmann::json config = nlohmann::json::parse(test_exceptions_json_data);
@@ -87,26 +87,17 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_missed_kind_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_missed_temperature_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_missed_flux_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_third_kind_missed_temperature_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_third_kind_missed_heat_transfer_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_third_kind_negative_heat_transfer_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_third_kind_missed_temperature_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_third_kind_missed_heat_transfer_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_third_kind_negative_heat_transfer_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_missed_emissivity_fail");
         expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_negative_emissivity_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_emissivity_greater_than_1_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_combined_missed_temperature_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_combined_negative_heat_transfer_fail");
-        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,
-                      "thermal_boundaries_conditions_combined_negative_emissivity_fail");
-        expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config,
-                        "thermal_boundaries_conditions_temperature_and_flux_ok");
-        expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config,
-                        "thermal_boundaries_conditions_convenction_and_radiation_ok");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_emissivity_greater_than_1_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_missed_temperature_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_negative_heat_transfer_fail");
+        expect_throws(read_thermal_boundaries_conditions_1d<T>, config,"thermal_boundaries_conditions_combined_negative_emissivity_fail");
+        expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_temperature_and_flux_ok");
+        expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_convenction_and_radiation_ok");
         expect_nothrows(read_thermal_boundaries_conditions_1d<T>, config, "thermal_boundaries_conditions_combined_ok");
     };
 
@@ -115,24 +106,15 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_left_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_right_fail");
         expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_kind_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_missed_displacement_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_missed_pressure_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_third_kind_missed_displacement_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_third_kind_missed_stiffness_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_third_kind_negative_stiffness_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_combined_missed_displacement_fail");
-        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config,
-                      "mechanical_boundaries_conditions_combined_negative_stiffness_fail");
-        expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config,
-                        "mechanical_boundaries_conditions_displacement_and_pressure_ok");
-        expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config,
-                        "mechanical_boundaries_conditions_spring_and_displacement_ok");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_displacement_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_missed_pressure_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_third_kind_missed_displacement_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_third_kind_missed_stiffness_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_third_kind_negative_stiffness_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_combined_missed_displacement_fail");
+        expect_throws(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_combined_negative_stiffness_fail");
+        expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_displacement_and_pressure_ok");
+        expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_spring_and_displacement_ok");
         expect_nothrows(read_mechanical_boundaries_conditions_1d<T>, config, "mechanical_boundaries_conditions_combined_ok");
     };
 
@@ -143,37 +125,25 @@ const suite<"config_exceptions"> _ = [] {
         expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_missed_kind_fail");
         expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_missed_temperature_fail");
         expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_missed_flux_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_third_kind_missed_temperature_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_third_kind_missed_heat_transfer_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_third_kind_negative_heat_transfer_fail");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_third_kind_missed_temperature_fail");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_third_kind_missed_heat_transfer_fail");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_third_kind_negative_heat_transfer_fail");
         expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_missed_emissivity_fail");
         expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_negative_emissivity_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_emissivity_greater_than_1_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_combined_missed_temperature_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_combined_negative_heat_transfer_fail");
-        expect_throws(read_thermal_boundaries_conditions_2d<T>, config,
-                      "thermal_boundaries_conditions_combined_negative_emissivity_fail");
-        expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config,
-                        "thermal_boundaries_conditions_temperature_and_flux_ok");
-        expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config,
-                        "thermal_boundaries_conditions_convenction_and_radiation_ok");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_emissivity_greater_than_1_fail");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_combined_missed_temperature_fail");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_combined_negative_heat_transfer_fail");
+        expect_throws(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_combined_negative_emissivity_fail");
+        expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_temperature_and_flux_ok");
+        expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_convenction_and_radiation_ok");
         expect_nothrows(read_thermal_boundaries_conditions_2d<T>, config, "thermal_boundaries_conditions_combined_ok");
     };
 
     "read_mechanical_boundaries_conditions_2d"_test = [&config] {
         expect_nothrows(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_empty_ok");
-        expect_throws(read_mechanical_boundaries_conditions_2d<T>, config,
-                      "mechanical_boundaries_conditions_2d_empty_condition_fail");
-        expect_throws(read_mechanical_boundaries_conditions_2d<T>, config,
-                      "mechanical_boundaries_conditions_2d_wrong_dimension_1_fail");
-        expect_throws(read_mechanical_boundaries_conditions_2d<T>, config,
-                      "mechanical_boundaries_conditions_2d_wrong_dimension_3_fail");
+        expect_throws(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_empty_condition_fail");
+        expect_throws(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_wrong_dimension_1_fail");
+        expect_throws(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_wrong_dimension_3_fail");
         expect_nothrows(read_mechanical_boundaries_conditions_2d<T>, config, "mechanical_boundaries_conditions_2d_ok");
     };
 
@@ -199,5 +169,5 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(create_frequency_data, config, "read_frequency_ok_2");
     };
 };
-
+//clang-format on
 } // namespace

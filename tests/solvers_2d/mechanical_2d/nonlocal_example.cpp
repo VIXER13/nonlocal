@@ -47,26 +47,22 @@ const suite<"nonlocal_test"> _ = [] {
             .physical = { .elastic = elastic } } }
     };
     mechanical_boundaries_conditions_2d<T> boundaries_conditions;
-    boundaries_conditions["Horizontal"] = { nullptr, std::make_unique<displacement_2d<T>>(T{ 0 }) };
-    boundaries_conditions["Vertical"] = { std::make_unique<displacement_2d<T>>(T{ 0 }), nullptr };
-    boundaries_conditions["Inner"] = { std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) {
-                                           return Inner_Pressure * std::cos(std::atan2(point[Y], point[X]));
-                                       }),
-                                       std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) {
-                                           return Inner_Pressure * std::sin(std::atan2(point[Y], point[X]));
-                                       }) };
-    boundaries_conditions["Outer"] = { std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) {
-                                           return -Outer_Pressure * std::cos(std::atan2(point[Y], point[X]));
-                                       }),
-                                       std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) {
-                                           return -Outer_Pressure * std::sin(std::atan2(point[Y], point[X]));
-                                       }) };
+    boundaries_conditions["Horizontal"] = { nullptr, //
+                                            std::make_unique<displacement_2d<T>>(T{ 0 }) };
+    boundaries_conditions["Vertical"] = { std::make_unique<displacement_2d<T>>(T{ 0 }), //
+                                          nullptr };
+    boundaries_conditions["Inner"] = {
+        std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return Inner_Pressure * std::cos(std::atan2(point[Y], point[X])); }), ///
+        std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return Inner_Pressure * std::sin(std::atan2(point[Y], point[X])); })  ///
+    };
+    boundaries_conditions["Outer"] = {
+        std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return -Outer_Pressure * std::cos(std::atan2(point[Y], point[X])); }), ///
+        std::make_unique<pressure_2d<T>>([](const std::array<T, 2>& point) { return -Outer_Pressure * std::sin(std::atan2(point[Y], point[X])); })  ///
+    };
     std::cerr << "with preconditioner" << std::endl;
-    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions, std::vector<T>{},
-                                               std::function<std::array<T, 2>(const std::array<T, 2>&)>{}, true);
+    const auto solution = equilibrium_equation(mesh, parameters, boundaries_conditions, std::vector<T>{}, std::function<std::array<T, 2>(const std::array<T, 2>&)>{}, true); ///
     std::cerr << "without preconditioner" << std::endl;
-    const auto solution2 = equilibrium_equation(mesh, parameters, boundaries_conditions, std::vector<T>{},
-                                                std::function<std::array<T, 2>(const std::array<T, 2>&)>{}, false);
+    const auto solution2 = equilibrium_equation(mesh, parameters, boundaries_conditions, std::vector<T>{}, std::function<std::array<T, 2>(const std::array<T, 2>&)>{}, false); ///
 };
 
 } // namespace

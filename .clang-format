@@ -27,3 +27,5 @@ IncludeIsMainRegex: '(^|/)([^/]+)\.(cpp|cc)$'
 SortIncludes: true
 Cpp11BracedListStyle: Block
 LineEnding: LF
+BreakBeforeTernaryOperators: true
+OneLineFormatOffRegex: ///$

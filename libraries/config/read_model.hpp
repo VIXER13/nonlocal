@@ -189,9 +189,7 @@ model_parameters<1u, T> read_model_1d(const nlohmann::json& config, const std::s
         _read_model::read_nonlocal_radii<T, 1u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius");
     T local_weight = config["local_weight"].get<T>();
     if (!_read_model::check_parameters<1u>(local_weight, nonlocal_radius))
-        throw std::domain_error{ "Error in model parameters \"" + path +
-                                 "\". "
-                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0." };
+        throw std::domain_error{ "Error in model parameters \"" + path + "\". local_weight shall be in the interval (0, 1] and nonlocal_radius > 0." }; ///
     _read_model::fix_parameters<1u>(local_weight, nonlocal_radius);
     return { .influence = read_influence_1d(config, path, nonlocal_radius.front()), .local_weight = local_weight };
 }
@@ -204,9 +202,7 @@ model_parameters<2u, T> read_model_2d(const nlohmann::json& config, const std::s
         _read_model::read_nonlocal_radii<T, 2u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius");
     T local_weight = config["local_weight"].get<T>();
     if (!_read_model::check_parameters<2u>(local_weight, nonlocal_radius))
-        throw std::domain_error{ "Error in model parameters \"" + path +
-                                 "\". "
-                                 "local_weight shall be in the interval (0, 1] and nonlocal_radius > 0." };
+        throw std::domain_error{ "Error in model parameters \"" + path + "\". local_weight shall be in the interval (0, 1] and nonlocal_radius > 0." }; ///
     _read_model::fix_parameters<2u>(local_weight, nonlocal_radius);
     return { .influence = read_influence_2d(config, path, nonlocal_radius), .local_weight = local_weight };
 }

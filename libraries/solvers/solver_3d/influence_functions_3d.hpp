@@ -14,10 +14,13 @@ class _superellipsoid_region {
     static T norm_pow(const std::array<T, 3>& x, const std::array<T, 3>& y, const std::array<T, 3>& r) noexcept {
         using metamath::function::power_u;
         if constexpr (N % 2)
-            return power_u<N>(std::abs(x[0] - y[0]) / r[0]) + power_u<N>(std::abs(x[1] - y[1]) / r[1]) +
+            return power_u<N>(std::abs(x[0] - y[0]) / r[0]) + //
+                   power_u<N>(std::abs(x[1] - y[1]) / r[1]) + //
                    power_u<N>(std::abs(x[2] - y[2]) / r[2]);
         else
-            return power_u<N>((x[0] - y[0]) / r[0]) + power_u<N>((x[1] - y[1]) / r[1]) + power_u<N>((x[2] - y[2]) / r[2]);
+            return power_u<N>((x[0] - y[0]) / r[0]) + //
+                   power_u<N>((x[1] - y[1]) / r[1]) + //
+                   power_u<N>((x[2] - y[2]) / r[2]);
     }
 
   public:
@@ -129,7 +132,9 @@ class normal_distribution_3d final {
     }
     void set_radius(const std::array<T, 3>& r) noexcept {
         _r = r;
-        _disp_mul = { -T{ 0.5 } / (_r[0] * _r[0]), -T{ 0.5 } / (_r[1] * _r[1]), -T{ 0.5 } / (_r[2] * _r[2]) };
+        _disp_mul = { -T{ 0.5 } / (_r[0] * _r[0]), //
+                      -T{ 0.5 } / (_r[1] * _r[1]), //
+                      -T{ 0.5 } / (_r[2] * _r[2]) };
         _norm = T{ 0.5 } / (std::sqrt(2 * T{ M_PI }) * T{ M_PI } * r[0] * r[1] * r[2]);
     }
 
@@ -142,7 +147,8 @@ class normal_distribution_3d final {
 
     T operator()(const std::array<T, 3>& x, const std::array<T, 3>& y) const noexcept {
         using metamath::function::power;
-        return _norm * std::exp(_disp_mul[0] * power<2>(x[0] - y[0]) + _disp_mul[1] * power<2>(x[1] - y[1]) +
+        return _norm * std::exp(_disp_mul[0] * power<2>(x[0] - y[0]) + //
+                                _disp_mul[1] * power<2>(x[1] - y[1]) + //
                                 _disp_mul[2] * power<2>(x[2] - y[2]));
     }
 };

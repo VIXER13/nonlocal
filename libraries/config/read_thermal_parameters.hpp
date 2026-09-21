@@ -131,10 +131,8 @@ solver_2d::thermal::raw_conductivity_t<T> _read_thermal_parameters::read_conduct
             read_coefficient<T, 2u>(config[YY], append_access_sign(path, YY)),
             read_coefficient<T, 2u>(config[XY], append_access_sign(path, XY))
         };
-    throw std::domain_error{ "The thermal conductivity parameter \"" + path +
-                             "\" "
-                             "shall be either a number in the isotropic case, "
-                             "or an array of size 2 in the orthotropic case, "
+    throw std::domain_error{ "The thermal conductivity parameter \"" + path + "\" shall be either a number in the isotropic " +
+                             "case, or an array of size 2 in the orthotropic case, "
                              "or an array of size 3 in the anisotropic case." };
 }
 

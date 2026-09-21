@@ -16,8 +16,9 @@ using orthotropic_thermal_expansion_t = std::array<T, 2>;
 template<class T>
 using anisotropic_thermal_expansion_t = std::array<T, 3>;
 template<class T>
-using thermal_expansion_t =
-    std::variant<isotropic_thermal_expansion_t<T>, orthotropic_thermal_expansion_t<T>, anisotropic_thermal_expansion_t<T>>;
+using thermal_expansion_t = std::variant<isotropic_thermal_expansion_t<T>,   //
+                                         orthotropic_thermal_expansion_t<T>, //
+                                         anisotropic_thermal_expansion_t<T>>;
 
 template<std::floating_point T>
 using raw_isotropic_thermal_expansion_t = isotropic_thermal_expansion_t<coefficient_t<T, 2>>;
@@ -26,8 +27,10 @@ using raw_orthotropic_thermal_expansion_t = orthotropic_thermal_expansion_t<coef
 template<std::floating_point T>
 using raw_anisotropic_thermal_expansion_t = anisotropic_thermal_expansion_t<coefficient_t<T, 2>>;
 template<std::floating_point T>
-using raw_thermal_expansion_t = std::variant<std::monostate, raw_isotropic_thermal_expansion_t<T>,
-                                             raw_orthotropic_thermal_expansion_t<T>, raw_anisotropic_thermal_expansion_t<T>>;
+using raw_thermal_expansion_t = std::variant<std::monostate,                         //
+                                             raw_isotropic_thermal_expansion_t<T>,   //
+                                             raw_orthotropic_thermal_expansion_t<T>, //
+                                             raw_anisotropic_thermal_expansion_t<T>>;
 
 template<std::floating_point T>
 struct isotropic_thermal_strain final {
