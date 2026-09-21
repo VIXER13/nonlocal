@@ -85,17 +85,17 @@ nonstationary_heat_equation_solver_1d<T, I>::nonstationary_heat_equation_solver_
 template<class T, class I>
 coefficient_t<T, 1u> nonstationary_heat_equation_solver_1d<T, I>::update_conductivity(const coefficient_t<T, 1u>& conductivity,
                                                                                       const T relaxation_factor) {
+    // clang-format off
     return std::visit(metamath::types::visitor{
-                          [relaxation_factor](const T value) -> coefficient_t<T, 1u> { return relaxation_factor * value; },
-                          [relaxation_factor](const spatial_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
-                              return [value, relaxation_factor](const point<T, 1u>& x) { return relaxation_factor * value(x); };
-                          },
-                          [relaxation_factor](const solution_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
-                              return [value, relaxation_factor](const point<T, 1u>& x, const T temperature) {
-                                  return relaxation_factor * value(x, temperature);
-                              };
-                          } },
-                      conductivity);
+        [relaxation_factor](const T value) -> coefficient_t<T, 1u> { return relaxation_factor * value; },
+        [relaxation_factor](const spatial_dependency<T, 1u>& value) -> coefficient_t<T, 1u> { 
+            return [value, relaxation_factor](const point<T, 1u>& x) { return relaxation_factor * value(x); };
+        },
+        [relaxation_factor](const solution_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
+            return [value, relaxation_factor](const point<T, 1u>& x, const T temperature) { return relaxation_factor * value(x, temperature); };
+        }
+    }, conductivity);
+    // clang-format on
 }
 
 template<class T, class I>
@@ -138,19 +138,20 @@ const std::shared_ptr<mesh::mesh_1d<T>>& nonstationary_heat_equation_solver_1d<T
 
 template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::initialize_temperature(const temperature_function<T>& temperature) {
-    std::visit(
-        metamath::types::visitor{
-            [this](const std::function<T(const T)>& temperature) {
-                for (const size_t i : std::ranges::iota_view{ 0u, mesh().nodes_count() })
-                    _temperature_curr[i] = temperature(mesh().node_coord(i));
-            },
-            [this](const auto& temperature) {
-                if (temperature.size() != mesh().nodes_count())
-                    throw std::domain_error{ "The initialization vector size does not match the number of nodes in the mesh." };
-                for (const size_t i : std::ranges::iota_view{ 0u, mesh().nodes_count() })
-                    _temperature_curr[i] = temperature[i];
-            } },
-        temperature);
+    // clang-format off
+    std::visit(metamath::types::visitor{
+        [this](const std::function<T(const T)>& temperature) {
+            for(const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
+                _temperature_curr[i] = temperature(mesh().node_coord(i));
+        },
+        [this](const auto& temperature) {
+            if (temperature.size() != mesh().nodes_count())
+                throw std::domain_error{"The initialization vector size does not match the number of nodes in the mesh."};
+            for (const size_t i : std::ranges::iota_view{0u, mesh().nodes_count()})
+                _temperature_curr[i] = temperature[i];
+        }
+    }, temperature);
+    // clang-format on
 }
 
 template<class T, class I>

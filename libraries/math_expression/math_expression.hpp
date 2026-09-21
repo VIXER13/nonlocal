@@ -239,16 +239,19 @@ T math_expression<T>::calc_polish_notation(const std::span<const T> input_variab
 #ifndef __clang__
     std::stack<T> stack;
 #endif
+    // clang-format off
     for (const auto& operation : _polish_notation)
-        std::visit(metamath::types::visitor{ [&](const T number) { stack.push(number); },
-                                             [&](const variable_index& index) { stack.push(input_variables[index.index]); },
-                                             [&](const unary_operator& operation) { stack.push(operation(pop_stack(stack))); },
-                                             [&](const binary_operator& operation) {
-                                                 const T right = pop_stack(stack);
-                                                 const T left = pop_stack(stack);
-                                                 stack.push(operation(left, right));
-                                             } },
-                   operation);
+        std::visit(metamath::types::visitor{
+            [&](const T number) { stack.push(number); },
+            [&](const variable_index& index) { stack.push(input_variables[index.index]); },
+            [&](const unary_operator& operation) { stack.push(operation(pop_stack(stack))); },
+            [&](const binary_operator& operation) {
+                const T right = pop_stack(stack);
+                const T left = pop_stack(stack);
+                stack.push(operation(left, right));
+            }
+        }, operation);
+    // clang-format on
     return pop_stack(stack);
 }
 
@@ -277,14 +280,14 @@ std::string math_expression<T>::to_polish() const {
         throw std::domain_error{ "Unknown operator, unable to recover polish notation." };
     };
     const auto concatenate = [this](const std::string& polish, const operand& operation) {
-        return polish + (polish.empty() ? "" : " ") +
-               std::visit(metamath::types::visitor{
-                              [](const T number) { return std::to_string(number); },
-                              [this](const variable_index& index) { return get_name(index.index, variables()); },
-                              [this](const unary_operator& operation) { return get_name(operation, unary_operators()); },
-                              [this](const binary_operator& operation) { return get_name(operation, binary_operators()); },
-                          },
-                          operation);
+        // clang-format off
+        return polish + (polish.empty() ? "" : " ") + std::visit(metamath::types::visitor{
+            [](const T number) { return std::to_string(number); },
+            [this](const variable_index& index) { return get_name(index.index, variables()); },
+            [this](const unary_operator& operation) { return get_name(operation, unary_operators()); },
+            [this](const binary_operator& operation) { return get_name(operation, binary_operators()); },
+        }, operation);
+        // clang-format on
     };
     using namespace std::string_literals;
     return std::accumulate(_polish_notation.begin(), _polish_notation.end(), ""s, concatenate);

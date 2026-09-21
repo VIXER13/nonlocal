@@ -37,6 +37,7 @@ void solve_mechanical_1d_problem(const nlohmann::json& config, const config::sav
         config::mechanical_auxiliary_data_1d<T>{ config.value("auxiliary", nlohmann::json::object()), "auxiliary" };
     const auto boundaries_conditions = config::read_mechanical_boundaries_conditions_1d<T>(config["boundaries"], "boundaries");
     const auto right_part_input = [right_part = auxiliary.right_part](T x) {
+        // clang-format off
         return std::visit(metamath::types::visitor{ [](const T value) { return value; },
                                                     [&x](const spatial_dependency<T, 1>& value) { return value(x); },
                                                     [](const auto&) {
@@ -44,8 +45,10 @@ void solve_mechanical_1d_problem(const nlohmann::json& config, const config::sav
                                                         return T{ 0 };
                                                     } },
                           right_part);
+        // clang-format on
     };
     const auto initial_distribution_input = [initial_distribution_input = auxiliary.initial_distribution](T x) {
+        // clang-format off
         return std::visit(metamath::types::visitor{ [](const T value) { return value; },
                                                     [&x](const spatial_dependency<T, 1>& value) { return value(x); },
                                                     [](const auto&) {
@@ -53,6 +56,7 @@ void solve_mechanical_1d_problem(const nlohmann::json& config, const config::sav
                                                         return T{ 0 };
                                                     } },
                           initial_distribution_input);
+        // clang-format on
     };
 
     using namespace solver_1d::mechanical;

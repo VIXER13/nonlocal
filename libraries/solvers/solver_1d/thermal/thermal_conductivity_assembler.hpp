@@ -44,14 +44,16 @@ thermal_conductivity_assembler_1d<T, I>::thermal_conductivity_assembler_1d(
 template<class T, class I>
 T thermal_conductivity_assembler_1d<T, I>::evaluate(const coefficient_t<T, 1>& conductivity, const size_t e,
                                                     const size_t q) const {
+    // clang-format off
     return std::visit(metamath::types::visitor{
-                          [](const T value) noexcept { return value; },
-                          [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
-                          [this, e, q](const solution_dependency<T, 1u>& value) {
-                              const size_t qshift = _base::mesh().qnode_number(e, q);
-                              return value(_base::mesh().qnode_coord(e, q), _solution[qshift]);
-                          } },
-                      conductivity);
+        [](const T value) noexcept { return value; },
+        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
+        [this, e, q](const solution_dependency<T, 1u>& value) { 
+            const size_t qshift = _base::mesh().qnode_number(e, q);
+            return value(_base::mesh().qnode_coord(e, q), _solution[qshift]); 
+        }
+    }, conductivity);
+    // clang-format on
 }
 
 template<class T, class I>

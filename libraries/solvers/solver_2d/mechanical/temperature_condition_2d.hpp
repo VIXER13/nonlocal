@@ -75,19 +75,21 @@ void temperature_condition(std::vector<std::array<T, 2>>& f, const mesh::mesh_2d
         for (const size_t eL : mesh.elements(node)) {
             const auto& group = mesh.container().group(eL);
             const auto& [model, physical] = parameters.at(group);
-            std::visit(metamath::types::visitor{ [](const auto&, const std::monostate) {},
-                                                 [&](const auto& hooke, const auto& thermal_strain) {
-                                                     using namespace metamath::operators;
-                                                     const size_t iL = mesh.global_to_local(eL, node);
-                                                     if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
-                                                         for (const size_t eNL : mesh.neighbours(eL))
-                                                             integral +=
-                                                                 integrator(hooke, thermal_strain, model.influence, eL, eNL, iL);
-                                                         integral *= nonlocal::nonlocal_weight(model.local_weight);
-                                                     }
-                                                     integral += model.local_weight * integrator(hooke, thermal_strain, eL, iL);
-                                                 } },
-                       physical.elastic, physical.thermal_strain);
+            // clang-format off
+            std::visit(metamath::types::visitor{
+                [](const auto&, const std::monostate) {},
+                [&](const auto& hooke, const auto& thermal_strain) {
+                    using namespace metamath::operators;
+                    const size_t iL = mesh.global_to_local(eL, node);
+                    if (theory_type(model.local_weight) == theory_t::NONLOCAL) {
+                        for(const size_t eNL : mesh.neighbours(eL))
+                            integral += integrator(hooke, thermal_strain, model.influence, eL, eNL, iL);
+                        integral *= nonlocal::nonlocal_weight(model.local_weight);
+                    }
+                    integral += model.local_weight * integrator(hooke, thermal_strain, eL, iL);
+                }
+            }, physical.elastic, physical.thermal_strain);
+            // clang-format on
         }
         using namespace metamath::operators;
         f[node] += integral;

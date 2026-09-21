@@ -72,27 +72,27 @@ void _read_thermal_parameters::check_coefficient(const coefficient_t<T, 2u>& coe
 template<std::floating_point T>
 void _read_thermal_parameters::check_conductivity(const solver_2d::thermal::raw_conductivity_t<T>& conductivity,
                                                   const std::string& path_with_access) {
-    std::visit(metamath::types::visitor{ [&](const solver_2d::thermal::raw_isotropic_conductivity_t<T>& conductivity) {
-                                            check_coefficient(conductivity, path_with_access);
-                                        },
-                                         [&](const solver_2d::thermal::raw_orthotropic_conductivity_t<T>& conductivity) {
-                                             check_coefficient(conductivity[X], path_with_access);
-                                             check_coefficient(conductivity[Y], path_with_access);
-                                         },
-                                         [&](const solver_2d::thermal::raw_anisotropic_conductivity_t<T>& conductivity) {
-                                             if (std::holds_alternative<T>(conductivity[X]) &&
-                                                 std::holds_alternative<T>(conductivity[Y]) &&
-                                                 std::holds_alternative<T>(conductivity[XY])) {
-                                                 const metamath::linear::square_matrix<T, 2u> matrix = {
-                                                     std::get<T>(conductivity[X]), std::get<T>(conductivity[XY]),
-                                                     std::get<T>(conductivity[XY]), std::get<T>(conductivity[Y])
-                                                 };
-                                                 if (!metamath::linear::is_positive(matrix))
-                                                     throw std::domain_error{ "Parameter \"" + path_with_access +
-                                                                              "conductivity\" shall be positive matrix." };
-                                             }
-                                         } },
-               conductivity);
+    // clang-format off
+    std::visit(metamath::types::visitor{
+        [&](const solver_2d::thermal::raw_isotropic_conductivity_t<T>& conductivity) { 
+            check_coefficient(conductivity, path_with_access);
+        },
+        [&](const solver_2d::thermal::raw_orthotropic_conductivity_t<T>& conductivity) { 
+            check_coefficient(conductivity[X], path_with_access);
+            check_coefficient(conductivity[Y], path_with_access);
+        },
+        [&](const solver_2d::thermal::raw_anisotropic_conductivity_t<T>& conductivity) {
+            if (std::holds_alternative<T>(conductivity[X]) && std::holds_alternative<T>(conductivity[Y]) && std::holds_alternative<T>(conductivity[XY])) {
+                const metamath::linear::square_matrix<T, 2u> matrix = {
+                    std::get<T>(conductivity[ X]), std::get<T>(conductivity[XY]),
+                    std::get<T>(conductivity[XY]), std::get<T>(conductivity[ Y])
+                };
+                if (!metamath::linear::is_positive(matrix))
+                    throw std::domain_error{"Parameter \"" + path_with_access + "conductivity\" shall be positive matrix."};
+            }
+        }
+    }, conductivity);
+    // clang-format on
 }
 
 template<std::floating_point T>

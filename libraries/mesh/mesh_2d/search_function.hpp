@@ -41,18 +41,20 @@ struct powered_distance {
     virtual ~powered_distance() noexcept = default;
 
     distance_t init_distance(const metamath::types::size_t_or<T> parameter) {
-        return std::visit(
-            metamath::types::visitor{ [this](const T) { return &powered_distance<T>::calculate_with_exp<T>; },
-                                      [this](const size_t value) {
-                                          if (value == 1zu)
-                                              return &powered_distance<T>::calculate<1zu>;
-                                          if (value == 2zu)
-                                              return &powered_distance<T>::calculate<2zu>;
-                                          if (value == metamath::constants::Infinity<size_t>)
-                                              return &powered_distance<T>::calculate<metamath::constants::Infinity<size_t>>;
-                                          return &powered_distance<T>::calculate_with_exp<size_t>;
-                                      } },
-            parameter);
+        // clang-format off
+        return std::visit(metamath::types::visitor{
+            [this](const T) { return &powered_distance<T>::calculate_with_exp<T>; },
+            [this](const size_t value) {
+                if (value == 1zu)
+                    return &powered_distance<T>::calculate<1zu>;
+                if (value == 2zu)
+                    return &powered_distance<T>::calculate<2zu>;
+                if (value == metamath::constants::Infinity<size_t>)
+                    return &powered_distance<T>::calculate<metamath::constants::Infinity<size_t>>;
+                return &powered_distance<T>::calculate_with_exp<size_t>;
+            }
+        }, parameter);
+        // clang-format on
     }
 
     template<size_t N>

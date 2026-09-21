@@ -34,24 +34,24 @@ solver_2d::thermal::stationary_equation_parameters_2d<T> read_stationary_equatio
     solver_2d::thermal::stationary_equation_parameters_2d<T> result;
     if (config.contains("right_part"))
         result.right_part = [right_part = read_coefficient<T, 2u>(config["right_part"], path)](const std::array<T, 2>& x) {
-            return std::visit(metamath::types::visitor{ [](const T value) { return value; },
-                                                        [&x](const spatial_dependency<T, 2>& value) { return value(x); },
-                                                        [](const auto&) {
-                                                            throw std::domain_error{ "Unsuported right part format." };
-                                                            return T{ 0 };
-                                                        } },
-                              right_part);
+            // clang-format off
+            return std::visit(metamath::types::visitor{
+                [](const T value) { return value; },
+                [&x](const spatial_dependency<T, 2>& value) { return value(x); },
+                [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
+            }, right_part);
+            // clang-format on
         };
     if (config.contains("initial_distribution"))
         result.initial_distribution =
             [initial_distribution = read_coefficient<T, 2u>(config["initial_distribution"], path)](const std::array<T, 2>& x) {
-                return std::visit(metamath::types::visitor{ [](const T value) { return value; },
-                                                            [&x](const spatial_dependency<T, 2>& value) { return value(x); },
-                                                            [](const auto&) {
-                                                                throw std::domain_error{ "Unsuported right part format." };
-                                                                return T{ 0 };
-                                                            } },
-                                  initial_distribution);
+                // clang-format off
+            return std::visit(metamath::types::visitor{
+                [](const T value) { return value; },
+                [&x](const spatial_dependency<T, 2>& value) { return value(x); },
+                [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
+            }, initial_distribution);
+                // clang-format on
             };
     result.energy = config.value("energy", result.energy);
     result.tolerance = config.value("tolerance", result.tolerance);

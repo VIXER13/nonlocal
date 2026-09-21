@@ -63,11 +63,13 @@ bool is_spatial(const std::array<coefficient_t<T, Dimension>, N>& coefficient) {
 
 template<std::floating_point T, size_t Dimension>
 T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
+    // clang-format off
     return std::visit(metamath::types::visitor{
-                          [](const T value) noexcept { return value; },
-                          [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
-                          [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); } },
-                      coefficient);
+        [](const T value) noexcept { return value; },
+        [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
+        [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
+    }, coefficient);
+    // clang-format on
 }
 
 template<std::floating_point T, size_t Dimension, size_t N>
@@ -88,29 +90,19 @@ coefficient_t<T, Dimension> operation(const coefficient_t<T, Dimension>& lhs, co
     using U = spatial_dependency<T, Dimension>;
     using S = solution_dependency<T, Dimension>;
     using P = point<T, Dimension>;
-    return std::visit(
-        metamath::types::visitor{
-            [&oper](const T lhs, const T rhs) -> R { return oper(lhs, rhs); },
-            [&oper](const T lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x) { return oper(lhs, rhs(x)); }; },
-            [&oper](const T lhs, const S& rhs) -> R {
-                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs, rhs(x, s)); };
-            },
-            [&oper](const U& lhs, const T rhs) -> R { return [oper, lhs, rhs](const P& x) { return oper(lhs(x), rhs); }; },
-            [&oper](const U& lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x) { return oper(lhs(x), rhs(x)); }; },
-            [&oper](const U& lhs, const S& rhs) -> R {
-                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x), rhs(x, s)); };
-            },
-            [&oper](const S& lhs, const T rhs) -> R {
-                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs); };
-            },
-            [&oper](const S& lhs, const U& rhs) -> R {
-                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x)); };
-            },
-            [&oper](const S& lhs, const S& rhs) -> R {
-                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x, s)); };
-            },
-        },
-        lhs, rhs);
+    // clang-format off
+    return std::visit(metamath::types::visitor{
+        [&oper](const T  lhs, const T  rhs) -> R { return oper(lhs, rhs); },
+        [&oper](const T  lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x)            { return oper(lhs,       rhs(x)   ); }; },
+        [&oper](const T  lhs, const S& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs,       rhs(x, s)); }; },
+        [&oper](const U& lhs, const T  rhs) -> R { return [oper, lhs, rhs](const P& x)            { return oper(lhs(x),    rhs      ); }; },
+        [&oper](const U& lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x)            { return oper(lhs(x),    rhs(x)   ); }; },
+        [&oper](const U& lhs, const S& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x),    rhs(x, s)); }; },
+        [&oper](const S& lhs, const T  rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs      ); }; },
+        [&oper](const S& lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x)   ); }; },
+        [&oper](const S& lhs, const S& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x, s)); }; },
+    }, lhs, rhs);
+    // clang-format on
 }
 
 template<std::floating_point T, size_t Dimension>

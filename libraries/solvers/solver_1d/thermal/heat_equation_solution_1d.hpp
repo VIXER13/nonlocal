@@ -1,7 +1,5 @@
 #pragma once
 
-#include "thermal_parameters_1d.hpp"
-
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/base/equation_parameters.hpp>
 #include <solvers/solver_1d/base/solution_1d.hpp>
@@ -48,17 +46,19 @@ class heat_equation_solution_1d : public solution_1d<T> {
 
 template<class T>
 coefficient_t<T, 1u> update_conductivity(const coefficient_t<T, 1u>& conductivity, const T relaxation_factor) {
+    // clang-format off
     return std::visit(metamath::types::visitor{
-                          [relaxation_factor](const T value) -> coefficient_t<T, 1u> { return relaxation_factor * value; },
-                          [relaxation_factor](const spatial_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
-                              return [value, relaxation_factor](const point<T, 1u>& x) { return relaxation_factor * value(x); };
-                          },
-                          [relaxation_factor](const solution_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
-                              return [value, relaxation_factor](const point<T, 1u>& x, const T temperature) {
-                                  return relaxation_factor * value(x, temperature);
-                              };
-                          } },
-                      conductivity);
+        [relaxation_factor](const T value) -> coefficient_t<T, 1u> {
+            return relaxation_factor * value;
+        },
+        [relaxation_factor](const spatial_dependency<T, 1u>& value) -> coefficient_t<T, 1u> { 
+            return [value, relaxation_factor](const point<T, 1u>& x) { return relaxation_factor * value(x); };
+        },
+        [relaxation_factor](const solution_dependency<T, 1u>& value) -> coefficient_t<T, 1u> {
+            return [value, relaxation_factor](const point<T, 1u>& x, const T temperature) { return relaxation_factor * value(x, temperature); };
+        }
+    }, conductivity);
+    // clang-format on
 }
 
 template<class T>
@@ -111,14 +111,16 @@ bool heat_equation_solution_1d<T>::is_flux_calculated() const noexcept {
 template<class T>
 T heat_equation_solution_1d<T>::evaluate(const coefficient_t<T, 1>& conductivity, const std::vector<T>& solution, const size_t e,
                                          const size_t q) const {
+    // clang-format off
     return std::visit(metamath::types::visitor{
-                          [](const T value) noexcept { return value; },
-                          [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
-                          [this, &solution, e, q](const solution_dependency<T, 1u>& value) {
-                              const size_t qshift = _base::mesh().qnode_number(e, q);
-                              return value(_base::mesh().qnode_coord(e, q), solution[qshift]);
-                          } },
-                      conductivity);
+        [](const T value) noexcept { return value; },
+        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
+        [this, &solution, e, q](const solution_dependency<T, 1u>& value) { 
+            const size_t qshift = _base::mesh().qnode_number(e, q);
+            return value(_base::mesh().qnode_coord(e, q), solution[qshift]); 
+        }
+    }, conductivity);
+    // clang-format on
 }
 
 template<class T>

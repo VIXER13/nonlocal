@@ -25,25 +25,21 @@ problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh, c
         static constexpr auto is_not_constant = [](const coefficient_t<T, 2>& coefficient) {
             return !is_constant<T, 2>(coefficient);
         };
-        return std::visit(metamath::types::visitor{ is_not_constant,
-                                                    [](const auto& conductivity) {
-                                                        return std::any_of(conductivity.begin(), conductivity.end(),
-                                                                           is_not_constant);
-                                                    } },
-                          parameter.physical.conductivity);
+        // clang-format off
+        return std::visit(metamath::types::visitor{is_not_constant,
+            [](const auto& conductivity) { return std::any_of(conductivity.begin(), conductivity.end(), is_not_constant); }
+        }, parameter.physical.conductivity);
+        // clang-format on
     };
     static constexpr auto is_solution_dependent = [](const auto& parameter) {
         static constexpr auto is_solution_dependent = [](const coefficient_t<T, 2>& coefficient) {
             return std::holds_alternative<solution_dependency<T, 2>>(coefficient);
         };
-        return std::visit(
-            metamath::types::visitor{
-                is_solution_dependent,
-                [](const auto& conductivity) {
-                    return std::any_of(conductivity.begin(), conductivity.end(), is_solution_dependent);
-                },
-            },
-            parameter.physical.conductivity);
+        // clang-format off
+        return std::visit(metamath::types::visitor{is_solution_dependent,
+            [](const auto& conductivity) { return std::any_of(conductivity.begin(), conductivity.end(), is_solution_dependent); },
+        }, parameter.physical.conductivity);
+        // clang-format on
     };
     const auto parameters_view = parameters | std::views::values;
     const auto boundaries_view = boundaries_conditions | std::views::values;

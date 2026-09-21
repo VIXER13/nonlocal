@@ -48,11 +48,12 @@ class mass_matrix : public matrix_assembler_base<metamath::linear::square_matrix
             settings,
             [this, &parameters](const std::string& group, const size_t e, const size_t i, const size_t j) {
                 const auto& density = std::get<evaluated_parameters<T>>(parameters.at(group).physical.density);
-                const T integral =
-                    std::visit(metamath::types::visitor{
-                                   [this, e, i, j](const T density) { return density * integrate_basic_pair(e, i, j); },
-                                   [this, e, i, j](const auto& density) { return integrate_basic_pair(density, e, i, j); } },
-                               density);
+                // clang-format off
+                const T integral = std::visit(metamath::types::visitor{
+                    [this, e, i, j](const T density) { return density * integrate_basic_pair(e, i, j); },
+                    [this, e, i, j](const auto& density) { return integrate_basic_pair(density, e, i, j); }
+                }, density);
+                // clang-format on
                 return metamath::linear::square_matrix<T, 2>{ integral, 0, 0, integral };
             },
             [](const std::string&, const size_t, const size_t, const size_t, const size_t) constexpr noexcept {
