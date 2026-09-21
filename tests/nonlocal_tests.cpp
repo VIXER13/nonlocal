@@ -36,14 +36,14 @@ extern "C" auto __wrap___cxa_throw(void* thrown_object, std::type_info* tinfo, v
 
 // Simple helper function to print the stack trace
 //   of the exception that's currently being caught
-extern "C" auto get_stacktrace() -> std::string {
-    auto exception_count = std::uncaught_exceptions();
-    if (exception_count < 0) {
-        return "No active exception";
-    } else if (exception_count >= s_stacktraces.size()) {
-        return "Too many active exceptions";
-    }
-    return std::to_string(s_stacktraces[exception_count]);
+std::string get_stacktrace() {
+  auto exception_count = std::uncaught_exceptions();
+  if (exception_count < 0) {
+    return "No active exception";
+  } else if (exception_count >= s_stacktraces.size()) {
+    return "Too many active exceptions";
+  }
+  return std::to_string(s_stacktraces[exception_count]);
 }
 
 int main(int argc, const char** argv) {

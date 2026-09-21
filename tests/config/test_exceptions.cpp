@@ -185,10 +185,10 @@ const suite<"config_exceptions"> _ = [] {
         expect_nothrows(read_mesh_1d<T>, config, "read_mesh_1d_ok");
     };
 
-    const auto create_frequency_data = [&](const nlohmann::json& config, const std::string& field) {
-        const frequency_data<T> sweep{ config, field };
-    };
-    "read_frequency"_test = [&config, &create_frequency_data] {
+    "read_frequency"_test = [&config] {
+        static constexpr auto create_frequency_data = [](const nlohmann::json& config, const std::string& field) { 
+            const frequency_data<T> sweep{config, field};
+        };
         expect_throws(create_frequency_data, config, "read_frequency_missed_all_parameters_fail");
         expect_throws(create_frequency_data, config, "read_frequency_negative_min_fail");
         expect_throws(create_frequency_data, config, "read_frequency_negative_max_fail");

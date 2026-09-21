@@ -13,7 +13,7 @@ extern "C" auto __wrap___cxa_throw(void* thrown_object, std::type_info* tinfo, v
 
 // Simple helper function to print the stack trace
 //   of the exception that's currently being caught
-extern "C" auto get_stacktrace() -> std::string;
+std::string get_stacktrace();
 
 namespace boost::inline ext::ut::inline v2_3_1 {
 template<class TReporter = reporter<printer>, auto MaxPathSize = 16>

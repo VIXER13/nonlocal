@@ -23,22 +23,23 @@ struct sparse_matrix_portrait final {
     sparse_matrix_portrait() = default;
     sparse_matrix_portrait(const size_t rows, const size_t cols) : shifts(rows + 1zu, 0zu), columns{ cols } {}
 
-    size_t rows() const {
+    size_t rows() const noexcept {
         return shifts.empty() ? 0zu : shifts.size() - 1;
     }
 
-    size_t cols() const {
+    size_t cols() const noexcept {
         return shifts.empty() ? 0zu : columns;
     }
 
-    size_t non_zeros() const {
+    size_t non_zeros() const noexcept {
         return shifts.empty() ? 0zu : shifts.back();
     }
 
     bool contains(const size_t row, const size_t col) const {
         if (row >= rows())
             return false;
-        return std::binary_search(&indices[shifts[row]], &indices[shifts[row + 1]], col);
+        return std::binary_search(std::next(indices.begin(), shifts[row]), 
+                                  std::next(indices.begin(), shifts[row + 1]), col);
     }
 
     void check_row(const size_t row) const {
@@ -53,17 +54,18 @@ struct sparse_matrix_portrait final {
 
     auto indices_range(const size_t row) const {
         check_row(row);
-        return std::ranges::subrange(&indices[shifts[row]], &indices[shifts[row + 1]]);
+        return std::ranges::subrange(std::next(indices.begin(), shifts[row]), 
+                                     std::next(indices.begin(), shifts[row + 1]));
     }
 
     size_t shift(const size_t row, const size_t col) const {
         check_row(row);
         const auto range = shifts_range(row);
-        const auto it = std::lower_bound(&indices[*range.begin()], &indices[*range.end()], col);
-        if (it == &indices[*range.end()] || *it != col)
-            throw std::out_of_range{ "Column index " + std::to_string(col) + " is out of range on the row " +
-                                     std::to_string(row) + "." };
-        return std::distance(indices.data(), it);
+        const auto it = std::lower_bound(std::next(indices.begin(), shifts[row]), 
+                                         std::next(indices.begin(), shifts[row + 1]), col);
+        if (*it != col || it == std::next(indices.begin(), shifts[row + 1]))
+            throw std::out_of_range{"Column index " + std::to_string(col) + " is out of range on the row " + std::to_string(row) + "."};
+        return std::distance(indices.begin(), it);
     }
 
     void set_size(const size_t rows, const size_t cols) {
@@ -71,10 +73,9 @@ struct sparse_matrix_portrait final {
         columns = cols;
     }
 
-    void accumulate_shifts() {
-        if (!shifts.empty())
-            for (const size_t row : std::ranges::iota_view{ 0u, rows() })
-                shifts[row + 1] += shifts[row];
+    void accumulate_shifts() noexcept {
+        for(const size_t row : std::ranges::iota_view{0u, rows()})
+            shifts[row + 1] += shifts[row];
     }
 
     void allocate_indices() {
@@ -83,9 +84,11 @@ struct sparse_matrix_portrait final {
 
     void sort_indices() {
         if (!shifts.empty()) {
+            if (indices.size() != non_zeros())
+                throw std::logic_error{"Indices size does not match the number of non-zero elements in the portrait."};
 #pragma omp parallel for schedule(dynamic)
             for (size_t row = 0; row < rows(); ++row)
-                std::sort(&indices[shifts[row]], &indices[shifts[row + 1]]);
+                std::sort(std::next(indices.begin(), shifts[row]), std::next(indices.begin(), shifts[row + 1]));
         }
     }
 };

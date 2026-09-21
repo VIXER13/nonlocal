@@ -37,6 +37,9 @@ suite<"sparse_matrix"> _ = [] {
         expect(eq(matrix.non_zeros(), 5));
         expect(nothrow([&matrix] { validate_shifts(matrix.portrait.shifts); }));
 
+        matrix.portrait.indices.resize(3);
+        expect(throws<std::logic_error>([&matrix] { matrix.portrait.sort_indices(); }));
+
         // Allocate indices and fill them with unsorted column indices
         matrix.portrait.allocate_indices();
         matrix.portrait.indices[0] = 2;
