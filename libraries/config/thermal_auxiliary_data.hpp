@@ -46,11 +46,11 @@ solver_2d::thermal::stationary_equation_parameters_2d<T> read_stationary_equatio
         result.initial_distribution =
             [initial_distribution = read_coefficient<T, 2u>(config["initial_distribution"], path)](const std::array<T, 2>& x) {
                 // clang-format off
-            return std::visit(metamath::types::visitor{
-                [](const T value) { return value; },
-                [&x](const spatial_dependency<T, 2>& value) { return value(x); },
-                [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
-            }, initial_distribution);
+                return std::visit(metamath::types::visitor{
+                    [](const T value) { return value; },
+                    [&x](const spatial_dependency<T, 2>& value) { return value(x); },
+                    [](const auto&) { throw std::domain_error{"Unsuported right part format."}; return T{0}; }
+                }, initial_distribution);
                 // clang-format on
             };
     result.energy = config.value("energy", result.energy);
