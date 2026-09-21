@@ -1,8 +1,8 @@
 #pragma once
 
-#include "solver_base.hpp"
-#include "preconditioner_base.hpp"
 #include "eigen_preconditioner.hpp"
+#include "preconditioner_base.hpp"
+#include "solver_base.hpp"
 
 namespace nonlocal::slae {
 
@@ -12,11 +12,11 @@ class iterative_solver_base : public solver_base<T, I> {
     T _tolerance = std::is_same_v<T, float> ? 1e-6 : 1e-15;
     uintmax_t _max_iterations = 10000;
 
-protected:
+  protected:
     mutable uintmax_t _iterations = 0;
     mutable T _residual = 0;
 
-public:
+  public:
     using solver_base<T, I>::solver_base;
     virtual ~iterative_solver_base() noexcept = default;
 
@@ -63,4 +63,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::slae

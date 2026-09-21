@@ -29,7 +29,7 @@ suite<"sparse_matrix"> _ = [] {
         expect(eq(matrix.cols(), 4));
 
         // Fill shifts vector with non-accumulated values
-        matrix.portrait.shifts = {0, 2, 2, 1};
+        matrix.portrait.shifts = { 0, 2, 2, 1 };
         // Check that validation fails due to invalid shifts vector
         expect(throws<std::logic_error>([&matrix] { validate_shifts(matrix.portrait.shifts); }));
         // Accumulate shifts and check that validation passes
@@ -57,15 +57,15 @@ suite<"sparse_matrix"> _ = [] {
         expect(nothrow([&matrix] { validate_sparse_matrix(matrix); }));
 
         // Check that contains() method work correctly
-        expect( matrix.portrait.contains(0, 0));
+        expect(matrix.portrait.contains(0, 0));
         expect(!matrix.portrait.contains(0, 1));
-        expect( matrix.portrait.contains(0, 2));
+        expect(matrix.portrait.contains(0, 2));
         expect(!matrix.portrait.contains(0, 3));
         expect(!matrix.portrait.contains(1, 0));
-        expect( matrix.portrait.contains(1, 1));
+        expect(matrix.portrait.contains(1, 1));
         expect(!matrix.portrait.contains(1, 2));
-        expect( matrix.portrait.contains(1, 3));
-        expect( matrix.portrait.contains(2, 0));
+        expect(matrix.portrait.contains(1, 3));
+        expect(matrix.portrait.contains(2, 0));
         expect(!matrix.portrait.contains(2, 1));
         expect(!matrix.portrait.contains(2, 2));
         expect(!matrix.portrait.contains(2, 3));
@@ -123,75 +123,75 @@ suite<"sparse_matrix"> _ = [] {
     };
 
     "validation"_test = [] {
-        sparse_matrix<T, I, I> matrix{3, 3};
+        sparse_matrix<T, I, I> matrix{ 3, 3 };
 
         // validate empty portrait
         expect(nothrow([&matrix] { validate_shifts(matrix.portrait.shifts); }));
 
         // Invalid shifts size is less than 2
-        matrix.portrait.shifts = {0};
+        matrix.portrait.shifts = { 0 };
         expect(throws<std::logic_error>([&matrix] { validate_shifts(matrix.portrait.shifts); }));
 
         // Invalid shifts start with non-zero
-        matrix.portrait.shifts = {1, 2, 3};
+        matrix.portrait.shifts = { 1, 2, 3 };
         expect(throws<std::logic_error>([&matrix] { validate_shifts(matrix.portrait.shifts); }));
 
         // Invalid shifts vector contains negative values
-        matrix.portrait.shifts = {0, 2, -1, 3};
+        matrix.portrait.shifts = { 0, 2, -1, 3 };
         expect(throws<std::logic_error>([&matrix] { validate_shifts(matrix.portrait.shifts); }));
 
         // Invalid shifts vector is not non-decreasing
-        matrix.portrait.shifts = {0, 2, 1, 3};
+        matrix.portrait.shifts = { 0, 2, 1, 3 };
         expect(throws<std::logic_error>([&matrix] { validate_shifts(matrix.portrait.shifts); }));
-        
+
         // Invalid indices size does not match the last element of shifts
-        matrix.portrait.shifts = {0, 2, 4, 6};
-        matrix.portrait.indices = {0, 2, 1, 2, 0};
+        matrix.portrait.shifts = { 0, 2, 4, 6 };
+        matrix.portrait.indices = { 0, 2, 1, 2, 0 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix_portrait(matrix.portrait); }));
 
         // Invalid shift size in a row is greater than the number of columns
-        matrix.portrait.shifts = {0, 4, 4, 5};
-        matrix.portrait.indices = {0, 1, 2, 3, 0};
+        matrix.portrait.shifts = { 0, 4, 4, 5 };
+        matrix.portrait.indices = { 0, 1, 2, 3, 0 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix_portrait(matrix.portrait); }));
 
         // Invalid column indices are negative
-        matrix.portrait.shifts = {0, 2, 4, 5};
-        matrix.portrait.indices = {0, -1, 1, 2, 0};
+        matrix.portrait.shifts = { 0, 2, 4, 5 };
+        matrix.portrait.indices = { 0, -1, 1, 2, 0 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix_portrait(matrix.portrait); }));
 
         // Invalid column indices are out of range
-        matrix.portrait.shifts = {0, 2, 4, 5};
-        matrix.portrait.indices = {0, 2, 1, 2, 3};
+        matrix.portrait.shifts = { 0, 2, 4, 5 };
+        matrix.portrait.indices = { 0, 2, 1, 2, 3 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix_portrait(matrix.portrait); }));
 
         // Invalid column indices are not unique within a row
-        matrix.portrait.shifts = {0, 2, 4, 5};
-        matrix.portrait.indices = {0, 2, 1, 1, 0};
+        matrix.portrait.shifts = { 0, 2, 4, 5 };
+        matrix.portrait.indices = { 0, 2, 1, 1, 0 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix_portrait(matrix.portrait); }));
 
         // Invalid column indices are not sorted within a row
-        matrix.portrait.shifts = {0, 2, 4, 5};
-        matrix.portrait.indices = {0, 2, 2, 1, 0};
+        matrix.portrait.shifts = { 0, 2, 4, 5 };
+        matrix.portrait.indices = { 0, 2, 2, 1, 0 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix_portrait(matrix.portrait); }));
 
         // Invalid values size does not match the number of non-zero elements in the portrait
-        matrix.portrait.shifts = {0, 2, 4, 5};
-        matrix.portrait.indices = {0, 2, 1, 2, 0};
-        matrix.values = {1.0, 3.0, 2.0, 4.0};
+        matrix.portrait.shifts = { 0, 2, 4, 5 };
+        matrix.portrait.indices = { 0, 2, 1, 2, 0 };
+        matrix.values = { 1.0, 3.0, 2.0, 4.0 };
         expect(throws<std::logic_error>([&matrix] { validate_sparse_matrix(matrix); }));
 
         // Valid matrix
-        matrix.portrait.shifts = {0, 2, 4, 5};
-        matrix.portrait.indices = {0, 2, 1, 2, 0};
-        matrix.values = {1.0, 3.0, 2.0, 4.0, 5.0};
+        matrix.portrait.shifts = { 0, 2, 4, 5 };
+        matrix.portrait.indices = { 0, 2, 1, 2, 0 };
+        matrix.values = { 1.0, 3.0, 2.0, 4.0, 5.0 };
         expect(nothrow([&matrix] { validate_sparse_matrix(matrix); }));
     };
 
     "self_adjoint_view_invalid_size"_test = [] {
-        sparse_matrix<T> matrix{3, 4};
+        sparse_matrix<T> matrix{ 3, 4 };
         expect(throws<std::invalid_argument>([&matrix] { matrix.self_adjoint<matrix_part::Upper>(); }));
         expect(throws<std::invalid_argument>([&matrix] { matrix.self_adjoint<matrix_part::Lower>(); }));
     };
 };
 
-}
+} // namespace

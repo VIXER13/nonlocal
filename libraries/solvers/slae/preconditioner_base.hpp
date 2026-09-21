@@ -13,4 +13,4 @@ struct preconditioner_base {
     virtual std::vector<entity_t> solve(const std::vector<entity_t>& rhs) const = 0;
 };
 
-}
+} // namespace nonlocal::slae

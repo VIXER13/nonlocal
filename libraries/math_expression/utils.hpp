@@ -37,23 +37,23 @@ void check_variables_admissibility(const std::unordered_map<std::string, std::si
 
 template<metamath::types::arithmetic T>
 T get_number(const std::string& number, std::size_t* idx = nullptr, int base = 10) {
-    if constexpr (std::is_same_v<T, float>)       
+    if constexpr (std::is_same_v<T, float>)
         return std::stof(number, idx);
-    if constexpr (std::is_same_v<T, double>)      
+    if constexpr (std::is_same_v<T, double>)
         return std::stod(number, idx);
-    if constexpr (std::is_same_v<T, long double>) 
+    if constexpr (std::is_same_v<T, long double>)
         return std::stold(number, idx);
-    if constexpr (std::is_same_v<T, int>)         
+    if constexpr (std::is_same_v<T, int>)
         return std::stoi(number, idx, base);
-    if constexpr (std::is_same_v<T, long>)         
+    if constexpr (std::is_same_v<T, long>)
         return std::stol(number, idx, base);
-    if constexpr (std::is_same_v<T, long long>)         
+    if constexpr (std::is_same_v<T, long long>)
         return std::stoll(number, idx, base);
-    if constexpr (std::is_same_v<T, unsigned long>) 
+    if constexpr (std::is_same_v<T, unsigned long>)
         return std::stoul(number, idx, base);
-    if constexpr (std::is_same_v<T, unsigned long long>) 
+    if constexpr (std::is_same_v<T, unsigned long long>)
         return std::stoull(number, idx, base);
-    return std::stoi(number, idx, base); // bool, char 
+    return std::stoi(number, idx, base); // bool, char
 }
 
-}
+} // namespace formula::utils

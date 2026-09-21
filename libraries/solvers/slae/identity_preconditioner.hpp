@@ -13,4 +13,4 @@ struct identity_preconditioner final : public preconditioner_base<T> {
     }
 };
 
-}
+} // namespace nonlocal::slae

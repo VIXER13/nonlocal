@@ -25,8 +25,8 @@ constexpr T power(const T x) noexcept {
 template<class T, std::integral Exp>
 constexpr T power(T x, Exp exp) noexcept {
     if (exp < 0)
-        return T{1} / power(x, -exp);
-    T result = T{1};
+        return T{ 1 } / power(x, -exp);
+    T result = T{ 1 };
     while (exp > 0) {
         if (exp & 1) {
             result *= x;
@@ -44,4 +44,4 @@ constexpr T power(const T x, Exp exp) noexcept {
     return std::pow(x, exp);
 }
 
-}
+} // namespace metamath::functions

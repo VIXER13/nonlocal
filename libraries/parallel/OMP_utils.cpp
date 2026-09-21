@@ -1,9 +1,8 @@
 #include "OMP_utils.hpp"
-
 #include "uniform_ranges.hpp"
 
 #ifdef _OPENMP
-    #include <omp.h>
+#include <omp.h>
 #endif
 
 namespace parallel {
@@ -12,7 +11,7 @@ namespace parallel {
 int threads_count() {
     int threads = 1;
 #ifdef _OPENMP
-    #pragma omp parallel default(none) shared(threads)
+#pragma omp parallel default(none) shared(threads)
     {
         threads = omp_get_num_threads();
     }
@@ -20,11 +19,9 @@ int threads_count() {
     return threads > 1 ? threads : 1;
 }
 
-OMP_ranges::OMP_ranges(const size_t size, const size_t threads)
-    : _ranges{uniform_ranges(size, threads)} {}
+OMP_ranges::OMP_ranges(const size_t size, const size_t threads) : _ranges{ uniform_ranges(size, threads) } {}
 
-OMP_ranges::OMP_ranges(const std::vector<std::ranges::iota_view<size_t, size_t>>& ranges)
-    : _ranges{ranges} {}
+OMP_ranges::OMP_ranges(const std::vector<std::ranges::iota_view<size_t, size_t>>& ranges) : _ranges{ ranges } {}
 
 size_t OMP_ranges::size() const noexcept {
     return _ranges.size();
@@ -38,4 +35,4 @@ void OMP_ranges::set(const std::ranges::iota_view<size_t, size_t> range, const s
     _ranges[thread] = range;
 }
 
-}
+} // namespace parallel

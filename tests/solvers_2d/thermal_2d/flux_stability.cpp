@@ -1,10 +1,9 @@
+#include <embedded_files/plate_10x1_h0_125_su2.h>
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <solvers/solver_2d/thermal/stationary_heat_equation_solver_2d.hpp>
 
 #include <boost/ut.hpp>
-
-#include <embedded_files/plate_10x1_h0_125_su2.h>
 
 namespace {
 
@@ -18,19 +17,21 @@ template<class Vector>
 auto get_values_on_center_line(const mesh_container_2d<T>& mesh, const Vector& solution) {
     using vector_t = typename Vector::value_type;
     std::vector<vector_t> values;
-    for(const size_t node : mesh.nodes())
+    for (const size_t node : mesh.nodes())
         if (std::abs(mesh.node_coord(node)[X]) < std::numeric_limits<T>::epsilon())
             values.push_back(solution[node]);
     return values;
 }
 
 const suite<"flux_stability"> _ = [] {
-    std::stringstream stream{plate_10x1_h0_125_su2_data};
+    std::stringstream stream{ plate_10x1_h0_125_su2_data };
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
-    const raw_thermal_parameters<T> parameters = {{ "DEFAULT", { .physical = { .conductivity = T{1} } } }};
+    const raw_thermal_parameters<T> parameters = { { "DEFAULT", { .physical = { .conductivity = T{ 1 } } } } };
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
-    boundaries_conditions["Left"]  = std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return -4 * std::abs(point[Y]); });
-    boundaries_conditions["Right"] = std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return  4 * std::abs(point[Y]); });
+    boundaries_conditions["Left"] =
+        std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return -4 * std::abs(point[Y]); });
+    boundaries_conditions["Right"] =
+        std::make_unique<flux_2d<T>>([](const std::array<T, 2>& point) { return 4 * std::abs(point[Y]); });
     const auto solution = stationary_heat_equation_solver_2d(mesh, parameters, boundaries_conditions, {});
 
     "temperature_on_center_line"_test = [&mesh, &solution] {
@@ -62,4 +63,4 @@ const suite<"flux_stability"> _ = [] {
     };
 };
 
-}
+} // namespace

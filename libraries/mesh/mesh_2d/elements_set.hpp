@@ -9,22 +9,13 @@ using element_integrate_1d = metamath::finite_element::element_1d_integrate<T>;
 template<class T>
 using element_integrate_2d = metamath::finite_element::element_2d_integrate<T>;
 
-enum class element_1d_t : uint8_t {
-    LINEAR,
-    QUADRATIC
-};
+enum class element_1d_t : uint8_t { LINEAR, QUADRATIC };
 
-enum class element_2d_t : uint8_t {
-    TRIANGLE,
-    QUADRATIC_TRIANGLE,
-    BILINEAR,
-    QUADRATIC_SERENDIPITY,
-    QUADRATIC_LAGRANGE
-};
+enum class element_2d_t : uint8_t { TRIANGLE, QUADRATIC_TRIANGLE, BILINEAR, QUADRATIC_SERENDIPITY, QUADRATIC_LAGRANGE };
 
 template<class T>
 class elements_set {
-protected:
+  protected:
     std::vector<element_integrate_1d<T>> _elements_1d;
     std::vector<element_integrate_2d<T>> _elements_2d;
     std::unordered_map<size_t, element_1d_t> _model_to_local_1d;
@@ -35,23 +26,19 @@ protected:
     template<class I>
     static std::vector<size_t> local_to_model(const std::unordered_map<size_t, I>& model_to_local) {
         std::vector<size_t> result(model_to_local.size());
-        for(const auto& [model, local] : model_to_local)
+        for (const auto& [model, local] : model_to_local)
             result[size_t(local)] = model;
         return result;
     }
 
-    explicit elements_set(std::vector<element_integrate_1d<T>>&& elements_1d,
-                          std::vector<element_integrate_2d<T>>&& elements_2d,
+    explicit elements_set(std::vector<element_integrate_1d<T>>&& elements_1d, std::vector<element_integrate_2d<T>>&& elements_2d,
                           std::unordered_map<size_t, element_1d_t>&& model_to_local_1d,
                           std::unordered_map<size_t, element_2d_t>&& model_to_local_2d)
-        : _elements_1d{std::move(elements_1d)}
-        , _elements_2d{std::move(elements_2d)}
-        , _model_to_local_1d{std::move(model_to_local_1d)}
-        , _model_to_local_2d{std::move(model_to_local_2d)}
-        , _local_to_model_1d{local_to_model(_model_to_local_1d)}
-        , _local_to_model_2d{local_to_model(_model_to_local_2d)} {}
+        : _elements_1d{ std::move(elements_1d) }, _elements_2d{ std::move(elements_2d) },
+          _model_to_local_1d{ std::move(model_to_local_1d) }, _model_to_local_2d{ std::move(model_to_local_2d) },
+          _local_to_model_1d{ local_to_model(_model_to_local_1d) }, _local_to_model_2d{ local_to_model(_model_to_local_2d) } {}
 
-public:
+  public:
     elements_set() = default;
     elements_set(const elements_set<T>&) = default;
     elements_set(elements_set<T>&&) = default;
@@ -100,4 +87,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::mesh

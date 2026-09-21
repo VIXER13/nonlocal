@@ -38,13 +38,13 @@ class mesh_2d final {
 
     T area(const std::ranges::iota_view<size_t, size_t> elements) const;
 
-public:
+  public:
     explicit mesh_2d(const std::filesystem::path& path_to_mesh);
     template<class Stream>
     explicit mesh_2d(Stream& stream, const mesh_format format);
 
     const mesh_container_2d<T, I>& container() const;
-    
+
     const std::vector<I>& elements(const size_t node) const;
     size_t global_to_local(const size_t e, const size_t node) const;
 
@@ -81,17 +81,15 @@ public:
 };
 
 template<std::floating_point T, std::integral I>
-mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh)
-    : _mesh{path_to_mesh} {
-        init();
-    }
+mesh_2d<T, I>::mesh_2d(const std::filesystem::path& path_to_mesh) : _mesh{ path_to_mesh } {
+    init();
+}
 
 template<std::floating_point T, std::integral I>
 template<class Stream>
-mesh_2d<T, I>::mesh_2d(Stream& stream, const mesh_format format)
-    : _mesh{stream, format} {
-        init();
-    }
+mesh_2d<T, I>::mesh_2d(Stream& stream, const mesh_format format) : _mesh{ stream, format } {
+    init();
+}
 
 template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::init() {
@@ -103,7 +101,7 @@ void mesh_2d<T, I>::init() {
     _jacobians = utils::calculate_jacobians(jacobi_matrices);
     _quad_node_shift = utils::element_node_shits_quadrature_shifts_2d(container());
     _derivatives = utils::derivatives_in_quad(container(), _quad_shifts, _quad_node_shift, jacobi_matrices);
-    _MPI_ranges = parallel::MPI_ranges{container().nodes_count()};
+    _MPI_ranges = parallel::MPI_ranges{ container().nodes_count() };
     _elements_neighbors.resize(container().elements_2d_count());
 }
 
@@ -130,12 +128,12 @@ size_t mesh_2d<T, I>::quad_shift(const size_t e) const {
 template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::quad_shifts(const std::string& group) const {
     const auto elements = container().elements(group);
-    return {quad_shift(elements.front()), quad_shift(elements.back() + 1)};
+    return { quad_shift(elements.front()), quad_shift(elements.back() + 1) };
 }
 
 template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::quad_shifts_count(const size_t e) const {
-    return {quad_shift(e), quad_shift(e + 1)};
+    return { quad_shift(e), quad_shift(e + 1) };
 }
 
 template<std::floating_point T, std::integral I>
@@ -191,8 +189,8 @@ std::ranges::iota_view<size_t, size_t> mesh_2d<T, I>::process_nodes(const size_t
 template<std::floating_point T, std::integral I>
 std::unordered_set<I> mesh_2d<T, I>::process_elements(const size_t process) const {
     std::unordered_set<I> proc_elements;
-    for(const size_t node : process_nodes(process))
-        for(const I e : elements(node))
+    for (const size_t node : process_nodes(process))
+        for (const I e : elements(node))
             proc_elements.insert(e);
     return proc_elements;
 }
@@ -206,7 +204,7 @@ template<std::floating_point T, std::integral I>
 void mesh_2d<T, I>::neighbours(neighbours_t<T, I>&& data) {
     auto&& [influences, elements_neighbors] = data;
     if (elements_neighbors.size() != container().elements_2d_count())
-        throw std::domain_error{"The neighbor list length does not match the number of 2D mesh elements."};
+        throw std::domain_error{ "The neighbor list length does not match the number of 2D mesh elements." };
     _influences = std::move(influences);
     _elements_neighbors = std::move(elements_neighbors);
 }
@@ -223,11 +221,11 @@ const influences<T>& mesh_2d<T, I>::get_influences() const noexcept {
 
 template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area(const size_t e) const {
-    T area = T{0};
+    T area = T{ 0 };
     const auto& el = container().element_2d(e);
-    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()}) {
+    for (const size_t q : std::ranges::iota_view{ 0u, el.qnodes_count() }) {
         const T factor = el.weight(q) * jacobian(e, q);
-        for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+        for (const size_t i : std::ranges::iota_view{ 0u, el.nodes_count() })
             area += factor * el.qN(i, q);
     }
     return area;
@@ -236,7 +234,7 @@ T mesh_2d<T, I>::area(const size_t e) const {
 template<std::floating_point T, std::integral I>
 T mesh_2d<T, I>::area(const std::ranges::iota_view<size_t, size_t> elements) const {
     const auto summator = [this](const T sum, const size_t e) { return sum + area(e); };
-    return std::reduce(elements.begin(), elements.end(), T{0}, summator);
+    return std::reduce(elements.begin(), elements.end(), T{ 0 }, summator);
 }
 
 template<std::floating_point T, std::integral I>
@@ -273,9 +271,9 @@ void mesh_2d<T, I>::clear() {
     _quad_node_shift.shrink_to_fit();
     _derivatives.clear();
     _derivatives.shrink_to_fit();
-    _MPI_ranges = parallel::MPI_ranges{0};
+    _MPI_ranges = parallel::MPI_ranges{ 0 };
     _elements_neighbors.clear();
     _elements_neighbors.shrink_to_fit();
 }
 
-}
+} // namespace nonlocal::mesh

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "solver_base.hpp"
-#include "preconditioner_base.hpp"
 #include "identity_preconditioner.hpp"
+#include "preconditioner_base.hpp"
+#include "solver_base.hpp"
 
 #include <memory>
 
@@ -12,19 +12,19 @@ template<class T, std::integral I = uint32_t, std::integral J = size_t>
 class iterative_solver_base : public solver_base<T, I, J> {
     using _base = solver_base<T, I, J>;
 
-public:
+  public:
     using typename _base::floating_point_t;
 
-private:
+  private:
     std::unique_ptr<preconditioner_base<T>> _preconditioner = std::make_unique<identity_preconditioner<T>>();
     floating_point_t _tolerance = std::numeric_limits<floating_point_t>::epsilon();
     uintmax_t _max_iterations = 10000;
 
-protected:
+  protected:
     mutable uintmax_t _iterations = 0;
     mutable floating_point_t _residual = 0;
 
-public:
+  public:
     using solver_base<T, I, J>::solver_base;
     virtual ~iterative_solver_base() noexcept = default;
 
@@ -65,4 +65,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::slae

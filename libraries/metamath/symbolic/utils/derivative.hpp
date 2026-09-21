@@ -21,7 +21,7 @@ class _derivative final {
         return derivative_impl<Vars...>(e.template derivative<X>());
     }
 
-public:
+  public:
     template<auto X, auto... Vars, class E>
     friend constexpr auto derivative(const E& e);
 
@@ -39,4 +39,4 @@ constexpr auto derivative(const std::tuple<E...>& e) {
     return std::make_tuple(_derivative::derivative_impl<X, Vars...>(std::get<E>(e))...);
 }
 
-}
+} // namespace metamath::symbolic

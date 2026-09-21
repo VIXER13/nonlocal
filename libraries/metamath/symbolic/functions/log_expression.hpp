@@ -11,9 +11,8 @@ template<class E>
 class log_expression : public unary_expression<E, log_expression> {
     using _base = unary_expression<E, log_expression>;
 
-public:
-    constexpr explicit log_expression(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit log_expression(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     constexpr auto operator()(const Args&... args) const {
@@ -28,7 +27,7 @@ public:
 
 template<class E>
 constexpr log_expression<E> log(const expression<E>& e) noexcept {
-    return log_expression<E>{e()};
+    return log_expression<E>{ e() };
 }
 
-}
+} // namespace metamath::symbolic

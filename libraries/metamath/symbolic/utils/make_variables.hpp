@@ -14,7 +14,7 @@ class _make_variables final {
         return std::make_tuple(variable<I>{}...);
     }
 
-public:
+  public:
     template<size_t N>
     friend constexpr auto make_variables() noexcept;
 };
@@ -24,4 +24,4 @@ constexpr auto make_variables() noexcept {
     return _make_variables::make_variables_impl(std::make_index_sequence<N>{});
 }
 
-}
+} // namespace metamath::symbolic

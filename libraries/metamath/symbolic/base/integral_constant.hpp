@@ -27,4 +27,4 @@ constexpr integral_constant<N> simplify(const integral_constant<N>) noexcept {
     return {};
 }
 
-}
+} // namespace metamath::symbolic

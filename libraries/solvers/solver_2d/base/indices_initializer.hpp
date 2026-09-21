@@ -21,13 +21,10 @@ class indices_initializer final : public mesh::indexator_base {
         }
     }
 
-public:
-    explicit indices_initializer(metamath::linear::sparse_matrix_portrait<>& portrait, 
-                                 const mesh::mesh_container_2d<T>& mesh, const bool is_symmetric)
-        : mesh::indexator_base{is_symmetric}
-        , _included(portrait.cols(), false)
-        , _portrait{portrait}
-        , _mesh{mesh} {}
+  public:
+    explicit indices_initializer(metamath::linear::sparse_matrix_portrait<>& portrait, const mesh::mesh_container_2d<T>& mesh,
+                                 const bool is_symmetric)
+        : mesh::indexator_base{ is_symmetric }, _included(portrait.cols(), false), _portrait{ portrait }, _mesh{ mesh } {}
 
     void reset(const size_t node) override {
         _current_shift = _portrait.shifts[node];
@@ -43,4 +40,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::solver_2d

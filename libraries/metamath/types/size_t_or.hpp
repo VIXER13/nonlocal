@@ -14,4 +14,4 @@ T get_value(const size_t_or<T>& value) {
     return T(std::get<size_t>(value));
 }
 
-}
+} // namespace metamath::types

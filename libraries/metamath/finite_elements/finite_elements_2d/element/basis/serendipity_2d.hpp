@@ -1,8 +1,8 @@
 #pragma once
 
-#include <metamath/symbolic/base/symbolic_base.hpp>
-#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
 #include <metamath/finite_elements/finite_elements_2d/geometry/geometric_primitives/rectangle.hpp>
+#include <metamath/finite_elements/finite_elements_2d/geometry/geometry_2d.hpp>
+#include <metamath/symbolic/base/symbolic_base.hpp>
 
 namespace metamath::finite_element {
 
@@ -11,22 +11,26 @@ class serendipity;
 
 template<class T>
 class serendipity_base : public geometry_2d<T, rectangle_element_geometry> {
-protected:
+  protected:
     static inline constexpr symbolic::variable<2> p{};
     T _p;
 
-    explicit serendipity_base(const T p) : _p{p} {}
+    explicit serendipity_base(const T p) : _p{ p } {}
     ~serendipity_base() override = default;
 
-public:
-    T get_parameter() const noexcept { return _p; }
-    void set_parameter(const T p) noexcept { _p = p; }
+  public:
+    T get_parameter() const noexcept {
+        return _p;
+    }
+    void set_parameter(const T p) noexcept {
+        _p = p;
+    }
 };
 
 template<class T>
 class serendipity<T, 0> : public geometry_2d<T, rectangle_element_geometry> {
-protected:
-    static inline constexpr std::array<std::array<T, 2>, 1> nodes = { T{0}, T{0} };
+  protected:
+    static inline constexpr std::array<std::array<T, 2>, 1> nodes = { T{ 0 }, T{ 0 } };
     static inline constexpr auto basis = std::make_tuple(metamath::symbolic::integral_constant<1>{});
 
     explicit serendipity() = default;
@@ -40,7 +44,7 @@ class serendipity<T, 1> : public geometry_2d<T, rectangle_element_geometry> {
     static inline constexpr metamath::symbolic::integral_constant<1> _1{};
     static inline constexpr metamath::symbolic::integral_constant<4> _4{};
 
-protected:
+  protected:
     using _base::x;
     using _base::y;
 
@@ -49,18 +53,11 @@ protected:
         |   |
         0---1
     */
-    static inline constexpr std::array<std::array<T, 2>, 4>
-        nodes = { T{-1}, T{-1},
-                  T{ 1}, T{-1},
-                  T{ 1}, T{ 1},
-                  T{-1}, T{ 1} };
+    static inline constexpr std::array<std::array<T, 2>, 4> nodes = { T{ -1 }, T{ -1 }, T{ 1 },  T{ -1 },
+                                                                      T{ 1 },  T{ 1 },  T{ -1 }, T{ 1 } };
 
-    static inline constexpr auto basis = std::make_tuple(
-        (_1 - x) * (_1 - y) / _4,
-        (_1 + x) * (_1 - y) / _4,
-        (_1 + x) * (_1 + y) / _4,
-        (_1 - x) * (_1 + y) / _4
-    );
+    static inline constexpr auto basis =
+        std::make_tuple((_1 - x) * (_1 - y) / _4, (_1 + x) * (_1 - y) / _4, (_1 + x) * (_1 + y) / _4, (_1 - x) * (_1 + y) / _4);
 
     explicit serendipity() = default;
     ~serendipity() override = default;
@@ -76,10 +73,10 @@ class serendipity<T, 2> : public serendipity_base<T> {
     static inline constexpr metamath::symbolic::integral_constant<9> _9{};
     static inline constexpr metamath::symbolic::integral_constant<16> _16{};
 
-protected:
+  protected:
+    using _base::p;
     using _base::x;
     using _base::y;
-    using _base::p;
 
     /*
         6---5---4
@@ -88,28 +85,21 @@ protected:
         |       |
         0---1---2
     */
-    static inline constexpr std::array<std::array<T, 2>, 8>
-        nodes = { T{-1}, T{-1},
-                  T{ 0}, T{-1},
-                  T{ 1}, T{-1},
-                  T{ 1}, T{ 0},
-                  T{ 1}, T{ 1},
-                  T{ 0}, T{ 1},
-                  T{-1}, T{ 1},
-                  T{-1}, T{ 0} };
+    static inline constexpr std::array<std::array<T, 2>, 8> nodes = { T{ -1 }, T{ -1 }, T{ 0 },  T{ -1 }, T{ 1 }, T{ -1 },
+                                                                      T{ 1 },  T{ 0 },  T{ 1 },  T{ 1 },  T{ 0 }, T{ 1 },
+                                                                      T{ -1 }, T{ 1 },  T{ -1 }, T{ 0 } };
 
-    static inline constexpr auto basis = std::make_tuple(
-         (_1-x  ) * (_1-y) * ((_9*p-_1)*(_1+x+y) + (_9*p+_3)*x*y) / _16,
-        -(_1-x*x) * (_1-y) * ((_9*p-_5)          + (_9*p+_3)*y  ) / _16,
-         (_1+x  ) * (_1-y) * ((_9*p-_1)*(_1-x+y) - (_9*p+_3)*x*y) / _16,
-        -(_1-y*y) * (_1+x) * ((_9*p-_5)          - (_9*p+_3)*x  ) / _16,
-         (_1+x  ) * (_1+y) * ((_9*p-_1)*(_1-x-y) + (_9*p+_3)*x*y) / _16,
-        -(_1-x*x) * (_1+y) * ((_9*p-_5)          - (_9*p+_3)*y  ) / _16,
-         (_1-x  ) * (_1+y) * ((_9*p-_1)*(_1+x-y) - (_9*p+_3)*x*y) / _16,
-        -(_1-y*y) * (_1-x) * ((_9*p-_5)          + (_9*p+_3)*x  ) / _16
-    );
+    static inline constexpr auto basis =
+        std::make_tuple((_1 - x) * (_1 - y) * ((_9 * p - _1) * (_1 + x + y) + (_9 * p + _3) * x * y) / _16,
+                        -(_1 - x * x) * (_1 - y) * ((_9 * p - _5) + (_9 * p + _3) * y) / _16,
+                        (_1 + x) * (_1 - y) * ((_9 * p - _1) * (_1 - x + y) - (_9 * p + _3) * x * y) / _16,
+                        -(_1 - y * y) * (_1 + x) * ((_9 * p - _5) - (_9 * p + _3) * x) / _16,
+                        (_1 + x) * (_1 + y) * ((_9 * p - _1) * (_1 - x - y) + (_9 * p + _3) * x * y) / _16,
+                        -(_1 - x * x) * (_1 + y) * ((_9 * p - _5) - (_9 * p + _3) * y) / _16,
+                        (_1 - x) * (_1 + y) * ((_9 * p - _1) * (_1 + x - y) - (_9 * p + _3) * x * y) / _16,
+                        -(_1 - y * y) * (_1 - x) * ((_9 * p - _5) + (_9 * p + _3) * x) / _16);
 
-    explicit serendipity() : _base{T{2} / T{9}} {}
+    explicit serendipity() : _base{ T{ 2 } / T{ 9 } } {}
     ~serendipity() override = default;
 };
 
@@ -125,10 +115,10 @@ class serendipity<T, 3> : public serendipity_base<T> {
     static inline constexpr metamath::symbolic::integral_constant<54> _54{};
     static inline constexpr metamath::symbolic::integral_constant<64> _64{};
 
-protected:
+  protected:
+    using _base::p;
     using _base::x;
     using _base::y;
-    using _base::p;
 
     /*
         9---8---7---6
@@ -139,37 +129,28 @@ protected:
         |           |
         0---1---2---3
     */
-    static inline constexpr std::array<std::array<T, 2>, 12>
-        nodes = {      -T{1},      -T{1},
-                  -T{1}/T{3},      -T{1},
-                   T{1}/T{3},      -T{1},
-                        T{1},      -T{1},
-                        T{1}, -T{1}/T{3},
-                        T{1},  T{1}/T{3},
-                        T{1},       T{1},
-                   T{1}/T{3},       T{1},
-                  -T{1}/T{3},       T{1},
-                       -T{1},       T{1},
-                       -T{1},  T{1}/T{3},
-                       -T{1}, -T{1}/T{3}
-        };
+    static inline constexpr std::array<std::array<T, 2>, 12> nodes = {
+        -T{ 1 }, -T{ 1 }, -T{ 1 } / T{ 3 }, -T{ 1 },          T{ 1 } / T{ 3 },  -T{ 1 },
+        T{ 1 },  -T{ 1 }, T{ 1 },           -T{ 1 } / T{ 3 }, T{ 1 },           T{ 1 } / T{ 3 },
+        T{ 1 },  T{ 1 },  T{ 1 } / T{ 3 },  T{ 1 },           -T{ 1 } / T{ 3 }, T{ 1 },
+        -T{ 1 }, T{ 1 },  -T{ 1 },          T{ 1 } / T{ 3 },  -T{ 1 },          -T{ 1 } / T{ 3 }
+    };
 
-    static inline constexpr auto basis = std::make_tuple(
-         (_1-x  ) * (_1-y  ) * (_9 *(x*x+y*y + (_2 *p+_1)*(x*y+x+y)) + _18*p - _1) / _32,
-        -(_1-x*x) * (_1-y  ) * (_54*x        + (_18*p+_9)*y          + _18*p - _9) / _64,
-         (_1-x*x) * (_1-y  ) * (_54*x        - (_18*p+_9)*y          - _18*p + _9) / _64,
-         (_1+x  ) * (_1-y  ) * (_9 *(x*x+y*y - (_2 *p+_1)*(x*y+x-y)) + _18*p - _1) / _32,
-        -(_1+x  ) * (_1-y*y) * (_54*y        - (_18*p+_9)*x          + _18*p - _9) / _64,
-         (_1+x  ) * (_1-y*y) * (_54*y        + (_18*p+_9)*x          - _18*p + _9) / _64,
-         (_1+x  ) * (_1+y  ) * (_9 *(x*x+y*y + (_2 *p+_1)*(x*y-x-y)) + _18*p - _1) / _32,
-         (_1-x*x) * (_1+y  ) * (_54*x        + (_18*p+_9)*y          - _18*p + _9) / _64,
-        -(_1-x*x) * (_1+y  ) * (_54*x        - (_18*p+_9)*y          + _18*p - _9) / _64,
-         (_1-x  ) * (_1+y  ) * (_9 *(x*x+y*y - (_2 *p+_1)*(x*y-x+y)) + _18*p - _1) / _32,
-         (_1-x  ) * (_1-y*y) * (_54*y        - (_18*p+_9)*x          - _18*p + _9) / _64,
-        -(_1-x  ) * (_1-y*y) * (_54*y        + (_18*p+_9)*x          + _18*p - _9) / _64
-    );
+    static inline constexpr auto basis =
+        std::make_tuple((_1 - x) * (_1 - y) * (_9 * (x * x + y * y + (_2 * p + _1) * (x * y + x + y)) + _18 * p - _1) / _32,
+                        -(_1 - x * x) * (_1 - y) * (_54 * x + (_18 * p + _9) * y + _18 * p - _9) / _64,
+                        (_1 - x * x) * (_1 - y) * (_54 * x - (_18 * p + _9) * y - _18 * p + _9) / _64,
+                        (_1 + x) * (_1 - y) * (_9 * (x * x + y * y - (_2 * p + _1) * (x * y + x - y)) + _18 * p - _1) / _32,
+                        -(_1 + x) * (_1 - y * y) * (_54 * y - (_18 * p + _9) * x + _18 * p - _9) / _64,
+                        (_1 + x) * (_1 - y * y) * (_54 * y + (_18 * p + _9) * x - _18 * p + _9) / _64,
+                        (_1 + x) * (_1 + y) * (_9 * (x * x + y * y + (_2 * p + _1) * (x * y - x - y)) + _18 * p - _1) / _32,
+                        (_1 - x * x) * (_1 + y) * (_54 * x + (_18 * p + _9) * y - _18 * p + _9) / _64,
+                        -(_1 - x * x) * (_1 + y) * (_54 * x - (_18 * p + _9) * y + _18 * p - _9) / _64,
+                        (_1 - x) * (_1 + y) * (_9 * (x * x + y * y - (_2 * p + _1) * (x * y - x + y)) + _18 * p - _1) / _32,
+                        (_1 - x) * (_1 - y * y) * (_54 * y - (_18 * p + _9) * x - _18 * p + _9) / _64,
+                        -(_1 - x) * (_1 - y * y) * (_54 * y + (_18 * p + _9) * x + _18 * p - _9) / _64);
 
-    explicit serendipity() : _base{T{1} / T{8}} {}
+    explicit serendipity() : _base{ T{ 1 } / T{ 8 } } {}
     ~serendipity() override = default;
 };
 
@@ -193,7 +174,7 @@ class serendipity<T, 4> : public geometry_2d<T, rectangle_element_geometry> {
     static inline constexpr metamath::symbolic::integral_constant<3000> _3000{};
     static inline constexpr metamath::symbolic::integral_constant<4000> _4000{};
 
-protected:
+  protected:
     using _base::x;
     using _base::y;
 
@@ -208,43 +189,29 @@ protected:
         |              |
         0---1---2---3--4
     */
-    static inline constexpr std::array<std::array<T, 2>, 16>
-        nodes = { T{-1.0}, T{-1.0},
-                  T{-0.5}, T{-1.0},
-                  T{ 0.0}, T{-1.0},
-                  T{ 0.5}, T{-1.0},
-                  T{ 1.0}, T{-1.0},
-                  T{ 1.0}, T{-0.5},
-                  T{ 1.0}, T{ 0.0},
-                  T{ 1.0}, T{ 0.5},
-                  T{ 1.0}, T{ 1.0},
-                  T{ 0.5}, T{ 1.0},
-                  T{ 0.0}, T{ 1.0},
-                  T{-0.5}, T{ 1.0},
-                  T{-1.0}, T{ 1.0},
-                  T{-1.0}, T{ 0.5},
-                  T{-1.0}, T{ 0.0},
-                  T{-1.0}, T{-0.5}
-        };
+    static inline constexpr std::array<std::array<T, 2>, 16> nodes = {
+        T{ -1.0 }, T{ -1.0 }, T{ -0.5 }, T{ -1.0 }, T{ 0.0 },  T{ -1.0 }, T{ 0.5 },  T{ -1.0 }, T{ 1.0 },  T{ -1.0 }, T{ 1.0 },
+        T{ -0.5 }, T{ 1.0 },  T{ 0.0 },  T{ 1.0 },  T{ 0.5 },  T{ 1.0 },  T{ 1.0 },  T{ 0.5 },  T{ 1.0 },  T{ 0.0 },  T{ 1.0 },
+        T{ -0.5 }, T{ 1.0 },  T{ -1.0 }, T{ 1.0 },  T{ -1.0 }, T{ 0.5 },  T{ -1.0 }, T{ 0.0 },  T{ -1.0 }, T{ -0.5 }
+    };
 
     static inline constexpr auto basis = std::make_tuple(
-         (_1-x  ) * (_1-y  ) * (_1 + _2*(x + y)) * (_561 + _61*(x+y) - _500*(x*x + y*y) + _311*x*y) / _3000,
-        -(_1-x*x) * (_1-y  ) * (_203  + _203*y + _1600*x/_3) * (_1-_2*x) / _800,
-         (_1-x*x) * (_1-y  ) * (_1141 + _141*y - _4000*x*x) / _2000,
-        -(_1-x*x) * (_1-y  ) * (_203  + _203*y - _1600*x/_3) * (_1+_2*x) / _800,
-         (_1+x  ) * (_1-y  ) * (_1 - _2*(x - y)) * (_561 - _61*(x-y) - _500*(x*x + y*y) - _311*x*y) / _3000,
-        -(_1+x  ) * (_1-y*y) * (_203  - _203*x + _1600*y/_3) * (_1-_2*y) / _800,
-         (_1+x  ) * (_1-y*y) * (_1141 - _141*x - _4000*y*y) / _2000,
-        -(_1+x  ) * (_1-y*y) * (_203  - _203*x - _1600*y/_3) * (_1+_2*y) / _800,
-         (_1+x  ) * (_1+y  ) * (_1 - _2*(x + y)) * (_561 - _61*(x+y) - _500*(x*x + y*y) + _311*x*y) / _3000,
-        -(_1-x*x) * (_1+y  ) * (_203  - _203*y - _1600*x/_3) * (_1+_2*x) / _800,
-         (_1-x*x) * (_1+y  ) * (_1141 - _141*y - _4000*x*x) / _2000,
-        -(_1-x*x) * (_1+y  ) * (_203  - _203*y + _1600*x/_3) * (_1-_2*x) / _800,
-         (_1-x  ) * (_1+y  ) * (_1 + _2*(x - y)) * (_561 + _61*(x-y) - _500*(x*x + y*y) - _311*x*y) / _3000,
-        -(_1-x  ) * (_1-y*y) * (_203  + _203*x - _1600*y/_3) * (_1+_2*y) / _800,
-         (_1-x  ) * (_1-y*y) * (_1141 + _141*x - _4000*y*y) / _2000,
-        -(_1-x  ) * (_1-y*y) * (_203  + _203*x + _1600*y/_3) * (_1-_2*y) / _800
-    );
+        (_1 - x) * (_1 - y) * (_1 + _2 * (x + y)) * (_561 + _61 * (x + y) - _500 * (x * x + y * y) + _311 * x * y) / _3000,
+        -(_1 - x * x) * (_1 - y) * (_203 + _203 * y + _1600 * x / _3) * (_1 - _2 * x) / _800,
+        (_1 - x * x) * (_1 - y) * (_1141 + _141 * y - _4000 * x * x) / _2000,
+        -(_1 - x * x) * (_1 - y) * (_203 + _203 * y - _1600 * x / _3) * (_1 + _2 * x) / _800,
+        (_1 + x) * (_1 - y) * (_1 - _2 * (x - y)) * (_561 - _61 * (x - y) - _500 * (x * x + y * y) - _311 * x * y) / _3000,
+        -(_1 + x) * (_1 - y * y) * (_203 - _203 * x + _1600 * y / _3) * (_1 - _2 * y) / _800,
+        (_1 + x) * (_1 - y * y) * (_1141 - _141 * x - _4000 * y * y) / _2000,
+        -(_1 + x) * (_1 - y * y) * (_203 - _203 * x - _1600 * y / _3) * (_1 + _2 * y) / _800,
+        (_1 + x) * (_1 + y) * (_1 - _2 * (x + y)) * (_561 - _61 * (x + y) - _500 * (x * x + y * y) + _311 * x * y) / _3000,
+        -(_1 - x * x) * (_1 + y) * (_203 - _203 * y - _1600 * x / _3) * (_1 + _2 * x) / _800,
+        (_1 - x * x) * (_1 + y) * (_1141 - _141 * y - _4000 * x * x) / _2000,
+        -(_1 - x * x) * (_1 + y) * (_203 - _203 * y + _1600 * x / _3) * (_1 - _2 * x) / _800,
+        (_1 - x) * (_1 + y) * (_1 + _2 * (x - y)) * (_561 + _61 * (x - y) - _500 * (x * x + y * y) - _311 * x * y) / _3000,
+        -(_1 - x) * (_1 - y * y) * (_203 + _203 * x - _1600 * y / _3) * (_1 + _2 * y) / _800,
+        (_1 - x) * (_1 - y * y) * (_1141 + _141 * x - _4000 * y * y) / _2000,
+        -(_1 - x) * (_1 - y * y) * (_203 + _203 * x + _1600 * y / _3) * (_1 - _2 * y) / _800);
 
     explicit serendipity() = default;
     ~serendipity() override = default;
@@ -264,7 +231,7 @@ class serendipity<T, 5> : public geometry_2d<T, rectangle_element_geometry> {
     static inline constexpr metamath::symbolic::integral_constant<768> _768{};
     static inline constexpr metamath::symbolic::integral_constant<1536> _1536{};
 
-protected:
+  protected:
     using _base::x;
     using _base::y;
 
@@ -281,54 +248,37 @@ protected:
         |                   |
         0---1---2---3---4---5
     */
-    static inline constexpr std::array<std::array<T, 2>, 20>
-        nodes = { T{-1.0}, T{-1.0},
-                  T{-0.6}, T{-1.0},
-                  T{-0.2}, T{-1.0},
-                  T{ 0.2}, T{-1.0},
-                  T{ 0.6}, T{-1.0},
-                  T{ 1.0}, T{-1.0},
-                  T{ 1.0}, T{-0.6},
-                  T{ 1.0}, T{-0.2},
-                  T{ 1.0}, T{ 0.2},
-                  T{ 1.0}, T{ 0.6},
-                  T{ 1.0}, T{ 1.0},
-                  T{ 0.6}, T{ 1.0},
-                  T{ 0.2}, T{ 1.0},
-                  T{-0.2}, T{ 1.0},
-                  T{-0.6}, T{ 1.0},
-                  T{-1.0}, T{ 1.0},
-                  T{-1.0}, T{ 0.6},
-                  T{-1.0}, T{ 0.2},
-                  T{-1.0}, T{-0.2},
-                  T{-1.0}, T{-0.6}
-        };
+    static inline constexpr std::array<std::array<T, 2>, 20> nodes = {
+        T{ -1.0 }, T{ -1.0 }, T{ -0.6 }, T{ -1.0 }, T{ -0.2 }, T{ -1.0 }, T{ 0.2 },  T{ -1.0 }, T{ 0.6 },  T{ -1.0 },
+        T{ 1.0 },  T{ -1.0 }, T{ 1.0 },  T{ -0.6 }, T{ 1.0 },  T{ -0.2 }, T{ 1.0 },  T{ 0.2 },  T{ 1.0 },  T{ 0.6 },
+        T{ 1.0 },  T{ 1.0 },  T{ 0.6 },  T{ 1.0 },  T{ 0.2 },  T{ 1.0 },  T{ -0.2 }, T{ 1.0 },  T{ -0.6 }, T{ 1.0 },
+        T{ -1.0 }, T{ 1.0 },  T{ -1.0 }, T{ 0.6 },  T{ -1.0 }, T{ 0.2 },  T{ -1.0 }, T{ -0.2 }, T{ -1.0 }, T{ -0.6 }
+    };
 
     static inline constexpr auto basis = std::make_tuple(
-              (_1-x  ) * (_1-y) * (_384 - _125 * ((_1-x*x) * (_3+_5*x*x) + (_1-y*y)*(_3+_5*y*y))) / _1536,
-        _25 * (_1-x*x) * (_1-y) * (-_1+_25*x*x) * (_3-_5*x) / _1536,
-        _25 * (_1-x*x) * (_1-y) * ( _9-_25*x*x) * (_1-_5*x) / _768,
-        _25 * (_1-x*x) * (_1-y) * ( _9-_25*x*x) * (_1+_5*x) / _768,
-        _25 * (_1-x*x) * (_1-y) * (-_1+_25*x*x) * (_3+_5*x) / _1536,
-              (_1+x  ) * (_1-y) * (_384 - _125 * ((_1-x*x) * (_3+_5*x*x) + (_1-y*y)*(_3+_5*y*y))) / _1536,
-        _25 * (_1-y*y) * (_1+x) * (-_1+_25*y*y) * (_3-_5*y) / _1536,
-        _25 * (_1-y*y) * (_1+x) * ( _9-_25*y*y) * (_1-_5*y) / _768,
-        _25 * (_1-y*y) * (_1+x) * ( _9-_25*y*y) * (_1+_5*y) / _768,
-        _25 * (_1-y*y) * (_1+x) * (-_1+_25*y*y) * (_3+_5*y) / _1536,
-              (_1+x  ) * (_1+y) * (_384 - _125 * ((_1-x*x) * (_3+_5*x*x) + (_1-y*y)*(_3+_5*y*y))) / _1536,
-        _25 * (_1-x*x) * (_1+y) * (-_1+_25*x*x) * (_3+_5*x) / _1536,
-        _25 * (_1-x*x) * (_1+y) * ( _9-_25*x*x) * (_1+_5*x) / _768,
-        _25 * (_1-x*x) * (_1+y) * ( _9-_25*x*x) * (_1-_5*x) / _768,
-        _25 * (_1-x*x) * (_1+y) * (-_1+_25*x*x) * (_3-_5*x) / _1536,
-              (_1-x  ) * (_1+y) * (_384 - _125 * ((_1-x*x) * (_3+_5*x*x) + (_1-y*y)*(_3+_5*y*y))) / _1536,
-        _25 * (_1-y*y) * (_1-x) * (-_1+_25*y*y) * (_3+_5*y) / _1536,
-        _25 * (_1-y*y) * (_1-x) * ( _9-_25*y*y) * (_1+_5*y) / _768,
-        _25 * (_1-y*y) * (_1-x) * ( _9-_25*y*y) * (_1-_5*y) / _768,
-        _25 * (_1-y*y) * (_1-x) * (-_1+_25*y*y) * (_3-_5*y) / _1536
-    );
+        (_1 - x) * (_1 - y) * (_384 - _125 * ((_1 - x * x) * (_3 + _5 * x * x) + (_1 - y * y) * (_3 + _5 * y * y))) / _1536,
+        _25*(_1 - x * x) * (_1 - y) * (-_1 + _25 * x * x) * (_3 - _5 * x) / _1536,
+        _25*(_1 - x * x) * (_1 - y) * (_9 - _25 * x * x) * (_1 - _5 * x) / _768,
+        _25*(_1 - x * x) * (_1 - y) * (_9 - _25 * x * x) * (_1 + _5 * x) / _768,
+        _25*(_1 - x * x) * (_1 - y) * (-_1 + _25 * x * x) * (_3 + _5 * x) / _1536,
+        (_1 + x) * (_1 - y) * (_384 - _125 * ((_1 - x * x) * (_3 + _5 * x * x) + (_1 - y * y) * (_3 + _5 * y * y))) / _1536,
+        _25*(_1 - y * y) * (_1 + x) * (-_1 + _25 * y * y) * (_3 - _5 * y) / _1536,
+        _25*(_1 - y * y) * (_1 + x) * (_9 - _25 * y * y) * (_1 - _5 * y) / _768,
+        _25*(_1 - y * y) * (_1 + x) * (_9 - _25 * y * y) * (_1 + _5 * y) / _768,
+        _25*(_1 - y * y) * (_1 + x) * (-_1 + _25 * y * y) * (_3 + _5 * y) / _1536,
+        (_1 + x) * (_1 + y) * (_384 - _125 * ((_1 - x * x) * (_3 + _5 * x * x) + (_1 - y * y) * (_3 + _5 * y * y))) / _1536,
+        _25*(_1 - x * x) * (_1 + y) * (-_1 + _25 * x * x) * (_3 + _5 * x) / _1536,
+        _25*(_1 - x * x) * (_1 + y) * (_9 - _25 * x * x) * (_1 + _5 * x) / _768,
+        _25*(_1 - x * x) * (_1 + y) * (_9 - _25 * x * x) * (_1 - _5 * x) / _768,
+        _25*(_1 - x * x) * (_1 + y) * (-_1 + _25 * x * x) * (_3 - _5 * x) / _1536,
+        (_1 - x) * (_1 + y) * (_384 - _125 * ((_1 - x * x) * (_3 + _5 * x * x) + (_1 - y * y) * (_3 + _5 * y * y))) / _1536,
+        _25*(_1 - y * y) * (_1 - x) * (-_1 + _25 * y * y) * (_3 + _5 * y) / _1536,
+        _25*(_1 - y * y) * (_1 - x) * (_9 - _25 * y * y) * (_1 + _5 * y) / _768,
+        _25*(_1 - y * y) * (_1 - x) * (_9 - _25 * y * y) * (_1 - _5 * y) / _768,
+        _25*(_1 - y * y) * (_1 - x) * (-_1 + _25 * y * y) * (_3 - _5 * y) / _1536);
 
     explicit serendipity() = default;
     ~serendipity() override = default;
 };
 
-}
+} // namespace metamath::finite_element

@@ -1,25 +1,19 @@
 #pragma once
 
-#include <cstdint>
 #include <concepts>
+#include <cstdint>
 
 namespace nonlocal {
 
 enum axis : uint8_t { X, Y, Z };
 enum : uint8_t { XX, YY, XY, YX = XY };
 
-enum class physics_t : uint8_t {
-    THERMAL,
-    MECHANICAL
-};
+enum class physics_t : uint8_t { THERMAL, MECHANICAL };
 
-enum class theory_t : bool {
-    LOCAL,
-    NONLOCAL
-};
+enum class theory_t : bool { LOCAL, NONLOCAL };
 
 template<std::floating_point T>
-constexpr T Nonlocal_Threshold = T{0.999};
+constexpr T Nonlocal_Threshold = T{ 0.999 };
 
 template<std::floating_point T>
 constexpr theory_t theory_type(const T local_weight) noexcept {
@@ -38,10 +32,10 @@ constexpr bool is_nonlocal(const T local_weight) noexcept {
 
 template<std::floating_point T>
 constexpr T nonlocal_weight(const T local_weight) noexcept {
-    return T{1} - local_weight;
+    return T{ 1 } - local_weight;
 }
 
 template<std::floating_point T>
-inline constexpr T NEUMANN_PROBLEM_ERROR_THRESHOLD = std::is_same_v<T, float> ? T{1e-5} : T{1e-10};
+inline constexpr T NEUMANN_PROBLEM_ERROR_THRESHOLD = std::is_same_v<T, float> ? T{ 1e-5 } : T{ 1e-10 };
 
-}
+} // namespace nonlocal

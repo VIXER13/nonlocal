@@ -4,6 +4,7 @@
 #include "OMP_utils.hpp"
 
 #include <Eigen/Sparse>
+
 #include <optional>
 
 namespace nonlocal::slae {
@@ -14,10 +15,9 @@ class solver_base {
     parallel::MPI_ranges _process_rows;
     size_t _threads_count = parallel::threads_count();
 
-public:
+  public:
     explicit solver_base(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix)
-        : _matrix{matrix}
-        , _process_rows{parallel::rows_distribution(matrix.rows())} {}
+        : _matrix{ matrix }, _process_rows{ parallel::rows_distribution(matrix.rows()) } {}
     virtual ~solver_base() noexcept = default;
 
     const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix() const noexcept {
@@ -45,4 +45,4 @@ public:
         const std::optional<Eigen::Matrix<T, Eigen::Dynamic, 1>>& x0 = std::nullopt) const = 0;
 };
 
-}
+} // namespace nonlocal::slae

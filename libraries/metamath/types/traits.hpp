@@ -37,10 +37,12 @@ static_assert(std::is_same_v<container_type_t<int>, int>, "container_type_t<int>
 static_assert(std::is_same_v<container_type_t<std::array<int, 5>>, int>, "container_type_t<std::array<int, 5>> should be int");
 static_assert(std::is_same_v<container_type_t<std::vector<int>>, int>, "container_type_t<std::vector<int>> should be int");
 
-template<class T> 
+template<class T>
 concept arithmetic = std::integral<T> || std::floating_point<T>;
 
 template<class T>
-concept copyable = requires(const T& v) { { v.copy() } -> std::convertible_to<std::unique_ptr<T>>; };
+concept copyable = requires(const T& v) {
+    { v.copy() } -> std::convertible_to<std::unique_ptr<T>>;
+};
 
-}
+} // namespace metamath::types

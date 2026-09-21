@@ -14,7 +14,7 @@ class _simplify final {
         return std::make_tuple(std::get<I>(expressions)...);
     }
 
-public:
+  public:
     template<class... E>
     friend constexpr auto simplify(const std::tuple<E...>& e);
 };
@@ -24,4 +24,4 @@ constexpr auto simplify(const std::tuple<E...>& e) {
     return _simplify::simplify(e, std::make_index_sequence<sizeof...(E)>{});
 }
 
-}
+} // namespace metamath::symbolic

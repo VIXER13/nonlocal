@@ -9,13 +9,15 @@ namespace metamath::functions {
 template<std::floating_point T>
 constexpr T sqrt(T value) noexcept {
     T result = value;
-    for(T last = T{0}; result != last; result = T{0.5} * (result + value / result))
+    for (T last = T{ 0 }; result != last; result = T{ 0.5 } * (result + value / result))
         last = result;
     return result;
 }
 #else
-template<std::floating_point T> 
-constexpr T sqrt(T value) noexcept { return std::sqrt(value); }
+template<std::floating_point T>
+constexpr T sqrt(T value) noexcept {
+    return std::sqrt(value);
+}
 #endif
 
-}
+} // namespace metamath::functions

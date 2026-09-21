@@ -3,6 +3,13 @@ BreakBeforeBraces: Attach
 BreakTemplateDeclarations: Yes
 ColumnLimit: 130
 IndentWidth: 4
+PointerAlignment: Left
+ReferenceAlignment: Left
+SpaceAfterTemplateKeyword : false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: All
+BreakAfterReturnType: Automatic
+PenaltyReturnTypeOnItsOwnLine: 150
 UseTab: Never
 IncludeBlocks: Regroup
 IncludeCategories:

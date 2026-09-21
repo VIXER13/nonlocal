@@ -21,7 +21,7 @@ T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const E
 template<size_t N = 2, class T, size_t D>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r) {
     std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
+    for (const size_t i : std::ranges::iota_view{ 0u, D })
         z[i] = (x[i] - y[i]) / r[i];
     return powered_norm<N>(z);
 }
@@ -29,7 +29,7 @@ T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const s
 template<class T, size_t D, types::arithmetic Exp>
 T powered_distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r, const Exp exp) {
     std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
+    for (const size_t i : std::ranges::iota_view{ 0u, D })
         z[i] = (x[i] - y[i]) / r[i];
     return powered_norm(z, exp);
 }
@@ -49,7 +49,7 @@ T distance(const std::array<T, D>& x, const std::array<T, D>& y, const Exp exp) 
 template<size_t N = 2, class T, size_t D>
 T distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r) {
     std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
+    for (const size_t i : std::ranges::iota_view{ 0u, D })
         z[i] = (x[i] - y[i]) / r[i];
     return norm<N>(z);
 }
@@ -57,9 +57,9 @@ T distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::arra
 template<class T, size_t D, types::arithmetic Exp>
 T distance(const std::array<T, D>& x, const std::array<T, D>& y, const std::array<T, D>& r, const Exp exp) {
     std::array<T, D> z;
-    for(const size_t i : std::ranges::iota_view{0u, D})
+    for (const size_t i : std::ranges::iota_view{ 0u, D })
         z[i] = (x[i] - y[i]) / r[i];
     return norm(z, exp);
 }
 
-}
+} // namespace metamath::linear

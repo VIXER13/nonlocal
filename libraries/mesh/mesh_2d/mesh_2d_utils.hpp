@@ -1,8 +1,8 @@
 #pragma once
 
-#include "nonzero_counter.hpp"
-#include "integral_counter.hpp"
 #include "find_neighbours.hpp"
+#include "integral_counter.hpp"
+#include "nonzero_counter.hpp"
 
 #include <iterator>
 
@@ -11,27 +11,25 @@ namespace nonlocal::mesh::utils {
 enum class balancing_t : uint8_t { No, Memory, Speed };
 
 template<std::floating_point T, std::integral I, class Nodes, class Runner>
-void mesh_run(const mesh_2d<T, I>& mesh,
-              const Nodes& nodes, 
-              const std::unordered_map<std::string, theory_t>& theories, 
+void mesh_run(const mesh_2d<T, I>& mesh, const Nodes& nodes, const std::unordered_map<std::string, theory_t>& theories,
               Runner&& runner) {
 #pragma omp parallel for default(none) shared(mesh, nodes, theories) firstprivate(runner) schedule(dynamic)
-    for(size_t i = 0; i < nodes.size(); ++i) {
+    for (size_t i = 0; i < nodes.size(); ++i) {
         const size_t node = nodes[i];
         if constexpr (std::is_base_of_v<indexator_base, Runner>)
             runner.reset(node);
-        for(const I eL : mesh.elements(node)) {
+        for (const I eL : mesh.elements(node)) {
             const size_t iL = mesh.global_to_local(eL, node);
             const std::string& group = mesh.container().group(eL);
             if (const theory_t theory = theories.at(group); theory == theory_t::LOCAL)
-                for(const size_t jL : std::ranges::iota_view{0u, mesh.container().nodes_count(eL)})
+                for (const size_t jL : std::ranges::iota_view{ 0u, mesh.container().nodes_count(eL) })
                     runner(group, eL, iL, jL);
             else if (theory == theory_t::NONLOCAL)
-                for(const I eNL : mesh.neighbours(eL))
-                    for(const size_t jNL : std::ranges::iota_view{0u, mesh.container().nodes_count(eNL)})
+                for (const I eNL : mesh.neighbours(eL))
+                    for (const size_t jNL : std::ranges::iota_view{ 0u, mesh.container().nodes_count(eNL) })
                         runner(group, eL, eNL, iL, jNL);
             else
-                throw std::domain_error{"Unknown theory."};
+                throw std::domain_error{ "Unknown theory." };
         }
     }
 }
@@ -39,14 +37,14 @@ void mesh_run(const mesh_2d<T, I>& mesh,
 template<class T, class I, class Vector>
 std::vector<std::array<T, 2>> gradient_in_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.container().nodes_count() != size_t(x.size()))
-        throw std::logic_error{"The gradient cannot be found because the vector size does not match the number of nodes."};
+        throw std::logic_error{ "The gradient cannot be found because the vector size does not match the number of nodes." };
     std::vector<std::array<T, 2>> gradient(mesh.quad_shift(mesh.container().elements_2d_count()), std::array<T, 2>{});
 #pragma omp parallel for default(none) shared(gradient, mesh, x)
-    for(size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
+    for (size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
         const auto& el = mesh.container().element_2d(e);
-        for(size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
+        for (size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
             using namespace metamath::operators;
-            for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+            for (const size_t i : std::ranges::iota_view{ 0u, el.nodes_count() })
                 gradient[qshift] += x[mesh.container().node_number(e, i)] * mesh.derivatives(e, i, q);
             gradient[qshift] /= mesh.jacobian(qshift);
         }
@@ -57,14 +55,16 @@ std::vector<std::array<T, 2>> gradient_in_qnodes(const mesh_2d<T, I>& mesh, cons
 template<class T, class I, class Vector>
 std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.container().nodes_count() > size_t(x.size()))
-        throw std::logic_error{"Cannot approximate quadratures nodes values because vector size does not match number of mesh nodes."};
+        throw std::logic_error{
+            "Cannot approximate quadratures nodes values because vector size does not match number of mesh nodes."
+        };
     const size_t quadratures_count = mesh.quad_shift(mesh.container().elements_2d_count());
-    std::vector<T> values(quadratures_count, T{0});
+    std::vector<T> values(quadratures_count, T{ 0 });
 #pragma omp parallel for default(none) shared(mesh, x, values)
-    for(size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
+    for (size_t e = 0; e < mesh.container().elements_2d_count(); ++e) {
         const auto& el = mesh.container().element_2d(e);
-        for(size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
-            for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()}) 
+        for (size_t q = 0, qshift = mesh.quad_shift(e); q < el.qnodes_count(); ++q, ++qshift) {
+            for (const size_t i : std::ranges::iota_view{ 0u, el.nodes_count() })
                 values[qshift] += x[mesh.container().node_number(e, i)] * el.qN(i, q);
         }
     }
@@ -74,14 +74,14 @@ std::vector<T> nodes_to_qnodes(const mesh_2d<T, I>& mesh, const Vector& x) {
 template<class T, class I, class Vector>
 Vector qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.quad_shift(mesh.container().elements_2d_count()) != size_t(x.size()))
-        throw std::logic_error{"Cannot approximate node values because vector size does not match number of quadrature nodes."};
+        throw std::logic_error{ "Cannot approximate node values because vector size does not match number of quadrature nodes." };
     using vector_t = typename Vector::value_type;
     Vector approximation(mesh.container().nodes_count(), vector_t{});
 #pragma omp parallel for default(none) shared(approximation, mesh, x)
-    for(size_t node = 0; node < mesh.container().nodes_count(); ++node) {
-        T node_area = T{0};
+    for (size_t node = 0; node < mesh.container().nodes_count(); ++node) {
+        T node_area = T{ 0 };
         using namespace metamath::operators;
-        for(const I e : mesh.elements(node)) {
+        for (const I e : mesh.elements(node)) {
             const T area = mesh.area(e);
             const size_t i = mesh.global_to_local(e, node);
             const auto& el = mesh.container().element_2d(e);
@@ -97,12 +97,12 @@ Vector qnodes_to_nodes(const mesh_2d<T, I>& mesh, const Vector& x) {
 template<class T, class I>
 std::unordered_map<std::string, theory_t> theories(const mesh_2d<T, I>& mesh, const bool only_local = false) {
     std::unordered_map<std::string, theory_t> theories;
-    for(const std::string& group : mesh.container().groups_2d()) {
+    for (const std::string& group : mesh.container().groups_2d()) {
         if (only_local)
             theories[group] = theory_t::LOCAL;
         else {
             const auto& radius = mesh.get_influences().at(group).radius;
-            theories[group] = radius[0] > T{0} && radius[1] > T{0} ? theory_t::NONLOCAL : theory_t::LOCAL;
+            theories[group] = radius[0] > T{ 0 } && radius[1] > T{ 0 } ? theory_t::NONLOCAL : theory_t::LOCAL;
         }
     }
     return theories;
@@ -115,14 +115,14 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
     std::vector<size_t> nonzero_elements_count(mesh.container().nodes_count() + 1, 0);
     if (balance == balancing_t::Memory)
         mesh_run(mesh, mesh.process_nodes(), theories(mesh, only_local),
-            nonzero_counter{nonzero_elements_count, mesh.container(), is_symmetric});
+                 nonzero_counter{ nonzero_elements_count, mesh.container(), is_symmetric });
     else if (balance == balancing_t::Speed)
         mesh_run(mesh, mesh.process_nodes(), theories(mesh, only_local),
-            integral_counter{nonzero_elements_count, mesh.container(), is_symmetric});
-    else 
-        throw std::domain_error{"Unsupported balancing type"};
+                 integral_counter{ nonzero_elements_count, mesh.container(), is_symmetric });
+    else
+        throw std::domain_error{ "Unsupported balancing type" };
     nonzero_elements_count = parallel::all_to_all(nonzero_elements_count, mesh.MPI_ranges());
-    for(const size_t row : std::ranges::iota_view{1zu, nonzero_elements_count.size()})
+    for (const size_t row : std::ranges::iota_view{ 1zu, nonzero_elements_count.size() })
         nonzero_elements_count[row] += nonzero_elements_count[row - 1];
     mesh.MPI_ranges(parallel::uniform_ranges(nonzero_elements_count, parallel::MPI_size()));
     mesh.neighbours(find_neighbours(mesh, mesh.get_influences(), diameter_expanding_strategy::NO));
@@ -132,17 +132,17 @@ void balancing(mesh_2d<T, I>& mesh, const balancing_t balance, const bool only_l
 template<class T, class I, std::ranges::random_access_range Vector>
 auto integrate(const mesh_2d<T, I>& mesh, const Vector& x) {
     if (mesh.container().nodes_count() != size_t(x.size()))
-        throw std::logic_error{"The integral cannot be found because the vector size does not match the number of nodes."};
+        throw std::logic_error{ "The integral cannot be found because the vector size does not match the number of nodes." };
     using namespace metamath::operators;
     using integral_t = typename Vector::value_type;
     integral_t integral = {};
-    for(const size_t e : mesh.container().elements_2d()) {
+    for (const size_t e : mesh.container().elements_2d()) {
         const auto& el = mesh.container().element_2d(e);
-        for(const size_t q : el.qnodes())
-            for(const size_t i : el.nodes())
+        for (const size_t q : el.qnodes())
+            for (const size_t i : el.nodes())
                 integral += el.weight(q) * x[mesh.container().node_number(e, i)] * el.qN(i, q) * mesh.jacobian(e, q);
     }
     return integral;
 }
 
-}
+} // namespace nonlocal::mesh::utils

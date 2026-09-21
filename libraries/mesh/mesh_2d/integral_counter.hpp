@@ -12,7 +12,7 @@ class integral_counter : public indexator_base {
 
     void check_node(const size_t row, const size_t col);
 
-public:
+  public:
     explicit integral_counter(std::vector<size_t>& shifts, const mesh_container_2d<T, I>& mesh, const bool is_symmetric);
     ~integral_counter() noexcept override = default;
 
@@ -23,10 +23,9 @@ public:
 };
 
 template<class T, class I>
-integral_counter<T, I>::integral_counter(std::vector<size_t>& shifts, const mesh_container_2d<T, I>& mesh, const bool is_symmetric) 
-    : indexator_base{is_symmetric}
-    , _shifts{shifts}
-    , _mesh{mesh} {}
+integral_counter<T, I>::integral_counter(std::vector<size_t>& shifts, const mesh_container_2d<T, I>& mesh,
+                                         const bool is_symmetric)
+    : indexator_base{ is_symmetric }, _shifts{ shifts }, _mesh{ mesh } {}
 
 template<class T, class I>
 void integral_counter<T, I>::reset(const size_t) {}
@@ -43,8 +42,9 @@ void integral_counter<T, I>::operator()(const std::string&, const size_t e, cons
 }
 
 template<class T, class I>
-void integral_counter<T, I>::operator()(const std::string&, const size_t eL, const size_t eNL, const size_t iL, const size_t jNL) {
+void integral_counter<T, I>::operator()(const std::string&, const size_t eL, const size_t eNL, const size_t iL,
+                                        const size_t jNL) {
     check_node(_mesh.node_number(eL, iL), _mesh.node_number(eNL, jNL));
 }
 
-}
+} // namespace nonlocal::mesh

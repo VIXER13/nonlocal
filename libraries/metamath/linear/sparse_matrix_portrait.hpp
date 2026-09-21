@@ -1,8 +1,8 @@
 #pragma once
 
 #include <algorithm>
-#include <cstdint>
 #include <concepts>
+#include <cstdint>
 #include <ranges>
 #include <stdexcept>
 #include <vector>
@@ -21,8 +21,7 @@ struct sparse_matrix_portrait final {
     size_t columns = 0zu;
 
     sparse_matrix_portrait() = default;
-    sparse_matrix_portrait(const size_t rows, const size_t cols)
-        : shifts(rows + 1zu, 0zu), columns{cols} {}
+    sparse_matrix_portrait(const size_t rows, const size_t cols) : shifts(rows + 1zu, 0zu), columns{ cols } {}
 
     size_t rows() const {
         return shifts.empty() ? 0zu : shifts.size() - 1;
@@ -44,12 +43,12 @@ struct sparse_matrix_portrait final {
 
     void check_row(const size_t row) const {
         if (row >= rows())
-            throw std::out_of_range{"Row index " + std::to_string(row) + " is out of range."};
+            throw std::out_of_range{ "Row index " + std::to_string(row) + " is out of range." };
     }
 
     std::ranges::iota_view<J, J> shifts_range(const size_t row) const {
         check_row(row);
-        return std::ranges::iota_view<J, J>{shifts[row], shifts[row + 1]};
+        return std::ranges::iota_view<J, J>{ shifts[row], shifts[row + 1] };
     }
 
     auto indices_range(const size_t row) const {
@@ -62,7 +61,8 @@ struct sparse_matrix_portrait final {
         const auto range = shifts_range(row);
         const auto it = std::lower_bound(&indices[*range.begin()], &indices[*range.end()], col);
         if (it == &indices[*range.end()] || *it != col)
-            throw std::out_of_range{"Column index " + std::to_string(col) + " is out of range on the row " + std::to_string(row) + "."};
+            throw std::out_of_range{ "Column index " + std::to_string(col) + " is out of range on the row " +
+                                     std::to_string(row) + "." };
         return std::distance(indices.data(), it);
     }
 
@@ -73,7 +73,7 @@ struct sparse_matrix_portrait final {
 
     void accumulate_shifts() {
         if (!shifts.empty())
-            for(const size_t row : std::ranges::iota_view{0u, rows()})
+            for (const size_t row : std::ranges::iota_view{ 0u, rows() })
                 shifts[row + 1] += shifts[row];
     }
 
@@ -90,4 +90,4 @@ struct sparse_matrix_portrait final {
     }
 };
 
-}
+} // namespace metamath::linear

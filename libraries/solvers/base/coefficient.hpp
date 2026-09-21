@@ -14,16 +14,20 @@ namespace nonlocal {
 template<std::floating_point T, size_t Dimension>
 struct point final : public std::array<T, Dimension> {
     point() = default;
-    point(const std::array<T, Dimension>& x) : std::array<T, Dimension>{x} {}
+    point(const std::array<T, Dimension>& x) : std::array<T, Dimension>{ x } {}
 };
 
 template<std::floating_point T>
 struct point<T, 1zu> final {
-    T value = T{0};
+    T value = T{ 0 };
     point() = default;
-    point(T value) : value{value} {}
-    T& operator=(T value) { value = value; }
-    operator T() const noexcept { return value; }
+    point(T value) : value{ value } {}
+    T& operator=(T value) {
+        value = value;
+    }
+    operator T() const noexcept {
+        return value;
+    }
 };
 
 template<std::floating_point T, size_t Dimension>
@@ -60,17 +64,17 @@ bool is_spatial(const std::array<coefficient_t<T, Dimension>, N>& coefficient) {
 template<std::floating_point T, size_t Dimension>
 T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
     return std::visit(metamath::types::visitor{
-        [](const T value) noexcept { return value; },
-        [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
-        [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
-    }, coefficient);
+                          [](const T value) noexcept { return value; },
+                          [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
+                          [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); } },
+                      coefficient);
 }
 
 template<std::floating_point T, size_t Dimension, size_t N>
-std::array<T, N> evaluate(const std::array<coefficient_t<T, Dimension>, N>& coefficient,
-                          const point<T, Dimension>& point, const T solution) {
+std::array<T, N> evaluate(const std::array<coefficient_t<T, Dimension>, N>& coefficient, const point<T, Dimension>& point,
+                          const T solution) {
     std::array<T, N> result;
-    for (const size_t i : std::ranges::iota_view{0zu, N})
+    for (const size_t i : std::ranges::iota_view{ 0zu, N })
         result[i] = evaluate(coefficient[i], point, solution);
     return result;
 }
@@ -78,22 +82,35 @@ std::array<T, N> evaluate(const std::array<coefficient_t<T, Dimension>, N>& coef
 namespace utils {
 
 template<std::floating_point T, size_t Dimension, class Operator>
-coefficient_t<T, Dimension> operation(const coefficient_t<T, Dimension>& lhs, const coefficient_t<T, Dimension>& rhs, const Operator& oper) {
+coefficient_t<T, Dimension> operation(const coefficient_t<T, Dimension>& lhs, const coefficient_t<T, Dimension>& rhs,
+                                      const Operator& oper) {
     using R = coefficient_t<T, Dimension>;
     using U = spatial_dependency<T, Dimension>;
     using S = solution_dependency<T, Dimension>;
     using P = point<T, Dimension>;
-    return std::visit(metamath::types::visitor{
-        [&oper](const T  lhs, const T  rhs) -> R { return oper(lhs, rhs); },
-        [&oper](const T  lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x)            { return oper(lhs,       rhs(x)   ); }; },
-        [&oper](const T  lhs, const S& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs,       rhs(x, s)); }; },
-        [&oper](const U& lhs, const T  rhs) -> R { return [oper, lhs, rhs](const P& x)            { return oper(lhs(x),    rhs      ); }; },
-        [&oper](const U& lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x)            { return oper(lhs(x),    rhs(x)   ); }; },
-        [&oper](const U& lhs, const S& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x),    rhs(x, s)); }; },
-        [&oper](const S& lhs, const T  rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs      ); }; },
-        [&oper](const S& lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x)   ); }; },
-        [&oper](const S& lhs, const S& rhs) -> R { return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x, s)); }; },
-    }, lhs, rhs);
+    return std::visit(
+        metamath::types::visitor{
+            [&oper](const T lhs, const T rhs) -> R { return oper(lhs, rhs); },
+            [&oper](const T lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x) { return oper(lhs, rhs(x)); }; },
+            [&oper](const T lhs, const S& rhs) -> R {
+                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs, rhs(x, s)); };
+            },
+            [&oper](const U& lhs, const T rhs) -> R { return [oper, lhs, rhs](const P& x) { return oper(lhs(x), rhs); }; },
+            [&oper](const U& lhs, const U& rhs) -> R { return [oper, lhs, rhs](const P& x) { return oper(lhs(x), rhs(x)); }; },
+            [&oper](const U& lhs, const S& rhs) -> R {
+                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x), rhs(x, s)); };
+            },
+            [&oper](const S& lhs, const T rhs) -> R {
+                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs); };
+            },
+            [&oper](const S& lhs, const U& rhs) -> R {
+                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x)); };
+            },
+            [&oper](const S& lhs, const S& rhs) -> R {
+                return [oper, lhs, rhs](const P& x, const T s) { return oper(lhs(x, s), rhs(x, s)); };
+            },
+        },
+        lhs, rhs);
 }
 
 template<std::floating_point T, size_t Dimension>
@@ -116,6 +133,6 @@ coefficient_t<T, Dimension> operator/(const coefficient_t<T, Dimension>& lhs, co
     return operation(lhs, rhs, std::divides{});
 }
 
-}
+} // namespace utils
 
-}
+} // namespace nonlocal

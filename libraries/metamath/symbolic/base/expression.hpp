@@ -13,4 +13,4 @@ struct expression {
     }
 };
 
-}
+} // namespace metamath::symbolic
