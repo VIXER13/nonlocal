@@ -28,7 +28,7 @@ $(TOOLCHAIN_FILE): $(COMPILER_MARKER) $(PROFILE_PATH)
 	fi
 
 $(BUILD_MAKEFILE): update_compiler $(COMPILER_MARKER) $(TOOLCHAIN_FILE)
-	cd $(BUILD_DIR) && cmake .. --preset conan-release
+	cd $(BUILD_DIR) && cmake .. --preset conan-release -DCMAKE_EXPORT_COMPILE_COMMANDS=On
 
 .PHONY: update_compiler
 update_compiler:
