@@ -69,3 +69,7 @@ make run-tests
   pip3 install gersemi
   find . -type f -name CMakeLists.txt -exec python3 -m  gersemi -i --definitions CMakeTools/EmbeddedFiles.cmake {} +
   ```
+
+## SAST Tools
+
+[PVS-Studio](https://pvs-studio.com/en/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static code analyzer for Enterprise (C, C++, C#, Go, and Java) and Web (JS and TS) development.
