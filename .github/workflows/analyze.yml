@@ -2,20 +2,25 @@ name: PVS-Studio build analysis
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
-  build:
-    uses: ./.github/workflows/common.yml
-    with:
-      compiler: gcc-15
-      deps: gcc-15 g++-15
-      os: ubuntu-26.04
   analyze:
-    needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Install tools
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-14 g++-14 make
+
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+
+      - name: Setup Conan & Configure project
+        run: make setup COMPILER=gcc-14
+
+      - name: Install PVS-Studio
         run: |
           wget -q -O - https://files.pvs-studio.com/etc/pubkey.txt \
             | sudo apt-key add -
@@ -24,12 +29,13 @@ jobs:
           sudo apt update
           sudo apt install pvs-studio
           pvs-studio-analyzer credentials ${{ secrets.PVS_STUDIO_CREDENTIALS }}
+
       - name: Analyze
-        run: |
-          pvs-studio-analyzer analyze -f build/compile_commands.json -j
+        run: pvs-studio-analyzer analyze -f build/compile_commands.json -j
+
       - name: Convert report
-        run: |
-          plog-converter -t sarif -o pvs-report.sarif PVS-Studio.log
+        run: plog-converter -t sarif -o pvs-report.sarif PVS-Studio.log
+
       - name: Publish report
         uses: github/codeql-action/upload-sarif@v3
         with:
