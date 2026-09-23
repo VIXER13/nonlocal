@@ -36,6 +36,31 @@ add_compile_options(
     $<$<COMPILE_LANG_AND_ID:CXX,Clang,AppleClang>:-Wno-missing-template-arg-list-after-template-kw>
 )
 
+if(ENABLE_ANALYSIS)
+    include(CheckCXXCompilerFlag)
+    set(CMAKE_REQUIRED_LINK_OPTIONS "-fsanitize=address")
+    check_cxx_compiler_flag(-fsanitize=address HAS_ASAN)
+    unset(CMAKE_REQUIRED_LINK_OPTIONS)
+    check_cxx_compiler_flag(-fsanitize=undefined HAS_UBSAN)
+
+    if(NOT HAS_ASAN OR NOT HAS_UBSAN)
+        message(WARNING "Compiler does not support requested sanitizers")
+        return()
+    endif()
+
+    add_compile_options(
+        -fsanitize=address,undefined
+        -fno-omit-frame-pointer
+        -g
+        -fno-sanitize-recover=all
+    )
+    add_link_options(
+        -fsanitize=address,undefined
+    )
+
+    message(STATUS "Sanitizers enabled: ASan + UBSan")
+endif()
+
 # libraries
 add_subdirectory(libraries)
 
@@ -45,3 +70,14 @@ add_subdirectory(NonLocFEM)
 # unit tests
 include(CMakeTools/EmbeddedFiles.cmake)
 add_subdirectory(tests)
+
+if(ENABLE_ANALYSIS)
+    include(${CMAKE_SOURCE_DIR}/CMakeTools/PVS-Studio.cmake)
+    pvs_studio_add_target(TARGET code.analyze ALL
+                        OUTPUT FORMAT json
+                        ANALYZE NonLocFEM unit_tests
+                        MODE GA OP 64 MISRA
+                        LOG ${CMAKE_SOURCE_DIR}/NonLocFEM.json
+                        CONFIG ${CMAKE_SOURCE_DIR}/nonlocal.pvsconfig
+                        ARGS -e *.conan*)
+endif()

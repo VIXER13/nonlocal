@@ -1,3 +1,5 @@
+MAKEFLAGS += --no-print-directory
+
 BUILD_DIR := build
 TOOLCHAIN_FILE := $(BUILD_DIR)/conan_toolchain.cmake
 UNITTEST_FILE := $(BUILD_DIR)/tests/unit_tests
@@ -12,6 +14,7 @@ THREADS ?= $(if $(wildcard $(THREADS_MARKER)),$(shell cat $(THREADS_MARKER)),$(D
 COMPILER_NAME := $(word 1,$(subst -, ,$(COMPILER)))
 COMPILER_VERSION := $(word 2,$(subst -, ,$(COMPILER)))
 PROFILE_PATH := ./.profiles/$(COMPILER_NAME)
+ENABLE_ANALYSIS := OFF
 
 $(COMPILER_MARKER):
 	mkdir -p $(BUILD_DIR)
@@ -28,7 +31,7 @@ $(TOOLCHAIN_FILE): $(COMPILER_MARKER) $(PROFILE_PATH)
 	fi
 
 $(BUILD_MAKEFILE): update_compiler $(COMPILER_MARKER) $(TOOLCHAIN_FILE)
-	cd $(BUILD_DIR) && cmake .. --preset conan-release -DCMAKE_EXPORT_COMPILE_COMMANDS=On
+	cd $(BUILD_DIR) && cmake .. --preset conan-release -DCMAKE_EXPORT_COMPILE_COMMANDS=On -DENABLE_ANALYSIS=$(ENABLE_ANALYSIS)
 
 .PHONY: update_compiler
 update_compiler:
@@ -47,7 +50,7 @@ setup: $(BUILD_MAKEFILE)
 # Build target
 .PHONY: build
 build: update_threads setup
-	cmake --build $(BUILD_DIR) --config Release -j$(THREADS) -- -s
+	cmake --build $(BUILD_DIR) --config Release -j$(THREADS)
 
 # Run unit tests
 .PHONY: run-tests
@@ -59,12 +62,18 @@ run-tests:
 clean:
 	rm -rf $(BUILD_DIR)
 
+# Code analysis
+.PHONY: analyze
+analyze:
+	$(MAKE) build ENABLE_ANALYSIS=ON
+
 # Print help
 .PHONY: help
 help:
 	@echo "Available targets:" 
 	@echo "  setup         - Configure project (reconfigures if COMPILER changed)" 
 	@echo "  build         - Build the project" 
+	@echo "  analyze       - Run code analysis (buildsfirst)" 
 	@echo "  run-tests     - Run unit tests (builds first)" 
 	@echo "  clean         - Remove build directory" 
 	@echo "  help          - Show this help message (default)" 
