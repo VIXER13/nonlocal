@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 namespace metamath::linear {
 
@@ -14,11 +14,11 @@ class matrix : protected std::vector<T> {
 
     void check_index(const size_t row, const size_t col) const;
 
-public:
-    using _base::size;
+  public:
     using _base::begin;
-    using _base::end;
     using _base::data;
+    using _base::end;
+    using _base::size;
     using _base::swap;
     using _base::operator[];
 
@@ -33,14 +33,10 @@ public:
 };
 
 template<class T>
-matrix<T>::matrix(const size_t rows, const size_t cols)
-    : _base(rows * cols)
-    , _cols{rows ? cols : 0} {}
+matrix<T>::matrix(const size_t rows, const size_t cols) : _base(rows * cols), _cols{ rows ? cols : 0 } {}
 
 template<class T>
-matrix<T>::matrix(const size_t rows, const size_t cols, const T& init)
-    : _base(rows * cols, init)
-    , _cols{rows ? cols : 0} {}
+matrix<T>::matrix(const size_t rows, const size_t cols, const T& init) : _base(rows * cols, init), _cols{ rows ? cols : 0 } {}
 
 template<class T>
 size_t matrix<T>::rows() const noexcept {
@@ -55,7 +51,7 @@ size_t matrix<T>::cols() const noexcept {
 template<class T>
 void matrix<T>::check_index(const size_t row, const size_t col) const {
     if (col >= cols() || row >= rows())
-        throw std::out_of_range{"Matrix index out of range"};
+        throw std::out_of_range{ "Matrix index out of range" };
 }
 
 template<class T>
@@ -70,4 +66,4 @@ const T& matrix<T>::operator()(const size_t row, const size_t col) const {
     return (*this)[row * cols() + col];
 }
 
-}
+} // namespace metamath::linear

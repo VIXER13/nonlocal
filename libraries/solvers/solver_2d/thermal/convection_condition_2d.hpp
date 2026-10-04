@@ -3,34 +3,35 @@
 #include "thermal_boundary_conditions_2d.hpp"
 
 #include <metamath/linear/linear.hpp>
-#include <solvers/solver_2d/base/solvers_utils.hpp>
 #include <solvers/solver_2d/base/problem_settings.hpp>
+#include <solvers/solver_2d/base/solvers_utils.hpp>
 
 namespace nonlocal::solver_2d::thermal {
 
 template<class T>
-void convection_condition_2d(metamath::linear::sparse_matrix<T>& matrix,
-                             const problem_settings& settings,
-                             const mesh::mesh_2d<T>& mesh,
-                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions) {
+void convection_condition_2d(metamath::linear::sparse_matrix<T>& matrix, const problem_settings& settings,
+                             const mesh::mesh_2d<T>& mesh, const thermal_boundaries_conditions_2d<T>& boundaries_conditions) {
     static constexpr auto integrate = [](const convection_2d<T>& condition, const auto& element, const size_t i, const size_t j) {
-        T integral = T{0};
+        T integral = T{ 0 };
         const auto& [mesh, be] = element;
         const auto& el = mesh.element_1d(be);
-        for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
+        for (const size_t q : std::ranges::iota_view{ 0u, el.qnodes_count() })
             integral += el.weight(q) * el.qN(i, q) * el.qN(j, q) * mesh::jacobian(element.jacobi_matrix(q));
         return condition.heat_transfer() * integral;
     };
 
-    utils::run_by_boundaries<convection_2d>(mesh.container(), boundaries_conditions,
-        [&matrix, &mesh, &is_inner_nodes = settings.is_inner_nodes,
-         is_symmetric = settings.is_symmetric(), process_nodes = mesh.process_nodes()]
-        (const convection_2d<T>& condition, const size_t be, const size_t row, const size_t) {
+    utils::run_by_boundaries<convection_2d>(
+        mesh.container(), boundaries_conditions,
+        [&matrix, &mesh, &is_inner_nodes = settings.is_inner_nodes, is_symmetric = settings.is_symmetric(),
+         process_nodes = mesh.process_nodes()](const convection_2d<T>& condition, const size_t be, const size_t row,
+                                               const size_t) {
             if (row >= process_nodes.front() && row <= process_nodes.back() && is_inner_nodes[row])
-                for(const size_t j : std::ranges::iota_view{0u, mesh.container().nodes_count(be)})
-                    if (const size_t col = mesh.container().node_number(be, j); (!is_symmetric || col >= row) && is_inner_nodes[col])
-                        matrix(row, col) += integrate(condition, mesh.container().element_1d_data(be), mesh.global_to_local(be, row), j);
+                for (const size_t j : std::ranges::iota_view{ 0u, mesh.container().nodes_count(be) })
+                    if (const size_t col = mesh.container().node_number(be, j);
+                        (!is_symmetric || col >= row) && is_inner_nodes[col])
+                        matrix(row, col) +=
+                            integrate(condition, mesh.container().element_1d_data(be), mesh.global_to_local(be, row), j);
         });
 }
 
-}
+} // namespace nonlocal::solver_2d::thermal

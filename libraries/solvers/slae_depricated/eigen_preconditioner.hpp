@@ -9,10 +9,9 @@ template<class T, class I, class Preconditioner = Eigen::IdentityPreconditioner>
 class eigen_preconditioner final : public preconditioner_base<T, I> {
     Preconditioner _preconditioner;
 
-public:
+  public:
     eigen_preconditioner() = default;
-    explicit eigen_preconditioner(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix)
-        : _preconditioner{matrix} {}
+    explicit eigen_preconditioner(const Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix) : _preconditioner{ matrix } {}
 
     Preconditioner& preconditioner() noexcept {
         return _preconditioner;
@@ -54,9 +53,10 @@ template<class T, class I>
 using eigen_diagonal_preconditioner = eigen_preconditioner<T, I, Eigen::DiagonalPreconditioner<T>>;
 
 template<class T, class I>
-using eigen_ILLT_preconditioner = eigen_preconditioner<T, I, Eigen::IncompleteCholesky<T, Eigen::Upper, Eigen::NaturalOrdering<I>>>;
+using eigen_ILLT_preconditioner =
+    eigen_preconditioner<T, I, Eigen::IncompleteCholesky<T, Eigen::Upper, Eigen::NaturalOrdering<I>>>;
 
 template<class T, class I>
 using eigen_ILUT_preconditioner = eigen_preconditioner<T, I, Eigen::IncompleteLUT<T, I>>;
 
-}
+} // namespace nonlocal::slae

@@ -17,11 +17,11 @@ auto scalar_product(const Container& x, const Container& y) {
             throw std::invalid_argument("Vectors must have the same size for scalar production.");
 
     if constexpr (types::is_array_v<RT>)
-        return std::inner_product(x.begin(), x.end(), y.begin(), T{0}, std::plus<T>(), [](const RT& a, const RT& b) {
-            return std::inner_product(a.begin(), a.end(), b.begin(), T{0});
+        return std::inner_product(x.begin(), x.end(), y.begin(), T{ 0 }, std::plus<T>(), [](const RT& a, const RT& b) {
+            return std::inner_product(a.begin(), a.end(), b.begin(), T{ 0 });
         });
     else
-        return std::inner_product(x.begin(), x.end(), y.begin(), T{0});
+        return std::inner_product(x.begin(), x.end(), y.begin(), T{ 0 });
 }
 
-}
+} // namespace metamath::linear

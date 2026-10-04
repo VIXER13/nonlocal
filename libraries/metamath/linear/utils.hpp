@@ -9,15 +9,15 @@ void validate_shifts(const std::vector<I>& shifts) {
     if (shifts.empty())
         return;
     if (shifts.size() < 2)
-        throw std::logic_error{"Shifts vector shall have at least two elements."};
+        throw std::logic_error{ "Shifts vector shall have at least two elements." };
     if (shifts.front() != 0)
-        throw std::logic_error{"Shifts vector shall start with 0."};
-    for(const size_t i : std::ranges::iota_view{1zu, shifts.size()}) {
+        throw std::logic_error{ "Shifts vector shall start with 0." };
+    for (const size_t i : std::ranges::iota_view{ 1zu, shifts.size() }) {
         if constexpr (std::is_signed_v<I>)
             if (shifts[i] < 0)
-                throw std::logic_error{"Shifts vector cannot contain negative values."};
+                throw std::logic_error{ "Shifts vector cannot contain negative values." };
         if (shifts[i - 1] > shifts[i])
-            throw std::logic_error{"Shifts vector shall be non-decreasing."};
+            throw std::logic_error{ "Shifts vector shall be non-decreasing." };
     }
 }
 
@@ -25,22 +25,22 @@ template<std::integral I, std::integral J>
 void validate_sparse_matrix_portrait(const sparse_matrix_portrait<I, J>& portrait) {
     validate_shifts(portrait.shifts);
     if (portrait.indices.size() != portrait.non_zeros())
-        throw std::logic_error{"The last element of shifts shall be equal to the size of indices."};
-    for(const size_t row : std::ranges::iota_view{0zu, portrait.rows()}) {
+        throw std::logic_error{ "The last element of shifts shall be equal to the size of indices." };
+    for (const size_t row : std::ranges::iota_view{ 0zu, portrait.rows() }) {
         const auto shifts = portrait.shifts_range(row);
         if (shifts.size() > portrait.cols())
-            throw std::logic_error{"Number of non-zero elements in a row cannot be greater than the number of columns."};
-        for(const size_t shift : shifts) {
+            throw std::logic_error{ "Number of non-zero elements in a row cannot be greater than the number of columns." };
+        for (const size_t shift : shifts) {
             if constexpr (std::is_signed_v<I>)
                 if (portrait.indices[shift] < 0)
-                    throw std::logic_error{"Column index in indices vector cannot be negative."};
+                    throw std::logic_error{ "Column index in indices vector cannot be negative." };
             if (portrait.indices[shift] >= portrait.cols())
-                throw std::logic_error{"Column index in indices vector is out of range."};
+                throw std::logic_error{ "Column index in indices vector is out of range." };
             if (shift < shifts.back()) {
                 if (portrait.indices[shift] == portrait.indices[shift + 1])
-                    throw std::logic_error{"Column indices in each row shall be unique."};
+                    throw std::logic_error{ "Column indices in each row shall be unique." };
                 if (portrait.indices[shift + 1] < portrait.indices[shift])
-                    throw std::logic_error{"Column indices in each row shall be sorted."};
+                    throw std::logic_error{ "Column indices in each row shall be sorted." };
             }
         }
     }
@@ -50,13 +50,13 @@ template<class T, std::integral I, std::integral J>
 void validate_sparse_matrix(const sparse_matrix<T, I, J>& matrix) {
     validate_sparse_matrix_portrait(matrix.portrait);
     if (matrix.values.size() != matrix.portrait.non_zeros())
-        throw std::logic_error{"Values vector size shall be equal to the number of non-zero elements in the portrait."};
+        throw std::logic_error{ "Values vector size shall be equal to the number of non-zero elements in the portrait." };
 }
 
 template<std::integral I, std::integral J>
 size_t max_width(const sparse_matrix_portrait<I, J>& portrait) {
     size_t width = 0;
-    for(const size_t row : std::ranges::iota_view{0zu, portrait.rows()}) {
+    for (const size_t row : std::ranges::iota_view{ 0zu, portrait.rows() }) {
         const auto range = portrait.indices_range(row);
         if (const auto current = range.back() - range.front(); current > width)
             width = current;
@@ -67,11 +67,11 @@ size_t max_width(const sparse_matrix_portrait<I, J>& portrait) {
 template<std::integral I, std::integral J>
 size_t mean_width(const sparse_matrix_portrait<I, J>& portrait) {
     size_t width = 0;
-    for(const size_t row : std::ranges::iota_view{0zu, portrait.rows()}) {
+    for (const size_t row : std::ranges::iota_view{ 0zu, portrait.rows() }) {
         const auto range = portrait.indices_range(row);
         width += range.back() - range.front();
     }
     return width / portrait.rows();
 }
 
-}
+} // namespace metamath::linear

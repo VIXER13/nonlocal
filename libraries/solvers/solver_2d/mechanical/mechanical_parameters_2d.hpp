@@ -24,6 +24,7 @@ template<std::floating_point T>
 using raw_mechanical_parameters = std::unordered_map<std::string, equation_parameters<2, T, raw_mechanical_parameters_t>>;
 
 template<std::floating_point T>
-using evaluated_mechanical_parameters = std::unordered_map<std::string, equation_parameters<2, T, evaluated_mechanical_parameters_t>>;
+using evaluated_mechanical_parameters =
+    std::unordered_map<std::string, equation_parameters<2, T, evaluated_mechanical_parameters_t>>;
 
-}
+} // namespace nonlocal::solver_2d::mechanical

@@ -9,9 +9,8 @@ template<class E>
 class negate : public unary_expression<E, negate> {
     using _base = unary_expression<E, negate>;
 
-public:
-    constexpr explicit negate(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit negate(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     constexpr auto operator()(const Args&... args) const {
@@ -26,7 +25,7 @@ public:
 
 template<class E>
 constexpr negate<E> operator-(const expression<E>& e) {
-    return negate<E>{e()};
+    return negate<E>{ e() };
 }
 
 template<auto N>
@@ -36,7 +35,7 @@ constexpr integral_constant<-N> simplify(const negate<integral_constant<N>>) noe
 
 template<class T>
 constexpr constant<T> simplify(const negate<constant<T>>& c) {
-    return constant{-c()};
+    return constant{ -c() };
 }
 
 template<class E>
@@ -44,4 +43,4 @@ constexpr auto simplify(const negate<negate<E>>& e) {
     return simplify(e.expr().expr());
 }
 
-}
+} // namespace metamath::symbolic

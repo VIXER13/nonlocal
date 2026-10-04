@@ -1,10 +1,10 @@
 #include <metamath/linear/linear.hpp>
 
 namespace nonlocal::tests {
+// clang-format off
 
 using metamath::linear::sparse_matrix;
 using metamath::linear::square_matrix;
-
 // 10x10 symmetric matrix
 // [10 -1 -0.5    0    0    0    0    0    0    0]
 // [ 0 10   -1 -0.5    0    0    0    0    0    0]
@@ -114,5 +114,5 @@ sparse_matrix<square_matrix<T, 2>> block_general_matrix() {
         {0.5, 0., 0., 0.}, {0., 2., 0., 0.}, {10., -1., -1., 10.} };
     return matrix;
 }
-
-}
+//clang-format on
+} // namespace nonlocal::tests

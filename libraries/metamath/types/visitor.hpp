@@ -7,4 +7,4 @@ struct visitor : Ts... {
     using Ts::operator()...;
 };
 
-}
+} // namespace metamath::types

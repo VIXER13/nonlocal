@@ -11,10 +11,10 @@ class heat_capacity_assembler_1d : public assembler_base_1d<T, I> {
 
     static std::vector<T> calc_factors(const parameters_1d<T>& parameters);
 
-protected:
+  protected:
     T integrate(const size_t e, const size_t i, const size_t j) const;
 
-public:
+  public:
     explicit heat_capacity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh);
     ~heat_capacity_assembler_1d() override = default;
 
@@ -24,20 +24,21 @@ public:
 template<class T, class I>
 std::vector<T> heat_capacity_assembler_1d<T, I>::calc_factors(const parameters_1d<T>& parameters) {
     std::vector<T> factors(parameters.size());
-    for(const size_t i : std::ranges::iota_view{0u, parameters.size()})
+    for (const size_t i : std::ranges::iota_view{ 0u, parameters.size() })
         factors[i] = parameters[i].physical.capacity * parameters[i].physical.density;
     return factors;
 }
 
 template<class T, class I>
-heat_capacity_assembler_1d<T, I>::heat_capacity_assembler_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
-    : _base{matrix, mesh} {}
+heat_capacity_assembler_1d<T, I>::heat_capacity_assembler_1d(finite_element_matrix_1d<T, I>& matrix,
+                                                             const std::shared_ptr<mesh::mesh_1d<T>>& mesh)
+    : _base{ matrix, mesh } {}
 
 template<class T, class I>
 T heat_capacity_assembler_1d<T, I>::integrate(const size_t e, const size_t i, const size_t j) const {
-    T integral = T{0};
+    T integral = T{ 0 };
     const auto& el = _base::mesh().element();
-    for(const size_t q : std::ranges::iota_view{0u, el.qnodes_count()})
+    for (const size_t q : std::ranges::iota_view{ 0u, el.qnodes_count() })
         integral += el.weight(q) * el.qN(i, q) * el.qN(j, q);
     return integral * _base::mesh().jacobian(_base::mesh().segment_number(e));
 }
@@ -45,16 +46,12 @@ T heat_capacity_assembler_1d<T, I>::integrate(const size_t e, const size_t i, co
 template<class T, class I>
 void heat_capacity_assembler_1d<T, I>::calc_matrix(const parameters_1d<T>& parameters, const std::array<bool, 2> is_first_kind) {
     if (parameters.size() != _base::mesh().segments_count())
-        throw std::runtime_error{"The number of segments and the number of material parameters do not match."};
-    const problem_settings settings = {
-        .theories = std::vector<theory_t>(_base::mesh().segments_count(), theory_t::LOCAL),
-        .is_first_kind = is_first_kind
-    };
-    _base::template calc_matrix(settings,
-        [this, factors = calc_factors(parameters)](const size_t segment, const size_t e, const size_t i, const size_t j) {
-            return factors[segment] * integrate(e, i, j);
-        }
-    );
+        throw std::runtime_error{ "The number of segments and the number of material parameters do not match." };
+    const problem_settings settings = { .theories = std::vector<theory_t>(_base::mesh().segments_count(), theory_t::LOCAL),
+                                        .is_first_kind = is_first_kind };
+    _base::template calc_matrix(
+        settings, [this, factors = calc_factors(parameters)](const size_t segment, const size_t e, const size_t i,
+                                                             const size_t j) { return factors[segment] * integrate(e, i, j); });
 }
 
-}
+} // namespace nonlocal::solver_1d::thermal

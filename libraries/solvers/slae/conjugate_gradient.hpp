@@ -16,17 +16,16 @@ class conjugate_gradient final : public symmetric_matrix_vector_product<T, I, J>
     using _base::_residual;
     using _base::production;
 
-public:
-    using typename _base::entity_t;
-    using typename _base::floating_point_t;
+  public:
     using _base::matrix;
-    using _base::tolerance;
     using _base::max_iterations;
     using _base::preconditioner;
     using _base::processes_ranges;
+    using _base::tolerance;
+    using typename _base::entity_t;
+    using typename _base::floating_point_t;
 
-    explicit conjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix)
-        : _base{matrix} {}
+    explicit conjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix) : _base{ matrix } {}
 
     std::vector<entity_t> solve(const std::vector<entity_t>& b,
                                 const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const override {
@@ -37,7 +36,8 @@ public:
         using metamath::operators::operator-=;
         using metamath::operators::operator*=;
         logger::info() << "Conjugate gradient slae solver started" << std::endl;
-        std::vector<entity_t> z(matrix().cols(), entity_t{}); // It used as the right part in preparation calculation before iteration process
+        std::vector<entity_t> z(matrix().cols(),
+                                entity_t{}); // It used as the right part in preparation calculation before iteration process
         parallel::reduce_vector(z, b);
         std::vector<entity_t> r(matrix().cols(), entity_t{});
         std::vector<entity_t> x = x0.template value_or(std::vector<entity_t>(matrix().cols(), entity_t{}));
@@ -48,7 +48,7 @@ public:
         const floating_point_t b_norm = norm(z);
         _iterations = 0;
         _residual = std::sqrt(r_squared_norm) / b_norm;
-        while(_iterations < max_iterations() && _residual > tolerance()) {
+        while (_iterations < max_iterations() && _residual > tolerance()) {
             // TODO: optimize vector operations
             production(z, p);
             const floating_point_t nu = r_squared_norm / scalar_product(p, z);
@@ -63,10 +63,9 @@ public:
             ++_iterations;
             _residual = std::sqrt(r_squared_norm) / b_norm;
         }
-        logger::info() << "iterations = " << _iterations << '\n'
-                       << "residual = "   << _residual << std::endl;
+        logger::info() << "iterations = " << _iterations << '\n' << "residual = " << _residual << std::endl;
         return x;
     }
 };
 
-}
+} // namespace nonlocal::slae

@@ -18,9 +18,9 @@ constexpr auto Inf = metamath::constants::Infinity<size_t>;
 suite<"gmres"> _ = [] {
     "scalar"_test = [] {
         const auto matrix = scalar_general_matrix<T>();
-        const std::vector<T> expected = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+        const std::vector<T> expected = { 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0 };
         const std::vector<T> b = matrix * expected;
-        const auto solver = gmres{matrix};
+        const auto solver = gmres{ matrix };
         const std::vector<T> x = solver.solve(b);
         const T diff = norm<Inf>(x - expected);
         expect(approx(diff, 0.0, 1.8e-13)) << "GMRES solver failed with diff = " << diff;
@@ -28,13 +28,15 @@ suite<"gmres"> _ = [] {
 
     "block"_test = [] {
         const auto block_matrix = block_general_matrix<T>();
-        const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}, {{7., 8.}}, {{9., 10.}}};
+        const std::vector<std::array<T, 2>> expected = {
+            { { 1., 2. } }, { { 3., 4. } }, { { 5., 6. } }, { { 7., 8. } }, { { 9., 10. } }
+        };
         const std::vector<std::array<T, 2>> b = block_matrix * expected;
-        const auto solver = gmres{block_matrix};
+        const auto solver = gmres{ block_matrix };
         const std::vector<std::array<T, 2>> x = solver.solve(b);
         const T diff = norm<Inf>(x - expected);
         expect(approx(diff, 0.0, 2.5e-8)) << "GMRES solver failed with diff = " << diff;
     };
 };
 
-}
+} // namespace

@@ -11,19 +11,25 @@ template<class T>
 class constant_1d final {
     T _r, _norm;
 
-public:
-    explicit constant_1d(const T r) noexcept { set_radius(r); }
+  public:
+    explicit constant_1d(const T r) noexcept {
+        set_radius(r);
+    }
 
     void set_radius(const T r) noexcept {
         _r = r;
-        _norm = T{0.5} / (_r);
+        _norm = T{ 0.5 } / (_r);
     }
 
-    T radius() const noexcept { return _r; }
-    T norm() const noexcept { return _norm; }
+    T radius() const noexcept {
+        return _r;
+    }
+    T norm() const noexcept {
+        return _norm;
+    }
 
     T operator()(const T x, const T y) const noexcept {
-        return std::abs(x - y) < _r ? _norm : T{0};
+        return std::abs(x - y) < _r ? _norm : T{ 0 };
     }
 };
 
@@ -34,16 +40,22 @@ class polynomial_1d final {
 
     T _r, _norm;
 
-public:
-    explicit polynomial_1d(const T r) noexcept { set_radius(r); }
+  public:
+    explicit polynomial_1d(const T r) noexcept {
+        set_radius(r);
+    }
 
     void set_radius(const T r) noexcept {
         _r = r;
-        _norm = P / (2 * _r * std::beta(T{1} / P, Q + T{1}));
+        _norm = P / (2 * _r * std::beta(T{ 1 } / P, Q + T{ 1 }));
     }
 
-    T radius() const noexcept { return _r; }
-    T norm() const noexcept { return _norm; }
+    T radius() const noexcept {
+        return _r;
+    }
+    T norm() const noexcept {
+        return _norm;
+    }
 
     T operator()(const T x, const T y) const noexcept {
         const T h = std::abs(x - y);
@@ -56,17 +68,23 @@ template<class T>
 class normal_distribution_1d final {
     T _r, _norm, _disp_mul;
 
-public:
-    explicit normal_distribution_1d(const T r) noexcept { set_radius(r); }
+  public:
+    explicit normal_distribution_1d(const T r) noexcept {
+        set_radius(r);
+    }
 
     void set_radius(const T r) noexcept {
         _r = r;
         _norm = 1 / (_r * std::sqrt(2 * std::numbers::pi_v<T>));
-        _disp_mul = -T{0.5} / (_r * _r);
+        _disp_mul = -T{ 0.5 } / (_r * _r);
     }
 
-    T radius() const noexcept { return _r; }
-    T norm() const noexcept { return _norm; }
+    T radius() const noexcept {
+        return _r;
+    }
+    T norm() const noexcept {
+        return _norm;
+    }
 
     T operator()(const T x, const T y) const noexcept {
         using metamath::functions::power;
@@ -74,4 +92,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::solver_1d::influence

@@ -4,19 +4,13 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <optional>
 #include <ostream>
+#include <string_view>
 
 namespace logger {
 
-enum class level : uint8_t {
-    Off,
-    Error,
-    Warning,
-    Info,
-    Debug,
-    Trace,
-    Count
-};
+enum class level : uint8_t { Off, Error, Warning, Info, Debug, Trace, Count };
 
 struct stream_base {
     std::ostream& out;
@@ -26,13 +20,11 @@ struct stream_base {
 
 class logger {
     const std::chrono::time_point<std::chrono::system_clock> _initial_time = std::chrono::system_clock::now();
-    const level _level;
     std::unique_ptr<stream_base> _out;
 
-    explicit logger(const level level, std::unique_ptr<stream_base>&& out);
+    explicit logger(std::unique_ptr<stream_base>&& out);
 
-public:
-    level log_level() const noexcept;
+  public:
     std::chrono::time_point<std::chrono::system_clock> initial_time() const;
 
     friend logger& get(const level level, std::unique_ptr<stream_base>&& init);
@@ -44,7 +36,7 @@ public:
 
     template<class T>
     friend logger& operator<<(logger& log, const T& value);
-    friend logger& operator<<(logger& log, std::ostream&(*f)(std::ostream&));
+    friend logger& operator<<(logger& log, std::ostream& (*f)(std::ostream&));
 };
 
 logger& get(const level level = level::Info, std::unique_ptr<stream_base>&& init = nullptr);
@@ -60,6 +52,11 @@ logger& operator<<(logger& log, const T& value) {
     return log;
 }
 
+void set_log_level(level l) noexcept;
+level get_log_level() noexcept;
+
+std::optional<level> parse_level(std::string_view name);
+
 struct cout_stream : public stream_base {
     explicit cout_stream() noexcept;
 };
@@ -73,4 +70,4 @@ struct file_stream : public stream_base {
     explicit file_stream(const std::filesystem::path& path);
 };
 
-}
+} // namespace logger

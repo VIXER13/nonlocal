@@ -1,3 +1,4 @@
+#include <embedded_files/composite_ring_su2.h>
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <mesh/mesh_2d/mesh_container_2d_utils.hpp>
@@ -5,8 +6,6 @@
 #include <tests/utils/error.hpp>
 
 #include <boost/ut.hpp>
-
-#include <embedded_files/composite_ring_su2.h>
 
 namespace {
 
@@ -17,39 +16,39 @@ using namespace unit_tests;
 using namespace mesh;
 using namespace solver_2d::thermal;
 
-constexpr T Expected_Error = T{0};
-constexpr T Inner_Conductivity = T{1};
-constexpr T Outer_Conductivity = T{2};
+constexpr T Expected_Error = T{ 0 };
+constexpr T Inner_Conductivity = T{ 1 };
+constexpr T Outer_Conductivity = T{ 2 };
 constexpr T Norm_Conductivity = Outer_Conductivity / Inner_Conductivity;
-constexpr T Inner_Temperature = T{0};
-constexpr T Outer_Temperature = T{1};
+constexpr T Inner_Temperature = T{ 0 };
+constexpr T Outer_Temperature = T{ 1 };
 constexpr T Norm_Temperature = Outer_Temperature / (Outer_Temperature - Inner_Temperature);
-constexpr T Inner_Radius = T{0.5};
-constexpr T Contact_Radius = T{0.75};
-constexpr T Outer_Radius = T{1};
+constexpr T Inner_Radius = T{ 0.5 };
+constexpr T Contact_Radius = T{ 0.75 };
+constexpr T Outer_Radius = T{ 1 };
 constexpr T Norm_Radius = Inner_Radius / Outer_Radius;
 constexpr T Norm_Contact_Radius = Contact_Radius / Outer_Radius;
-const T Coeff = T{1} / ((Norm_Conductivity - T{1}) * std::log(Norm_Contact_Radius) - Norm_Conductivity * std::log(Norm_Radius));
+const T Coeff =
+    T{ 1 } / ((Norm_Conductivity - T{ 1 }) * std::log(Norm_Contact_Radius) - Norm_Conductivity * std::log(Norm_Radius));
 
 const suite<"thermal_isotropic_composite_ring"> _ = [] {
-    std::stringstream stream{composite_ring_su2_data};
+    std::stringstream stream{ composite_ring_su2_data };
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
-    const raw_thermal_parameters<T> parameters = {
-        {"Inner_Material", {.physical = {.conductivity = Inner_Conductivity}}},
-        {"Outer_Material", {.physical = {.conductivity = Outer_Conductivity}}}
-    };
+    const raw_thermal_parameters<T> parameters = { { "Inner_Material", { .physical = { .conductivity = Inner_Conductivity } } },
+                                                   { "Outer_Material", { .physical = { .conductivity = Outer_Conductivity } } } };
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
-    boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Inner_Temperature; });
-    boundaries_conditions["Outer"] = std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Outer_Temperature; });
+    boundaries_conditions["Inner"] =
+        std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Inner_Temperature; });
+    boundaries_conditions["Outer"] =
+        std::make_unique<temperature_2d<T>>([](const std::array<T, 2>& point) { return Outer_Temperature; });
     const auto solution = stationary_heat_equation_solver_2d(mesh, parameters, boundaries_conditions, {});
 
     "temperature"_test = [&mesh, &solution] {
         static constexpr auto Expected_Temperature = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
             const T r = std::hypot(x, y);
-            return r < Contact_Radius
-                   ? Norm_Temperature - T{1} + Norm_Conductivity * Coeff * std::log(r / Norm_Radius)
-                   : Norm_Temperature + Coeff * std::log(r);
+            return r < Contact_Radius ? Norm_Temperature - T{ 1 } + Norm_Conductivity * Coeff * std::log(r / Norm_Radius)
+                                      : Norm_Temperature + Coeff * std::log(r);
         };
         static constexpr T Epsilon = 1.2e-3;
         const T error = norm_error(solution.temperature(), mesh->container(), Expected_Temperature);
@@ -60,7 +59,7 @@ const suite<"thermal_isotropic_composite_ring"> _ = [] {
         static constexpr auto Expected_Flux = [](const std::array<T, 2>& point) {
             const auto& [x, y] = point;
             const T coeff = -Coeff * Norm_Conductivity / (x * x + y * y);
-            return std::array{coeff * x, coeff * y};
+            return std::array{ coeff * x, coeff * y };
         };
         static constexpr T Epsilon = 2.1e-2;
         const T error = norm_error(solution.flux(), mesh->container(), Expected_Flux);
@@ -68,4 +67,4 @@ const suite<"thermal_isotropic_composite_ring"> _ = [] {
     };
 };
 
-}
+} // namespace

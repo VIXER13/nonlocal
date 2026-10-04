@@ -14,9 +14,8 @@ template<class E>
 class cos_expression : public unary_expression<E, cos_expression> {
     using _base = unary_expression<E, cos_expression>;
 
-public:
-    constexpr explicit cos_expression(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit cos_expression(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     constexpr auto operator()(const Args&... args) const {
@@ -31,7 +30,7 @@ public:
 
 template<class E>
 constexpr cos_expression<E> cos(const expression<E>& e) noexcept {
-    return cos_expression<E>{e()};
+    return cos_expression<E>{ e() };
 }
 
-}
+} // namespace metamath::symbolic

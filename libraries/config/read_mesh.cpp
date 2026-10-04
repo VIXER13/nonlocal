@@ -12,16 +12,16 @@ order_t _read_mesh_1d::get_order(const nlohmann::json& config, const std::string
             if (const size_t order = value.get<size_t>(); is_valid_order(order))
                 return order_t(order);
             else
-                throw std::domain_error{"Unsupported \"" + field + "\": " + std::to_string(order)};
+                throw std::domain_error{ "Unsupported \"" + field + "\": " + std::to_string(order) };
         } else if (value.is_string()) {
-            if(const order_t order = value.get<order_t>(); order != order_t::Unknown)
+            if (const order_t order = value.get<order_t>(); order != order_t::Unknown)
                 return order;
             else
-                throw std::domain_error{"Unsupported \"" + field + "\": " + value.get<std::string>()};
+                throw std::domain_error{ "Unsupported \"" + field + "\": " + value.get<std::string>() };
         }
-        throw std::domain_error{"Unsupported \"" + field + "\" input."};
+        throw std::domain_error{ "Unsupported \"" + field + "\" input." };
     }
     return default_order;
 }
 
-}
+} // namespace nonlocal::config

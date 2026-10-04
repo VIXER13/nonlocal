@@ -8,8 +8,8 @@
 #include <concepts>
 #include <filesystem>
 #include <fstream>
-#include <ranges>
 #include <numeric>
+#include <ranges>
 #include <unordered_set>
 
 namespace nonlocal::mesh {
@@ -36,10 +36,10 @@ class mesh_container_2d final {
     std::unordered_map<std::string, std::ranges::iota_view<size_t, size_t>> _elements_groups;
     size_t _elements_2d_count = 0u;
 
-public:
+  public:
     struct element_data_1d final {
         const mesh_container_2d& mesh;
-        const size_t element = T{0};
+        const size_t element = T{ 0 };
 
         template<class Vector>
         T approximate_in_qnode(const size_t q, const Vector& x) const;
@@ -51,7 +51,7 @@ public:
         const mesh_container_2d& mesh;
         const std::vector<I>& nodes;
         const element_integrate_2d<T>& element;
-        
+
         std::array<T, 2> center() const;
         std::array<T, 2> quad_coord(const size_t q) const;
         metamath::linear::square_matrix<T, 2> jacobi_matrix(const size_t q) const;
@@ -67,7 +67,7 @@ public:
     const std::unordered_set<std::string>& groups_2d() const noexcept;
     size_t groups_1d_count() const noexcept;
     size_t groups_2d_count() const noexcept;
-    
+
     size_t elements_count(const std::string& group_name) const;
     size_t elements_1d_count() const;
     size_t elements_2d_count() const;
@@ -104,9 +104,9 @@ public:
 template<std::floating_point T, std::integral I>
 template<class Vector>
 T mesh_container_2d<T, I>::element_data_1d::approximate_in_qnode(const size_t q, const Vector& x) const {
-    T approximation = T{0};
+    T approximation = T{ 0 };
     const auto& el = mesh.element_1d(element);
-    for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+    for (const size_t i : std::ranges::iota_view{ 0u, el.nodes_count() })
         approximation += x[mesh.nodes(element)[i]] * el.qN(i, q);
     return approximation;
 }
@@ -116,7 +116,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::quad_coord(const size
     std::array<T, 2> coord = {};
     using namespace metamath::operators;
     const auto& el = mesh.element_1d(element);
-    for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+    for (const size_t i : std::ranges::iota_view{ 0u, el.nodes_count() })
         coord += mesh.node_coord(mesh.nodes(element)[i]) * el.qN(i, q);
     return coord;
 }
@@ -126,7 +126,7 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_1d::jacobi_matrix(const s
     std::array<T, 2> J = {};
     using namespace metamath::operators;
     const auto& el = mesh.element_1d(element);
-    for(const size_t i : std::ranges::iota_view{0u, el.nodes_count()})
+    for (const size_t i : std::ranges::iota_view{ 0u, el.nodes_count() })
         J += mesh.node_coord(mesh.nodes(element)[i]) * el.qNxi(i, q);
     return J;
 }
@@ -136,9 +136,9 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::center() const {
     std::array<T, 2> coord = {};
     using namespace metamath::operators;
     using namespace metamath::finite_element;
-    const T x0 = bool(dynamic_cast<const rectangle_element_geometry<T>*>(&element)) ? T{1} / T{3} : T{0};
-    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
-        coord += mesh.node_coord(nodes[i]) * element.element().N(i, {x0, x0});
+    const T x0 = bool(dynamic_cast<const rectangle_element_geometry<T>*>(&element)) ? T{ 1 } / T{ 3 } : T{ 0 };
+    for (const size_t i : std::ranges::iota_view{ 0u, element.nodes_count() })
+        coord += mesh.node_coord(nodes[i]) * element.element().N(i, { x0, x0 });
     return coord;
 }
 
@@ -146,7 +146,7 @@ template<std::floating_point T, std::integral I>
 std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size_t q) const {
     std::array<T, 2> coord = {};
     using namespace metamath::operators;
-    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()})
+    for (const size_t i : std::ranges::iota_view{ 0u, element.nodes_count() })
         coord += mesh.node_coord(nodes[i]) * element.qN(i, q);
     return coord;
 }
@@ -154,8 +154,8 @@ std::array<T, 2> mesh_container_2d<T, I>::element_data_2d::quad_coord(const size
 template<std::floating_point T, std::integral I>
 metamath::linear::square_matrix<T, 2> mesh_container_2d<T, I>::element_data_2d::jacobi_matrix(const size_t q) const {
     metamath::linear::square_matrix<T, 2> J = {};
-    for(const size_t i : std::ranges::iota_view{0u, element.nodes_count()}) {
-        const std::array<T, 2> derivative = {element.qNxi(i, q), element.qNeta(i, q)};
+    for (const size_t i : std::ranges::iota_view{ 0u, element.nodes_count() }) {
+        const std::array<T, 2> derivative = { element.qNxi(i, q), element.qNeta(i, q) };
         using namespace metamath::operators;
         J[0] += mesh.node_coord(nodes[i])[0] * derivative;
         J[1] += mesh.node_coord(nodes[i])[1] * derivative;
@@ -167,12 +167,12 @@ template<std::floating_point T, std::integral I>
 mesh_container_2d<T, I>::mesh_container_2d(const std::filesystem::path& path_to_mesh) {
     logger::info() << "Read mesh: " << path_to_mesh << std::endl;
     if (!std::filesystem::is_regular_file(path_to_mesh))
-        throw std::domain_error{"The mesh cannot be read because the path is invalid."};
+        throw std::domain_error{ "The mesh cannot be read because the path is invalid." };
     if (const std::string extension = path_to_mesh.extension().string(); extension == ".su2") {
-        std::ifstream mesh_file{path_to_mesh};
+        std::ifstream mesh_file{ path_to_mesh };
         read_from_stream<mesh_format::SU2>(mesh_file);
     } else
-        throw std::domain_error{"Unable to read mesh with extension " + extension};
+        throw std::domain_error{ "Unable to read mesh with extension " + extension };
 }
 
 template<std::floating_point T, std::integral I>
@@ -182,17 +182,19 @@ mesh_container_2d<T, I>::mesh_container_2d(Stream& stream, const mesh_format for
     if (format == mesh_format::SU2)
         read_from_stream<mesh_format::SU2>(stream);
     else
-        throw std::domain_error{"Unsupported mesh format."};
+        throw std::domain_error{ "Unsupported mesh format." };
 }
 
 template<std::floating_point T, std::integral I>
 const std::string& mesh_container_2d<T, I>::group(const size_t element) const {
     if (element >= _elements.size())
-        throw std::domain_error{"The group was not found because the element number is greater than the total number of elements."};
-    for(const auto& [name, range] : _elements_groups)
+        throw std::domain_error{
+            "The group was not found because the element number is greater than the total number of elements."
+        };
+    for (const auto& [name, range] : _elements_groups)
         if (element >= range.front() && element <= range.back())
             return name;
-    throw std::domain_error{"The group could not be determined. Unknown element number."};
+    throw std::domain_error{ "The group could not be determined. Unknown element number." };
 }
 
 template<std::floating_point T, std::integral I>
@@ -237,12 +239,12 @@ std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements(const s
 
 template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements_1d() const noexcept {
-    return {elements_2d_count(), _elements.size()};
+    return { elements_2d_count(), _elements.size() };
 }
 
 template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::elements_2d() const noexcept {
-    return {0u, elements_2d_count()};
+    return { 0u, elements_2d_count() };
 }
 
 template<std::floating_point T, std::integral I>
@@ -262,7 +264,7 @@ size_t mesh_container_2d<T, I>::node_number(const size_t element, const size_t i
 
 template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::nodes() const noexcept {
-    return {0u, nodes_count()};
+    return { 0u, nodes_count() };
 }
 
 template<std::floating_point T, std::integral I>
@@ -302,12 +304,12 @@ const element_integrate_2d<T>& mesh_container_2d<T, I>::element_2d(const size_t 
 
 template<std::floating_point T, std::integral I>
 mesh_container_2d<T, I>::element_data_1d mesh_container_2d<T, I>::element_1d_data(const size_t element) const {
-    return {.mesh = *this, .element = element};
+    return { .mesh = *this, .element = element };
 }
 
 template<std::floating_point T, std::integral I>
 mesh_container_2d<T, I>::element_data_2d mesh_container_2d<T, I>::element_2d_data(const size_t element) const {
-    return {.mesh = *this, .nodes = nodes(element), .element = element_2d(element)};
+    return { .mesh = *this, .nodes = nodes(element), .element = element_2d(element) };
 }
 
 template<std::floating_point T, std::integral I>
@@ -329,27 +331,27 @@ template<std::floating_point T, std::integral I>
 template<mesh_format Format, class Stream>
 void mesh_container_2d<T, I>::read_from_stream(Stream& stream) {
     clear();
-    mesh_parser<T, I, Format> parser{*this};
+    mesh_parser<T, I, Format> parser{ *this };
     parser.parse(stream);
 }
 
 template<std::floating_point T, std::integral I>
 void mesh_container_2d<T, I>::renumbering(const std::vector<size_t>& permutation) {
     if (permutation.size() != nodes_count())
-        throw std::runtime_error{"Permutation size does not match the mesh nodes number."};
+        throw std::runtime_error{ "Permutation size does not match the mesh nodes number." };
     std::vector<bool> check_nodes(nodes_count(), false);
-    for(const size_t node : permutation)
+    for (const size_t node : permutation)
         check_nodes[node] = true;
-    if (std::accumulate(check_nodes.begin(), check_nodes.end(), size_t{0}) != nodes_count())
-        throw std::runtime_error{"Incorrect permutation, some of the nodes are the same."};
+    if (std::accumulate(check_nodes.begin(), check_nodes.end(), size_t{ 0 }) != nodes_count())
+        throw std::runtime_error{ "Incorrect permutation, some of the nodes are the same." };
 
     std::vector<std::array<T, 2>> nodes(_nodes.size());
-    for(const size_t i : std::ranges::iota_view{0u, nodes_count()})
+    for (const size_t i : std::ranges::iota_view{ 0u, nodes_count() })
         nodes[permutation[i]] = _nodes[i];
     _nodes = std::move(nodes);
-    for(std::vector<I>& nodes : _elements)
-        for(I& node : nodes)
+    for (std::vector<I>& nodes : _elements)
+        for (I& node : nodes)
             node = permutation[node];
 }
 
-}
+} // namespace nonlocal::mesh

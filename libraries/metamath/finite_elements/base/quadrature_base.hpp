@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstddef>
-#include <type_traits>
 #include <ranges>
+#include <type_traits>
 
 namespace metamath::finite_element {
 
@@ -10,13 +10,15 @@ template<class T>
 class quadrature_base {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
-public:
+  public:
     virtual ~quadrature_base() noexcept = default;
 
     virtual size_t nodes_count() const = 0;
     virtual T weight(const size_t i) const = 0;
 
-    std::ranges::iota_view<size_t, size_t> nodes() const { return {0u, nodes_count()}; }
+    std::ranges::iota_view<size_t, size_t> nodes() const {
+        return { 0u, nodes_count() };
+    }
 };
 
-}
+} // namespace metamath::finite_element

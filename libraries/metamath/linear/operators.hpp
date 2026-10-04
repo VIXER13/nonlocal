@@ -8,14 +8,14 @@ namespace metamath::linear {
 
 template<class T, class U, std::integral I, std::integral J>
 sparse_matrix<T, I, J>& operator*=(sparse_matrix<T, I, J>& matrix, const U scalar) {
-    for(T& value : matrix.values)
-         value *= scalar;
-     return matrix;
+    for (T& value : matrix.values)
+        value *= scalar;
+    return matrix;
 }
 
 template<class T, class U, std::integral I, std::integral J>
 sparse_matrix<T, I, J>& operator/=(sparse_matrix<T, I, J>& matrix, const U scalar) {
-    for(T& value : matrix.values)
+    for (T& value : matrix.values)
         value /= scalar;
     return matrix;
 }
@@ -23,13 +23,13 @@ sparse_matrix<T, I, J>& operator/=(sparse_matrix<T, I, J>& matrix, const U scala
 template<class T, class U, std::integral I, std::integral J>
 std::vector<U> operator*(const sparse_matrix<T, I, J>& matrix, const std::vector<U>& vector) {
     if (matrix.cols() != vector.size())
-        throw std::invalid_argument{"Matrix columns count must match vector size for multiplication."};
+        throw std::invalid_argument{ "Matrix columns count must match vector size for multiplication." };
 
     using metamath::operators::operator+=;
     std::vector<U> result(matrix.rows(), U{});
 #pragma omp parallel for
-    for(size_t row = 0; row < matrix.rows(); ++row)
-        for(const size_t shift : matrix.portrait.shifts_range(row))
+    for (size_t row = 0; row < matrix.rows(); ++row)
+        for (const size_t shift : matrix.portrait.shifts_range(row))
             result[row] += matrix.values[shift] * vector[matrix.portrait.indices[shift]];
     return result;
 }
@@ -37,13 +37,13 @@ std::vector<U> operator*(const sparse_matrix<T, I, J>& matrix, const std::vector
 template<matrix_part Part, class T, class U, std::integral I, std::integral J>
 std::vector<U> operator*(const self_adjoint_view<Part, T, I, J>& view, const std::vector<U>& vector) {
     if (view.matrix.cols() != vector.size())
-        throw std::invalid_argument{"Matrix columns count must match vector size for multiplication."};
+        throw std::invalid_argument{ "Matrix columns count must match vector size for multiplication." };
 
     using metamath::operators::operator+=;
     static constexpr std::conditional_t<Part == matrix_part::Upper, std::greater<>, std::less<>> comparator{};
     std::vector<U> result(view.matrix.rows(), U{});
-    for(const size_t row : std::ranges::iota_view{0zu, view.matrix.rows()})
-        for(const size_t shift : view.matrix.portrait.shifts_range(row))
+    for (const size_t row : std::ranges::iota_view{ 0zu, view.matrix.rows() })
+        for (const size_t shift : view.matrix.portrait.shifts_range(row))
             if (const size_t col = view.matrix.portrait.indices[shift]; row == col)
                 result[row] += self_adjoint<Part>(view.matrix.values[shift]) * vector[col];
             else if (comparator(col, row)) {
@@ -56,9 +56,9 @@ std::vector<U> operator*(const self_adjoint_view<Part, T, I, J>& view, const std
 template<class T, std::integral I, std::integral J>
 sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const sparse_matrix<T, I, J>& rhs) {
     if (lhs.rows() != rhs.rows() || lhs.cols() != rhs.cols())
-        throw std::invalid_argument{"Matrices must have the same dimensions for addition."};
+        throw std::invalid_argument{ "Matrices must have the same dimensions for addition." };
 
-    for(const size_t row : std::ranges::iota_view{0zu, lhs.rows()}) {
+    for (const size_t row : std::ranges::iota_view{ 0zu, lhs.rows() }) {
         size_t lhs_shift = lhs.portrait.shifts[row];
         size_t rhs_shift = rhs.portrait.shifts[row];
         while (lhs_shift < lhs.portrait.shifts[row + 1] && rhs_shift < rhs.portrait.shifts[row + 1]) {
@@ -79,7 +79,7 @@ sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const sparse_mat
                 lhs.values.insert(lhs.values.begin() + lhs_shift, rhs.values[rhs_shift]);
                 ++lhs_shift;
                 ++rhs_shift;
-                for(const size_t i : std::ranges::iota_view{row + 1, lhs.rows() + 1})
+                for (const size_t i : std::ranges::iota_view{ row + 1, lhs.rows() + 1 })
                     ++lhs.portrait.shifts[i];
             }
         }
@@ -91,7 +91,7 @@ sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const sparse_mat
             lhs.values.insert(lhs.values.begin() + lhs_shift, rhs.values[rhs_shift]);
             ++lhs_shift;
             ++rhs_shift;
-            for(const size_t i : std::ranges::iota_view{row + 1, lhs.rows() + 1})
+            for (const size_t i : std::ranges::iota_view{ row + 1, lhs.rows() + 1 })
                 ++lhs.portrait.shifts[i];
         }
     }
@@ -101,13 +101,14 @@ sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const sparse_mat
 template<class T, std::integral I, std::integral J, matrix_part Part>
 sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const self_adjoint_view<Part, T, I, J>& rhs) {
     if (lhs.rows() != rhs.matrix.rows() || lhs.cols() != rhs.matrix.cols())
-        throw std::invalid_argument{"Matrices must have the same dimensions for addition."};
+        throw std::invalid_argument{ "Matrices must have the same dimensions for addition." };
 
-    for(const size_t row : std::ranges::iota_view{0zu, lhs.rows()}) {
-        for(const size_t shift : rhs.matrix.portrait.shifts_range(row)) {
+    for (const size_t row : std::ranges::iota_view{ 0zu, lhs.rows() }) {
+        for (const size_t shift : rhs.matrix.portrait.shifts_range(row)) {
             if (const size_t col = rhs.matrix.portrait.indices[shift]; row == col) // // Diagonal element
                 lhs(row, col) += self_adjoint<Part>(rhs.matrix.values[shift]);
-            else if ((Part == matrix_part::Upper && col > row) || (Part == matrix_part::Lower && col < row)) { // Off-diagonal element
+            else if ((Part == matrix_part::Upper && col > row) ||
+                     (Part == matrix_part::Lower && col < row)) { // Off-diagonal element
                 lhs(row, col) += rhs.matrix.values[shift];
                 lhs(col, row) += transpose(rhs.matrix.values[shift]);
             }
@@ -117,4 +118,4 @@ sparse_matrix<T, I, J>& operator+=(sparse_matrix<T, I, J>& lhs, const self_adjoi
     return lhs;
 }
 
-}
+} // namespace metamath::linear

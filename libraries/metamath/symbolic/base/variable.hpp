@@ -50,4 +50,4 @@ constexpr variable<N> simplify(const variable<N>) noexcept {
     return {};
 }
 
-}
+} // namespace metamath::symbolic

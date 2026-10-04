@@ -9,11 +9,11 @@ namespace metamath::finite_element {
 
 template<std::floating_point T>
 class quadrature_1d_base : public quadrature_base<T> {
-public:
+  public:
     ~quadrature_1d_base() override = default;
     virtual std::unique_ptr<quadrature_1d_base<T>> copy() const = 0;
     virtual T node(const size_t i) const = 0;
     virtual T boundary(const side_1d bound) const = 0;
 };
 
-}
+} // namespace metamath::finite_element

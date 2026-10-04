@@ -20,12 +20,9 @@ class nonzero_counter : public indexator_base {
         }
     }
 
-public:
+  public:
     explicit nonzero_counter(std::vector<S>& shifts, const mesh_container_2d<T, I>& mesh, const bool is_symmetric)
-        : indexator_base{is_symmetric}
-        , _included(shifts.size(), false)
-        , _shifts{shifts}
-        , _mesh{mesh} {}
+        : indexator_base{ is_symmetric }, _included(shifts.size(), false), _shifts{ shifts }, _mesh{ mesh } {}
     ~nonzero_counter() noexcept override = default;
 
     void reset(const size_t node) override {
@@ -41,4 +38,4 @@ public:
     }
 };
 
-}
+} // namespace nonlocal::mesh

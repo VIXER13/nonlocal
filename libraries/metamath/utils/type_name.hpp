@@ -32,4 +32,4 @@ constexpr std::string_view type_name(const T&) {
     return type_name<T>();
 }
 
-}
+} // namespace metamath::utils

@@ -9,7 +9,7 @@ class _lagrangian_function final {
 
     template<size_t X, size_t K, size_t I, class T, size_t N>
     static constexpr auto generate_term(const std::array<T, N>& nodes) noexcept {
-        if constexpr(K == I)
+        if constexpr (K == I)
             return metamath::symbolic::integral_constant<1>{};
         else {
             constexpr variable<X> x;
@@ -22,7 +22,7 @@ class _lagrangian_function final {
         return (generate_term<X, K, I>(nodes) * ...);
     }
 
-public:
+  public:
     template<size_t X, size_t K, class T, size_t N>
     friend constexpr auto generate_lagrangian_function(const std::array<T, N>& nodes) noexcept;
 };
@@ -41,7 +41,7 @@ class _lagrangian_basis final {
         return std::make_tuple(generate_lagrangian_function<X, K>(nodes)...);
     }
 
-public:
+  public:
     template<size_t X, class T, size_t N>
     friend constexpr auto generate_lagrangian_basis(const std::array<T, N>& nodes) noexcept;
 };
@@ -51,4 +51,4 @@ constexpr auto generate_lagrangian_basis(const std::array<T, N>& nodes) noexcept
     return _lagrangian_basis::generate_lagrangian_basis<X>(nodes, std::make_index_sequence<N>{});
 }
 
-}
+} // namespace metamath::symbolic

@@ -14,9 +14,8 @@ template<class E>
 class sin_expression : public unary_expression<E, sin_expression> {
     using _base = unary_expression<E, sin_expression>;
 
-public:
-    constexpr explicit sin_expression(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit sin_expression(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     auto operator()(const Args&... args) const {
@@ -31,7 +30,7 @@ public:
 
 template<class E>
 constexpr sin_expression<E> sin(const expression<E>& e) noexcept {
-    return sin_expression<E>{e()};
+    return sin_expression<E>{ e() };
 }
 
-}
+} // namespace metamath::symbolic

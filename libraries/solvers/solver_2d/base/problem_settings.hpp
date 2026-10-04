@@ -49,7 +49,7 @@ inline void log_problem_settings(const problem_settings& settings) {
     problem_type += "problem";
     logger::info() << problem_type << std::endl;
     if (settings.is_solution_dependent)
-        throw std::domain_error{"Parametrically nonlinear problems are not supported at the moment."};
+        throw std::domain_error{ "Parametrically nonlinear problems are not supported at the moment." };
 }
 
-}
+} // namespace nonlocal::solver_2d

@@ -1,8 +1,17 @@
 #include "determine_problem.hpp"
 
+#include <argparse/cli.hpp>
+
+#include <string_view>
+
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        logger::error() << "Input format: [program name] path/to/config.json" << std::endl;
+    cli cmd;
+    auto log_level = cmd.arg("--log-level", "Set the log level.").alias("-ll").cast(logger::parse_level).type<std::string>();
+    auto cfg_path = cmd.pos("Path to the config file").type<std::string>();
+    cmd.parse(argc, argv);
+
+    if (!cfg_path.has_value()) {
+        logger::error() << "No config file path provided." << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -13,7 +22,7 @@ int main(int argc, char** argv) {
 #endif
         using T = double;
         logger::info() << "NonLocFEM started." << std::endl;
-        nonlocal::determine_problem<T>(nonlocal::config::parse_json(std::filesystem::path{argv[1]}));
+        nonlocal::determine_problem<T>(nonlocal::config::parse_json(std::filesystem::path{ *cfg_path }));
         logger::info() << "NonLocFEM finished." << std::endl;
     } catch (const std::exception& e) {
         logger::error() << e.what() << std::endl;

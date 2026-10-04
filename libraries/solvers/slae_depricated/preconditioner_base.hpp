@@ -14,4 +14,4 @@ struct preconditioner_base {
     virtual Eigen::ComputationInfo computation_info() const = 0;
 };
 
-}
+} // namespace nonlocal::slae

@@ -9,9 +9,8 @@ template<class E>
 class tan_expression : public unary_expression<E, tan_expression> {
     using _base = unary_expression<E, tan_expression>;
 
-public:
-    constexpr explicit tan_expression(const expression<E>& e) noexcept
-        : _base{e()} {}
+  public:
+    constexpr explicit tan_expression(const expression<E>& e) noexcept : _base{ e() } {}
 
     template<class... Args>
     constexpr auto operator()(const Args&... args) const {
@@ -26,7 +25,7 @@ public:
 
 template<class E>
 constexpr tan_expression<E> tan(const expression<E>& e) noexcept {
-    return tan_expression<E>{e};
+    return tan_expression<E>{ e };
 }
 
-}
+} // namespace metamath::symbolic

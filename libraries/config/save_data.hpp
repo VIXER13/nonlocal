@@ -3,9 +3,9 @@
 #include <nlohmann/json.hpp>
 
 #include <filesystem>
-#include <unordered_map>
-#include <string>
 #include <optional>
+#include <string>
+#include <unordered_map>
 
 namespace nonlocal::config {
 
@@ -14,7 +14,7 @@ class save_data final {
     std::unordered_map<std::string, std::string> _names;
     std::optional<std::streamsize> _precision;
 
-public:
+  public:
     explicit save_data() = default;
     explicit save_data(const nlohmann::json& config, const std::string& path = {});
 
@@ -31,4 +31,4 @@ public:
     operator nlohmann::json() const;
 };
 
-}
+} // namespace nonlocal::config

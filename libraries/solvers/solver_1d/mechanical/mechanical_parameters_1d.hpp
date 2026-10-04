@@ -16,4 +16,4 @@ struct parameter_1d final {
 template<class T>
 using parameters_1d = std::vector<equation_parameters<1, T, parameter_1d>>;
 
-}
+} // namespace nonlocal::solver_1d::mechanical

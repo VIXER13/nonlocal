@@ -1,0 +1,44 @@
+name: PVS-Studio build analysis
+
+on: 
+  workflow_dispatch:
+  push:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-14 g++-14 make
+
+      - name: Install Conan
+        uses: conan-io/setup-conan@v1
+
+      - name: Setup Conan & Configure project
+        run: make setup COMPILER=gcc-14
+
+      - name: Install PVS-Studio
+        run: |
+          wget -q -O - https://files.pvs-studio.com/etc/pubkey.txt \
+            | sudo apt-key add -
+          sudo wget -O /etc/apt/sources.list.d/viva64.list \
+            https://files.pvs-studio.com/etc/viva64.list
+          sudo apt update
+          sudo apt install pvs-studio
+          pvs-studio-analyzer credentials ${{ secrets.PVS_STUDIO_CREDENTIALS }}
+
+      - name: Analyze
+        run: pvs-studio-analyzer analyze -f build/compile_commands.json -j
+
+      - name: Convert report
+        run: plog-converter -t sarif -o pvs-report.sarif PVS-Studio.log
+
+      - name: Publish report
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: pvs-report.sarif
+          category: PVS-Studio

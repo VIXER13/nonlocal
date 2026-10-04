@@ -9,19 +9,18 @@ template<std::floating_point T>
 class _temperature_condition final {
     const mesh::mesh_2d<T>& _mesh;
 
-    explicit _temperature_condition(const mesh::mesh_2d<T>& mesh) : _mesh{mesh} {}
+    explicit _temperature_condition(const mesh::mesh_2d<T>& mesh) : _mesh{ mesh } {}
 
     template<class Hooke, class Thermal_Strain>
-    std::array<T, 2> operator()(const Hooke& hooke_matrix, 
-                                const Thermal_Strain& thermal_strain,
-                                const size_t e, const size_t i) const {
+    std::array<T, 2> operator()(const Hooke& hooke_matrix, const Thermal_Strain& thermal_strain, const size_t e,
+                                const size_t i) const {
         using namespace metamath::operators;
         std::array<T, 2> integral = {};
         size_t qshift = _mesh.quad_shift(e);
         const auto& el = _mesh.container().element_2d(e);
-        for(const size_t q : el.qnodes()) {
-            const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift] : 
-                                                       std::get<Constant>(hooke_matrix);
+        for (const size_t q : el.qnodes()) {
+            const auto& hooke =
+                hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshift] : std::get<Constant>(hooke_matrix);
             const auto thermal_stress = calc_stress<T>(hooke, thermal_strain[qshift]);
             const auto wdN = el.weight(q) * _mesh.derivatives(e, i, q);
             integral[X] += wdN[X] * thermal_stress[XX] + wdN[Y] * thermal_stress[XY];
@@ -40,13 +39,13 @@ class _temperature_condition final {
         const auto& elL = _mesh.container().element_2d(eL);
         const auto& elNL = _mesh.container().element_2d(eNL);
         size_t qshiftL = _mesh.quad_shift(eL);
-        for(const size_t qL : elL.qnodes()) {
+        for (const size_t qL : elL.qnodes()) {
             std::array<T, 3> inner_integral = {};
             size_t qshiftNL = _mesh.quad_shift(eNL);
             const std::array<T, 2>& qcoordL = _mesh.quad_coord(eL, qL);
-            for(const size_t qNL : elNL.qnodes()) {
-                const auto& hooke = hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshiftNL] : 
-                                                           std::get<Constant>(hooke_matrix);
+            for (const size_t qNL : elNL.qnodes()) {
+                const auto& hooke =
+                    hooke_matrix.index() ? std::get<Variable>(hooke_matrix)[qshiftNL] : std::get<Constant>(hooke_matrix);
                 const T weight = elNL.weight(qNL) * influence(qcoordL, _mesh.quad_coord(qshiftNL)) * _mesh.jacobian(qshiftNL);
                 inner_integral += weight * calc_stress<T>(hooke, thermal_strain[qshiftNL]);
                 ++qshiftNL;
@@ -59,7 +58,7 @@ class _temperature_condition final {
         return integral;
     }
 
-public:
+  public:
     template<std::floating_point U>
     friend void temperature_condition(std::vector<std::array<U, 2>>& f, const mesh::mesh_2d<U>& mesh,
                                       const evaluated_mechanical_parameters<U>& parameters);
@@ -68,14 +67,15 @@ public:
 template<std::floating_point T>
 void temperature_condition(std::vector<std::array<T, 2>>& f, const mesh::mesh_2d<T>& mesh,
                            const evaluated_mechanical_parameters<T>& parameters) {
-    const _temperature_condition<T> integrator{mesh};
+    const _temperature_condition<T> integrator{ mesh };
     const auto process_node = mesh.process_nodes();
 #pragma omp parallel for default(none) shared(f, mesh, parameters, integrator, process_node) schedule(dynamic)
-    for(size_t node = process_node.front(); node < *process_node.end(); ++node) {
+    for (size_t node = process_node.front(); node < *process_node.end(); ++node) {
         std::array<T, 2> integral = {};
-        for(const size_t eL : mesh.elements(node)) {
+        for (const size_t eL : mesh.elements(node)) {
             const auto& group = mesh.container().group(eL);
             const auto& [model, physical] = parameters.at(group);
+            // clang-format off
             std::visit(metamath::types::visitor{
                 [](const auto&, const std::monostate) {},
                 [&](const auto& hooke, const auto& thermal_strain) {
@@ -89,10 +89,11 @@ void temperature_condition(std::vector<std::array<T, 2>>& f, const mesh::mesh_2d
                     integral += model.local_weight * integrator(hooke, thermal_strain, eL, iL);
                 }
             }, physical.elastic, physical.thermal_strain);
+            // clang-format on
         }
         using namespace metamath::operators;
         f[node] += integral;
     }
 }
 
-}
+} // namespace nonlocal::solver_2d::mechanical

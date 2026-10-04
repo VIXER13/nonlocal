@@ -1,7 +1,7 @@
 #pragma once
 
-#include "optional_integer.hpp"
 #include "copyable_ptrs.hpp"
+#include "optional_integer.hpp"
 #include "size_t_or.hpp"
 #include "traits.hpp"
 #include "vector_with_shifted_index.hpp"

@@ -1,3 +1,4 @@
+#include <embedded_files/solid_ring_su2.h>
 #include <mesh/mesh_2d/mesh_2d.hpp>
 #include <mesh/mesh_2d/mesh_2d_utils.hpp>
 #include <mesh/mesh_2d/mesh_container_2d_utils.hpp>
@@ -5,8 +6,6 @@
 #include <tests/utils/error.hpp>
 
 #include <boost/ut.hpp>
-
-#include <embedded_files/solid_ring_su2.h>
 
 namespace {
 
@@ -17,7 +16,7 @@ using namespace unit_tests;
 using namespace mesh;
 using namespace solver_2d::thermal;
 
-constexpr T Expected_Error = T{0};
+constexpr T Expected_Error = T{ 0 };
 constexpr T Time_Step = 0.01;
 constexpr uintmax_t Steps_Count = 25;
 
@@ -36,24 +35,22 @@ std::function<T(const std::array<T, 2>&)> make_right_part(const T time) {
 
 thermal_boundaries_conditions_2d<T> make_boundaries(const T time) {
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
-    boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>([time](const std::array<T, 2>& point) {
-        return exact_solution(time, point);
-    });
-    boundaries_conditions["Outer"] = std::make_unique<temperature_2d<T>>([time](const std::array<T, 2>& point) {
-        return exact_solution(time, point);
-    });
+    boundaries_conditions["Inner"] =
+        std::make_unique<temperature_2d<T>>([time](const std::array<T, 2>& point) { return exact_solution(time, point); });
+    boundaries_conditions["Outer"] =
+        std::make_unique<temperature_2d<T>>([time](const std::array<T, 2>& point) { return exact_solution(time, point); });
     return boundaries_conditions;
 }
 
 const suite<"nonstationary_isotropic_solid_ring"> _ = [] {
-    std::stringstream stream{solid_ring_su2_data};
+    std::stringstream stream{ solid_ring_su2_data };
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const raw_thermal_parameters<T> parameters = {
-        {"DEFAULT", {.physical = {.conductivity = T{1}, .capacity = T{1}, .density = T{1}}}}
+        { "DEFAULT", { .physical = { .conductivity = T{ 1 }, .capacity = T{ 1 }, .density = T{ 1 } } } }
     };
-    nonstationary_heat_equation_solver_2d<T> solver{mesh};
+    nonstationary_heat_equation_solver_2d<T> solver{ mesh };
     solver.compute(parameters, make_boundaries(0), Time_Step, make_right_part(0), initial_distribution);
-    for(const size_t step : std::views::iota(1u, Steps_Count + 1)) {
+    for (const size_t step : std::views::iota(1u, Steps_Count + 1)) {
         const T time = step * Time_Step;
         solver.set_boundaries(make_boundaries(time));
         solver.set_inner_flux(make_right_part(time));
@@ -71,4 +68,4 @@ const suite<"nonstationary_isotropic_solid_ring"> _ = [] {
     };
 };
 
-}
+} // namespace

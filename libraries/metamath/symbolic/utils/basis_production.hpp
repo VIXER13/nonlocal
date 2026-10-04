@@ -15,7 +15,8 @@ class _basis_production final {
     }
 
     template<class... E, class... F, size_t... I>
-    static constexpr auto basis_production_impl(const std::tuple<E...>& first, const std::tuple<F...>& second, const std::index_sequence<I...>) {
+    static constexpr auto basis_production_impl(const std::tuple<E...>& first, const std::tuple<F...>& second,
+                                                const std::index_sequence<I...>) {
         return std::tuple_cat(product(std::get<I>(first), second, std::make_index_sequence<sizeof...(F)>{})...);
     }
 
@@ -34,7 +35,7 @@ class _basis_production final {
         return basis_production_impl(first, basis_production_impl(bases...));
     }
 
-public:
+  public:
     template<class Basis, class... Bases>
     friend constexpr auto basis_production(const Basis& first, const Bases&... bases);
 };
@@ -44,4 +45,4 @@ constexpr auto basis_production(const Basis& first, const Bases&... bases) {
     return _basis_production::basis_production_impl(first, _basis_production::basis_production_impl(bases...));
 }
 
-}
+} // namespace metamath::symbolic

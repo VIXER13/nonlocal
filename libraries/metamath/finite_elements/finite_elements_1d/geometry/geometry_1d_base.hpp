@@ -2,19 +2,21 @@
 
 #include "side_1d.hpp"
 
+#include <metamath/symbolic/base/variable.hpp>
+
 namespace metamath::finite_element {
 
 template<class T>
 class geometry_1d_base {
     static_assert(std::is_floating_point_v<T>, "The T must be floating point.");
 
-protected:
+  protected:
     static inline constexpr symbolic::variable<0> x{};
 
-public:
+  public:
     virtual ~geometry_1d_base() noexcept = default;
 
     virtual T boundary(const side_1d bound) const = 0;
 };
 
-}
+} // namespace metamath::finite_element

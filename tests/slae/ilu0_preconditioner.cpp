@@ -18,8 +18,8 @@ constexpr auto Inf = metamath::constants::Infinity<size_t>;
 void print_matrix(const sparse_matrix<T>& matrix) {
     std::cerr << "Matrix: " << std::endl;
     const size_t size = matrix.rows();
-    for(const size_t row : std::ranges::iota_view{0zu, size}) {
-        for(const size_t col : std::ranges::iota_view{0zu, size})
+    for (const size_t row : std::ranges::iota_view{ 0zu, size }) {
+        for (const size_t col : std::ranges::iota_view{ 0zu, size })
             if (matrix.portrait.contains(row, col))
                 std::cerr << matrix(row, col) << " ";
             else
@@ -32,9 +32,9 @@ void print_matrix(const sparse_matrix<T>& matrix) {
 void print_matrix(const sparse_matrix<square_matrix<T, 2>>& matrix) {
     std::cerr << "Block Matrix: " << std::endl;
     const size_t size = matrix.rows();
-    for(const size_t row : std::ranges::iota_view{0zu, size}) {
-        for(const size_t dof : std::ranges::iota_view{0zu, 2zu}) {
-            for(const size_t col : std::ranges::iota_view{0zu, size}) {
+    for (const size_t row : std::ranges::iota_view{ 0zu, size }) {
+        for (const size_t dof : std::ranges::iota_view{ 0zu, 2zu }) {
+            for (const size_t col : std::ranges::iota_view{ 0zu, size }) {
                 if (!matrix.portrait.contains(row, col))
                     std::cerr << "0 0 ";
                 else {
@@ -47,6 +47,8 @@ void print_matrix(const sparse_matrix<square_matrix<T, 2>>& matrix) {
     }
     std::cerr << std::endl;
 }
+
+// clang-format off
 
 // 10x10 general matrix
 // [10 -1 -0.5    0    0    0    0    0    0    0]
@@ -124,6 +126,8 @@ sparse_matrix<square_matrix<T, 2>> block_matrix() {
     return matrix;
 }
 
+// clang-format on
+
 suite<"ilu0_preconditioner"> _ilu0 = [] {
     // "scalar_factorization"_test = [] {
     //     const auto matrix = scalar_general_matrix<T>();
@@ -159,9 +163,9 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
 
     "scalar_factorization"_test = [] {
         const auto matrix = scalar_matrix();
-        const std::vector<T> expected = {1., 2., 3., 4., 5., 6., 7., 8., 9., 10.};
+        const std::vector<T> expected = { 1., 2., 3., 4., 5., 6., 7., 8., 9., 10. };
         const std::vector<T> b = matrix * expected;
-        const ilu0_preconditioner preconditioner{scalar_matrix()};
+        const ilu0_preconditioner preconditioner{ scalar_matrix() };
         const T diff = norm<Inf>(preconditioner.solve(b) - expected);
         static constexpr auto Epsilon = 1.8e-15;
         expect(approx(diff, 0.0, Epsilon)) << "ilu0 scalar exact solve failed, diff=" << diff;
@@ -170,9 +174,11 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
 
     "block_factorization"_test = [] {
         const auto matrix = block_matrix();
-        const std::vector<std::array<T, 2>> expected = {{{1., 2.}}, {{3., 4.}}, {{5., 6.}}, {{7., 8.}}, {{9., 10.}}};
+        const std::vector<std::array<T, 2>> expected = {
+            { { 1., 2. } }, { { 3., 4. } }, { { 5., 6. } }, { { 7., 8. } }, { { 9., 10. } }
+        };
         const std::vector<std::array<T, 2>> b = matrix * expected;
-        const ilu0_preconditioner preconditioner{block_matrix()};
+        const ilu0_preconditioner preconditioner{ block_matrix() };
         const T diff = norm<Inf>(preconditioner.solve(b) - expected);
         static constexpr auto Epsilon = 1.8e-15;
         expect(approx(diff, 0.0, Epsilon)) << "ilu0 block exact solve failed, diff=" << diff;
@@ -180,4 +186,4 @@ suite<"ilu0_preconditioner"> _ilu0 = [] {
     };
 };
 
-}
+} // namespace

@@ -18,6 +18,9 @@ add_subdirectory(thermal_1d)
 add_subdirectory(mechanical_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
+add_subdirectory(logger)
+
+include(${CMAKE_SOURCE_DIR}/CMakeTools/StacktraceSupport.cmake)
 
 # Apply PCH to each test OBJECT library with its own flags to avoid compile-definition mismatches
 # (e.g. _OPENMP / _REENTRANT differ between OpenMP and non-OpenMP targets).
@@ -33,6 +36,7 @@ foreach(test_target
     mechanical_1d_test_lib
     thermal_2d_test_lib
     mechanical_2d_test_lib
+    logger_test_lib
 )
     target_precompile_headers(
         ${test_target}
@@ -43,7 +47,7 @@ foreach(test_target
     target_link_libraries(
         ${test_target}
         PRIVATE #
-            stdc++_libbacktrace
+            stacktrace_support
     )
 endforeach()
 
@@ -62,7 +66,7 @@ target_link_options(
 target_link_libraries(
     unit_tests
     PRIVATE #
-        stdc++_libbacktrace
+        stacktrace_support
         metamath_instantiations_lib
         embedded_files
         finite_elements_test_lib
@@ -76,6 +80,7 @@ target_link_libraries(
         mechanical_1d_test_lib
         thermal_2d_test_lib
         mechanical_2d_test_lib
+        logger_test_lib
         unit_tests_utils_lib
         Boost::ut
 )

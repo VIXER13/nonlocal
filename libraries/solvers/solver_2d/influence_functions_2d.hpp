@@ -6,7 +6,8 @@ namespace nonlocal::solver_2d::influence {
 
 class _influence_function_2d final {
     template<std::floating_point T>
-    static metamath::types::size_t_or<T> division(const metamath::types::size_t_or<T>& lhs, const metamath::types::size_t_or<T>& rhs) {
+    static metamath::types::size_t_or<T> division(const metamath::types::size_t_or<T>& lhs,
+                                                  const metamath::types::size_t_or<T>& rhs) {
         if (std::holds_alternative<size_t>(rhs)) {
             if (std::get<size_t>(rhs) == metamath::constants::Infinity<size_t>) // used infinity norm
                 return lhs;
@@ -28,7 +29,7 @@ class _influence_function_2d final {
 
     explicit constexpr _influence_function_2d() noexcept = default;
 
-public:
+  public:
     template<std::floating_point T, class Distance>
     friend class polynomial;
 
@@ -39,7 +40,7 @@ public:
 template<std::floating_point T, class Distance = mesh::powered_distance<T>>
 class constant final : public Distance {
     std::array<T, 2> _radius;
-    T _area = T{1};
+    T _area = T{ 1 };
 
     static T calc_area(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n_variant) {
         using metamath::functions::power;
@@ -47,14 +48,12 @@ class constant final : public Distance {
         return std::tgamma(1 + 2 / n) / (4 * radius[0] * radius[1] * power<2>(std::tgamma(1 + 1 / n)));
     }
 
-public:
+  public:
     explicit constant(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n = 2zu)
-        : Distance{n}
-        , _radius{radius}
-        , _area{calc_area(radius, n)} {}
+        : Distance{ n }, _radius{ radius }, _area{ calc_area(radius, n) } {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
-        return this->Distance::operator()(x, y, _radius) <= T{1} ? _area : T{0};
+        return this->Distance::operator()(x, y, _radius) <= T{ 1 } ? _area : T{ 0 };
     }
 };
 
@@ -65,7 +64,7 @@ class polynomial final : public Distance {
     std::array<T, 2> _radius;
     metamath::types::size_t_or<T> _p;
     metamath::types::size_t_or<T> _q;
-    T _norm = T{1};
+    T _norm = T{ 1 };
 
     static T calc_norm(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n_variant, const T p, const T q) {
         if (std::holds_alternative<size_t>(n_variant) && std::get<size_t>(n_variant) == metamath::constants::Infinity<size_t>)
@@ -74,20 +73,15 @@ class polynomial final : public Distance {
         return n * p / (4 * radius[0] * radius[1] * std::beta(1 / n, 1 / n) * std::beta(2 / p, q + 1));
     }
 
-public:
-    explicit polynomial(const std::array<T, 2>& radius,
-                        const metamath::types::size_t_or<T>& n = 2zu,
-                        const metamath::types::size_t_or<T>& p = 2zu,
-                        const metamath::types::size_t_or<T>& q = 1zu)
-        : Distance{n}
-        , _radius{radius}
-        , _p{_impl::division(p, n)}
-        , _q{q}
-        , _norm{calc_norm(radius, n, metamath::types::get_value(p), metamath::types::get_value(q))} {}
+  public:
+    explicit polynomial(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n = 2zu,
+                        const metamath::types::size_t_or<T>& p = 2zu, const metamath::types::size_t_or<T>& q = 1zu)
+        : Distance{ n }, _radius{ radius }, _p{ _impl::division(p, n) }, _q{ q },
+          _norm{ calc_norm(radius, n, metamath::types::get_value(p), metamath::types::get_value(q)) } {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         const T dist = this->Distance::operator()(x, y, _radius);
-        return dist < T{1} ? _norm * _impl::power(T{1} - _impl::power(dist, _p), _q) : T{0};
+        return dist < T{ 1 } ? _norm * _impl::power(T{ 1 } - _impl::power(dist, _p), _q) : T{ 0 };
     }
 };
 
@@ -104,20 +98,16 @@ class exponential final : public Distance {
         if (std::holds_alternative<size_t>(n_variant) && std::get<size_t>(n_variant) == metamath::constants::Infinity<size_t>)
             return p * std::pow(q, 2 / p) / (8 * radius[0] * radius[1] * std::tgamma(2 / p));
         const T n = metamath::types::get_value(n_variant);
-        return (n * p * std::pow(T{4}, 1 / n) * std::pow(q, 2 / p)) / (8 * radius[0] * radius[1] * std::tgamma(2 / p) * std::beta(T{0.5}, 1 / n));
+        return (n * p * std::pow(T{ 4 }, 1 / n) * std::pow(q, 2 / p)) /
+               (8 * radius[0] * radius[1] * std::tgamma(2 / p) * std::beta(T{ 0.5 }, 1 / n));
     }
 
-public:
+  public:
     // The default parameters define the normal distribution function
-    explicit exponential(const std::array<T, 2>& radius,
-                         const metamath::types::size_t_or<T>& n = 2zu,
-                         const metamath::types::size_t_or<T>& p = 2zu,
-                         const T q = T{0.5})
-        : Distance{n}
-        , _radius{radius}
-        , _p{_impl::division(p, n)}
-        , _q{-q}
-        , _norm{calc_norm(radius, n, metamath::types::get_value(p), q)} {}
+    explicit exponential(const std::array<T, 2>& radius, const metamath::types::size_t_or<T>& n = 2zu,
+                         const metamath::types::size_t_or<T>& p = 2zu, const T q = T{ 0.5 })
+        : Distance{ n }, _radius{ radius }, _p{ _impl::division(p, n) }, _q{ -q },
+          _norm{ calc_norm(radius, n, metamath::types::get_value(p), q) } {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         return _norm * std::exp(_q * _impl::power(this->Distance::operator()(x, y, _radius), _p));
@@ -136,15 +126,14 @@ class fast_polynomial final {
         return metamath::linear::powered_distance<2>(x, y, _radius);
     }
 
-public:
+  public:
     explicit fast_polynomial(const std::array<T, 2>& radius)
-        : _radius{radius}
-        , _norm{T{2} / (std::numbers::pi_v<T> * radius[0] * radius[1])} {}
+        : _radius{ radius }, _norm{ T{ 2 } / (std::numbers::pi_v<T> * radius[0] * radius[1]) } {}
 
     T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y) const {
         const T dist = distance(x, y);
-        return dist < T{1} ? _norm * (T{1} - dist) : T{0};
+        return dist < T{ 1 } ? _norm * (T{ 1 } - dist) : T{ 0 };
     }
 };
 
-}
+} // namespace nonlocal::solver_2d::influence

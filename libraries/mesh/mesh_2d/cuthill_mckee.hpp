@@ -10,10 +10,8 @@ class _cuthill_mckee final {
     class neighbour_checker : public indexator_base {
         std::vector<bool> _included;
 
-    protected:
-        explicit neighbour_checker(const size_t size)
-            : indexator_base{false}
-            , _included(size, false) {}
+      protected:
+        explicit neighbour_checker(const size_t size) : indexator_base{ false }, _included(size, false) {}
 
         bool check_neighbour(const size_t node, const size_t neighbour) {
             const bool result = node != neighbour && !_included[neighbour];
@@ -22,7 +20,7 @@ class _cuthill_mckee final {
             return result;
         }
 
-    public:
+      public:
         void reset(const size_t) override {
             std::fill(_included.begin(), _included.end(), false);
         }
@@ -38,11 +36,9 @@ class _cuthill_mckee final {
                 ++_shifts[node + 1];
         }
 
-    public:
+      public:
         explicit shifts_initializer(std::vector<size_t>& shifts, const mesh_container_2d<T, I>& mesh)
-            : neighbour_checker{shifts.size() - 1}
-            , _shifts{shifts}
-            , _mesh{mesh} {}
+            : neighbour_checker{ shifts.size() - 1 }, _shifts{ shifts }, _mesh{ mesh } {}
 
         void operator()(const std::string&, const size_t e, const size_t i, const size_t j) {
             check(_mesh.node_number(e, i), _mesh.node_number(e, j));
@@ -67,12 +63,10 @@ class _cuthill_mckee final {
             }
         }
 
-    public:
-        explicit indices_initializer(std::vector<I>& indices, const std::vector<size_t>& shifts, const mesh_container_2d<T, I>& mesh)
-            : neighbour_checker{shifts.size() - 1}
-            , _shifts{shifts}
-            , _indices{indices}
-            , _mesh{mesh} {}
+      public:
+        explicit indices_initializer(std::vector<I>& indices, const std::vector<size_t>& shifts,
+                                     const mesh_container_2d<T, I>& mesh)
+            : neighbour_checker{ shifts.size() - 1 }, _shifts{ shifts }, _indices{ indices }, _mesh{ mesh } {}
 
         void reset(const size_t) override {
             _node_shift = 0;
@@ -100,7 +94,7 @@ class _cuthill_mckee final {
 
     template<class I>
     static void accumulate_shifts(std::vector<I>& shifts) {
-        for(const size_t i : std::ranges::iota_view{0u, shifts.size()})
+        for (const size_t i : std::ranges::iota_view{ 0u, shifts.size() })
             shifts[i] += shifts[i - 1];
     }
 
@@ -108,17 +102,17 @@ class _cuthill_mckee final {
     static node_graph<I> init_graph(const mesh_2d<T, I>& mesh, const std::unordered_map<std::string, theory_t>& theories) {
         _cuthill_mckee::node_graph<I> graph;
         graph.shifts.resize(mesh.container().nodes_count() + 1, 0);
-        mesh_run(mesh, mesh.container().nodes(), theories, shifts_initializer{graph.shifts, mesh.container()});
+        mesh_run(mesh, mesh.container().nodes(), theories, shifts_initializer{ graph.shifts, mesh.container() });
         accumulate_shifts(graph.shifts);
         graph.indices.resize(graph.shifts.back());
-        mesh_run(mesh, mesh.container().nodes(), theories, indices_initializer{graph.indices, graph.shifts, mesh.container()});
+        mesh_run(mesh, mesh.container().nodes(), theories, indices_initializer{ graph.indices, graph.shifts, mesh.container() });
         return graph;
     }
 
     template<class I>
     static I node_with_minimum_neighbours(const node_graph<I>& graph) {
         I curr_node = 0, min_neighbours_count = std::numeric_limits<I>::max();
-        for(const size_t node : std::ranges::iota_view{0u, graph.shifts.size() - 1})
+        for (const size_t node : std::ranges::iota_view{ 0u, graph.shifts.size() - 1 })
             if (const I neighbours_count = graph.neighbours_count(node); neighbours_count < min_neighbours_count) {
                 curr_node = node;
                 min_neighbours_count = neighbours_count;
@@ -132,15 +126,15 @@ class _cuthill_mckee final {
         std::vector<size_t> permutation(graph.shifts.size() - 1, Invalid_Index);
         I curr_index = 0;
         permutation[init_node] = curr_index++;
-        std::unordered_set<I> curr_layer{init_node}, next_layer;
+        std::unordered_set<I> curr_layer{ init_node }, next_layer;
         while (curr_index < permutation.size()) {
             next_layer.clear();
-            for(const I node : curr_layer) {
+            for (const I node : curr_layer) {
                 std::multimap<I, I> neighbours;
-                for(const I shift : std::ranges::iota_view{graph.shifts[node], graph.shifts[node + 1]})
+                for (const I shift : std::ranges::iota_view{ graph.shifts[node], graph.shifts[node + 1] })
                     if (const I neighbour_node = graph.indices[shift]; permutation[neighbour_node] == Invalid_Index)
                         neighbours.emplace(graph.neighbours_count(neighbour_node), neighbour_node);
-                for(const auto [_, neighbour] : neighbours) {
+                for (const auto [_, neighbour] : neighbours) {
                     next_layer.emplace(neighbour);
                     permutation[neighbour] = curr_index++;
                 }
@@ -150,7 +144,7 @@ class _cuthill_mckee final {
         return permutation;
     }
 
-public:
+  public:
     template<class T, class I>
     friend std::vector<size_t> cuthill_mckee(const mesh_2d<T, I>& mesh, const bool only_local, const bool reverse);
 };
@@ -166,8 +160,9 @@ std::vector<I> reverse_permutation(const std::vector<I>& permutation) {
 template<class T, class I>
 std::vector<size_t> cuthill_mckee(const mesh_2d<T, I>& mesh, const bool only_local, const bool reverse) {
     const _cuthill_mckee::node_graph<I> graph = _cuthill_mckee::init_graph(mesh, theories(mesh, only_local));
-    std::vector<size_t> permutation = _cuthill_mckee::calculate_permutation(graph, _cuthill_mckee::node_with_minimum_neighbours(graph));
+    std::vector<size_t> permutation =
+        _cuthill_mckee::calculate_permutation(graph, _cuthill_mckee::node_with_minimum_neighbours(graph));
     return reverse ? reverse_permutation(permutation) : permutation;
 }
 
-}
+} // namespace nonlocal::mesh::utils

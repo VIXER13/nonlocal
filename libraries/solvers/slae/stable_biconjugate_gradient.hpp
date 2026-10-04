@@ -13,17 +13,16 @@ class stable_biconjugate_gradient final : public matrix_vector_production<T, I, 
     using _base::_residual;
     using _base::production;
 
-public:
-    using typename _base::entity_t;
-    using typename _base::floating_point_t;
+  public:
     using _base::matrix;
-    using _base::tolerance;
     using _base::max_iterations;
     using _base::preconditioner;
     using _base::processes_ranges;
+    using _base::tolerance;
+    using typename _base::entity_t;
+    using typename _base::floating_point_t;
 
-    explicit stable_biconjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix)
-        : _base{matrix} {}
+    explicit stable_biconjugate_gradient(const metamath::linear::sparse_matrix<T, I, J>& matrix) : _base{ matrix } {}
 
     std::vector<entity_t> solve(const std::vector<entity_t>& b,
                                 const std::optional<std::vector<entity_t>>& x0 = std::nullopt) const override {
@@ -40,7 +39,7 @@ public:
         std::vector<entity_t> x = x0.template value_or(std::vector<entity_t>(matrix().cols(), entity_t{}));
         std::vector<entity_t> r(n, entity_t{});
         production(r, x);
-        r *= floating_point_t{-1};
+        r *= floating_point_t{ -1 };
         r += b;
         std::vector<entity_t> r0 = r;
         std::vector<entity_t> v(n, entity_t{});
@@ -51,13 +50,13 @@ public:
         std::vector<entity_t> t(n, entity_t{});
         floating_point_t r0_sqnorm = powered_norm(r0);
         floating_point_t rhs_norm = norm(b);
-        if(rhs_norm == 0) {
+        if (rhs_norm == 0) {
             x = std::vector<entity_t>(n, entity_t{});
             return x;
         }
-        auto rho   = floating_point_t{1};
-        auto alpha = floating_point_t{1};
-        auto w     = floating_point_t{1};
+        auto rho = floating_point_t{ 1 };
+        auto alpha = floating_point_t{ 1 };
+        auto w = floating_point_t{ 1 };
         const auto eps2 = metamath::functions::power<2>(std::numeric_limits<floating_point_t>::epsilon());
         uintmax_t restarts = 0;
 
@@ -70,12 +69,12 @@ public:
                 // The new residual vector became too orthogonal to the arbitrarily chosen direction r0
                 // Let's restart with a new r0:
                 production(r, x);
-                r *= floating_point_t{-1};
+                r *= floating_point_t{ -1 };
                 r += b;
                 r0 = r;
                 rho = powered_norm(r);
                 r0_sqnorm = rho;
-                if(restarts++ == 0)
+                if (restarts++ == 0)
                     _iterations = 0;
             }
 
@@ -91,7 +90,7 @@ public:
             production(t, z);
 
             const floating_point_t t_squared_norm = powered_norm(t);
-            w = t_squared_norm > floating_point_t{0} ? scalar_product(t, s) / t_squared_norm : floating_point_t{0};
+            w = t_squared_norm > floating_point_t{ 0 } ? scalar_product(t, s) / t_squared_norm : floating_point_t{ 0 };
             x += alpha * y + w * z;
             r = s - w * t;
 
@@ -99,10 +98,9 @@ public:
             ++_iterations;
         }
 
-        logger::info() << "iterations = " << _iterations << '\n'
-                       << "residual = "   << _residual << std::endl;
+        logger::info() << "iterations = " << _iterations << '\n' << "residual = " << _residual << std::endl;
         return x;
     }
 };
 
-}
+} // namespace nonlocal::slae

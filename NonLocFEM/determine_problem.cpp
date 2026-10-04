@@ -10,9 +10,9 @@ void _determine_problem::init_save_data(const config::save_data& save, const nlo
 }
 
 std::vector<std::string> _determine_problem::get_required_fields(const config::task_data& task) {
-    auto required_fields = task.problem == nonlocal::config::problem_t::Thermomechanical ? 
-        std::vector<std::string>{"thermal_boundaries", "mechanical_boundaries", "materials", "mesh"} :
-        std::vector<std::string>{"boundaries", "materials", "mesh"};
+    auto required_fields = task.problem == nonlocal::config::problem_t::Thermomechanical
+                               ? std::vector<std::string>{ "thermal_boundaries", "mechanical_boundaries", "materials", "mesh" }
+                               : std::vector<std::string>{ "boundaries", "materials", "mesh" };
     if (task.analysis_type == config::analysis_type_t::Time_Dependent)
         required_fields.push_back("time");
     if (task.analysis_type == config::analysis_type_t::Time_Harmonic)
@@ -21,13 +21,11 @@ std::vector<std::string> _determine_problem::get_required_fields(const config::t
 }
 
 bool _determine_problem::is_thermal(const config::problem_t problem) {
-    return problem == config::problem_t::Thermal ||
-           problem == config::problem_t::Thermomechanical;
+    return problem == config::problem_t::Thermal || problem == config::problem_t::Thermomechanical;
 }
 
 bool _determine_problem::is_mechanical(const config::problem_t problem) {
-    return problem == config::problem_t::Mechanical ||
-           problem == config::problem_t::Thermomechanical;
+    return problem == config::problem_t::Mechanical || problem == config::problem_t::Thermomechanical;
 }
 
-}
+} // namespace nonlocal

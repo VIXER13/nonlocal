@@ -28,19 +28,20 @@ using neighbours_t = std::pair<influences<T>, std::vector<std::vector<I>>>;
 template<class T>
 struct powered_distance {
     // x - first point, y - second point, r - normalizator (nonlocal radius)
-    using distance_t = T(powered_distance<T>::*)(const std::array<T, 2>&, const std::array<T, 2>&, const std::array<T, 2>&) const;
+    using distance_t = T (powered_distance<T>::*)(const std::array<T, 2>&, const std::array<T, 2>&,
+                                                  const std::array<T, 2>&) const;
 
     metamath::types::size_t_or<T> n = 2zu;
     distance_t distance = &powered_distance<T>::calculate<2zu>;
 
     explicit powered_distance() noexcept = default;
     explicit powered_distance(const metamath::types::size_t_or<T> parameter)
-        : n{parameter}
-        , distance{init_distance(parameter)} {}
+        : n{ parameter }, distance{ init_distance(parameter) } {}
 
     virtual ~powered_distance() noexcept = default;
 
     distance_t init_distance(const metamath::types::size_t_or<T> parameter) {
+        // clang-format off
         return std::visit(metamath::types::visitor{
             [this](const T) { return &powered_distance<T>::calculate_with_exp<T>; },
             [this](const size_t value) {
@@ -53,6 +54,7 @@ struct powered_distance {
                 return &powered_distance<T>::calculate_with_exp<size_t>;
             }
         }, parameter);
+        // clang-format on
     }
 
     template<size_t N>
@@ -82,10 +84,9 @@ struct powered_distance_with_rotation {
     static T operator()(const std::array<T, 2>& x, const std::array<T, 2>& y, const std::array<T, 2>& r) {
         using metamath::functions::power;
         using metamath::linear::powered_norm;
-        return (power<2>(r[0] * (x[0] * y[1] - x[1] * y[0])) +
-                power<2>(r[1] * (x[0] * (x[0] - y[0]) + x[1] * (x[1] - y[1])))) /
+        return (power<2>(r[0] * (x[0] * y[1] - x[1] * y[0])) + power<2>(r[1] * (x[0] * (x[0] - y[0]) + x[1] * (x[1] - y[1])))) /
                (power<2>(r[0] * r[1]) * powered_norm<2>(x));
     }
 };
 
-}
+} // namespace nonlocal::mesh

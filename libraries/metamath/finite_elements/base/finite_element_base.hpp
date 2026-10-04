@@ -6,11 +6,13 @@
 namespace metamath::finite_element {
 
 class element_base {
-public:
+  public:
     virtual ~element_base() noexcept = default;
     virtual size_t nodes_count() const = 0;
 
-    std::ranges::iota_view<size_t, size_t> nodes() const { return {0u, nodes_count()}; }
+    std::ranges::iota_view<size_t, size_t> nodes() const {
+        return { 0u, nodes_count() };
+    }
 };
 
-}
+} // namespace metamath::finite_element
