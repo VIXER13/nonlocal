@@ -2,6 +2,9 @@
 
 #include "sparse_matrix.hpp"
 
+#include <filesystem>
+#include <fstream>
+
 namespace metamath::linear {
 
 template<std::integral I>
@@ -72,6 +75,17 @@ size_t mean_width(const sparse_matrix_portrait<I, J>& portrait) {
         width += range.back() - range.front();
     }
     return width / portrait.rows();
+}
+
+template<std::floating_point T, std::integral I, std::integral J>
+void save_matrix(const sparse_matrix<T, I, J>& matrix, const std::filesystem::path& path) {
+    std::ofstream fout{path};
+    fout << matrix.rows() << ' ' << matrix.cols() << '\n';
+    for(const J shift : matrix.portrait.shifts)
+        fout << shift << ' ';
+    fout << '\n';
+    for(const size_t s : std::ranges::iota_view{0zu, matrix.non_zeros()})
+        fout << matrix.portrait.indices[s] << ' ' << matrix.values[s] << ' ';
 }
 
 } // namespace metamath::linear
