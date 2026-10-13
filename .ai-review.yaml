@@ -1,13 +1,13 @@
 llm:
-  provider: OLLAMA
+  provider: OPENAI
 
   meta:
-    max_tokens: 2048
+    max_tokens: 8096
     temperature: 0.2
 
   http_client:
     timeout: 3600
-    api_url: http://localhost:11434
+    api_url: https://integrate.api.nvidia.com/v1
 
 vcs:
   provider: GITHUB
