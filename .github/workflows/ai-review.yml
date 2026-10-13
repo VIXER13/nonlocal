@@ -1,7 +1,7 @@
 name: 🤖 AI Review
 
 env:
-  OLLAMA_MODEL: ${{ inputs.model || vars.MODEL }}
+  MODEL: ${{ inputs.model || vars.MODEL }}
 
 on:
   pull_request:
