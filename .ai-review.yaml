@@ -2,8 +2,10 @@ llm:
   provider: OPENAI
 
   meta:
-    max_tokens: 8096
+    max_tokens: 16384
     temperature: 0.2
+    reasoning:
+      effort: high
 
   http_client:
     timeout: 3600
