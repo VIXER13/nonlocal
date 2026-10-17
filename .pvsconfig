@@ -1,0 +1,37 @@
+# PVS-Studio diagnostic configuration
+# Docs: https://pvs-studio.com/en/docs/manual/6630/
+
+# --- V1064: false positives on floating-point FE math ---------------------
+# The finite-element templates are constrained with `std::floating_point T`,
+# so expressions like `T{1} / T{3}` are FLOATING-POINT division (= 0.333...),
+# not integer division. PVS-Studio's V1064 heuristic misreads the integer
+# literals inside the braces and reports "result will always be zero".
+#
+# We suppress V1064 by MESSAGE substring: PVS pretty-prints the templated
+# operand as 'T { n }', which appears only for these std::floating_point
+# template false positives. A genuine integer-division-always-zero bug with
+# concrete `int` literals produces a different message (e.g. "'1' operand ...")
+# and is therefore still reported.
+#
+# Syntax: //-V::<code>::{<message-substring>}
+# (verified locally with pvs-studio-analyzer 8.01: drops all 51 V1064 to 0).
+#
+# NOTE: for V1064 the message-based form is used rather than the line/source
+# form //-V:T{:1064, because the `T{` source substring did not match in this
+# analyzer flow. (The line form does work for other substrings — see V607.)
+//-V::1064::{'T { }
+
+# --- V607 "Ownerless expression" — false positives in test code -----------
+# Unit tests deliberately construct objects inside lambdas to assert that
+# construction throws, e.g.:
+#     expect(throws([] { math_expression<T>{ "bad input" }; }));
+#     expect(throws<std::invalid_argument>([] { ildlt_preconditioner{ ... }; }));
+# PVS sees the constructed temporary as an expression with no effect, but the
+# intended effect IS the exception. We suppress V607 only on source lines that
+# contain `expect(throws`, which is exactly this test idiom. Verified locally
+# with pvs-studio-analyzer 8.01: drops all 16 V607 to 0 while leaving V607
+# active for any other ownerless expression.
+#
+# Syntax (line/source-substring form): //-V:<src-substring>:<code>
+# (substring must contain no spaces).
+//-V:expect(throws:607

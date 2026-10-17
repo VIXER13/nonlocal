@@ -38,7 +38,7 @@ void print_matrix(const sparse_matrix<square_matrix<T, 2>>& matrix) {
                 if (!matrix.portrait.contains(row, col))
                     std::cerr << "0 0 ";
                 else {
-                    const auto& val = matrix(row, col)[dof];
+                    const auto& val = matrix(row, col)[dof]; //-V758
                     std::cerr << val[0] << " " << val[1] << " ";
                 }
             }
