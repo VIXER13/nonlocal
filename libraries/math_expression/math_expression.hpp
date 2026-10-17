@@ -188,7 +188,6 @@ void math_expression<T>::assemble_polish_notation(const std::span<utils::token_t
             throw std::domain_error{ "Wrong expression format. Unexpected token." };
         }
         }
-        throw std::domain_error{ "Wrong expression format. Unexpected token." };
     }
 
     while (!operators.empty()) {
