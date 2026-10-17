@@ -42,7 +42,7 @@ suite<"sparse_matrix"> _ = [] {
 
         // Allocate indices and fill them with unsorted column indices
         matrix.portrait.allocate_indices();
-        matrix.portrait.indices[0] = 2;
+        matrix.portrait.indices[0] = 2; //-V525
         matrix.portrait.indices[1] = 0;
         matrix.portrait.indices[2] = 3;
         matrix.portrait.indices[3] = 1;
@@ -76,7 +76,7 @@ suite<"sparse_matrix"> _ = [] {
         expect(!matrix.portrait.contains(0, 4)); // Out of range column index
 
         // Check that shift() method returns correct indices for non-zero elements
-        expect(eq(matrix.portrait.shift(0, 0), 0u));
+        expect(eq(matrix.portrait.shift(0, 0), 0u)); //-V525
         expect(eq(matrix.portrait.shift(0, 2), 1u));
         expect(eq(matrix.portrait.shift(1, 1), 2u));
         expect(eq(matrix.portrait.shift(1, 3), 3u));
@@ -86,13 +86,13 @@ suite<"sparse_matrix"> _ = [] {
         expect(throws<std::out_of_range>([&matrix] { matrix.portrait.shift(0, 4); })); // Out of range column index
 
         // Fill values and check that they are correctly accessed through operator()
-        expect(nothrow([&matrix] { matrix(0, 0) = 1.0; }));
+        expect(nothrow([&matrix] { matrix(0, 0) = 1.0; })); //-V525
         expect(nothrow([&matrix] { matrix(0, 2) = 3.0; }));
         expect(nothrow([&matrix] { matrix(1, 1) = 2.0; }));
         expect(nothrow([&matrix] { matrix(1, 3) = 4.0; }));
         expect(nothrow([&matrix] { matrix(2, 0) = 5.0; }));
 
-        expect(eq(matrix(0, 0), 1.0));
+        expect(eq(matrix(0, 0), 1.0)); //-V525
         expect(eq(matrix(0, 2), 3.0));
         expect(eq(matrix(1, 1), 2.0));
         expect(eq(matrix(1, 3), 4.0));

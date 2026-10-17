@@ -35,3 +35,11 @@
 # Syntax (line/source-substring form): //-V:<src-substring>:<code>
 # (substring must contain no spaces).
 //-V:expect(throws:607
+
+# --- Per-file analysis timeout --------------------------------------------
+# The 2D mechanical/thermal solver TUs are template-heavy and exceed the
+# default 600s per-file analysis timeout, which leaves them analyzed
+# incompletely (PVS emits "File analysis timeout" and under-reports). Raise
+# the per-file budget so these units are analyzed fully. Bounded (not 0 /
+# unlimited) to avoid a hung CI job on a pathological translation unit.
+//V_ANALYSIS_TIMEOUT 6000
