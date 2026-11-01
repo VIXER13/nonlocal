@@ -82,3 +82,7 @@ make run-tests
       // clang-format on
       ```
   - В проект добавлены настройки VS Code, включающие форматирование при сохранении (`format on save`). Чтобы избежать конфликтов с глобальными настройками редактора, рекомендуется сохранить папку проекта как Workspace (**File > Save Workspace as...**) и хранить свои личные настройки в `.code-workspace` файле.
+
+## SAST Tools
+
+[PVS-Studio](https://pvs-studio.com/en/pvs-studio/?utm_source=website&utm_medium=github&utm_campaign=open_source) - static code analyzer for Enterprise (C, C++, C#, Go, and Java) and Web (JS and TS) development.

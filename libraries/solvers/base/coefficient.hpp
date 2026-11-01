@@ -22,8 +22,9 @@ struct point<T, 1zu> final {
     T value = T{ 0 };
     point() = default;
     point(T value) : value{ value } {}
-    T& operator=(T value) {
-        value = value;
+    T& operator=(T new_value) {
+        value = new_value;
+        return value;
     }
     operator T() const noexcept {
         return value;

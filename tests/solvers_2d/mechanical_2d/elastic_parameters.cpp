@@ -42,7 +42,7 @@ const suite<"elastic_parameters_2d"> _ = [] {
         for (const T angle : { T{ 0 }, pi, pi / 2, -pi / 2 }) {
             const auto result = anisotropic_elastic_parameters<T>::rotate(hooke, angle);
             static constexpr T Epsilon = 2.5e-15;
-            if (angle == 0 || angle == pi) {
+            if (angle == 0 || angle == pi) { //-V550
                 expect(approx(result[_11], hooke[_11], Epsilon));
                 expect(approx(result[_22], hooke[_22], Epsilon));
             } else {
@@ -63,7 +63,7 @@ const suite<"elastic_parameters_2d"> _ = [] {
             expect(approx(result[_11], T{ 0.25 } * (hooke[_11] + hooke[_22] + 2 * hooke[_12]) + hooke[_66], Epsilon));
             expect(approx(result[_12], T{ 0.25 } * (hooke[_11] + hooke[_22] + 2 * hooke[_12]) - hooke[_66], Epsilon));
             expect(approx(result[_66], T{ 0.25 } * (hooke[_11] + hooke[_22] - 2 * hooke[_12]), Epsilon));
-            if (angle == pi / 4 || angle == -3 * pi / 4)
+            if (angle == pi / 4 || angle == -3 * pi / 4) //-V550
                 expect(approx(result[_16], T{ 0.25 } * (hooke[_11] - hooke[_22]), Epsilon));
             else
                 expect(approx(result[_16], T{ 0.25 } * (hooke[_22] - hooke[_11]), Epsilon));

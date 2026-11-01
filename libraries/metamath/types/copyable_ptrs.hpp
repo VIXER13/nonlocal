@@ -21,6 +21,12 @@ class copyable_uptr {
 
     constexpr copyable_uptr(copyable_uptr&& other) noexcept : _ptr(std::move(other._ptr)) {}
 
+    // Assignment is intentionally not provided: copyable_uptr is copy/move
+    // constructible only. Explicitly deleting documents this and silences
+    // PVS-Studio V690 (otherwise assignment is only implicitly deleted).
+    copyable_uptr& operator=(const copyable_uptr&) = delete;
+    copyable_uptr& operator=(copyable_uptr&&) = delete;
+
     T* operator->() noexcept {
         return _ptr.get();
     }

@@ -32,10 +32,15 @@ jobs:
           pvs-studio-analyzer credentials ${{ secrets.PVS_STUDIO_CREDENTIALS }}
 
       - name: Analyze
-        run: pvs-studio-analyzer analyze -f build/compile_commands.json -j
+        run: pvs-studio-analyzer analyze -f build/compile_commands.json -R .pvsconfig -j
 
       - name: Convert report
-        run: plog-converter -t sarif -o pvs-report.sarif PVS-Studio.log
+        run: >-
+          plog-converter
+          -a 'GA:1,2,3;OP:1,2,3;64:1,2,3'
+          -t sarif
+          -o pvs-report.sarif
+          PVS-Studio.log
 
       - name: Publish report
         uses: github/codeql-action/upload-sarif@v3

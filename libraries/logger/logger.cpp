@@ -9,7 +9,7 @@
 namespace {
 struct dummy_stream : public logger::stream_base {
     std::ostream empty = std::ostream{ nullptr };
-    explicit dummy_stream() : logger::stream_base{ empty } {}
+    explicit dummy_stream() : logger::stream_base{ empty } {} //-V1050
 };
 
 logger::level g_log_level = logger::level::Info;

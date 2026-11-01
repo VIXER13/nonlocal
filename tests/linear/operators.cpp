@@ -262,7 +262,7 @@ suite<"sparse_matrix_operators"> _ = [] {
         expect(eq(block_matrix_a.rows(), 3));
         expect(eq(block_matrix_a.cols(), 3));
         expect(eq(block_matrix_a.non_zeros(), 6));
-        expect(approx(block_matrix_a(0, 0)[0][0], 1.0, Epsilon));
+        expect(approx(block_matrix_a(0, 0)[0][0], 1.0, Epsilon)); //-V525
         expect(approx(block_matrix_a(0, 0)[0][1], 4.0, Epsilon));
         expect(approx(block_matrix_a(0, 0)[1][0], 4.0, Epsilon));
         expect(approx(block_matrix_a(0, 0)[1][1], 2.0, Epsilon));

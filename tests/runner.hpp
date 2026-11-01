@@ -139,7 +139,7 @@ class safe_runner {
 #endif
                 test();
 #if defined(__cpp_exceptions)
-            } catch (const events::fatal_assertion&) {
+            } catch (const events::fatal_assertion&) { //-V565
             } catch (const std::exception& exception) {
                 ++fails_;
                 std::string msg = std::string(exception.what()) + "\nStacktrace:\n" + get_stacktrace();
