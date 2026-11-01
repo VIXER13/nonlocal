@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(solvers_base_tests)
 
-add_library(solvers_base_test_lib OBJECT coefficient.cpp assemblers_1d.cpp)
+add_library(solvers_base_test_lib OBJECT coefficient.cpp assemblers_1d.cpp boundaries_1d.cpp)
 
 target_link_libraries(
     solvers_base_test_lib

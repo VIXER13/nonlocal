@@ -1,52 +1,26 @@
 #pragma once
 
-#include <metamath/metamath.hpp>
 #include <solvers/solver_1d/base/boundary_conditions_1d.hpp>
+
+#include <concepts>
 
 namespace nonlocal::solver_1d::mechanical {
 
 template<std::floating_point T>
-class displacement_1d final : public first_kind_1d<T, physics_t::MECHANICAL> {
-    T _displacement = T{ 0 };
-
-  public:
-    explicit displacement_1d(const T displacement) noexcept : _displacement{ displacement } {}
-    ~displacement_1d() noexcept override = default;
-
-    T operator()() const override {
-        return _displacement;
-    }
-};
+using displacement_1d = prescribed_value_1d<T, physics_t::MECHANICAL>;
 
 template<std::floating_point T>
-class pressure_1d : public virtual second_kind_1d<T, physics_t::MECHANICAL> {
-    T _pressure = T{ 0 };
-
-  public:
-    explicit pressure_1d(const T pressure) noexcept : _pressure{ pressure } {}
-    ~pressure_1d() noexcept override = default;
-
-    T operator()() const override {
-        return _pressure;
-    }
-};
+using pressure_1d = prescribed_load_1d<T, physics_t::MECHANICAL>;
 
 template<std::floating_point T>
-class spring_1d : public virtual second_kind_1d<T, physics_t::MECHANICAL> {
-    T _stiffness = T{ 0 };
-    T _displacement = T{ 0 };
+class spring_1d : public robin_1d<T, physics_t::MECHANICAL> {
+    using _base = robin_1d<T, physics_t::MECHANICAL>;
 
   public:
-    explicit spring_1d(const T stiffness, const T displacement) noexcept
-        : _stiffness{ stiffness }, _displacement{ displacement } {}
-    ~spring_1d() noexcept override = default;
-
-    T operator()() const override {
-        return _stiffness * _displacement;
-    }
+    using _base::_base;
 
     T stiffness() const noexcept {
-        return _stiffness;
+        return _base::coefficient();
     }
 };
 
@@ -55,10 +29,15 @@ class combined_loading_1d : public pressure_1d<T>, public spring_1d<T> {
   public:
     explicit combined_loading_1d(const T pressure, const T stiffness, const T displacement) noexcept
         : pressure_1d<T>{ pressure }, spring_1d<T>{ stiffness, displacement } {}
-    ~combined_loading_1d() noexcept override = default;
 
     T operator()() const override {
         return pressure_1d<T>::operator()() + spring_1d<T>::operator()();
+    }
+
+    boundary_data_1d<T> data() const override {
+        auto result = spring_1d<T>::data();
+        result.load = pressure_1d<T>::operator()() + spring_1d<T>::operator()();
+        return result;
     }
 };
 

@@ -9,30 +9,28 @@ namespace nonlocal::solver_1d::thermal {
 
 template<class T>
 problem_settings init_problem_settings(const parameters_1d<T>& parameters,
-                                       const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
+                                       const boundaries_data_1d<T>& boundaries,
                                        const bool is_stationary_problem) {
-    static constexpr auto is_flux = [](const auto& condition) noexcept {
-        return bool(dynamic_cast<const flux_1d<T>*>(condition.get())) &&
-               !bool(dynamic_cast<const combined_flux_1d<T>*>(condition.get()));
-    };
-    static constexpr auto is_radiation_boundary = [](const auto& condition) noexcept {
-        return bool(dynamic_cast<const radiation_1d<T>*>(condition.get()));
-    };
     static constexpr auto is_nonconstant_parameters = [](const auto& parameter) noexcept {
         return !is_constant<T, 1>(parameter.physical.conductivity);
     };
     static constexpr auto is_solution_dependent = [](const auto& parameter) noexcept {
         return std::holds_alternative<solution_dependency<T, 1>>(parameter.physical.conductivity);
     };
-    return { .theories = theories_types(parameters),
-             .is_neumann =
-                 is_stationary_problem ? std::all_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_flux) : false,
-             .is_nonlinear_boundary =
-                 std::any_of(boundaries_conditions.begin(), boundaries_conditions.end(), is_radiation_boundary),
-             .is_nonconstant_parameters = std::any_of(parameters.begin(), parameters.end(), is_nonconstant_parameters),
-             .is_solution_dependent = std::any_of(parameters.begin(), parameters.end(), is_solution_dependent),
-             .is_first_kind = { bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.front().get())),
-                                bool(dynamic_cast<temperature_1d<T>*>(boundaries_conditions.back().get())) } };
+    return init_boundary_settings(
+        problem_settings{
+            .theories = theories_types(parameters),
+            .is_nonconstant_parameters = std::any_of(parameters.begin(), parameters.end(), is_nonconstant_parameters),
+            .is_solution_dependent = std::any_of(parameters.begin(), parameters.end(), is_solution_dependent)
+        },
+        boundaries, is_stationary_problem);
+}
+
+template<class T>
+problem_settings init_problem_settings(const parameters_1d<T>& parameters,
+                                       const thermal_boundaries_conditions_1d<T>& boundaries,
+                                       const bool is_stationary_problem) {
+    return init_problem_settings(parameters, normalize_boundaries_1d(boundaries), is_stationary_problem);
 }
 
 } // namespace nonlocal::solver_1d::thermal

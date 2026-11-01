@@ -2,12 +2,12 @@
 
 #include "init_problem_settings.hpp"
 #include "mechanical_equation_solution_1d.hpp"
-#include "spring_condition_1d.hpp"
 #include "stiffness_matrix_assembler.hpp"
 
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
+#include <solvers/solver_1d/base/boundary_condition_robin_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 
@@ -23,7 +23,7 @@ struct stationary_equation_parameters_1d {
 
 template<std::floating_point T>
 Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                    const mechanical_boundaries_conditions_1d<T>& boundaries_conditions,
+                                                    const boundaries_data_1d<T>& boundaries_conditions,
                                                     const stationary_equation_parameters_1d<T>& additional_parameters,
                                                     const bool is_neumann = false) {
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count() + is_neumann);
@@ -38,9 +38,10 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::
 template<std::floating_point T, std::integral I>
 mechanical_equation_solution_1d<T> stationary_mechanical_equation_solver_1d(
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const parameters_1d<T>& parameters,
-    const mechanical_boundaries_conditions_1d<T>& boundaries_conditions,
+    const mechanical_boundaries_conditions_1d<T>& physical_boundaries,
     const stationary_equation_parameters_1d<T>& additional_parameters) {
     static constexpr bool Is_Stationary = true;
+    const auto boundaries_conditions = normalize_boundaries_1d(physical_boundaries);
     const auto settings = init_problem_settings(parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
 
@@ -84,7 +85,7 @@ mechanical_equation_solution_1d<T> stationary_mechanical_equation_solver_1d(
                 displacement_curr = solver.solveWithGuess(right_part, displacement_prev);
             }
         } else {
-            spring_condition_1d(stiffness.inner, boundaries_conditions);
+            boundary_condition_robin_1d(stiffness.inner, boundaries_conditions);
             boundary_condition_first_kind_1d(right_part, stiffness.bound, boundaries_conditions);
             if (settings.is_symmetric()) {
                 const Eigen::SimplicialCholesky<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper,

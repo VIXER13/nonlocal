@@ -6,47 +6,20 @@
 namespace nonlocal::solver_1d::thermal {
 
 template<class T>
-class temperature_1d final : public first_kind_1d<T, physics_t::THERMAL> {
-    T _temperature = T{ 0 };
-
-  public:
-    explicit temperature_1d(const T temperature) noexcept : _temperature{ temperature } {}
-    ~temperature_1d() noexcept override = default;
-
-    T operator()() const override {
-        return _temperature;
-    }
-};
+using temperature_1d = prescribed_value_1d<T, physics_t::THERMAL>;
 
 template<class T>
-class flux_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
-    T _flux = T{ 0 };
-
-  public:
-    explicit flux_1d(const T flux) noexcept : _flux{ flux } {}
-    ~flux_1d() noexcept override = default;
-
-    T operator()() const override {
-        return _flux;
-    }
-};
+using flux_1d = prescribed_load_1d<T, physics_t::THERMAL>;
 
 template<class T>
-class convection_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
-    T _heat_transfer = T{ 0 };
-    T _ambient_temperature = T{ 0 };
+class convection_1d : public robin_1d<T, physics_t::THERMAL> {
+    using _base = robin_1d<T, physics_t::THERMAL>;
 
   public:
-    explicit convection_1d(const T heat_transfer, const T ambient_temperature) noexcept
-        : _heat_transfer{ heat_transfer }, _ambient_temperature{ ambient_temperature } {}
-    ~convection_1d() noexcept override = default;
-
-    T operator()() const override {
-        return _heat_transfer * _ambient_temperature;
-    }
+    using _base::_base;
 
     T heat_transfer() const noexcept {
-        return _heat_transfer;
+        return _base::coefficient();
     }
 };
 
@@ -56,7 +29,6 @@ class radiation_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
 
   public:
     explicit radiation_1d(const T emissivity) noexcept : _emissivity{ emissivity } {}
-    ~radiation_1d() noexcept override = default;
 
     T operator()() const override {
         return T{ 0 };
@@ -65,6 +37,19 @@ class radiation_1d : public virtual second_kind_1d<T, physics_t::THERMAL> {
     T emissivity() const noexcept {
         return _emissivity;
     }
+
+    boundary_data_1d<T> data() const override {
+        using namespace metamath::constants;
+        using namespace metamath::functions;
+        return { .nonlinear = nonlinear_boundary_operator_1d<T>{
+                     .value = [emissivity = _emissivity](const T u) constexpr noexcept {
+                         return emissivity * Stefan_Boltzmann_Constant<T> * power<4>(u);
+                     },
+                     .derivative = [emissivity = _emissivity](const T u) constexpr noexcept {
+                         return T{ 4 } * Stefan_Boltzmann_Constant<T> * emissivity * power<3>(u);
+                     }
+                 } };
+    }
 };
 
 template<class T>
@@ -72,10 +57,16 @@ class combined_flux_1d : public flux_1d<T>, public convection_1d<T>, public radi
   public:
     explicit combined_flux_1d(const T flux, const T heat_transfer, const T ambient_temperature, const T emissivity) noexcept
         : flux_1d<T>{ flux }, convection_1d<T>{ heat_transfer, ambient_temperature }, radiation_1d<T>{ emissivity } {}
-    ~combined_flux_1d() noexcept override = default;
 
     T operator()() const override {
         return flux_1d<T>::operator()() + convection_1d<T>::operator()() + radiation_1d<T>::operator()();
+    }
+
+    boundary_data_1d<T> data() const override {
+        auto result = convection_1d<T>::data();
+        result.load = flux_1d<T>::operator()() + convection_1d<T>::operator()();
+        result.nonlinear = radiation_1d<T>::data().nonlinear;
+        return result;
     }
 };
 

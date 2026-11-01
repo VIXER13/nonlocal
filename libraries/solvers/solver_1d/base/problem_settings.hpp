@@ -1,5 +1,7 @@
 #pragma once
 
+#include "boundary_data_1d.hpp"
+
 #include <constants/nonlocal_constants.hpp>
 #include <logger/logger.hpp>
 
@@ -27,6 +29,21 @@ struct problem_settings final {
         return !(is_any_nonlocal && is_nonconstant_parameters);
     }
 };
+
+template<class T>
+problem_settings init_boundary_settings(problem_settings settings, const boundaries_data_1d<T>& boundaries,
+                                         const bool is_stationary_problem) {
+    static constexpr auto is_pure_load = [](const auto& condition) constexpr noexcept {
+        return condition.is_pure_load();
+    };
+    static constexpr auto is_nonlinear = [](const auto& condition) constexpr noexcept {
+        return condition.nonlinear.has_value();
+    };
+    settings.is_neumann = is_stationary_problem && std::all_of(boundaries.begin(), boundaries.end(), is_pure_load);
+    settings.is_nonlinear_boundary = std::any_of(boundaries.begin(), boundaries.end(), is_nonlinear);
+    settings.is_first_kind = { boundaries.front().prescribed_value.has_value(), boundaries.back().prescribed_value.has_value() };
+    return settings;
+}
 
 inline void log_problem_settings(const problem_settings& settings) {
     logger::info() << (settings.is_symmetric() ? "Symmetric problem" : "Asymmetrical problem") << std::endl;

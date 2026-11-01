@@ -1,14 +1,14 @@
 #pragma once
 
-#include "convection_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
 #include "init_problem_settings.hpp"
-#include "radiation_condition_1d.hpp"
 #include "thermal_conductivity_assembler.hpp"
 
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
+#include <solvers/solver_1d/base/boundary_condition_nonlinear_1d.hpp>
+#include <solvers/solver_1d/base/boundary_condition_robin_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 
@@ -25,7 +25,7 @@ struct stationary_equation_parameters_1d final {
 
 template<class T>
 Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                    const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
+                                                    const boundaries_data_1d<T>& boundaries_conditions,
                                                     const stationary_equation_parameters_1d<T>& additional_parameters,
                                                     const bool is_neumann = false) {
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count() + is_neumann);
@@ -43,9 +43,10 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::
 template<class T, class I>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const parameters_1d<T>& parameters,
-    const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
+    const thermal_boundaries_conditions_1d<T>& physical_boundaries,
     const stationary_equation_parameters_1d<T>& additional_parameters) {
     static constexpr bool Is_Stationary = true;
+    const auto boundaries_conditions = normalize_boundaries_1d(physical_boundaries);
     const auto settings = init_problem_settings(parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
 
@@ -89,14 +90,14 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(
                 temperature_curr = solver.solveWithGuess(right_part, temperature_prev);
             }
         } else {
-            convection_condition_1d(conductivity.inner, boundaries_conditions);
+            boundary_condition_robin_1d(conductivity.inner, boundaries_conditions);
             boundary_condition_first_kind_1d(right_part, conductivity.bound, boundaries_conditions);
             if (settings.is_nonlinear_boundary) {
                 if (settings.is_symmetric())
                     residual = conductivity.inner.template selfadjointView<Eigen::Upper>() * temperature_prev - right_part;
                 else
                     residual = conductivity.inner * temperature_prev - right_part;
-                radiation_condition_1d<Is_Stationary>(conductivity.inner, residual, boundaries_conditions, temperature_prev);
+                boundary_condition_nonlinear_1d<Is_Stationary>(conductivity.inner, residual, boundaries_conditions, temperature_prev);
             }
 
             if (settings.is_symmetric()) {

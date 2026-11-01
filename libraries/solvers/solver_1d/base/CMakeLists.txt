@@ -9,6 +9,9 @@ target_sources(
         assemble_matrix_portrait.hpp
         boundary_condition_first_kind_1d.hpp
         boundary_condition_second_kind_1d.hpp
+        boundary_condition_robin_1d.hpp
+        boundary_condition_nonlinear_1d.hpp
+        boundary_data_1d.hpp
         boundary_conditions_1d.hpp
         finite_element_matrix.hpp
         problem_settings.hpp
