@@ -15,8 +15,7 @@ add_subdirectory(metamath)
 add_subdirectory(parallel)
 add_subdirectory(slae)
 add_subdirectory(solvers_base)
-add_subdirectory(thermal_1d)
-add_subdirectory(mechanical_1d)
+add_subdirectory(solvers_1d)
 add_subdirectory(solvers_2d)
 add_subdirectory(utils)
 add_subdirectory(logger)
@@ -30,6 +29,7 @@ foreach(test_target
     linear_test_lib
     slae_test_lib
     solvers_base_test_lib
+    solvers_1d_base_test_lib
     metamath_test_lib
     parallel_test_lib
     math_expression_test_lib
@@ -78,6 +78,7 @@ target_link_libraries(
         parallel_test_lib
         slae_test_lib
         solvers_base_test_lib
+        solvers_1d_base_test_lib
         config_test_lib
         thermal_1d_test_lib
         mechanical_1d_test_lib

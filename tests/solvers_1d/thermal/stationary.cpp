@@ -1,8 +1,6 @@
-#include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <metamath/metamath.hpp>
-#include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_1d/thermal/stationary_heat_equation_solver_1d.hpp>
-#include <tests/utils/error.hpp>
+#include <tests/solvers_1d/utils/stationary_checks.hpp>
 
 #include <boost/ut.hpp>
 
@@ -93,29 +91,32 @@ const boost::ut::suite<"thermal_stationary_1d"> _ = [] {
 
     for (const auto& [test_name, conditions] : boundaries_conditions) {
         boost::ut::test(test_name) = [&parameters, &conditions, &additional_parameters] {
-            constexpr size_t number_of_metrics = 4;
-            std::array<T, number_of_metrics> prev_errors{};
-            std::array<T, number_of_metrics> curr_errors{};
-            std::fill(prev_errors.begin(), prev_errors.end(), std::numeric_limits<T>::max());
-            for (const size_t elements : { 10, 20, 40 }) {
-                static constexpr size_t Order = 1;
-                const auto mesh =
-                    std::make_shared<mesh_1d<T>>(metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
-                                                 std::vector<segment_data<T>>{ { .length = Length, .elements = elements } });
-                auto solution = stationary_heat_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
-                solution.calc_flux();
-                const auto expected_temperature_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Temperature);
-                const auto expected_flux_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Flux);
-                curr_errors[0] = L2_norm(solution.temperature(), expected_temperature_discrete);
-                curr_errors[1] = L2_norm(solution.flux(), expected_flux_discrete);
-                curr_errors[2] = max_error(solution.temperature(), expected_temperature_discrete);
-                curr_errors[3] = max_error(solution.flux(), expected_flux_discrete);
-                for (size_t i = 0; i < number_of_metrics; ++i)
-                    expect(lt(curr_errors[i], prev_errors[i]));
-                std::swap(curr_errors, prev_errors);
-            }
+            static constexpr size_t Quadrature_Order = 1;
+            check_mesh_convergence<T>(
+                Length, Quadrature_Order,
+                [&](const auto& mesh) {
+                    return stationary_heat_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
+                },
+                [](const auto& solution) constexpr noexcept -> const auto& { return solution.temperature(); },
+                [](auto& solution) -> const auto& { return solution.calc_flux(); },
+                Expected_Temperature, Expected_Flux);
         };
     }
+
+    const auto solve_example = [](const std::shared_ptr<mesh_1d<T>>& mesh, const coefficient_t<T, 1>& coefficient,
+                                  const model_parameters<1, T>& model, const thermal_boundaries_conditions_1d<T>& boundaries,
+                                  const nonlocal::solver_1d::stationary_solver_parameters_1d<T>& settings) -> std::vector<T> {
+        const parameters_1d<T> parameters{ { .model = model, .physical = { .conductivity = coefficient } } };
+        const stationary_equation_parameters_1d<T> additional_parameters{
+            .right_part = settings.right_part,
+            .initial_distribution = settings.initial_distribution,
+            .tolerance = settings.tolerance,
+            .max_iterations = settings.max_iterations,
+            .energy = settings.integral_value
+        };
+        return stationary_heat_equation_solver_1d<T, I>(mesh, parameters, boundaries, additional_parameters).temperature();
+    };
+    register_stationary_examples<T, physics_t::THERMAL, temperature_1d, flux_1d, convection_1d>(solve_example);
 };
 
 } // namespace
