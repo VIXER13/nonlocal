@@ -30,16 +30,9 @@ mass_assembler_1d<T, I>::mass_assembler_1d(finite_element_matrix_1d<T, I>& matri
 
 template<std::floating_point T, std::integral I>
 T mass_assembler_1d<T, I>::evaluate(const coefficient_t<T, 1>& density, const size_t e, const size_t q) const {
-    // clang-format off
-    return std::visit(metamath::types::visitor{
-        [](const T value) noexcept { return value; },
-        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
-        [this, e, q](const solution_dependency<T, 1u>& value) {
-            const size_t qshift = _base::mesh().qnode_number(e, q);
-            return value(_base::mesh().qnode_coord(e, q), _solution[qshift]);
-        }
-    }, density);
-    // clang-format on
+    const T solution = std::holds_alternative<solution_dependency<T, 1>>(density)
+                           ? _solution[_base::mesh().qnode_number(e, q)] : T{ 0 };
+    return nonlocal::evaluate(density, point<T, 1>{ _base::mesh().qnode_coord(e, q) }, solution);
 }
 
 template<std::floating_point T, std::integral I>

@@ -113,16 +113,9 @@ bool heat_equation_solution_1d<T>::is_flux_calculated() const noexcept {
 template<class T>
 T heat_equation_solution_1d<T>::evaluate(const coefficient_t<T, 1>& conductivity, const std::vector<T>& solution, const size_t e,
                                          const size_t q) const {
-    // clang-format off
-    return std::visit(metamath::types::visitor{
-        [](const T value) noexcept { return value; },
-        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
-        [this, &solution, e, q](const solution_dependency<T, 1u>& value) { 
-            const size_t qshift = _base::mesh().qnode_number(e, q);
-            return value(_base::mesh().qnode_coord(e, q), solution[qshift]); 
-        }
-    }, conductivity);
-    // clang-format on
+    const T value = std::holds_alternative<solution_dependency<T, 1>>(conductivity)
+                        ? solution[_base::mesh().qnode_number(e, q)] : T{ 0 };
+    return nonlocal::evaluate(conductivity, point<T, 1>{ _base::mesh().qnode_coord(e, q) }, value);
 }
 
 template<class T>
