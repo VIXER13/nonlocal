@@ -76,6 +76,7 @@ heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(
         assembler.calc_matrix(parameters, settings,
                               settings.is_solution_dependent ? std::optional{ from_nodes_to_qnodes(*mesh, temperature_prev) }
                                                              : std::nullopt);
+        conductivity.set_first_kind_diagonal(settings.is_first_kind);
 
         if (settings.is_neumann) {
             if (settings.is_symmetric()) {

@@ -175,9 +175,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundari
 
     _conductivity.inner *= time_step();
     _conductivity.inner += _capacity.inner;
-    _conductivity_initial_values = get_initial_values(_conductivity.inner);
-    reset_initial_values(_conductivity.inner, { settings.is_first_kind.front() ? T{ 1 } : _conductivity_initial_values.front(),
-                                                settings.is_first_kind.back() ? T{ 1 } : _conductivity_initial_values.back() });
+    _conductivity.set_first_kind_diagonal(settings.is_first_kind);
     _conductivity_initial_values = get_initial_values(_conductivity.inner);
 
     for (std::unordered_map<size_t, T>& matrix_part : _conductivity.bound)

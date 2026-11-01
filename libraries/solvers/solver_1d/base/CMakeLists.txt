@@ -14,6 +14,8 @@ target_sources(
         problem_settings.hpp
         right_part_1d.hpp
         solution_1d.hpp
+        spatial_assembler_1d.hpp
+        weighted_mass_assembler_1d.hpp
 )
 target_include_directories(
     finite_element_solver_1d_base_lib

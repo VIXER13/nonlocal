@@ -62,13 +62,7 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(
         for (const auto& [col, value] : mass.bound[b])
             stiffness.bound[b][col] -= omega_square * value;
 
-    // The first kind rows of both K and M carry a unit diagonal; after the
-    // subtraction the Dirichlet diagonal becomes (1 - w^2). Reset it to 1.
-    const size_t last_node = mesh->nodes_count() - 1;
-    if (settings.is_first_kind.front())
-        stiffness.inner.coeffRef(0, 0) = T{ 1 };
-    if (settings.is_first_kind.back())
-        stiffness.inner.coeffRef(last_node, last_node) = T{ 1 };
+    stiffness.set_first_kind_diagonal(settings.is_first_kind);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, false);
     spring_condition_1d(stiffness.inner, boundaries_conditions);
