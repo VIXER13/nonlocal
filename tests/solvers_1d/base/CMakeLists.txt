@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(solvers_1d_base_tests)
 
-add_library(solvers_1d_base_test_lib OBJECT assemblers.cpp boundaries.cpp stationary.cpp linear_solver.cpp)
+add_library(solvers_1d_base_test_lib OBJECT assemblers.cpp boundaries.cpp stationary.cpp linear_solver.cpp postprocessing.cpp)
 
 target_include_directories(solvers_1d_base_test_lib PRIVATE ${PROJECT_ROOT})
 

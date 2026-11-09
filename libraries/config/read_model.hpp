@@ -26,9 +26,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM(distance_t, { { distance_t::Custom, nullptr },
 std::string get_model_field(const nlohmann::json& config, const std::string& path_with_access, const std::string& prefix);
 
 class _read_model final {
-    template<std::floating_point T, size_t Dimension>
-    static std::array<T, Dimension> read_nonlocal_radii(const nlohmann::json& config, const std::string& path);
-
     template<std::floating_point T>
     static metamath::types::size_t_or<T> read_influence_parameter(const nlohmann::json& config, const std::string& path,
                                                                   const std::string& name,
@@ -70,7 +67,7 @@ class _read_model final {
 };
 
 template<std::floating_point T, size_t Dimension>
-std::array<T, Dimension> _read_model::read_nonlocal_radii(const nlohmann::json& config, const std::string& path) {
+std::array<T, Dimension> read_nonlocal_radii(const nlohmann::json& config, const std::string& path) {
     static_assert(Dimension > 0u, "The Dimension must be greater than 0.");
     std::array<T, Dimension> result;
     if (config.is_number())
@@ -186,7 +183,7 @@ model_parameters<1u, T> read_model_1d(const nlohmann::json& config, const std::s
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, { "local_weight", "nonlocal_radius" }, path_with_access);
     auto nonlocal_radius =
-        _read_model::read_nonlocal_radii<T, 1u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius");
+        read_nonlocal_radii<T, 1u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius");
     T local_weight = config["local_weight"].get<T>();
     if (!_read_model::check_parameters<1u>(local_weight, nonlocal_radius))
         throw std::domain_error{ "Error in model parameters \"" + path + "\". local_weight shall be in the interval (0, 1] and nonlocal_radius > 0." }; ///
@@ -199,7 +196,7 @@ model_parameters<2u, T> read_model_2d(const nlohmann::json& config, const std::s
     const std::string path_with_access = append_access_sign(path);
     check_required_fields(config, { "local_weight", "nonlocal_radius" }, path_with_access);
     auto nonlocal_radius =
-        _read_model::read_nonlocal_radii<T, 2u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius");
+        read_nonlocal_radii<T, 2u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius");
     T local_weight = config["local_weight"].get<T>();
     if (!_read_model::check_parameters<2u>(local_weight, nonlocal_radius))
         throw std::domain_error{ "Error in model parameters \"" + path + "\". local_weight shall be in the interval (0, 1] and nonlocal_radius > 0." }; ///
@@ -221,8 +218,7 @@ mesh::influences<T> read_influences(const nlohmann::json& config, const std::str
                                                                                  : "";
             influences[name] = { .distance = read_distance_2d<T>(config_model, model_path),
                                  .radius = field.empty() ? std::array<T, 2>{}
-                                                         : _read_model::read_nonlocal_radii<T, 2>(config_model[field],
-                                                                                                  path_with_access + field) };
+                                                         : read_nonlocal_radii<T, 2>(config_model[field], path_with_access + field) };
         }
     }
     return influences;
