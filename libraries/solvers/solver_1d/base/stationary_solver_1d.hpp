@@ -2,14 +2,11 @@
 
 #include "assemble_matrix_portrait.hpp"
 #include "boundary_condition_first_kind_1d.hpp"
-#include "boundary_condition_second_kind_1d.hpp"
 #include "linear_solver_1d.hpp"
 #include "right_part_1d.hpp"
 #include "spatial_assembler_1d.hpp"
 
 #include <mesh/mesh_1d/mesh_1d_utils.hpp>
-
-#include <numeric>
 
 namespace nonlocal::solver_1d {
 
@@ -26,15 +23,9 @@ template<std::floating_point T, physics_t Physics>
 Eigen::Matrix<T, Eigen::Dynamic, 1> init_stationary_right_part_1d(
     const mesh::mesh_1d<T>& mesh, const boundaries_conditions_1d<T, Physics>& boundaries,
     const stationary_solver_parameters_1d<T>& parameters, const bool is_neumann = false) {
-    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh.nodes_count() + is_neumann);
-    boundary_condition_second_kind_1d(right_part, boundaries, is_neumann);
-    if (parameters.right_part)
-        integrate_right_part(right_part, mesh, *parameters.right_part);
-    if (is_neumann) {
-        if (std::abs(std::reduce(right_part.begin(), right_part.end(), T{ 0 })) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
-            throw std::domain_error{ "It's unsolvable Neumann problem." };
+    auto right_part = assemble_right_part_1d(mesh, boundaries, parameters.right_part, is_neumann);
+    if (is_neumann)
         right_part[right_part.size() - 1] = parameters.integral_value;
-    }
     return right_part;
 }
 

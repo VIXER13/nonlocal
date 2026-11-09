@@ -6,10 +6,9 @@
 #include "spring_condition_1d.hpp"
 #include "stiffness_matrix_assembler.hpp"
 
-#include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
-#include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
+#include <solvers/solver_1d/base/linear_solver_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 
 namespace nonlocal::solver_1d::mechanical {
@@ -28,13 +27,7 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::
                                                     const mechanical_boundaries_conditions_1d<T>& boundaries_conditions,
                                                     const time_harmonic_equation_parameters_1d<T>& additional_parameters,
                                                     const bool is_neumann = false) {
-    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh->nodes_count() + is_neumann);
-    boundary_condition_second_kind_1d(right_part, boundaries_conditions, is_neumann);
-    if (additional_parameters.right_part)
-        integrate_right_part(right_part, *mesh, *additional_parameters.right_part);
-    if (is_neumann && std::abs(std::reduce(right_part.begin(), right_part.end(), T{ 0 })) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
-        throw std::domain_error{ "It's unsolvable Neumann problem." };
-    return right_part;
+    return assemble_right_part_1d(*mesh, boundaries_conditions, additional_parameters.right_part, is_neumann);
 }
 
 template<std::floating_point T, std::integral I>
@@ -51,32 +44,37 @@ mechanical_equation_solution_1d<T> harmonic_mechanical_equation_solver_1d(
     stiffness_assembler_1d<T, I> stiffness_assembler{ stiffness, mesh };
     stiffness_assembler.calc_matrix(parameters, settings);
 
+    const problem_settings mass_settings{
+        .theories = std::vector<theory_t>(mesh->segments_count(), theory_t::LOCAL),
+        .is_first_kind = settings.is_first_kind
+    };
     finite_element_matrix_1d<T, I> mass;
-    init_matrix_portrait(mass.inner, *mesh, settings);
+    init_matrix_portrait(mass.inner, *mesh, mass_settings);
     mass_assembler_1d<T, I> mass_assembler{ mass, mesh };
     mass_assembler.calc_matrix(parameters, settings.is_first_kind);
 
     const T omega_square = additional_parameters.frequency * additional_parameters.frequency;
-    stiffness.inner -= omega_square * mass.inner;
+    const bool is_symmetric = settings.is_symmetric();
+    if (is_symmetric)
+        stiffness.inner -= omega_square * mass.inner;
+    else {
+        // Mass is stored as an upper triangle. Subtract both halves when stiffness is stored in full.
+        const Eigen::SparseMatrix<T, Eigen::RowMajor, I> full_mass = mass.inner.template selfadjointView<Eigen::Upper>();
+        stiffness.inner -= omega_square * full_mass;
+    }
     for (const size_t b : std::ranges::iota_view{ 0u, 2u })
         for (const auto& [col, value] : mass.bound[b])
             stiffness.bound[b][col] -= omega_square * value;
 
     stiffness.set_first_kind_diagonal(settings.is_first_kind);
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = init_right_part(mesh, boundaries_conditions, additional_parameters, false);
+    auto right_part = init_right_part(mesh, boundaries_conditions, additional_parameters);
     spring_condition_1d(stiffness.inner, boundaries_conditions);
     boundary_condition_first_kind_1d(right_part, stiffness.bound, boundaries_conditions);
 
-    Eigen::Matrix<T, Eigen::Dynamic, 1> displacement;
-    if (settings.is_symmetric()) {
-        const Eigen::SimplicialCholesky<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper, Eigen::NaturalOrdering<I>>
-            solver{ stiffness.inner };
-        displacement = solver.solve(right_part);
-    } else {
-        const Eigen::SparseLU<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::NaturalOrdering<I>> solver{ stiffness.inner };
-        displacement = solver.solve(right_part);
-    }
+    // K - omega^2*M can be indefinite even when it is symmetric.
+    const auto displacement = solve_linear_system_1d(stiffness.inner, right_part,
+        { .is_symmetric = is_symmetric, .may_be_indefinite = omega_square != T{ 0 } });
     return mechanical_equation_solution_1d<T>{ mesh, parameters, displacement };
 }
 

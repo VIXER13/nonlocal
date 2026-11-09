@@ -79,6 +79,41 @@ const boost::ut::suite<"mechanical_time_harmonic_1d"> _ = [] {
                 Expected_Displacement, Expected_Stress);
         };
     }
+
+    "symmetric_indefinite_operator"_test = [] {
+        const auto mesh = std::make_shared<mesh_1d<T>>(make_element_1d_integrated<T>(1, 2),
+            std::vector<segment_data<T>>{ { .length = T{ 1 }, .elements = 1 } });
+        const parameters_1d<T> parameters{ { .physical = { .youngs_modulus = T{ 1 }, .density = T{ 3 } } } };
+        // For omega = 1, K - M = [[0, -1.5], [-1.5, 0]]. It maps u = (1, 2) to f = (-3, -1.5).
+        const mechanical_boundaries_conditions_1d<T> conditions{
+            std::make_unique<pressure_1d<T>>(T{ -3 }), std::make_unique<pressure_1d<T>>(T{ -1.5 })
+        };
+        const auto solution = harmonic_mechanical_equation_solver_1d<T, I>(mesh, parameters, conditions, { .frequency = T{ 1 } });
+        check_values(solution.displacement(), std::array{ T{ 1 }, T{ 2 } });
+    };
+
+    "nonlocal_operator_with_mass"_test = [] {
+        const auto mesh = make_small_mesh<T>();
+        const parameters_1d<T> parameters{ {
+            .model = {
+                .influence = [](const T&, const T&) constexpr noexcept { return T{ 1 }; },
+                .local_weight = T{ 0.5 }
+            },
+            .physical = {
+                .youngs_modulus = spatial_dependency<T, 1>{ [](const point<T, 1>& x) constexpr noexcept { return T{ 1 } + x; } },
+                .density = T{ 6 }
+            }
+        } };
+        // Use the nonsymmetric K from base/assemblers.cpp and the full symmetric M for rho = 6.
+        // For omega = 1 and u = (1, 2, 3), (K - M)*u = (-6.75, -12.5, -4.75).
+        const mechanical_boundaries_conditions_1d<T> conditions{
+            std::make_unique<pressure_1d<T>>(T{ -0.5 }), std::make_unique<pressure_1d<T>>(T{ 1.5 })
+        };
+        const auto solution = harmonic_mechanical_equation_solver_1d<T, I>(
+            mesh, parameters, conditions,
+            { .right_part = [](const T) constexpr noexcept { return T{ -12.5 }; }, .frequency = T{ 1 } });
+        check_values(solution.displacement(), std::array{ T{ 1 }, T{ 2 }, T{ 3 } });
+    };
 };
 
 } // namespace
