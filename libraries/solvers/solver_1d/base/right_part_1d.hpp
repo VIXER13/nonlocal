@@ -32,15 +32,24 @@ void integrate_right_part(Vector& f, const mesh::mesh_1d<T>& mesh, const Right_P
 }
 
 template<class T, physics_t Physics>
-Eigen::Matrix<T, Eigen::Dynamic, 1> assemble_right_part_1d(
-    const mesh::mesh_1d<T>& mesh, const boundaries_conditions_1d<T, Physics>& boundaries,
+void assemble_right_part_1d(
+    Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part, const mesh::mesh_1d<T>& mesh,
+    const boundaries_conditions_1d<T, Physics>& boundaries,
     const std::optional<std::function<T(const T)>>& source, const bool is_neumann = false) {
-    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh.nodes_count() + is_neumann);
+    right_part.setZero(mesh.nodes_count() + is_neumann);
     boundary_condition_second_kind_1d(right_part, boundaries, is_neumann);
     if (source)
         integrate_right_part(right_part, mesh, *source);
     if (is_neumann && std::abs(std::reduce(right_part.begin(), right_part.end(), T{ 0 })) > NEUMANN_PROBLEM_ERROR_THRESHOLD<T>)
         throw std::domain_error{ "It's unsolvable Neumann problem." };
+}
+
+template<class T, physics_t Physics>
+Eigen::Matrix<T, Eigen::Dynamic, 1> assemble_right_part_1d(
+    const mesh::mesh_1d<T>& mesh, const boundaries_conditions_1d<T, Physics>& boundaries,
+    const std::optional<std::function<T(const T)>>& source, const bool is_neumann = false) {
+    Eigen::Matrix<T, Eigen::Dynamic, 1> right_part;
+    assemble_right_part_1d(right_part, mesh, boundaries, source, is_neumann);
     return right_part;
 }
 
