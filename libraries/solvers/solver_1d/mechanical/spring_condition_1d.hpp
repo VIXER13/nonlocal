@@ -2,20 +2,26 @@
 
 #include "mechanical_boundary_conditions_1d.hpp"
 
-#include <solvers/solver_1d/base/boundary_condition_robin_1d.hpp>
+#include <Eigen/Sparse>
+
+#include <ranges>
 
 namespace nonlocal::solver_1d::mechanical {
 
-template<class T, class I>
+// a*du/dn + k*u = p + k*u_ref: the Robin coefficient k contributes to the diagonal.
+template<std::floating_point T, std::integral I>
 void spring_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
-                             const mechanical_boundary_condition_1d<T>& boundary_condition, const size_t index) {
-    boundary_condition_robin_1d(matrix, boundary_condition.data(), index);
+                         const mechanical_boundary_condition_1d<T>& boundary_condition, const size_t index) {
+    if (const auto* const condition = dynamic_cast<const spring_1d<T>*>(&boundary_condition))
+        matrix.coeffRef(index, index) += condition->stiffness();
 }
 
-template<class T, class I>
+template<std::floating_point T, std::integral I>
 void spring_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
-                             const mechanical_boundaries_conditions_1d<T>& boundaries_conditions) {
-    boundary_condition_robin_1d(matrix, normalize_boundaries_1d(boundaries_conditions));
+                         const mechanical_boundaries_conditions_1d<T>& boundaries_conditions) {
+    const std::array<size_t, 2> indices = { 0, size_t(matrix.outerSize() - 1) };
+    for (const size_t b : std::ranges::iota_view{ 0u, 2u })
+        spring_condition_1d(matrix, *boundaries_conditions[b], indices[b]);
 }
 
 } // namespace nonlocal::solver_1d::mechanical

@@ -1,10 +1,6 @@
 #pragma once
 
-#include "boundary_data_1d.hpp"
-
 #include <Eigen/Sparse>
-
-#include <ranges>
 
 namespace nonlocal::solver_1d {
 
@@ -19,26 +15,15 @@ namespace nonlocal::solver_1d {
 template<bool Is_Stationary, class T, class I>
 void boundary_condition_nonlinear_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                                      Eigen::Matrix<T, Eigen::Dynamic, 1>& right_part,
-                                     const boundaries_data_1d<T>& conditions,
-                                     const Eigen::Matrix<T, Eigen::Dynamic, 1>& solution_prev,
+                                     const size_t index, const T previous, const T value, const T derivative,
                                      const T time_step = T{ 1 }) {
-    const std::array<size_t, 2> indices = { 0, size_t(matrix.rows() - 1) };
-    for (const size_t b : std::ranges::iota_view{ 0zu, 2zu }) {
-        if (!conditions[b].nonlinear)
-            continue;
-        const size_t index = indices[b];
-        const auto& op = *conditions[b].nonlinear;
-        const T previous = solution_prev[index];
-        const T value = op.value(previous);
-        const T derivative = op.derivative(previous);
-        if constexpr (Is_Stationary) {
-            // The stationary solver passes its residual, rather than the load vector.
-            matrix.coeffRef(index, index) -= time_step * derivative;
-            right_part[index] -= time_step * value;
-        } else {
-            matrix.coeffRef(index, index) += time_step * derivative;
-            right_part[index] += time_step * (derivative * previous - value);
-        }
+    if constexpr (Is_Stationary) {
+        // The stationary solver passes the residual as right_part.
+        matrix.coeffRef(index, index) -= time_step * derivative;
+        right_part[index] -= time_step * value;
+    } else {
+        matrix.coeffRef(index, index) += time_step * derivative;
+        right_part[index] += time_step * (derivative * previous - value);
     }
 }
 

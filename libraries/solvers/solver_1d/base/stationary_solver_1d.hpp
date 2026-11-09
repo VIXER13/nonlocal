@@ -2,8 +2,6 @@
 
 #include "assemble_matrix_portrait.hpp"
 #include "boundary_condition_first_kind_1d.hpp"
-#include "boundary_condition_nonlinear_1d.hpp"
-#include "boundary_condition_robin_1d.hpp"
 #include "boundary_condition_second_kind_1d.hpp"
 #include "linear_solver_1d.hpp"
 #include "right_part_1d.hpp"
@@ -24,9 +22,9 @@ struct stationary_solver_parameters_1d final {
     T integral_value = T{ 0 }; // Pure Neumann problem: integral(u(x) dx) = integral_value.
 };
 
-template<std::floating_point T>
+template<std::floating_point T, physics_t Physics>
 Eigen::Matrix<T, Eigen::Dynamic, 1> init_stationary_right_part_1d(
-    const mesh::mesh_1d<T>& mesh, const boundaries_data_1d<T>& boundaries,
+    const mesh::mesh_1d<T>& mesh, const boundaries_conditions_1d<T, Physics>& boundaries,
     const stationary_solver_parameters_1d<T>& parameters, const bool is_neumann = false) {
     Eigen::Matrix<T, Eigen::Dynamic, 1> right_part = Eigen::Matrix<T, Eigen::Dynamic, 1>::Zero(mesh.nodes_count() + is_neumann);
     boundary_condition_second_kind_1d(right_part, boundaries, is_neumann);
@@ -40,11 +38,18 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> init_stationary_right_part_1d(
     return right_part;
 }
 
-template<std::floating_point T, std::integral I, class Parameters, class Get_Coefficient>
+template<std::floating_point T, std::integral I, physics_t Physics, class Parameters, class Get_Coefficient>
 Eigen::Matrix<T, Eigen::Dynamic, 1> stationary_solver_1d(
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const Parameters& parameters,
-    const boundaries_data_1d<T>& boundaries, const problem_settings& settings,
-    const stationary_solver_parameters_1d<T>& solver_parameters, const Get_Coefficient get_coefficient) {
+    const boundaries_conditions_1d<T, Physics>& boundaries, const problem_settings& settings,
+    const stationary_solver_parameters_1d<T>& solver_parameters, const Get_Coefficient get_coefficient,
+    void (*apply_robin)(Eigen::SparseMatrix<T, Eigen::RowMajor, I>&,
+                        const boundaries_conditions_1d<T, Physics>&) = nullptr,
+    void (*apply_nonlinear)(Eigen::SparseMatrix<T, Eigen::RowMajor, I>&, Eigen::Matrix<T, Eigen::Dynamic, 1>&,
+                            const boundaries_conditions_1d<T, Physics>&, const Eigen::Matrix<T, Eigen::Dynamic, 1>&,
+                            T) = nullptr) {
+    if (settings.is_nonlinear_boundary && !apply_nonlinear)
+        throw std::invalid_argument{ "A nonlinear boundary handler is required." };
     log_problem_settings(settings);
     using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
     const vector initial_right_part = init_stationary_right_part_1d(*mesh, boundaries, solver_parameters, settings.is_neumann);
@@ -77,7 +82,8 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> stationary_solver_1d(
                                                              : std::nullopt);
         matrix.set_first_kind_diagonal(settings.is_first_kind);
         if (!settings.is_neumann) {
-            boundary_condition_robin_1d(matrix.inner, boundaries);
+            if (apply_robin)
+                apply_robin(matrix.inner, boundaries);
             boundary_condition_first_kind_1d(right_part, matrix.bound, boundaries);
         }
 
@@ -87,7 +93,7 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> stationary_solver_1d(
                 residual = matrix.inner.template selfadjointView<Eigen::Upper>() * solution_prev - right_part;
             else
                 residual = matrix.inner * solution_prev - right_part;
-            boundary_condition_nonlinear_1d<true>(matrix.inner, residual, boundaries, solution_prev);
+            apply_nonlinear(matrix.inner, residual, boundaries, solution_prev, T{ 1 });
             solution_curr = solution_prev - solve_linear_system_1d(matrix.inner, residual, properties);
         } else
             solution_curr = solve_linear_system_1d(matrix.inner, right_part, properties);

@@ -1,14 +1,14 @@
 #pragma once
 
+#include "convection_condition_1d.hpp"
 #include "heat_capacity_assembler.hpp"
 #include "heat_equation_solution_1d.hpp"
 #include "init_problem_settings.hpp"
+#include "radiation_condition_1d.hpp"
 #include "thermal_conductivity_assembler.hpp"
 
 #include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
-#include <solvers/solver_1d/base/boundary_condition_nonlinear_1d.hpp>
-#include <solvers/solver_1d/base/boundary_condition_robin_1d.hpp>
 #include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 
@@ -155,8 +155,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::initialize_temperature(const t
 }
 
 template<class T, class I>
-void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundaries_conditions_1d<T>& physical_boundaries) {
-    const auto boundaries_conditions = normalize_boundaries_1d(physical_boundaries);
+void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundaries_conditions_1d<T>& boundaries_conditions) {
     problem_settings settings = init_problem_settings(_parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
 
@@ -164,7 +163,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundari
     thermal_conductivity_assembler_1d<T, I> conductivity_assembler{ _conductivity, _mesh };
     _conductivity.set_zero();
     conductivity_assembler.calc_matrix(_parameters, settings);
-    boundary_condition_robin_1d(_conductivity.inner, boundaries_conditions);
+    convection_condition_1d(_conductivity.inner, boundaries_conditions);
 
     auto save_theories = settings.theories;
     settings.theories = std::vector<theory_t>(_parameters.size(), theory_t::LOCAL);
@@ -234,9 +233,8 @@ void nonstationary_heat_equation_solver_1d<T, I>::add_relaxation_vector() {
 }
 
 template<class T, class I>
-void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_boundaries_conditions_1d<T>& physical_boundaries,
+void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                             const std::optional<std::function<T(const T)>>& right_part) {
-    const auto boundaries_conditions = normalize_boundaries_1d(physical_boundaries);
     _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
     reset_initial_values(_conductivity.inner, _conductivity_initial_values);
@@ -251,8 +249,7 @@ void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_bounda
     _right_part *= time_step();
     _right_part += _capacity.inner.template selfadjointView<Eigen::Upper>() * _temperature_prev;
 
-    boundary_condition_nonlinear_1d<Is_Stationary>(_conductivity.inner, _right_part, boundaries_conditions, _temperature_prev,
-                                          time_step());
+    radiation_condition_1d<Is_Stationary>(_conductivity.inner, _right_part, boundaries_conditions, _temperature_prev, time_step());
     boundary_condition_first_kind_1d(_right_part, _conductivity.bound, boundaries_conditions);
 
     const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{ _conductivity.inner };

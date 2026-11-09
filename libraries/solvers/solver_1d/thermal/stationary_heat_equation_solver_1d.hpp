@@ -1,7 +1,9 @@
 #pragma once
 
+#include "convection_condition_1d.hpp"
 #include "heat_equation_solution_1d.hpp"
 #include "init_problem_settings.hpp"
+#include "radiation_condition_1d.hpp"
 
 #include <solvers/solver_1d/base/stationary_solver_1d.hpp>
 
@@ -27,7 +29,7 @@ stationary_solver_parameters_1d<T> to_solver_parameters(const stationary_equatio
 
 template<class T>
 Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
-                                                    const boundaries_data_1d<T>& boundaries_conditions,
+                                                    const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                     const stationary_equation_parameters_1d<T>& additional_parameters,
                                                     const bool is_neumann = false) {
     return init_stationary_right_part_1d(*mesh, boundaries_conditions, to_solver_parameters(additional_parameters), is_neumann);
@@ -36,12 +38,12 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> init_right_part(const std::shared_ptr<mesh::
 template<class T, class I>
 heat_equation_solution_1d<T> stationary_heat_equation_solver_1d(
     const std::shared_ptr<mesh::mesh_1d<T>>& mesh, const parameters_1d<T>& parameters,
-    const thermal_boundaries_conditions_1d<T>& physical_boundaries,
+    const thermal_boundaries_conditions_1d<T>& boundaries,
     const stationary_equation_parameters_1d<T>& additional_parameters) {
-    const auto boundaries = normalize_boundaries_1d(physical_boundaries);
     const auto settings = init_problem_settings(parameters, boundaries, true);
-    const auto solution = stationary_solver_1d<T, I>(
-        mesh, parameters, boundaries, settings, to_solver_parameters(additional_parameters), &parameter_1d<T>::conductivity);
+    const auto solution = stationary_solver_1d<T, I, physics_t::THERMAL>(
+        mesh, parameters, boundaries, settings, to_solver_parameters(additional_parameters), &parameter_1d<T>::conductivity,
+        convection_condition_1d<T, I>, radiation_condition_1d<true, T, I>);
     return heat_equation_solution_1d<T>{ mesh, parameters, solution };
 }
 
