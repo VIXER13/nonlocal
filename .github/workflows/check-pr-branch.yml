@@ -1,0 +1,19 @@
+name: Restrict PR source branch
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify source branch
+        run: |
+          # GITHUB_HEAD_REF содержит имя исходной ветки пулл-реквеста
+          ALLOWED_BRANCH="dev"
+          if [ "${{ github.head_ref }}" != "$ALLOWED_BRANCH" ]; then
+            echo "Error: Pull requests to master are only permitted from a branch '$ALLOWED_BRANCH'."
+            exit 1
+          fi
