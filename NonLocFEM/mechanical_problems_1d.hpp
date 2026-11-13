@@ -31,7 +31,7 @@ void save_solution(const solver_1d::mechanical::mechanical_equation_solution_1d<
 template<std::floating_point T, std::integral I>
 void solve_mechanical_1d_problem(const nlohmann::json& config, const config::save_data& save,
                                  const config::analysis_type_t analysis_type) {
-    const auto mesh = config::read_mesh_1d<T>(config, {});
+    const auto mesh = config::read_mesh_1d<T>(config, {}, "mechanical");
     const auto parameters = config::read_mechanical_parameters_1d<T>(config["materials"], "materials");
     const auto auxiliary =
         config::mechanical_auxiliary_data_1d<T>{ config.value("auxiliary", nlohmann::json::object()), "auxiliary" };

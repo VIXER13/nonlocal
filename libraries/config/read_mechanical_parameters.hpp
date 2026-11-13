@@ -1,6 +1,7 @@
 #pragma once
 
 #include "read_coefficient.hpp"
+#include "read_materials_1d.hpp"
 #include "read_model.hpp"
 
 #include <solvers/solver_1d/mechanical/mechanical_parameters_1d.hpp>
@@ -54,21 +55,8 @@ solver_1d::mechanical::parameter_1d<T> _mechanical_parameters_1d::read_mechanica
 
 template<std::floating_point T>
 solver_1d::mechanical::parameters_1d<T> read_mechanical_parameters_1d(const nlohmann::json& config, const std::string& path) {
-    if (!config.is_array())
-        throw std::domain_error{ "\"materials\" initialization requires the initializing config to be a non-empty array." };
-    const std::string path_with_access = append_access_sign(path);
-    solver_1d::mechanical::parameters_1d<T> parameters(config.size());
-    for (const size_t i : std::ranges::iota_view{ 0u, parameters.size() }) {
-        const nlohmann::json& config_material = config[i];
-        const std::string path_with_access = append_access_sign(append_access_sign(path, i));
-        check_required_fields(config_material, { "physical" }, path_with_access);
-        const std::string model_field = get_model_field(config_material, path_with_access, "mechanical");
-        parameters[i] = { 
-            .model = model_field.empty() ? model_parameters<1u, T>{} : read_model_1d<T>(config_material[model_field], path_with_access + model_field), ///
-            .physical = _mechanical_parameters_1d::read_mechanical_coefficient_1d<T>(config_material["physical"], path_with_access + "physical")       ///
-        };
-    }
-    return parameters;
+    return read_materials_1d<T, solver_1d::mechanical::parameter_1d>(
+        config, path, "mechanical", _mechanical_parameters_1d::read_mechanical_coefficient_1d<T>);
 }
 
 class _mechanical_parameters_2d final {

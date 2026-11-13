@@ -1,9 +1,7 @@
 
-#include <mesh/mesh_1d/mesh_1d_utils.hpp>
 #include <metamath/metamath.hpp>
-#include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_1d/mechanical/stationary_mechanical_equation_solver_1d.hpp>
-#include <tests/utils/error.hpp>
+#include <tests/solvers_1d/utils/stationary_checks.hpp>
 
 #include <boost/ut.hpp>
 
@@ -62,30 +60,25 @@ const boost::ut::suite<"mechanical_stationary_1d"> _ = [] {
 
     for (const auto& [test_name, conditions] : boundaries_conditions) {
         boost::ut::test(test_name) = [&parameters, &conditions, &additional_parameters] {
-            constexpr size_t number_of_metrics = 4;
-            std::array<T, number_of_metrics> prev_errors{};
-            std::array<T, number_of_metrics> curr_errors{};
-            std::fill(prev_errors.begin(), prev_errors.end(), std::numeric_limits<T>::max());
-            for (const size_t elements : { 10, 20, 40 }) {
-                static constexpr size_t Order = 1;
-                const auto mesh =
-                    std::make_shared<mesh_1d<T>>(metamath::finite_element::make_element_1d_integrated<T>(Order, Order),
-                                                 std::vector<segment_data<T>>{ { .length = Length, .elements = elements } });
-                auto solution =
-                    stationary_mechanical_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
-                solution.calc_stress();
-                const auto Expected_Displacement_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Displacement);
-                const auto Expected_Stress_discrete = nonlocal::mesh::utils::discrete<T>(*mesh, Expected_Stress);
-                curr_errors[0] = L2_norm(solution.displacement(), Expected_Displacement_discrete);
-                curr_errors[1] = L2_norm(solution.stress(), Expected_Stress_discrete);
-                curr_errors[2] = max_error(solution.displacement(), Expected_Displacement_discrete);
-                curr_errors[3] = max_error(solution.stress(), Expected_Stress_discrete);
-                for (size_t i = 0; i < number_of_metrics; ++i)
-                    expect(lt(curr_errors[i], prev_errors[i]));
-                std::swap(curr_errors, prev_errors);
-            }
+            static constexpr size_t Quadrature_Order = 1;
+            check_mesh_convergence<T>(
+                Length, Quadrature_Order,
+                [&](const auto& mesh) {
+                    return stationary_mechanical_equation_solver_1d<T, I>(mesh, parameters, conditions, additional_parameters);
+                },
+                [](const auto& solution) constexpr noexcept -> const auto& { return solution.displacement(); },
+                [](auto& solution) -> const auto& { return solution.calc_stress(); },
+                Expected_Displacement, Expected_Stress);
         };
     }
+
+    const auto solve_example = [](const std::shared_ptr<mesh_1d<T>>& mesh, const coefficient_t<T, 1>& coefficient,
+                                  const model_parameters<1, T>& model, const mechanical_boundaries_conditions_1d<T>& boundaries,
+                                  const nonlocal::solver_1d::stationary_solver_parameters_1d<T>& settings) -> std::vector<T> {
+        const parameters_1d<T> parameters{ { .model = model, .physical = { .youngs_modulus = coefficient } } };
+        return stationary_mechanical_equation_solver_1d<T, I>(mesh, parameters, boundaries, settings).displacement();
+    };
+    register_stationary_examples<T, physics_t::MECHANICAL, displacement_1d, pressure_1d, spring_1d>(solve_example);
 };
 
 } // namespace

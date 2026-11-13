@@ -2,6 +2,7 @@
 #include <solvers/solver_1d/influence_functions_1d.hpp>
 #include <solvers/solver_1d/thermal/nonstationary_heat_equation_solver_1d.hpp>
 #include <solvers/solver_1d/thermal/stationary_heat_equation_solver_1d.hpp>
+#include <tests/solvers_1d/utils/solution_checks.hpp>
 
 #include <boost/ut.hpp>
 
@@ -232,6 +233,32 @@ const suite<"thermal_nonstationary_1d"> _ = [] {
                                                                               left_temp, right_flux, ref_sol, 1e-2, true);
         solve_nonstationary_thermal_1d_problem<flux_1d, temperature_1d, T, I>(mesh, time, parameters, init_dist, right_part,
                                                                               left_flux, right_temp, ref_sol, 1e-2, true);
+    };
+
+    "nonlocal_step_with_full_capacity"_test = [] {
+        const auto mesh = unit_tests::make_small_mesh<T>();
+        const parameters_1d<T> parameters{ {
+            .model = {
+                .influence = [](const T&, const T&) constexpr noexcept { return T{ 1 }; },
+                .local_weight = T{ 0.5 }
+            },
+            .physical = {
+                .conductivity = spatial_dependency<T, 1>{ [](const point<T, 1>& x) constexpr noexcept { return T{ 1 } + x; } },
+                .capacity = T{ 2 },
+                .density = T{ 3 }
+            }
+        } };
+        // For dt = 1, (C + K)*(1, 2, 3) = (1.25, 11.5, 11.25), using the K from base/assemblers.cpp.
+        // The previous temperature (1, 1, 1) contributes (3, 6, 3).
+        // A source of 5.5 and the end fluxes supply the remaining (-1.75, 5.5, 8.25).
+        const thermal_boundaries_conditions_1d<T> conditions{
+            std::make_unique<flux_1d<T>>(T{ -4.5 }), std::make_unique<flux_1d<T>>(T{ 5.5 })
+        };
+        nonstationary_heat_equation_solver_1d<T, I> solver{ mesh, parameters, T{ 1 } };
+        solver.initialize_temperature(std::vector<T>(mesh->nodes_count(), T{ 1 }));
+        solver.compute(conditions);
+        solver.calc_step(conditions, [](const T) constexpr noexcept { return T{ 5.5 }; });
+        unit_tests::check_values(solver.temperature(), std::array{ T{ 1 }, T{ 2 }, T{ 3 } });
     };
 };
 

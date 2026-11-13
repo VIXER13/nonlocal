@@ -9,11 +9,16 @@ target_sources(
         assemble_matrix_portrait.hpp
         boundary_condition_first_kind_1d.hpp
         boundary_condition_second_kind_1d.hpp
+        boundary_condition_nonlinear_1d.hpp
         boundary_conditions_1d.hpp
         finite_element_matrix.hpp
+        linear_solver_1d.hpp
         problem_settings.hpp
         right_part_1d.hpp
         solution_1d.hpp
+        spatial_assembler_1d.hpp
+        stationary_solver_1d.hpp
+        weighted_mass_assembler_1d.hpp
 )
 target_include_directories(
     finite_element_solver_1d_base_lib

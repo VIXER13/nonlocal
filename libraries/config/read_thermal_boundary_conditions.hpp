@@ -70,7 +70,7 @@ _read_thermal_boundary_conditions::read_thermal_boundary_condition_1d(const nloh
         const T heat_transfer = config["heat_transfer"].get<T>();
         static constexpr T emissivity = T{ 0 };
         check_parameters(heat_transfer, emissivity, path_with_access);
-        return std::make_unique<convection_1d<T>>(config["temperature"].get<T>(), heat_transfer);
+        return std::make_unique<convection_1d<T>>(heat_transfer, config["temperature"].get<T>());
     }
 
     case thermal_boundary_condition_t::Radiation: {

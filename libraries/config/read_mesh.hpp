@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config_utils.hpp"
+#include "read_model.hpp"
 
 #include <logger/logger.hpp>
 #include <mesh/mesh_1d/mesh_1d.hpp>
@@ -39,15 +40,18 @@ class _read_mesh_1d final {
     template<std::floating_point T>
     static T read_search_radius(const nlohmann::json& config, const std::string& path);
     template<std::floating_point T>
-    static mesh::segment_data<T> read_segment(const nlohmann::json& config, const std::string& path);
+    static mesh::segment_data<T> read_segment(const nlohmann::json& config, const std::string& path,
+                                             const std::string& prefix);
     template<std::floating_point T>
-    static std::vector<mesh::segment_data<T>> read_segments(const nlohmann::json& config, const std::string& path);
+    static std::vector<mesh::segment_data<T>> read_segments(const nlohmann::json& config, const std::string& path,
+                                                           const std::string& prefix);
 
     explicit constexpr _read_mesh_1d() noexcept = default;
 
   public:
     template<std::floating_point T>
-    friend std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path);
+    friend std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path,
+                                                       const std::string& prefix);
 };
 
 template<std::floating_point T>
@@ -65,41 +69,51 @@ _read_mesh_1d::finite_element_1d<T> _read_mesh_1d::read_element(const nlohmann::
 
 template<std::floating_point T>
 T _read_mesh_1d::read_search_radius(const nlohmann::json& config, const std::string& path) {
+    const std::string path_with_access = append_access_sign(path);
     if (config.contains("search_radius"))
-        return config["search_radius"].get<T>();
+        return read_nonlocal_radii<T, 1u>(config["search_radius"], path_with_access + "search_radius").front();
     if (config.contains("nonlocal_radius"))
-        return config["nonlocal_radius"].get<T>();
+        return read_nonlocal_radii<T, 1u>(config["nonlocal_radius"], path_with_access + "nonlocal_radius").front();
     return 0;
 }
 
 template<std::floating_point T>
-mesh::segment_data<T> _read_mesh_1d::read_segment(const nlohmann::json& config, const std::string& path) {
-    check_required_fields(config, { "elements_count", "length" }, path);
-    check_optional_fields(config, { "model" }, path);
+mesh::segment_data<T> _read_mesh_1d::read_segment(const nlohmann::json& config, const std::string& path,
+                                                 const std::string& prefix) {
+    const std::string path_with_access = append_access_sign(path);
+    check_required_fields(config, { "elements_count", "length" }, path_with_access);
+    const std::string model_field = get_model_field(config, path_with_access, prefix);
     return { .length = config["length"].get<T>(),
-             .search_radius = read_search_radius<T>(config.value("model", nlohmann::json::object()), "model"),
+             .search_radius = model_field.empty() ? T{ 0 }
+                                                  : read_search_radius<T>(config[model_field], path_with_access + model_field),
              .elements = config["elements_count"].get<size_t>() };
 }
 
 template<std::floating_point T>
-std::vector<mesh::segment_data<T>> _read_mesh_1d::read_segments(const nlohmann::json& config, const std::string& path) {
+std::vector<mesh::segment_data<T>> _read_mesh_1d::read_segments(const nlohmann::json& config, const std::string& path,
+                                                               const std::string& prefix) {
     if (!config.is_array() || config.empty())
         throw std::domain_error{ "segments initialization requires the initializing config to be an nonempty array." };
     std::vector<mesh::segment_data<T>> segments;
     segments.reserve(config.size());
-    for (const size_t i : std::ranges::iota_view{ 0u, segments.capacity() })
-        segments.push_back(read_segment<T>(config[i], append_access_sign(path, i)));
+    for (const size_t i : std::ranges::iota_view{ 0u, config.size() })
+        segments.push_back(read_segment<T>(config[i], append_access_sign(path, i), prefix));
     return segments;
 }
 
 template<std::floating_point T>
-std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path) {
+std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path, const std::string& prefix) {
     check_required_fields(config, { "materials" });
     check_optional_fields(config, { "mesh" });
     const std::string path_with_access = append_access_sign(path);
     return std::make_shared<mesh::mesh_1d<T>>(
         _read_mesh_1d::read_element<T>(config.value("mesh", nlohmann::json::object()), path_with_access + "mesh"),
-        _read_mesh_1d::read_segments<T>(config["materials"], path_with_access + "materials"));
+        _read_mesh_1d::read_segments<T>(config["materials"], path_with_access + "materials", prefix));
+}
+
+template<std::floating_point T>
+std::shared_ptr<mesh::mesh_1d<T>> read_mesh_1d(const nlohmann::json& config, const std::string& path) {
+    return read_mesh_1d<T>(config, path, {});
 }
 
 template<std::floating_point T, std::integral I>

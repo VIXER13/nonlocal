@@ -67,8 +67,8 @@ T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimens
     // clang-format off
     return std::visit(metamath::types::visitor{
         [](const T value) noexcept { return value; },
-        [&point](const spatial_dependency<T, 2u>& value) { return value(point); },
-        [&point, solution](const solution_dependency<T, 2u>& value) { return value(point, solution); }
+        [&point](const spatial_dependency<T, Dimension>& value) { return value(point); },
+        [&point, solution](const solution_dependency<T, Dimension>& value) { return value(point, solution); }
     }, coefficient);
     // clang-format on
 }

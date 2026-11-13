@@ -8,6 +8,7 @@
 
 namespace nonlocal::solver_1d::thermal {
 
+// a*du/dn + h*u = h*T_ambient: the Robin coefficient h contributes to the diagonal.
 template<class T, class I>
 void convection_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                              const thermal_boundary_condition_1d<T>& boundary_condition, const size_t index) {

@@ -19,12 +19,6 @@ class heat_equation_solution_1d : public solution_1d<T> {
     T _time = T{ 0 };
     T _time_step = T{ 0 };
 
-    T evaluate(const coefficient_t<T, 1>& conductivity, const std::vector<T>& solution, const size_t e, const size_t q) const;
-
-    std::vector<metamath::types::vector_with_shifted_index<T>> calc_local_flux();
-    std::vector<metamath::types::vector_with_shifted_index<T>> calc_nonlocal_flux(
-        const std::vector<metamath::types::vector_with_shifted_index<T>>& local_flux);
-
   public:
     using _base::mesh;
 
@@ -111,87 +105,15 @@ bool heat_equation_solution_1d<T>::is_flux_calculated() const noexcept {
 }
 
 template<class T>
-T heat_equation_solution_1d<T>::evaluate(const coefficient_t<T, 1>& conductivity, const std::vector<T>& solution, const size_t e,
-                                         const size_t q) const {
-    // clang-format off
-    return std::visit(metamath::types::visitor{
-        [](const T value) noexcept { return value; },
-        [this, e, q](const spatial_dependency<T, 1u>& value) { return value(_base::mesh().qnode_coord(e, q)); },
-        [this, &solution, e, q](const solution_dependency<T, 1u>& value) { 
-            const size_t qshift = _base::mesh().qnode_number(e, q);
-            return value(_base::mesh().qnode_coord(e, q), solution[qshift]); 
-        }
-    }, conductivity);
-    // clang-format on
-}
-
-template<class T>
-std::vector<metamath::types::vector_with_shifted_index<T>> heat_equation_solution_1d<T>::calc_local_flux() {
-    const auto& el = mesh().element();
-    std::vector<T> gradient = mesh::utils::gradient_in_qnodes(mesh(), temperature());
-    const bool is_any_nonlinear =
-        std::any_of(_parameters.begin(), _parameters.end(), [](const auto& parameter) constexpr noexcept {
-            return std::holds_alternative<solution_dependency<T, 1>>(parameter.conductivity);
-        });
-    const auto temperature_in_qnodes =
-        is_any_nonlinear ? mesh::utils::from_nodes_to_qnodes(mesh(), temperature()) : std::vector<T>{};
-    std::vector<metamath::types::vector_with_shifted_index<T>> flux(mesh().segments_count());
-    for (const size_t segment : mesh().segments()) {
-        flux[segment].container.resize(_base::mesh().qnodes_count(segment));
-        flux[segment].shift = _base::mesh().qnodes(segment).front();
-        for (const size_t e : mesh().elements(segment)) {
-            size_t qshift = e * el.qnodes_count();
-            for (const size_t q : el.qnodes()) {
-                flux[segment][qshift] -=
-                    gradient[qshift] * evaluate(parameter(segment).conductivity, temperature_in_qnodes, e, q);
-                ++qshift;
-            }
-        }
-    }
-    return flux;
-}
-
-template<class T>
-std::vector<metamath::types::vector_with_shifted_index<T>> heat_equation_solution_1d<T>::calc_nonlocal_flux(
-    const std::vector<metamath::types::vector_with_shifted_index<T>>& local_flux) {
-    const auto& el = mesh().element();
-    auto nonlocal_flux = local_flux;
-    for (const size_t segment : mesh().segments())
-        if (theory_type(_base::model(segment).local_weight) == theory_t::NONLOCAL)
-            for (const size_t eL : mesh().elements(segment)) {
-                size_t qshiftL = eL * el.qnodes_count();
-                for (const size_t qL : el.qnodes()) {
-                    T nonlocal_integral = T{ 0 };
-                    const T qcoordL = mesh().qnode_coord(eL, qL);
-                    for (const size_t eNL : mesh().neighbours(eL)) {
-                        size_t qshiftNL = eNL * el.qnodes_count();
-                        for (const size_t qNL : el.qnodes()) {
-                            const T qcoordNL = mesh().qnode_coord(eNL, qNL);
-                            const T influence_weight = _base::model(segment).influence(qcoordL, qcoordNL);
-                            nonlocal_integral += el.weight(qNL) * influence_weight * local_flux[segment][qshiftNL++];
-                        }
-                    }
-                    nonlocal_integral *= nonlocal_weight(_base::model(segment).local_weight) * mesh().jacobian(segment);
-                    nonlocal_flux[segment][qshiftL] *= _base::model(segment).local_weight;
-                    nonlocal_flux[segment][qshiftL++] += nonlocal_integral;
-                }
-            }
-    return nonlocal_flux;
-}
-
-template<class T>
 const std::vector<T>& heat_equation_solution_1d<T>::calc_flux() {
-    using namespace metamath::operators;
-    std::vector<T> flux(_base::mesh().qnodes_count(), T{ 0 });
-    auto current_flux = calc_local_flux();
-    current_flux = calc_nonlocal_flux(current_flux);
-    for (const size_t segment : _base::mesh().segments())
-        for (const size_t q : _base::mesh().qnodes(segment)) {
-            flux[q] += current_flux[segment][q];
-            if (const T relax = _parameters[segment].relaxation_time; relax > T{ 0 }) {
-                const T value = std::exp(-_time / relax);
-                flux[q] += value * _relaxation[segment][q];
-                _relaxation[segment][q] += value * current_flux[segment][q];
+    auto flux = this->weighted_gradient(temperature(), _parameters, &parameter_1d<T>::conductivity, T{ -1 });
+    for (const size_t segment : mesh().segments())
+        if (const T relax = _parameters[segment].relaxation_time; relax > T{ 0 }) {
+            const T decay = std::exp(-_time / relax);
+            for (const size_t q : mesh().qnodes(segment)) {
+                const T current_flux = flux[q];
+                flux[q] += decay * _relaxation[segment][q];
+                _relaxation[segment][q] += decay * current_flux;
             }
         }
     _flux = mesh::utils::from_qnodes_to_nodes(mesh(), flux);

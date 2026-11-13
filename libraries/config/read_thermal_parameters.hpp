@@ -1,6 +1,7 @@
 #pragma once
 
 #include "read_coefficient.hpp"
+#include "read_materials_1d.hpp"
 #include "read_model.hpp"
 
 #include <solvers/solver_1d/thermal/thermal_parameters_1d.hpp>
@@ -151,23 +152,8 @@ solver_2d::thermal::raw_thermal_parameters_t<T> _read_thermal_parameters::read_t
 
 template<std::floating_point T>
 solver_1d::thermal::parameters_1d<T> read_thermal_parameters_1d(const nlohmann::json& config, const std::string& path) {
-    if (!config.is_array())
-        throw std::domain_error{ "\"materials\" initialization requires the initializing config to be an nonempty array." };
-
-    solver_1d::thermal::parameters_1d<T> parameters(config.size());
-    for (const size_t i : std::ranges::iota_view{ 0u, parameters.size() }) {
-        const nlohmann::json& config_material = config[i];
-        const std::string path_with_access = append_access_sign(append_access_sign(path, i));
-        check_required_fields(config_material, { "physical" }, path_with_access);
-        const std::string model_field = get_model_field(config_material, path_with_access, "thermal");
-        using _base = _read_thermal_parameters;
-        parameters[i] = { .model = model_field.empty()
-                                       ? model_parameters<1u, T>{}
-                                       : read_model_1d<T>(config_material[model_field], path_with_access + model_field),
-                          .physical =
-                              _base::read_thermal_coefficient_1d<T>(config_material["physical"], path_with_access + "physical") };
-    }
-    return parameters;
+    return read_materials_1d<T, solver_1d::thermal::parameter_1d>(
+        config, path, "thermal", _read_thermal_parameters::read_thermal_coefficient_1d<T>);
 }
 
 template<std::floating_point T>

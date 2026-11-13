@@ -9,7 +9,7 @@
 
 #include <solvers/solver_1d/base/assemble_matrix_portrait.hpp>
 #include <solvers/solver_1d/base/boundary_condition_first_kind_1d.hpp>
-#include <solvers/solver_1d/base/boundary_condition_second_kind_1d.hpp>
+#include <solvers/solver_1d/base/linear_solver_1d.hpp>
 #include <solvers/solver_1d/base/right_part_1d.hpp>
 
 namespace nonlocal::solver_1d::thermal {
@@ -29,6 +29,7 @@ class nonstationary_heat_equation_solver_1d final {
     Eigen::Matrix<T, Eigen::Dynamic, 1> _temperature_curr;
     std::array<T, 2> _capacity_initial_values = { T(0), T(0) };
     std::array<T, 2> _conductivity_initial_values = { T(0), T(0) };
+    bool _is_symmetric = true;
     parameters_1d<T> _parameters;
     const T _time_step = T{ 1 };
 
@@ -158,6 +159,7 @@ template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundaries_conditions_1d<T>& boundaries_conditions) {
     problem_settings settings = init_problem_settings(_parameters, boundaries_conditions, Is_Stationary);
     log_problem_settings(settings);
+    _is_symmetric = settings.is_symmetric();
 
     init_matrix_portrait(_conductivity.inner, mesh(), settings);
     thermal_conductivity_assembler_1d<T, I> conductivity_assembler{ _conductivity, _mesh };
@@ -174,10 +176,14 @@ void nonstationary_heat_equation_solver_1d<T, I>::compute(const thermal_boundari
     _capacity_initial_values = get_initial_values(_capacity.inner);
 
     _conductivity.inner *= time_step();
-    _conductivity.inner += _capacity.inner;
-    _conductivity_initial_values = get_initial_values(_conductivity.inner);
-    reset_initial_values(_conductivity.inner, { settings.is_first_kind.front() ? T{ 1 } : _conductivity_initial_values.front(),
-                                                settings.is_first_kind.back() ? T{ 1 } : _conductivity_initial_values.back() });
+    if (_is_symmetric)
+        _conductivity.inner += _capacity.inner;
+    else {
+        // Capacity is stored as an upper triangle. Add both halves to a full conductivity matrix.
+        const Eigen::SparseMatrix<T, Eigen::RowMajor, I> full_capacity = _capacity.inner.template selfadjointView<Eigen::Upper>();
+        _conductivity.inner += full_capacity;
+    }
+    _conductivity.set_first_kind_diagonal(settings.is_first_kind);
     _conductivity_initial_values = get_initial_values(_conductivity.inner);
 
     for (std::unordered_map<size_t, T>& matrix_part : _conductivity.bound)
@@ -237,26 +243,21 @@ void nonstationary_heat_equation_solver_1d<T, I>::add_relaxation_vector() {
 template<class T, class I>
 void nonstationary_heat_equation_solver_1d<T, I>::calc_step(const thermal_boundaries_conditions_1d<T>& boundaries_conditions,
                                                             const std::optional<std::function<T(const T)>>& right_part) {
-    _right_part.setZero();
     _temperature_prev.swap(_temperature_curr);
     reset_initial_values(_conductivity.inner, _conductivity_initial_values);
     reset_initial_values(_capacity.inner, _capacity_initial_values);
 
-    boundary_condition_second_kind_1d<T>(_right_part, boundaries_conditions);
-    if (right_part)
-        integrate_right_part(_right_part, mesh(), *right_part);
+    assemble_right_part_1d(_right_part, mesh(), boundaries_conditions, right_part);
     accumulate_relaxation_vector();
     _time += time_step();
     add_relaxation_vector();
     _right_part *= time_step();
     _right_part += _capacity.inner.template selfadjointView<Eigen::Upper>() * _temperature_prev;
 
-    radiation_condition_1d<Is_Stationary>(_conductivity.inner, _right_part, boundaries_conditions, _temperature_prev,
-                                          time_step());
+    radiation_condition_1d<Is_Stationary>(_conductivity.inner, _right_part, boundaries_conditions, _temperature_prev, time_step());
     boundary_condition_first_kind_1d(_right_part, _conductivity.bound, boundaries_conditions);
 
-    const Eigen::ConjugateGradient<Eigen::SparseMatrix<T, Eigen::RowMajor, I>, Eigen::Upper> solver{ _conductivity.inner };
-    _temperature_curr = solver.solveWithGuess(_right_part, _temperature_prev);
+    _temperature_curr = solve_linear_system_1d(_conductivity.inner, _right_part, { .is_symmetric = _is_symmetric });
 }
 
 } // namespace nonlocal::solver_1d::thermal

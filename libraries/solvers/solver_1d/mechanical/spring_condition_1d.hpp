@@ -8,6 +8,7 @@
 
 namespace nonlocal::solver_1d::mechanical {
 
+// a*du/dn + k*u = p + k*u_ref: the Robin coefficient k contributes to the diagonal.
 template<std::floating_point T, std::integral I>
 void spring_condition_1d(Eigen::SparseMatrix<T, Eigen::RowMajor, I>& matrix,
                          const mechanical_boundary_condition_1d<T>& boundary_condition, const size_t index) {

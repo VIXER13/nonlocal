@@ -10,6 +10,8 @@ add_library(config_test_lib
     OBJECT 
         test_exceptions.cpp 
         test_utils.cpp
+        test_boundary_conditions_1d.cpp
+        test_materials_1d.cpp
 )
 
 target_include_directories(

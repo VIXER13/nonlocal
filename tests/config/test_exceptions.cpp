@@ -148,11 +148,14 @@ const suite<"config_exceptions"> _ = [] {
     };
 
     "read_mesh_1d"_test = [&config] {
-        expect_throws(read_mesh_1d<T>, config, "read_mesh_1d_missed_materials_fail");
-        expect_throws(read_mesh_1d<T>, config, "read_mesh_1d_materials_not_array_fail");
-        expect_throws(read_mesh_1d<T>, config, "read_mesh_1d_missed_elements_count_fail");
-        expect_throws(read_mesh_1d<T>, config, "read_mesh_1d_missed_length_fail");
-        expect_nothrows(read_mesh_1d<T>, config, "read_mesh_1d_ok");
+        static constexpr auto read_mesh = [](const nlohmann::json& config, const std::string& path) {
+            return read_mesh_1d<T>(config, path);
+        };
+        expect_throws(read_mesh, config, "read_mesh_1d_missed_materials_fail");
+        expect_throws(read_mesh, config, "read_mesh_1d_materials_not_array_fail");
+        expect_throws(read_mesh, config, "read_mesh_1d_missed_elements_count_fail");
+        expect_throws(read_mesh, config, "read_mesh_1d_missed_length_fail");
+        expect_nothrows(read_mesh, config, "read_mesh_1d_ok");
     };
 
     "read_frequency"_test = [&config] {

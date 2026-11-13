@@ -14,6 +14,13 @@ struct finite_element_matrix_1d final {
     Eigen::SparseMatrix<T, Eigen::RowMajor, I> inner;
     std::array<std::unordered_map<size_t, T>, 2> bound;
 
+    void set_first_kind_diagonal(const std::array<bool, 2>& is_first_kind) {
+        if (is_first_kind.front())
+            inner.coeffRef(0, 0) = T{ 1 };
+        if (is_first_kind.back())
+            inner.coeffRef(inner.rows() - 1, inner.cols() - 1) = T{ 1 };
+    }
+
     void clear() {
         inner = {};
         bound = {};

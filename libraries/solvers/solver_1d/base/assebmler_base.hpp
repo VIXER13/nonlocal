@@ -6,6 +6,7 @@
 #include <logger/logger.hpp>
 #include <mesh/mesh_1d/mesh_1d.hpp>
 #include <parallel/OMP_utils.hpp>
+#include <solvers/base/coefficient.hpp>
 #include <solvers/base/utils.hpp>
 
 namespace nonlocal::solver_1d {
@@ -24,6 +25,9 @@ class assembler_base_1d {
   protected:
     explicit assembler_base_1d(finite_element_matrix_1d<T, I>& matrix, const std::shared_ptr<mesh::mesh_1d<T>>& mesh,
                                const std::optional<utils::nodes_sequence>& nodes_to_assemble = std::nullopt);
+
+    T evaluate(const coefficient_t<T, 1>& coefficient, const size_t e, const size_t q,
+                const std::vector<T>& solution) const;
 
     template<theory_t Theory, class Callback>
     void mesh_run(const size_t segment, const Callback& callback) const;
@@ -46,6 +50,14 @@ assembler_base_1d<T, I>::assembler_base_1d(finite_element_matrix_1d<T, I>& matri
     : _matrix{ matrix }, _mesh{ mesh },
       _nodes_to_assemble{ nodes_to_assemble ? *nodes_to_assemble
                                             : std::ranges::iota_view<size_t, size_t>{ 0u, mesh->nodes_count() } } {}
+
+template<class T, class I>
+T assembler_base_1d<T, I>::evaluate(const coefficient_t<T, 1>& coefficient, const size_t e, const size_t q,
+                                    const std::vector<T>& solution) const {
+    const T value = std::holds_alternative<solution_dependency<T, 1>>(coefficient)
+                        ? solution[mesh().qnode_number(e, q)] : T{ 0 };
+    return nonlocal::evaluate(coefficient, point<T, 1>{ mesh().qnode_coord(e, q) }, value);
+}
 
 template<class T, class I>
 const mesh::mesh_1d<T>& assembler_base_1d<T, I>::mesh() const {
@@ -116,10 +128,9 @@ void assembler_base_1d<T, I>::calc_matrix(const problem_settings& settings, cons
                                           const Integrate_Nonloc& integrate_nonloc) {
     const auto assemble_bound = [this](std::unordered_map<size_t, T>& matrix_bound, const size_t row, const size_t col,
                                        const T integral) {
-        if (col == row)
-            matrix().inner.coeffRef(row, col) = T{ 1 };
-        else if (const auto [it, flag] = matrix_bound.template try_emplace(col, integral); !flag)
-            it->second += integral;
+        if (col != row)
+            if (const auto [it, flag] = matrix_bound.template try_emplace(col, integral); !flag)
+                it->second += integral;
     };
 
     const auto assemble = [this, &settings, &assemble_bound, is_symmetric = settings.is_symmetric(),

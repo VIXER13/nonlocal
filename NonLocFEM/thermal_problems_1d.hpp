@@ -27,7 +27,7 @@ void save_solution(const solver_1d::thermal::heat_equation_solution_1d<T>& solut
 template<std::floating_point T, std::signed_integral I>
 void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_data& save,
                               const config::analysis_type_t analysis_type) {
-    const auto mesh = config::read_mesh_1d<T>(config, {});
+    const auto mesh = config::read_mesh_1d<T>(config, {}, "thermal");
     const auto parameters = config::read_thermal_parameters_1d<T>(config["materials"], "materials");
     const auto auxiliary =
         config::thermal_auxiliary_data_1d<T>{ config.value("auxiliary", nlohmann::json::object()), "auxiliary" };
@@ -67,6 +67,7 @@ void solve_thermal_1d_problem(const nlohmann::json& config, const config::save_d
                 save_solution(solution, save, step);
             }
         }
+        break;
     }
     case config::analysis_type_t::Unknown:
     default:
