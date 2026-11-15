@@ -80,6 +80,9 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
                                                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
                                                             const stationary_equation_parameters_2d<T>& auxiliary_data,
                                                             const std::vector<T>& initial_right_part) {
+    if (settings.is_neumann)
+        throw std::domain_error{ "Nonlinear Neumann problem is not supported." };
+
     std::vector<T> temperature(mesh->container().nodes_count() + settings.is_neumann, T{ 0 });
     if (auxiliary_data.initial_distribution)
         for (const size_t node : mesh->container().nodes())
@@ -88,17 +91,26 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
     std::vector<T> delta_temperature = temperature;
 
     conductivity_matrix_2d<T> conductivity{ *mesh };
+    conductivity.create_matrix_portrait(settings);
     T difference = std::numeric_limits<T>::max();
     uintmax_t iteration = 0;
+
     do {
         using namespace metamath::operators;
+        if (iteration > 0) {
+            if (iteration == 1)
+                conductivity.processing_nodes = settings.rows_for_update;
+            conductivity.matrix().set_zero(settings.rows_for_update);
+        }
+
         // TODO: Need to implement updating only nonlinear part of matrix and parameters logic
         const auto conductivity_parameters =
             evaluate_conductivity(*mesh, parameters, mesh::utils::nodes_to_qnodes<T>(*mesh, temperature));
-        conductivity.compute(conductivity_parameters, settings);
+        conductivity.calc_coeffs(conductivity_parameters, settings);
 
         std::vector<T> right_part = initial_right_part;
         radiation_condition_2d(right_part, *mesh, boundaries_conditions, temperature, settings.is_inner_nodes);
+        const auto boundary_matrix = get_first_kind_matrix(conductivity.matrix(), settings.is_inner_nodes, settings.is_symmetric()); ///
         if (!settings.is_neumann)
             boundary_condition_first_kind_2d(conductivity.matrix(), right_part, settings, mesh->container(),
                                              boundaries_conditions);
@@ -115,6 +127,8 @@ std::vector<T> stationary_heat_equation_solver_2d_nonlinear(const problem_settin
         if (settings.is_nonlocal())
             solver->preconditioner(init_preconditioner(settings, *mesh, conductivity_parameters, boundaries_conditions));
         delta_temperature = solver->solve(right_part, delta_temperature);
+
+        revert_first_kind_elements(conductivity.matrix(), boundary_matrix, settings.is_symmetric());
 
         temperature += delta_temperature;
         difference = metamath::linear::norm(delta_temperature) / (metamath::linear::norm(temperature) ?: T{ 1 });

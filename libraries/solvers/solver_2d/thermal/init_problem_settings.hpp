@@ -16,7 +16,7 @@ problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh, c
                                        const bool is_stationary_problem) {
     static constexpr auto is_flux = [](const auto& condition) noexcept {
         return bool(dynamic_cast<const flux_2d<T>*>(condition.get())) &&
-               !bool(dynamic_cast<const combined_flux_2d<T>*>(condition.get()));
+              !bool(dynamic_cast<const combined_flux_2d<T>*>(condition.get())); ///
     };
     static constexpr auto is_radiation_boundary = [](const auto& condition) noexcept {
         return bool(dynamic_cast<const radiation_2d<T>*>(condition.get()));
@@ -43,12 +43,23 @@ problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh, c
     };
     const auto parameters_view = parameters | std::views::values;
     const auto boundaries_view = boundaries_conditions | std::views::values;
+
+    std::set<uint32_t> rows_for_update;
+    for (const auto& [name, condition] : boundaries_conditions)
+        if (is_radiation_boundary(condition))
+            rows_for_update.merge(mesh.nodes(name));
+
+    for (const auto& [name, parameter] : parameters)
+        if (is_solution_dependent(parameter))
+            rows_for_update.merge(mesh.nodes(name));
+
     return { .theories = theories_types(parameters),
              .is_neumann = is_stationary_problem ? std::all_of(boundaries_view.begin(), boundaries_view.end(), is_flux) : false,
              .is_nonlinear_boundary = std::any_of(boundaries_view.begin(), boundaries_view.end(), is_radiation_boundary),
              .is_nonconstant_parameters = std::any_of(parameters_view.begin(), parameters_view.end(), is_nonconstant_parameters),
              .is_solution_dependent = std::any_of(parameters_view.begin(), parameters_view.end(), is_solution_dependent),
-             .is_inner_nodes = utils::inner_nodes(mesh, boundaries_conditions) };
+             .is_inner_nodes = utils::inner_nodes(mesh, boundaries_conditions),
+             .rows_for_update = std::vector<uint32_t>(rows_for_update.begin(), rows_for_update.end()) };
 }
 
 } // namespace nonlocal::solver_2d::thermal
