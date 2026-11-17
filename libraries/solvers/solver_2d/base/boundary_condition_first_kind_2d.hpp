@@ -53,12 +53,10 @@ metamath::linear::sparse_matrix_portrait<I, J> get_first_kind_matrix_portrait(
 }
 
 template<class T>
-metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear::sparse_matrix<T>& matrix,
-                                                         const std::vector<bool>& is_inner_nodes, const bool is_symmetric) {
-    static constexpr bool Allocate_Values = true;
-    metamath::linear::sparse_matrix<T> boundary_matrix(get_first_kind_matrix_portrait(matrix, is_inner_nodes, is_symmetric),
-                                                       Allocate_Values);
-    for (const size_t row : std::ranges::iota_view(0zu, boundary_matrix.rows()))
+void get_first_kind_matrix_values(metamath::linear::sparse_matrix<T>& boundary_matrix,
+                                  const metamath::linear::sparse_matrix<T>& matrix, const std::vector<bool>& is_inner_nodes,
+                                  const bool is_symmetric) {
+    for (const size_t row : std::ranges::iota_view(0zu, boundary_matrix.rows())) {
         for (const size_t shift : matrix.portrait.shifts_range(row)) {
             const size_t col = matrix.portrait.indices[shift];
             for (const size_t row_loc : std::ranges::iota_view{ 0zu, DoF<T> }) {
@@ -80,7 +78,16 @@ metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear:
                 }
             }
         }
+    }
+}
 
+template<class T>
+metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear::sparse_matrix<T>& matrix,
+                                                         const std::vector<bool>& is_inner_nodes, const bool is_symmetric) {
+    static constexpr bool Allocate_Values = true;
+    metamath::linear::sparse_matrix<T> boundary_matrix{ get_first_kind_matrix_portrait(matrix, is_inner_nodes, is_symmetric),
+                                                        Allocate_Values };
+    get_first_kind_matrix_values(boundary_matrix, matrix, is_inner_nodes, is_symmetric);
     return boundary_matrix;
 }
 
@@ -163,7 +170,7 @@ void boundary_condition_first_kind_2d(metamath::linear::sparse_matrix<T>& matrix
                                       const problem_settings& settings, const mesh::mesh_container_2d<V>& mesh,
                                       const boundaries_conditions_2d<V, Physics, DoF>& boundaries_conditions) {
     static_assert(std::is_same_v<U, metamath::types::container_type_t<T>> &&
-                      std::is_same_v<V, metamath::types::container_type_t<U>>,
+                  std::is_same_v<V, metamath::types::container_type_t<U>>, ///
                   "The floating point type of the mesh, matrix and the vector shall be the same");
     const auto boundary_matrix = get_first_kind_matrix(matrix, settings.is_inner_nodes, settings.is_symmetric());
     const auto boundary_vector = calc_first_kind_vector(mesh, boundaries_conditions);

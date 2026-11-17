@@ -18,6 +18,9 @@ problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh, c
         return bool(dynamic_cast<const flux_2d<T>*>(condition.get())) &&
               !bool(dynamic_cast<const combined_flux_2d<T>*>(condition.get())); ///
     };
+    static constexpr auto is_convection_boundary = [](const auto& condition) noexcept {
+        return bool(dynamic_cast<const convection_2d<T>*>(condition.get()));
+    };
     static constexpr auto is_radiation_boundary = [](const auto& condition) noexcept {
         return bool(dynamic_cast<const radiation_2d<T>*>(condition.get()));
     };
@@ -46,7 +49,7 @@ problem_settings init_problem_settings(const mesh::mesh_container_2d<T>& mesh, c
 
     std::set<uint32_t> rows_for_update;
     for (const auto& [name, condition] : boundaries_conditions)
-        if (is_radiation_boundary(condition))
+        if (is_radiation_boundary(condition) || is_convection_boundary(condition))
             rows_for_update.merge(mesh.nodes(name));
 
     for (const auto& [name, parameter] : parameters)

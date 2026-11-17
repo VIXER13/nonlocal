@@ -14,8 +14,6 @@ class conductivity_matrix_2d : public matrix_assembler_base<T> {
     using _base = matrix_assembler_base<T>;
 
     T integrate_basic(const size_t e, const size_t i) const;
-    void integral_condition(const bool is_symmetric);
-
     template<class Conductivity>
     T integrate_local(const Conductivity& conductivity, const size_t e, const size_t i, const size_t j) const;
     template<class Conductivity>
@@ -28,6 +26,7 @@ class conductivity_matrix_2d : public matrix_assembler_base<T> {
     ~conductivity_matrix_2d() noexcept override = default;
 
     void create_matrix_portrait(const problem_settings& settings);
+    void integral_condition(const bool is_symmetric);
     void calc_coeffs(const evaluated_thermal_parameters<T>& conductivity, const problem_settings& settings);
     void compute(const evaluated_thermal_parameters<T>& conductivity, const problem_settings& settings);
 };
@@ -42,29 +41,6 @@ T conductivity_matrix_2d<T>::integrate_basic(const size_t e, const size_t i) con
     for (const size_t q : el.qnodes())
         integral += el.weight(q) * el.qN(i, q) * _base::mesh().jacobian(e, q);
     return integral;
-}
-
-template<std::floating_point T>
-void conductivity_matrix_2d<T>::integral_condition(const bool is_symmetric) {
-    const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_base::processing_nodes);
-
-#pragma omp parallel for
-    for (size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
-        T& val = _base::matrix()(node - process_nodes.front(), _base::mesh().container().nodes_count());
-        for (const size_t e : _base::mesh().elements(node))
-            val += integrate_basic(e, _base::mesh().global_to_local(e, node));
-        if (!is_symmetric && parallel::is_last_process())
-            _base::matrix()(_base::matrix().rows() - 1, node) = val;
-    }
-
-    if (!is_symmetric && parallel::MPI_size() > 1 && parallel::is_last_process()) {
-#pragma omp parallel for
-        for (size_t node = 0; node < process_nodes.front(); ++node) {
-            T& val = _base::matrix()(_base::matrix().rows() - 1, node);
-            for (const size_t e : _base::mesh().elements(node))
-                val += integrate_basic(e, _base::mesh().global_to_local(e, node));
-        }
-    }
 }
 
 template<std::floating_point T>
@@ -160,6 +136,29 @@ void conductivity_matrix_2d<T>::create_matrix_portrait(const problem_settings& s
 
     _base::matrix().portrait.sort_indices();
     logger::info() << "Matrix portrait is formed" << std::endl;
+}
+
+template<std::floating_point T>
+void conductivity_matrix_2d<T>::integral_condition(const bool is_symmetric) {
+    const auto process_nodes = std::get<std::ranges::iota_view<size_t, size_t>>(_base::processing_nodes);
+
+#pragma omp parallel for
+    for (size_t node = process_nodes.front(); node < *process_nodes.end(); ++node) {
+        T& val = _base::matrix()(node - process_nodes.front(), _base::mesh().container().nodes_count());
+        for (const size_t e : _base::mesh().elements(node))
+            val += integrate_basic(e, _base::mesh().global_to_local(e, node));
+        if (!is_symmetric && parallel::is_last_process())
+            _base::matrix()(_base::matrix().rows() - 1, node) = val;
+    }
+
+    if (!is_symmetric && parallel::MPI_size() > 1 && parallel::is_last_process()) {
+#pragma omp parallel for
+        for (size_t node = 0; node < process_nodes.front(); ++node) {
+            T& val = _base::matrix()(_base::matrix().rows() - 1, node);
+            for (const size_t e : _base::mesh().elements(node))
+                val += integrate_basic(e, _base::mesh().global_to_local(e, node));
+        }
+    }
 }
 
 template<std::floating_point T>
