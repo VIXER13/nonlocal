@@ -48,8 +48,8 @@ std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(
     conductivity_matrix_2d<T> local_conductivity{ mesh };
     local_conductivity.processing_nodes = std::ranges::iota_view{ 0zu, mesh.container().nodes_count() };
     local_conductivity.compute(parameters, settings);
-    convection_condition_2d(local_conductivity.matrix(), settings, mesh,
-                            boundaries_conditions); // TODO: fix computational range for MPI
+    convection_condition_2d(local_conductivity.matrix(), mesh, boundaries_conditions,
+                            settings.is_symmetric()); // TODO: fix computational range for MPI
     remove_first_kind_elements(local_conductivity.matrix(), settings.is_inner_nodes);
     if (!temperature.empty())
         radiation_condition_2d(local_conductivity.matrix(), settings, mesh, boundaries_conditions, temperature);
@@ -64,7 +64,7 @@ std::vector<T> stationary_heat_equation_solver_2d_linear(const problem_settings&
                                                          std::vector<T> right_part) {
     conductivity_matrix_2d<T> conductivity{ *mesh };
     conductivity.compute(parameters, settings);
-    convection_condition_2d(conductivity.matrix(), settings, *mesh, boundaries_conditions);
+    convection_condition_2d(conductivity.matrix(), *mesh, boundaries_conditions, settings.is_symmetric());
     if (!settings.is_neumann)
         boundary_condition_first_kind_2d(conductivity.matrix(), right_part, settings, mesh->container(), boundaries_conditions);
     auto solver = slae::init_iterative_solver(conductivity.matrix(), settings.is_symmetric());
@@ -117,7 +117,7 @@ std::pair<std::vector<T>, evaluated_thermal_parameters<T>> stationary_heat_equat
                           : conductivity.matrix() * temperature;
         first_kind_fill_2d(right_part, mesh->container(), boundaries_conditions, false);
 
-        convection_condition_2d(conductivity.matrix(), settings, *mesh, boundaries_conditions);
+        convection_condition_2d(conductivity.matrix(), *mesh, boundaries_conditions, settings.is_symmetric());
         radiation_condition_2d(conductivity.matrix(), settings, *mesh, boundaries_conditions, temperature);
 
         if (settings.is_nonlocal())

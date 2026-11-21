@@ -111,7 +111,7 @@ void nonstationary_heat_equation_solver_2d<T>::compute(const raw_thermal_paramet
     const bool is_symmetric = settings.is_symmetric();
     log_problem_settings(settings);
     _conductivity.compute(_parameters, settings);
-    convection_condition_2d(_conductivity.matrix(), settings, *_mesh, _boundaries_conditions);
+    convection_condition_2d(_conductivity.matrix(), *_mesh, _boundaries_conditions, settings.is_symmetric());
     _boundary_matrix = get_first_kind_matrix(_conductivity.matrix(), settings.is_inner_nodes, is_symmetric);
     remove_first_kind_elements(_conductivity.matrix(), settings.is_inner_nodes);
 
