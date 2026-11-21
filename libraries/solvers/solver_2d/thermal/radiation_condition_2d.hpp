@@ -55,9 +55,9 @@ void radiation_condition_2d(metamath::linear::sparse_matrix<T>& K, std::vector<T
 }
 
 template<class T>
-void radiation_condition_2d(metamath::linear::sparse_matrix<T>& matrix, const problem_settings& settings,
-                            const mesh::mesh_2d<T>& mesh, const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                            const std::vector<T>& temperature_prev) {
+void radiation_condition_2d(metamath::linear::sparse_matrix<T>& matrix, const mesh::mesh_2d<T>& mesh,
+                            const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
+                            const std::vector<T>& temperature_prev, const bool is_symmetric) {
     const auto integrate = [&temperature_prev](const radiation_2d<T>& condition, const auto& element, const size_t i,
                                                const size_t j) {
         T integral = T{ 0 };
@@ -74,15 +74,13 @@ void radiation_condition_2d(metamath::linear::sparse_matrix<T>& matrix, const pr
 
     utils::run_by_boundaries<radiation_2d>(
         mesh.container(), boundaries_conditions,
-        [&matrix, &mesh, &integrate, &is_inner_nodes = settings.is_inner_nodes, is_symmetric = settings.is_symmetric(),
-         process_nodes = mesh.process_nodes()](const radiation_2d<T>& condition, const size_t be, const size_t row,
-                                               const size_t) {
-            if (row >= process_nodes.front() && row <= process_nodes.back() && is_inner_nodes[row]) {
+        [&matrix, &mesh, &integrate, is_symmetric, process_nodes = mesh.process_nodes()](
+            const radiation_2d<T>& condition, const size_t be, const size_t row, const size_t) {
+            if (row >= process_nodes.front() && row <= process_nodes.back()) {
                 const auto element = mesh.container().element_1d_data(be);
                 const size_t i = mesh.global_to_local(be, row);
                 for (const size_t j : std::ranges::iota_view{ 0u, mesh.container().nodes_count(be) })
-                    if (const size_t col = mesh.container().node_number(be, j);
-                        (!is_symmetric || col >= row) && is_inner_nodes[col])
+                    if (const size_t col = mesh.container().node_number(be, j); (!is_symmetric || col >= row))
                         matrix(row, col) += integrate(condition, element, i, j);
             }
         });
@@ -91,7 +89,7 @@ void radiation_condition_2d(metamath::linear::sparse_matrix<T>& matrix, const pr
 template<class T>
 void radiation_condition_2d(std::vector<T>& right_part, const mesh::mesh_2d<T>& mesh,
                             const thermal_boundaries_conditions_2d<T>& boundaries_conditions,
-                            const std::vector<T>& temperature_prev, const std::vector<bool>& is_inner_nodes) {
+                            const std::vector<T>& temperature_prev) {
     const auto integrate = [&temperature_prev](const radiation_2d<T>& condition, const auto& element, const size_t i) {
         T integral = T{ 0 };
         const auto& [mesh, be] = element;
@@ -106,9 +104,9 @@ void radiation_condition_2d(std::vector<T>& right_part, const mesh::mesh_2d<T>& 
 
     utils::run_by_boundaries<radiation_2d>(
         mesh.container(), boundaries_conditions,
-        [&right_part, &mesh, &is_inner_nodes, &integrate, process_nodes = mesh.process_nodes()](
-            const radiation_2d<T>& condition, const size_t be, const size_t row, const size_t) {
-            if (row >= process_nodes.front() && row <= process_nodes.back() && is_inner_nodes[row])
+        [&right_part, &mesh, &integrate, process_nodes = mesh.process_nodes()](const radiation_2d<T>& condition, const size_t be,
+                                                                               const size_t row, const size_t) {
+            if (row >= process_nodes.front() && row <= process_nodes.back())
                 right_part[row] -= integrate(condition, mesh.container().element_1d_data(be), mesh.global_to_local(be, row));
         });
 }

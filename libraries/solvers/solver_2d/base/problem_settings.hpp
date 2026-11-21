@@ -18,6 +18,7 @@ struct problem_settings final {
     bool is_nonconstant_parameters = false;
     bool is_solution_dependent = false;
     std::vector<bool> is_inner_nodes;
+    std::vector<uint32_t> rows_for_update;
     std::optional<bool> force_symmetry;
 
     void set_fully_local() {

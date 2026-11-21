@@ -25,7 +25,7 @@ constexpr T A = T{ 100 };
 constexpr T B = T{ -50 };
 constexpr T Inner_Temperature = T{ 100 };
 constexpr T Emissivity = T{ 0.8 };
-constexpr T Heat_Transfer = T{ 0 };
+constexpr T Heat_Transfer = T{ 2 };
 constexpr T Ambient_Temperature = T{ 0 };
 
 constexpr T temperature(const std::array<T, 2>& x) noexcept {
@@ -40,20 +40,22 @@ constexpr T flux(const std::array<T, 2>& x) noexcept {
 
 const suite<"thermal_isotropic_solid_ring_radiation"> _ = [] {
     const T Outer_Temperature = temperature({ T{ 0 }, Outer_Radius });
-    const T Outer_Flux = Emissivity * Stefan_Boltzmann_Constant<T> * power<4>(Outer_Temperature) - flux({ T{ 0 }, Outer_Radius });
+    const T Outer_Flux = flux({ T{ 0 }, Outer_Radius });
+    const T Compensate_Radiation_Flux = Emissivity * Stefan_Boltzmann_Constant<T> * power<4>(Outer_Temperature) - Outer_Flux;
 
     std::stringstream stream{ solid_ring_su2_data };
     const auto mesh = std::make_shared<mesh_2d<T>>(stream, mesh_format::SU2);
     const raw_thermal_parameters<T> parameters = { { "DEFAULT", { .physical = { .conductivity = T{ 1 } } } } };
     thermal_boundaries_conditions_2d<T> boundaries_conditions;
     boundaries_conditions["Inner"] = std::make_unique<temperature_2d<T>>(Inner_Temperature);
-    boundaries_conditions["Outer"] =
-        std::make_unique<combined_flux_2d<T>>(Outer_Flux, Heat_Transfer, Ambient_Temperature, Emissivity);
+    boundaries_conditions["Left"] = std::make_unique<temperature_2d<T>>(Outer_Temperature);
+    boundaries_conditions["Outer_Upper_Right"] =
+        std::make_unique<combined_flux_2d<T>>(Compensate_Radiation_Flux, T{ 0 }, Ambient_Temperature, Emissivity);
+    boundaries_conditions["Outer_Lower_Right"] =
+        std::make_unique<convection_2d<T>>(Heat_Transfer, Outer_Temperature - Outer_Flux / Heat_Transfer);
     const stationary_equation_parameters_2d<T> auxiliary_data = {
-        .right_part =
-            [](const std::array<T, 2>& point) { return -4 * B + (2 * B * Inner_Radius - A) / std::hypot(point[X], point[Y]); },
-        .initial_distribution =
-            [Outer_Temperature](const std::array<T, 2>& point) { return 0.5 * (Inner_Temperature + Outer_Temperature); },
+        .right_part = [](const std::array<T, 2>& point) { return -4 * B + (2 * B * Inner_Radius - A) / std::hypot(point[X], point[Y]); },     ///
+        .initial_distribution = [Outer_Temperature](const std::array<T, 2>& point) { return 0.5 * (Inner_Temperature + Outer_Temperature); }, ///
         .max_iterations = 10
     };
     const auto solution = stationary_heat_equation_solver_2d(mesh, parameters, boundaries_conditions, auxiliary_data);
@@ -71,7 +73,7 @@ const suite<"thermal_isotropic_solid_ring_radiation"> _ = [] {
             const T coeff = flux(point) / std::hypot(x, y);
             return std::array{ coeff * x, coeff * y };
         };
-        static constexpr T Epsilon = 1.8e-2;
+        static constexpr T Epsilon = 1.85e-2;
         const T error = norm_error(solution.flux(), mesh->container(), Expected_Flux);
         expect(approx(error, Expected_Error, Epsilon));
     };

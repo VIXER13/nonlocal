@@ -63,6 +63,17 @@ bool is_spatial(const std::array<coefficient_t<T, Dimension>, N>& coefficient) {
 }
 
 template<std::floating_point T, size_t Dimension>
+bool is_nonlinear(const coefficient_t<T, Dimension>& coefficient) noexcept {
+    return std::holds_alternative<solution_dependency<T, Dimension>>(coefficient);
+}
+
+template<std::floating_point T, size_t Dimension, size_t N>
+bool is_nonlinear(const std::array<coefficient_t<T, Dimension>, N>& coefficient) {
+    static constexpr auto checker = [](const coefficient_t<T, Dimension>& coefficient) { return is_nonlinear(coefficient); };
+    return std::all_of(coefficient.begin(), coefficient.end(), checker);
+}
+
+template<std::floating_point T, size_t Dimension>
 T evaluate(const coefficient_t<T, Dimension>& coefficient, const point<T, Dimension>& point, const T solution) {
     // clang-format off
     return std::visit(metamath::types::visitor{

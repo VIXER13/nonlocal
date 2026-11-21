@@ -14,7 +14,7 @@ template<class T>
 class matrix_assembler_base {
     using entity_t = metamath::types::container_type_t<T>;
     using floating_point_t = metamath::types::container_type_t<entity_t>;
-    using nodes_sequence = std::variant<std::ranges::iota_view<size_t, size_t>, std::vector<size_t>>;
+    using nodes_sequence = std::variant<std::ranges::iota_view<size_t, size_t>, std::vector<uint32_t>>;
 
     metamath::linear::sparse_matrix<T> _matrix;
     const mesh::mesh_2d<floating_point_t>& _mesh;
