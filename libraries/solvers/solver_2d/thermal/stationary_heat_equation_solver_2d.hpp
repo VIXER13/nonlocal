@@ -50,9 +50,9 @@ std::unique_ptr<slae::preconditioner_base<T>> init_preconditioner(
     local_conductivity.compute(parameters, settings);
     convection_condition_2d(local_conductivity.matrix(), mesh, boundaries_conditions,
                             settings.is_symmetric()); // TODO: fix computational range for MPI
-    remove_first_kind_elements(local_conductivity.matrix(), settings.is_inner_nodes);
     if (!temperature.empty())
-        radiation_condition_2d(local_conductivity.matrix(), settings, mesh, boundaries_conditions, temperature);
+        radiation_condition_2d(local_conductivity.matrix(), mesh, boundaries_conditions, temperature, settings.is_symmetric());
+    remove_first_kind_elements(local_conductivity.matrix(), settings.is_inner_nodes);
     return slae::init_eigen_preconditioner(std::move(local_conductivity.matrix()), settings.is_symmetric());
 }
 
@@ -82,19 +82,21 @@ std::pair<std::vector<T>, evaluated_thermal_parameters<T>> stationary_heat_equat
     conductivity.create_matrix_portrait(settings);
     if (settings.is_neumann)
         conductivity.integral_condition(settings.is_symmetric());
-    auto solver = slae::init_iterative_solver(conductivity.matrix(), settings.is_symmetric());
+    auto& matrix = conductivity.matrix();
+    auto solver = slae::init_iterative_solver(matrix, settings.is_symmetric());
 
     static constexpr bool Allocate_Values = true;
     const auto boundary_vector = calc_first_kind_vector(mesh->container(), boundaries_conditions);
     metamath::linear::sparse_matrix<T> boundary_matrix{
-        get_first_kind_matrix_portrait(conductivity.matrix(), settings.is_inner_nodes, settings.is_symmetric()), Allocate_Values
+        get_first_kind_matrix_portrait(matrix, settings.is_inner_nodes, settings.is_symmetric()), Allocate_Values
     };
 
     std::vector<T> temperature(mesh->container().nodes_count() + settings.is_neumann, T{ 0 });
     if (auxiliary_data.initial_distribution)
         for (const size_t node : mesh->container().nodes())
             temperature[node] = auxiliary_data.initial_distribution(mesh->container().node_coord(node));
-    first_kind_fill_2d(temperature, mesh->container(), boundaries_conditions, true);
+    static constexpr bool Calculate_Value = true;
+    first_kind_fill_2d(temperature, mesh->container(), boundaries_conditions, Calculate_Value);
     auto conductivity_parameters = evaluate_conductivity(*mesh, parameters, mesh::utils::nodes_to_qnodes<T>(*mesh, temperature));
     std::vector<T> delta_temperature = temperature;
 
@@ -103,22 +105,19 @@ std::pair<std::vector<T>, evaluated_thermal_parameters<T>> stationary_heat_equat
     do {
         using namespace metamath::operators;
         conductivity.calc_coeffs(conductivity_parameters, settings);
+        convection_condition_2d(matrix, *mesh, boundaries_conditions, settings.is_symmetric());
 
         std::vector<T> right_part = initial_right_part;
-        radiation_condition_2d(right_part, *mesh, boundaries_conditions, temperature, settings.is_inner_nodes);
+        right_part -= settings.is_symmetric() ? matrix.template self_adjoint<metamath::linear::matrix_part::Upper>() * temperature
+                                              : matrix * temperature;
+        radiation_condition_2d(matrix, *mesh, boundaries_conditions, temperature, settings.is_symmetric());
+        radiation_condition_2d(right_part, *mesh, boundaries_conditions, temperature);
         if (!settings.is_neumann) {
-            get_first_kind_matrix_values(boundary_matrix, conductivity.matrix(), settings.is_inner_nodes,
-                                         settings.is_symmetric());
-            remove_first_kind_elements(conductivity.matrix(), settings.is_inner_nodes);
-            right_part -= boundary_matrix * boundary_vector;
+            get_first_kind_matrix_values(boundary_matrix, matrix, settings.is_inner_nodes, settings.is_symmetric());
+            remove_first_kind_elements(matrix, settings.is_inner_nodes);
+            static constexpr bool Set_Value = false;
+            first_kind_fill_2d(right_part, mesh->container(), boundaries_conditions, Set_Value);
         }
-        right_part -= settings.is_symmetric()
-                          ? conductivity.matrix().template self_adjoint<metamath::linear::matrix_part::Upper>() * temperature
-                          : conductivity.matrix() * temperature;
-        first_kind_fill_2d(right_part, mesh->container(), boundaries_conditions, false);
-
-        convection_condition_2d(conductivity.matrix(), *mesh, boundaries_conditions, settings.is_symmetric());
-        radiation_condition_2d(conductivity.matrix(), settings, *mesh, boundaries_conditions, temperature);
 
         if (settings.is_nonlocal())
             solver->preconditioner(init_preconditioner(settings, *mesh, conductivity_parameters, boundaries_conditions));
@@ -128,8 +127,8 @@ std::pair<std::vector<T>, evaluated_thermal_parameters<T>> stationary_heat_equat
         if (iteration == 0)
             conductivity.processing_nodes = settings.rows_for_update;
         if (!settings.is_neumann)
-            revert_first_kind_elements(conductivity.matrix(), boundary_matrix, settings.is_symmetric());
-        for (auto& matrix = conductivity.matrix(); const size_t row : settings.rows_for_update)
+            revert_first_kind_elements(matrix, boundary_matrix, settings.is_symmetric());
+        for (const size_t row : settings.rows_for_update)
             std::fill(std::next(matrix.values.begin(), matrix.portrait.shifts[row]), // don't set zero neumann col
                       std::next(matrix.values.begin(), matrix.portrait.shifts[row + 1] - settings.is_neumann), T{ 0 });
         update_conductivity(conductivity_parameters, *mesh, parameters, mesh::utils::nodes_to_qnodes<T>(*mesh, temperature));
