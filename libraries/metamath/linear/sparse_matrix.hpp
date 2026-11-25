@@ -13,13 +13,7 @@ struct sparse_matrix final {
     sparse_matrix() = default;
     explicit sparse_matrix(const size_t rows, const size_t cols) : portrait{ rows, cols } {}
 
-    explicit sparse_matrix(const sparse_matrix_portrait<I, J>& portrait, const bool allocate = false) : portrait{ portrait } {
-        if (allocate)
-            allocate_values();
-    }
-
-    explicit sparse_matrix(sparse_matrix_portrait<I, J>&& portrait, const bool allocate = false)
-        : portrait{ std::move(portrait) } {
+    explicit sparse_matrix(sparse_matrix_portrait<I, J> portrait, const bool allocate = true) : portrait{ std::move(portrait) } {
         if (allocate)
             allocate_values();
     }
@@ -55,8 +49,13 @@ struct sparse_matrix final {
         std::fill(values.begin(), values.end(), T{});
     }
 
-    template<class Rows>
+    template<std::ranges::input_range Rows>
     void set_zero(const Rows& rows) {
+        if (values.size() != non_zeros())
+            throw std::logic_error{
+                "Cannot set zero values because the values vector size does not match the non-zero elements number."
+            };
+
         for (const size_t row : rows) {
             portrait.check_row(row);
             std::fill(std::next(values.begin(), portrait.shifts[row]),

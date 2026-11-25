@@ -10,12 +10,28 @@
 
 namespace nonlocal::solver_2d {
 
+template<class T>
+void check_matrices_sizes(const metamath::linear::sparse_matrix<T>& matrix,
+                          const metamath::linear::sparse_matrix<T>& boundary_matrix) {
+    if (matrix.rows() != boundary_matrix.rows())
+        throw std::invalid_argument(
+            "The number of rows in the main matrix does not match the number of rows in the boundary matrix.");
+    if (matrix.cols() != boundary_matrix.cols())
+        throw std::invalid_argument(
+            "The number of columns in the main matrix does not match the number of columns in the boundary matrix.");
+}
+
+template<class T>
+void check_matrix_and_inner_nodes_sizes(const metamath::linear::sparse_matrix<T>& matrix,
+                                        const std::vector<bool>& is_inner_nodes) {
+    if (is_inner_nodes.size() != DoF<T> * matrix.cols())
+        throw std::invalid_argument("The size of the vector of inner nodes does not match the number of degrees of freedom.");
+}
+
 template<class T, std::integral I, std::integral J>
 metamath::linear::sparse_matrix_portrait<I, J> get_first_kind_matrix_portrait(
     const metamath::linear::sparse_matrix<T, I, J>& matrix, const std::vector<bool>& is_inner_nodes, const bool is_symmetric) {
-    if (is_inner_nodes.size() != DoF<T> * matrix.cols())
-        throw std::invalid_argument("The size of the vector of inner nodes does not match the number of degrees of freedom.");
-
+    check_matrix_and_inner_nodes_sizes(matrix, is_inner_nodes);
     const auto need_to_add = [&is_inner_nodes](const size_t row, const size_t col) {
         for (const size_t row_global : std::ranges::iota_view{ DoF<T> * row, DoF<T> * (row + 1) })
             for (const size_t col_global : std::ranges::iota_view{ DoF<T> * col, DoF<T> * (col + 1) })
@@ -56,6 +72,9 @@ template<class T>
 void get_first_kind_matrix_values(metamath::linear::sparse_matrix<T>& boundary_matrix,
                                   const metamath::linear::sparse_matrix<T>& matrix, const std::vector<bool>& is_inner_nodes,
                                   const bool is_symmetric) {
+    check_matrices_sizes(matrix, boundary_matrix);
+    check_matrix_and_inner_nodes_sizes(matrix, is_inner_nodes);
+
     for (const size_t row : std::ranges::iota_view(0zu, boundary_matrix.rows())) {
         for (const size_t shift : matrix.portrait.shifts_range(row)) {
             const size_t col = matrix.portrait.indices[shift];
@@ -84,9 +103,7 @@ void get_first_kind_matrix_values(metamath::linear::sparse_matrix<T>& boundary_m
 template<class T>
 metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear::sparse_matrix<T>& matrix,
                                                          const std::vector<bool>& is_inner_nodes, const bool is_symmetric) {
-    static constexpr bool Allocate_Values = true;
-    metamath::linear::sparse_matrix<T> boundary_matrix{ get_first_kind_matrix_portrait(matrix, is_inner_nodes, is_symmetric),
-                                                        Allocate_Values };
+    metamath::linear::sparse_matrix<T> boundary_matrix{ get_first_kind_matrix_portrait(matrix, is_inner_nodes, is_symmetric) };
     get_first_kind_matrix_values(boundary_matrix, matrix, is_inner_nodes, is_symmetric);
     return boundary_matrix;
 }
@@ -94,8 +111,7 @@ metamath::linear::sparse_matrix<T> get_first_kind_matrix(const metamath::linear:
 template<class T>
 void remove_first_kind_elements(metamath::linear::sparse_matrix<T>& matrix, const std::vector<bool>& is_inner_nodes,
                                 const bool set_diagonal = true) {
-    if (is_inner_nodes.size() != DoF<T> * matrix.cols())
-        throw std::invalid_argument("The size of the vector of inner nodes does not match the number of degrees of freedom.");
+    check_matrix_and_inner_nodes_sizes(matrix, is_inner_nodes);
     for (const size_t row : std::ranges::iota_view(0zu, matrix.rows()))
         for (const size_t shift : matrix.portrait.shifts_range(row)) {
             using U = metamath::types::container_type_t<metamath::types::container_type_t<T>>;
@@ -114,11 +130,8 @@ void remove_first_kind_elements(metamath::linear::sparse_matrix<T>& matrix, cons
 template<class T>
 void revert_first_kind_elements(metamath::linear::sparse_matrix<T>& matrix,
                                 const metamath::linear::sparse_matrix<T>& boundary_matrix, const bool is_symmetric) {
-    if (matrix.rows() != boundary_matrix.rows() || matrix.cols() != boundary_matrix.cols())
-        throw std::invalid_argument("The size of the matrices does not match.");
-
     static_assert(DoF<T> == 1, "Reverting first kind elements is only supported for scalar problems.");
-
+    check_matrices_sizes(matrix, boundary_matrix);
     for (const size_t row : std::ranges::iota_view{ 0zu, boundary_matrix.rows() }) {
         for (const size_t shift : boundary_matrix.portrait.shifts_range(row)) {
             if (const size_t col = boundary_matrix.portrait.indices[shift]; !is_symmetric || row <= col)
