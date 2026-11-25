@@ -10,6 +10,7 @@
 #include <fstream>
 #include <numeric>
 #include <ranges>
+#include <set>
 #include <unordered_set>
 
 namespace nonlocal::mesh {
@@ -80,6 +81,7 @@ class mesh_container_2d final {
     size_t nodes_count(const size_t element) const;
     size_t node_number(const size_t element, const size_t i) const;
     std::ranges::iota_view<size_t, size_t> nodes() const noexcept;
+    std::set<I> nodes(const std::string& group_name) const;
 
     const std::vector<I>& nodes(const size_t element) const;
     const std::array<T, 2>& node_coord(const size_t node) const;
@@ -265,6 +267,15 @@ size_t mesh_container_2d<T, I>::node_number(const size_t element, const size_t i
 template<std::floating_point T, std::integral I>
 std::ranges::iota_view<size_t, size_t> mesh_container_2d<T, I>::nodes() const noexcept {
     return { 0u, nodes_count() };
+}
+
+template<std::floating_point T, std::integral I>
+std::set<I> mesh_container_2d<T, I>::nodes(const std::string& group_name) const {
+    std::set<I> result;
+    for (const size_t element : elements(group_name))
+        for (const I node : nodes(element))
+            result.insert(node);
+    return result;
 }
 
 template<std::floating_point T, std::integral I>

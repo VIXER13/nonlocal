@@ -123,6 +123,33 @@ suite<"sparse_matrix"> _ = [] {
         expect(eq(indices_range.size(), 1));
         expect(eq(indices_range[0], 0));
         expect(throws<std::out_of_range>([&matrix] { matrix.portrait.indices_range(3); }));
+
+        matrix.set_zero(std::array{ 0, 2 });
+        expect(eq(matrix(0, 0), 0.0)); //-V525
+        expect(eq(matrix(0, 2), 0.0));
+        expect(eq(matrix(1, 1), 2.0));
+        expect(eq(matrix(1, 3), 4.0));
+        expect(eq(matrix(2, 0), 0.0));
+
+        matrix.set_zero();
+        expect(eq(matrix(0, 0), 0.0)); //-V525
+        expect(eq(matrix(0, 2), 0.0));
+        expect(eq(matrix(1, 1), 0.0));
+        expect(eq(matrix(1, 3), 0.0));
+        expect(eq(matrix(2, 0), 0.0));
+    };
+
+    "create_sparse_matrix_from_portrait"_test = [] {
+        sparse_matrix_portrait portrait{ 3, 4 };
+        portrait.shifts = { 0, 2, 4, 5 };
+        portrait.indices = { 0, 2, 1, 3, 0 };
+        for (const bool allocate : { false, true }) {
+            sparse_matrix<T> matrix{ portrait, allocate };
+            expect(eq(matrix.rows(), 3));
+            expect(eq(matrix.cols(), 4));
+            expect(eq(matrix.non_zeros(), 5));
+            expect(eq(matrix.values.size(), allocate ? 5 : 0));
+        }
     };
 
     "validation"_test = [] {
