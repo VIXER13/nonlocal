@@ -137,6 +137,9 @@ suite<"sparse_matrix"> _ = [] {
         expect(eq(matrix(1, 1), 0.0));
         expect(eq(matrix(1, 3), 0.0));
         expect(eq(matrix(2, 0), 0.0));
+
+        matrix.values.clear();
+        expect(throws<std::logic_error>([&matrix] { matrix.set_zero(std::array{ 0, 2 }); }));
     };
 
     "create_sparse_matrix_from_portrait"_test = [] {

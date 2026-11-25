@@ -10,7 +10,7 @@ namespace nonlocal::mesh::utils {
 
 enum class balancing_t : uint8_t { No, Memory, Speed };
 
-template<std::floating_point T, std::integral I, class Nodes, class Runner>
+template<std::floating_point T, std::integral I, std::ranges::input_range Nodes, class Runner>
 void mesh_run(const mesh_2d<T, I>& mesh, const Nodes& nodes, const std::unordered_map<std::string, theory_t>& theories,
               Runner&& runner) {
 #pragma omp parallel for default(none) shared(mesh, nodes, theories) firstprivate(runner) schedule(dynamic)
